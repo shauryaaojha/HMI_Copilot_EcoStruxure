@@ -218,3 +218,58 @@ describe("deleting an object", () => {
     expect(s().bindings).toHaveLength(0);
   });
 });
+
+describe("a new project", () => {
+  it("starts blank: one empty screen, no tags, alarms, bindings or chat", () => {
+    // What useProjectHydration writes for any id that is not the demo. The
+    // rule matters: a new project that arrives carrying somebody else's pump
+    // station is not a new project.
+    s().reset();
+    const target = { model: "HMIGTO6310", width: 1024, height: 600 };
+    s().hydrate({
+      id: "p-new",
+      name: "Untitled",
+      target,
+      screens: [
+        {
+          Type: "Screen",
+          UniqueId: crypto.randomUUID(),
+          Name: "Screen1",
+          Children: [
+            {
+              Type: "ViewBox",
+              UniqueId: crypto.randomUUID(),
+              Name: "ViewBox",
+              Options: 108,
+              Width: target.width,
+              Height: target.height,
+              Children: [],
+            },
+          ],
+        },
+      ],
+      variables: [],
+      alarms: [],
+      bindings: [],
+      objectMeta: {},
+      versions: [],
+      chat: [],
+    });
+
+    expect(s().screens).toHaveLength(1);
+    expect(s().screens[0].Children[0].Children).toHaveLength(0);
+    expect(s().variables).toHaveLength(0);
+    expect(s().alarms).toHaveLength(0);
+    expect(s().bindings).toHaveLength(0);
+    expect(s().chat).toHaveLength(0);
+    expect(s().versions).toHaveLength(0);
+  });
+
+  it("has one screen rather than none, so the first object has somewhere to go", () => {
+    // Zero screens would make "add a screen" a step that exists for no reason,
+    // and the packager refuses a project without one.
+    const screen = s().screens[0];
+    s().appendObject(screen.UniqueId, rectangle("First", { left: 0, top: 0, width: 10, height: 10 }));
+    expect(s().screens[0].Children[0].Children).toHaveLength(1);
+  });
+});

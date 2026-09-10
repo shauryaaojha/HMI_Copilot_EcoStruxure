@@ -11,11 +11,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Download, Monitor, Pencil } from "lucide-react";
+import { Check, Download, Monitor, Pencil, SquarePen } from "lucide-react";
 import { useProject } from "@/store/project";
 import { Button, Input, Select, cn } from "@/components/ui";
 import { SchneiderMark } from "./SchneiderMark";
 import { ThemeToggle } from "./theme";
+import { useNewProject } from "./useNewProject";
 
 /**
  * Panels the layout can target.
@@ -153,6 +154,7 @@ export interface TopBarProps {
 
 export function TopBar({ onExport, className }: TopBarProps) {
   const projectId = useProject((s) => s.id);
+  const newProject = useNewProject();
   const target = useProject((s) => s.target);
   const actual = useActualPanel();
   const savedAt = useProject((s) => s.savedAt);
@@ -190,6 +192,15 @@ export function TopBar({ onExport, className }: TopBarProps) {
       </span>
 
       <div className="ml-4 flex min-w-0 items-center gap-3">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => newProject()}
+          icon={<SquarePen size={14} />}
+          title="Start a new project — blank canvas, empty conversation. This one stays on the Projects page."
+        >
+          New
+        </Button>
         <ProjectNameField />
         {saved && (
           <span className="hidden shrink-0 items-center gap-1.5 text-xs text-text-muted lg:flex">

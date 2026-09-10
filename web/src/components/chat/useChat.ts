@@ -100,6 +100,21 @@ export function useChat() {
         }
 
         if (turn.mode === "build") {
+          // The pipeline infers equipment from tag names, so with no tags there
+          // is nothing to lay out. It would fail at the first step and leave a
+          // red line in the log; saying it here, once, is the better answer.
+          if (useProject.getState().variables.length === 0) {
+            patch({
+              pending: false,
+              text:
+                "There are no PLC tags in this project yet, and equipment is " +
+                "inferred from tag names — so there is nothing to lay out. " +
+                "Import a tag export, or load the sample list, and ask again. " +
+                "You can still draw and ask for individual objects meanwhile.",
+            });
+            return;
+          }
+
           const before = useProject.getState().screens.length;
           // Append rather than replace: an HMI application is several screens,
           // and the second request must not erase the first.

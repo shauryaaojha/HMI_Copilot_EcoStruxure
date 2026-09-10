@@ -15,11 +15,10 @@
  * are all editing the same project by the same route.
  */
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useProject } from "@/store/project";
-import { demoScreen } from "@/fixtures";
 import { activeAlarms } from "@/lib/sim/alarms";
-import type { PartType } from "@/lib/ote/schema";
+import type { PartType, Screen } from "@/lib/ote/schema";
 import { useSimulation } from "./useSimulation";
 import { Tabs, cn, type TabItem } from "@/components/ui";
 import { BindingMap } from "@/components/bindings/BindingMap";
@@ -67,17 +66,44 @@ export function CanvasPane() {
   const nudge = useProject((s) => s.nudge);
   const setBox = useProject((s) => s.setBox);
   const appendObject = useProject((s) => s.appendObject);
+  const target = useProject((s) => s.target);
   const simulating = useProject((s) => s.simulating);
   // The grid and the snap increment are company standards, not canvas state -
   // reference screen 5 sets them and every screen in the project follows.
   const standards = useProject((s) => s.standards);
   const setSimulating = useProject((s) => s.setSimulating);
 
-  // Until a project is hydrated, fall back to the fixture lifted out of
-  // demo_project/HMICopilot_PumpStation.eote, so the canvas can be built and
-  // judged against a real project on a machine with no EcoStruxure install.
+  /**
+   * An empty screen of the project's own size, for the moment between a route
+   * change and hydration.
+   *
+   * This used to fall back to the demo fixture, which meant a brand-new project
+   * showed somebody else's pump station for a frame on its way to being blank -
+   * and showed it permanently if hydration had not run. A blank project has to
+   * look blank.
+   */
+  const placeholder: Screen = useMemo(
+    () => ({
+      Type: "Screen",
+      UniqueId: "empty",
+      Name: "Screen1",
+      Children: [
+        {
+          Type: "ViewBox",
+          UniqueId: "empty-view",
+          Name: "ViewBox",
+          Options: 108,
+          Width: target.width,
+          Height: target.height,
+          Children: [],
+        },
+      ],
+    }),
+    [target.width, target.height],
+  );
+
   const screen =
-    screens.find((s) => s.UniqueId === activeScreenId) ?? screens[0] ?? demoScreen;
+    screens.find((s) => s.UniqueId === activeScreenId) ?? screens[0] ?? placeholder;
   const view = screen.Children[0];
 
   // The engine drives tags; the bindings project them onto screen objects.

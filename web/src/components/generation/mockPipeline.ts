@@ -85,7 +85,17 @@ export async function* mockGeneration({
   pace = 90,
 }: MockOptions): AsyncGenerator<GenerationEvent> {
   const wait = () => new Promise((resolve) => setTimeout(resolve, pace));
-  const tags = variables.length > 0 ? variables : demoVariables;
+  // No tags means no equipment to infer, so there is nothing to lay out. The
+  // fixtures used to stand in here, which meant an unreachable route turned a
+  // brand-new blank project into the demo pump station.
+  if (variables.length === 0) {
+    yield {
+      type: "error",
+      message: "No tags to generate from. Import a PLC tag export first.",
+    };
+    return;
+  }
+  const tags = variables;
 
   const view = demoScreen.Children[0];
   const parentId = view.UniqueId;

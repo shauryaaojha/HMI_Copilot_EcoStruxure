@@ -30,8 +30,8 @@ export function requirementsOf(input: RequirementInput): Requirement[] {
       // sentence they type, listed so they know it is the one thing needed.
       met: false,
       detail:
-        "Name the equipment or the area: “the two transfer pumps”, " +
-        "“the filtration skid”, “a plant overview”.",
+        "Name the equipment or the area you want a screen for, and what should " +
+        "be visible on it — status, readings, alarms.",
     },
     {
       id: "tags",

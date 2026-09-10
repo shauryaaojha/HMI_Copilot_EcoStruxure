@@ -105,9 +105,12 @@ describe("beat 1 — the sample tag export", () => {
 describe("beat 2 — generation fills the canvas", () => {
   it("runs every step and lands real objects, with no error event", async () => {
     const events: GenerationEvent[] = [];
+    // The tags are supplied, because by this beat of the script beat 1 has
+    // imported them. The emitter no longer substitutes the fixture list when
+    // none is given - that turned a blank project into the demo one.
     for await (const event of mockGeneration({
       intent: "Create a pump station screen with 2 pumps",
-      variables: [],
+      variables: demoVariables,
       pace: 0,
     })) {
       events.push(event);
@@ -120,6 +123,19 @@ describe("beat 2 — generation fills the canvas", () => {
 
     const objects = events.filter((e) => e.type === "object");
     expect(objects).toHaveLength(demoScreen.Children[0].Children.length);
+  });
+
+  it("refuses with no tags rather than emitting the demo project", async () => {
+    // A new project is blank. If the route is unreachable there, the fallback
+    // emitter must say there is nothing to build from - not fill the canvas
+    // with somebody else's pump station.
+    const events: GenerationEvent[] = [];
+    for await (const event of mockGeneration({ intent: "anything", variables: [], pace: 0 })) {
+      events.push(event);
+    }
+
+    expect(events.some((e) => e.type === "object")).toBe(false);
+    expect(events.at(-1)).toMatchObject({ type: "error" });
   });
 });
 

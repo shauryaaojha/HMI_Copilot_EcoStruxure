@@ -12,49 +12,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { FolderOpen, Plus, Trash2 } from "lucide-react";
 import { Badge, Button, Input, Tabs, cn, type TabItem } from "@/components/ui";
-
-export interface ProjectRecord {
-  id: string;
-  name: string;
-  createdAt: number;
-  openedAt: number;
-  /** Present once the project has been generated at least once. */
-  screens?: number;
-  starred?: boolean;
-}
-
-const KEY = "hmi-copilot-projects";
-
-export function loadProjects(): ProjectRecord[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    const list = raw ? (JSON.parse(raw) as ProjectRecord[]) : [];
-    return Array.isArray(list) ? list : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveProjects(list: ProjectRecord[]) {
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify(list));
-  } catch {
-    // private mode: the list just does not persist
-  }
-}
-
-/** The project the fixtures load into; it exists whether or not it was saved. */
-const DEMO: ProjectRecord = {
-  id: "demo",
-  name: "Pump_Station_Demo",
-  createdAt: 0,
-  openedAt: 0,
-  screens: 1,
-};
+import {
+  DEMO,
+  DEMO_ID,
+  loadProjects,
+  saveProjects,
+  type ProjectRecord,
+} from "@/store/projects";
+import { clearProject } from "@/store/persist";
+import { useNewProject } from "@/components/shell/useNewProject";
 
 type Filter = "all" | "recent" | "starred";
 
@@ -76,7 +44,7 @@ function when(at: number) {
 }
 
 export function ProjectsScreen() {
-  const router = useRouter();
+  const newProject = useNewProject();
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const [name, setName] = useState("");
@@ -89,19 +57,18 @@ export function ProjectsScreen() {
     saveProjects(next);
   }
 
+  // createProject() writes the index entry and useNewProject navigates; the
+  // project opens blank because nothing is saved under its id yet.
   function create() {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    const record: ProjectRecord = {
-      id: `p${Date.now().toString(36)}`,
-      name: trimmed.replace(/\s+/g, "_"),
-      createdAt: Date.now(),
-      openedAt: Date.now(),
-    };
-    write([record, ...projects]);
+    newProject(name);
     setName("");
     setCreating(false);
-    router.push(`/project/${record.id}`);
+  }
+
+  /** Deleting takes the contents too, not only the card that pointed at them. */
+  function remove(id: string) {
+    write(projects.filter((p) => p.id !== id));
+    clearProject(id);
   }
 
   const all = [DEMO, ...projects];
@@ -183,12 +150,12 @@ export function ProjectsScreen() {
               )}
             </Link>
 
-            {project.id !== "demo" && (
+            {project.id !== DEMO_ID && (
               <button
                 type="button"
                 aria-label={`Delete ${project.name}`}
                 title="Delete project"
-                onClick={() => write(projects.filter((p) => p.id !== project.id))}
+                onClick={() => remove(project.id)}
                 className="focus-ring absolute right-2 top-2 rounded-md p-1.5 text-text-faint opacity-0 transition hover:bg-surface-hover hover:text-status-alarm focus-visible:opacity-100 group-hover:opacity-100"
               >
                 <Trash2 size={14} />

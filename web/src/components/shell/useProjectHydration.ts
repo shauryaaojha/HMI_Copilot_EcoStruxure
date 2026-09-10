@@ -15,6 +15,11 @@
  * It lives here rather than in the workspace because a hard load of
  * /project/x/validation has to find a project too, and two copies of this would
  * be two things to keep in step.
+ *
+ * One id is special. `demo` opens on the fixture lifted out of a real .eote,
+ * because a landing page that opens on an empty grid demonstrates nothing.
+ * Every other id opens blank - a new project that arrives carrying somebody
+ * else's pump station is not a new project.
  */
 
 import { useEffect, useRef } from "react";
@@ -23,6 +28,7 @@ import type { Screen } from "@/lib/ote/schema";
 import { useProject } from "@/store/project";
 import type { Binding } from "@/store/types";
 import { loadProject, saveProject } from "@/store/persist";
+import { DEMO_ID, loadProjects, touchProject } from "@/store/projects";
 
 /**
  * Which project id this module has already hydrated. Module scope, not state:
@@ -70,6 +76,33 @@ export function flattenBindings(graph: typeof demoBindings, screen: Screen): Bin
   });
 }
 
+/** The one empty screen a new project starts with. */
+function blankScreen(target: { width: number; height: number }): Screen {
+  return {
+    Type: "Screen",
+    UniqueId: crypto.randomUUID(),
+    Name: "Screen1",
+    Children: [
+      {
+        Type: "ViewBox",
+        UniqueId: crypto.randomUUID(),
+        Name: "ViewBox",
+        Options: 108,
+        Width: target.width,
+        Height: target.height,
+        Children: [],
+      },
+    ],
+  };
+}
+
+/** The name the Projects page gave it, so the top bar agrees with the card. */
+function nameFor(projectId: string): string {
+  return (
+    loadProjects().find((p) => p.id === projectId)?.name ?? "Untitled"
+  );
+}
+
 /** Long enough that a drag writes once, short enough to survive a fast reload. */
 const AUTOSAVE_MS = 600;
 
@@ -101,19 +134,44 @@ export function useProjectHydration(projectId: string) {
       return;
     }
 
-    // Nothing saved: open on our own output, lifted out of
-    // demo_project/HMICopilot_PumpStation.eote, which is a file the product
-    // opens. A blank canvas is a worse first screen than a real one.
+    if (projectId === DEMO_ID) {
+      // The demo opens on our own output, lifted out of
+      // demo_project/HMICopilot_PumpStation.eote, which is a file the product
+      // opens. A blank canvas is a worse first screen than a real one.
+      hydrate({
+        id: projectId,
+        name: "Pump_Station_Demo",
+        target: { model: "HMIGTO6310", width: 1024, height: 768 },
+        screens: [demoScreen],
+        activeScreenId: demoScreen.UniqueId,
+        variables: demoVariables,
+        alarms: demoAlarms,
+        bindings: flattenBindings(demoBindings, demoScreen),
+      });
+      return;
+    }
+
+    // A new project: one empty screen and nothing else. Not zero screens -
+    // the canvas, the layers panel and the packager all need somewhere to put
+    // the first object, and "add a screen before you can draw" is a step that
+    // exists for no reason.
+    const target = { model: "HMIGTO6310", width: 1024, height: 600 };
     hydrate({
       id: projectId,
-      name: "Pump_Station_Demo",
-      target: { model: "HMIGTO6310", width: 1024, height: 768 },
-      screens: [demoScreen],
-      activeScreenId: demoScreen.UniqueId,
-      variables: demoVariables,
-      alarms: demoAlarms,
-      bindings: flattenBindings(demoBindings, demoScreen),
+      name: nameFor(projectId),
+      target,
+      screens: [blankScreen(target)],
+      variables: [],
+      alarms: [],
+      bindings: [],
+      objectMeta: {},
+      versions: [],
+      chat: [],
     });
+    // hydrate() cannot set activeScreenId before it knows the screen's id, so
+    // it is read back from what was just written.
+    const created = useProject.getState().screens[0];
+    if (created) hydrate({ activeScreenId: created.UniqueId });
   }, [projectId, hydrate]);
 
   /**
@@ -152,6 +210,9 @@ export function useProjectHydration(projectId: string) {
         if (serialised === lastWritten) return;
         lastWritten = serialised;
         s.markSaved(saveProject(payload));
+        // The Projects page reads a separate index, so a card would otherwise
+        // keep claiming "0 screens" over a project with four.
+        touchProject(s.id, { name: s.name, screens: s.screens.length });
       }, AUTOSAVE_MS);
     });
 

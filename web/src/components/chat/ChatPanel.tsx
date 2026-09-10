@@ -28,21 +28,30 @@ import {
   Loader,
   RotateCcw,
   Sparkles,
+  SquarePen,
   Trash2,
 } from "lucide-react";
+import Link from "next/link";
 import { useProject } from "@/store/project";
+import { useNewProject } from "@/components/shell/useNewProject";
 import { Badge, Button, Textarea, cn } from "@/components/ui";
 import { anythingMissing, requirementsOf } from "./requirements";
 import { useChat } from "./useChat";
 
 const MAX_INTENT = 600;
 
-/** Openers that show what this can be asked for, not what it can be told. */
+/**
+ * Openers that show the *shapes* a request can take, not a worked example.
+ *
+ * They were written around the demo's pump station, which meant a brand-new
+ * project opened suggesting equipment it did not have. These are phrased so
+ * they read as a form to fill in against whatever tags were imported.
+ */
 const OPENERS = [
-  "Create a pump station screen for the two transfer pumps",
+  "Create a screen for <equipment>, showing status and readings",
   "Add a plant overview above the screens I have",
-  "Move the flow reading clear of the alarm banner",
-  "Add a high-level alarm on the tank",
+  "Move <object> clear of the alarm banner",
+  "Add a high alarm on <tag>",
 ];
 
 export function ChatPanel() {
@@ -55,8 +64,10 @@ export function ChatPanel() {
   const target = useProject((s) => s.target);
   const clearChat = useProject((s) => s.clearChat);
   const restore = useProject((s) => s.restore);
+  const projectId = useProject((s) => s.id);
 
   const { send } = useChat();
+  const newProject = useNewProject();
   const thread = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
 
@@ -66,6 +77,9 @@ export function ChatPanel() {
   );
   const missing = anythingMissing(requirements);
   const working = chat.some((m) => m.pending) || generating;
+  // A new project has one empty screen, so "is there anything here yet?" is a
+  // question about objects, not about screens.
+  const hasContent = screens.some((s) => s.Children[0].Children.length > 0);
 
   /** Follow the tail, but release the moment the engineer scrolls up. */
   useEffect(() => {
@@ -87,17 +101,32 @@ export function ChatPanel() {
       <div className="flex h-9 shrink-0 items-center gap-2 border-b border-line-subtle px-3">
         <Sparkles size={13} aria-hidden className="text-brand-400" />
         <h2 className="text-xs font-semibold text-text-primary">Copilot</h2>
-        {chat.length > 0 && (
+
+        <div className="ml-auto flex items-center gap-0.5">
+          {chat.length > 0 && (
+            <button
+              type="button"
+              onClick={clearChat}
+              title="Clear the conversation. The screens stay."
+              className="focus-ring rounded p-1 text-text-faint transition hover:text-text-secondary"
+              aria-label="Clear the conversation"
+            >
+              <Trash2 size={12} aria-hidden />
+            </button>
+          )}
+          {/* Starts a project, not just a thread: a conversation and the screens
+              it built are the same piece of work, so "new chat" that left the
+              old screens on the canvas would be the confusing half-measure. */}
           <button
             type="button"
-            onClick={clearChat}
-            title="Clear the conversation. The screens stay."
-            className="focus-ring ml-auto rounded p-1 text-text-faint transition hover:text-text-secondary"
-            aria-label="Clear the conversation"
+            onClick={() => newProject()}
+            title="New chat — a blank canvas and an empty conversation. This project stays on the Projects page."
+            className="focus-ring flex items-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium text-text-muted transition hover:bg-surface-hover hover:text-text-primary"
           >
-            <Trash2 size={12} aria-hidden />
+            <SquarePen size={12} aria-hidden />
+            New
           </button>
-        )}
+        </div>
       </div>
 
       {/* The thread. Takes whatever height is left and scrolls on its own. */}
@@ -118,6 +147,24 @@ export function ChatPanel() {
               Describe what you need and keep going until it is right. Every turn
               edits the project you can see, and every turn can be undone.
             </p>
+
+            {/* A new project has no tags, and equipment is inferred from tag
+                names - so without these the first request has nothing to build
+                from. Both routes in, rather than an error after the fact. */}
+            {variables.length === 0 && (
+              <div className="space-y-1.5 rounded-md border border-status-info/40 bg-status-info/5 p-2.5">
+                <p className="text-[11px] leading-snug text-status-info">
+                  This project has no PLC tags yet. Equipment is inferred from
+                  tag names, so a screen needs them.
+                </p>
+                <Link
+                  href={`/project/${projectId}/tags`}
+                  className="focus-ring inline-block rounded border border-status-info/50 px-2 py-1 text-[11px] text-status-info transition hover:bg-status-info/10"
+                >
+                  Import a tag export
+                </Link>
+              </div>
+            )}
 
             <ul className="space-y-1">
               {OPENERS.map((opener) => (
@@ -270,9 +317,9 @@ export function ChatPanel() {
             disabled={working}
             aria-label="Describe what you need"
             placeholder={
-              screens.length === 0
-                ? "Create a pump station screen for the two transfer pumps…"
-                : "Ask for a change, or another screen…"
+              hasContent
+                ? "Ask for a change, or another screen…"
+                : "Describe the screen you need…"
             }
             className="pr-11"
           />
