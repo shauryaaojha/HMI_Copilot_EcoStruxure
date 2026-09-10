@@ -106,7 +106,9 @@ export function buildDemoProject(name = "PumpStation1"): PackageInput {
 
   return {
     name,
-    target: { model: "HMIGTO6310", width: SCREEN.width, height: SCREEN.height },
+    // Matches the skeleton's Target.dat: "1024 x 600" on an HMIST6500AWADI.
+    // The packager refuses a project whose declared panel differs from the file.
+    target: { model: "HMIST6500AWADI", width: SCREEN.width, height: SCREEN.height },
     screens: [screenOf(name, parts, SCREEN)],
     variables: DEMO_VARIABLES,
     alarms: DEMO_ALARMS,

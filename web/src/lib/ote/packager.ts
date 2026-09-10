@@ -240,6 +240,26 @@ export async function packageProject(
   if (!entries.has("GlobalScripts.dat")) entries.set("GlobalScripts.dat", empty);
   if (!entries.has(CONTENTS_HIERARCHY)) entries.set(CONTENTS_HIERARCHY, empty);
 
+  // --- target panel -------------------------------------------------------
+  // The panel comes from the skeleton's Target.dat, not from us: RuntimeModel
+  // and Resolution have to agree, and inventing a model string would produce a
+  // project the product cannot map to real hardware. So rather than silently
+  // ignoring input.target, check it against the file and refuse a mismatch -
+  // a project whose declared panel differs from its actual one is worse than
+  // an error here.
+  const targetEntry = entries.get("Target.dat");
+  if (!targetEntry) throw new Error("skeleton has no Target.dat");
+  const target = JSON.parse(Buffer.from(targetEntry).toString("utf8"));
+  const actual = String(target?.TargetInfo?.Resolution ?? "").replace(/\s/g, "");
+  const declared = `${input.target.width}x${input.target.height}`;
+  if (actual && actual !== declared) {
+    throw new Error(
+      `project declares a ${declared} panel but the skeleton's Target.dat is ` +
+        `${actual} (${target?.TargetInfo?.RuntimeModel}). Re-extract the skeleton ` +
+        "from a template for the panel you want, or declare that resolution.",
+    );
+  }
+
   // --- project identity ---------------------------------------------------
   const projectEntry = entries.get("Project.dat");
   if (!projectEntry) throw new Error("skeleton has no Project.dat");
