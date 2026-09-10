@@ -22,7 +22,6 @@ import { useProjectHydration } from "./useProjectHydration";
 import { CanvasPane } from "@/components/canvas/CanvasPane";
 import { Inspector } from "@/components/inspector/Inspector";
 import { ChatPanel } from "@/components/chat/ChatPanel";
-import { BuildTimeline } from "@/components/timeline/BuildTimeline";
 
 const WorkspaceShell = dynamic(
   () => import("./WorkspaceShell").then((m) => m.WorkspaceShell),
@@ -42,7 +41,6 @@ export function Workspace({ projectId }: { projectId: string }) {
       intent={<ChatPanel />}
       canvas={<CanvasPane />}
       inspector={<Inspector />}
-      timeline={<BuildTimeline />}
     />
   );
 }

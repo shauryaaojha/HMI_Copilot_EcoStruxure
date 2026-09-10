@@ -17,6 +17,13 @@
  *     questions are buttons;
  *   - what the assistant needs before it can proceed is stated as a checklist
  *     computed from the project, not as an interrogation.
+ *
+ * On the look: this pane had the same flat ground as every other panel, which
+ * made the one place where something is actually happening indistinguishable
+ * from the places where nothing is. It has its own surface now, two very dim
+ * brand-coloured blooms behind the thread, and motion tied to real state - the
+ * reply shimmers only while it is being produced, each change line rises as it
+ * lands. Nothing here animates for decoration.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -24,8 +31,9 @@ import {
   AlertTriangle,
   ArrowUp,
   Check,
+  CornerDownLeft,
   Info,
-  Loader,
+  Plus,
   RotateCcw,
   Sparkles,
   SquarePen,
@@ -35,7 +43,7 @@ import Link from "next/link";
 import { useProject } from "@/store/project";
 import { useNewProject } from "@/components/shell/useNewProject";
 import { SAMPLES } from "@/components/tags";
-import { Badge, Button, Textarea, cn } from "@/components/ui";
+import { cn } from "@/components/ui";
 import { anythingMissing, requirementsOf } from "./requirements";
 import { useChat } from "./useChat";
 
@@ -123,10 +131,31 @@ export function ChatPanel() {
   }
 
   return (
-    <aside className="flex h-full w-full min-h-0 flex-col">
-      <div className="flex h-9 shrink-0 items-center gap-2 border-b border-line-subtle px-3">
-        <Sparkles size={13} aria-hidden className="text-brand-400" />
-        <h2 className="text-xs font-semibold text-text-primary">Copilot</h2>
+    <aside className="relative flex h-full w-full min-h-0 flex-col bg-surface-copilot">
+      {/* Two slow brand-coloured blooms, behind everything, at 16% and 10%. */}
+      <div
+        aria-hidden
+        className="copilot-aurora pointer-events-none absolute inset-0 overflow-hidden"
+      />
+
+      <header className="relative flex h-10 shrink-0 items-center gap-2 border-b border-line-subtle px-3">
+        <span
+          className={cn(
+            "flex h-5 w-5 items-center justify-center rounded-md bg-brand-500/15 text-brand-400",
+            working && "animate-breathe",
+          )}
+          style={working ? { boxShadow: "var(--glow-brand)" } : undefined}
+        >
+          <Sparkles size={12} aria-hidden />
+        </span>
+        <h2 className="text-[13px] font-semibold tracking-tight text-text-primary">
+          Copilot
+        </h2>
+        {working && (
+          <span className="is-thinking text-[10px] font-medium uppercase tracking-wider">
+            working
+          </span>
+        )}
 
         <div className="ml-auto flex items-center gap-0.5">
           {chat.length > 0 && (
@@ -134,7 +163,7 @@ export function ChatPanel() {
               type="button"
               onClick={clearChat}
               title="Clear the conversation. The screens stay."
-              className="focus-ring rounded p-1 text-text-faint transition hover:text-text-secondary"
+              className="focus-ring rounded-md p-1.5 text-text-faint transition hover:bg-surface-hover hover:text-text-secondary"
               aria-label="Clear the conversation"
             >
               <Trash2 size={12} aria-hidden />
@@ -146,14 +175,14 @@ export function ChatPanel() {
           <button
             type="button"
             onClick={() => newProject()}
-            title="New chat — a blank canvas and an empty conversation. This project stays on the Projects page."
-            className="focus-ring flex items-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium text-text-muted transition hover:bg-surface-hover hover:text-text-primary"
+            title="New chat - a blank canvas and an empty conversation. This project stays on the Projects page."
+            className="focus-ring flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-text-muted transition hover:bg-surface-hover hover:text-text-primary"
           >
             <SquarePen size={12} aria-hidden />
             New
           </button>
         </div>
-      </div>
+      </header>
 
       {/* The thread. Takes whatever height is left and scrolls on its own. */}
       <div
@@ -163,69 +192,83 @@ export function ChatPanel() {
           if (!el) return;
           pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 32;
         }}
-        className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3"
+        className="relative min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4"
         aria-live="polite"
         aria-label="Conversation"
       >
         {chat.length === 0 && (
-          <div className="space-y-3">
-            <p className="text-xs leading-relaxed text-text-muted">
-              Describe what you need and keep going until it is right. Every turn
-              edits the project you can see, and every turn can be undone.
+          <div className="space-y-4">
+            <p className="text-[13px] leading-relaxed text-text-secondary">
+              Describe what you need and keep going until it is right.
+              <span className="mt-1 block text-text-muted">
+                Every turn edits the project you can see, and every turn can be
+                undone.
+              </span>
             </p>
 
             {/* A new project has no tags, and equipment is inferred from tag
                 names - so without these the first request has nothing to build
                 from. Both routes in, rather than an error after the fact. */}
             {variables.length === 0 && (
-              <div className="space-y-1.5 rounded-md border border-status-info/40 bg-status-info/5 p-2.5">
-                <p className="text-[11px] leading-snug text-status-info">
-                  This project has no PLC tags yet. Equipment is inferred from
-                  tag names, so a screen needs them.
+              <div className="space-y-2 rounded-lg border border-status-info/30 bg-status-info/[0.06] p-3">
+                <p className="text-xs leading-relaxed text-status-info">
+                  No PLC tags yet. Equipment is inferred from tag names, so a
+                  screen needs them.
                 </p>
                 <Link
                   href={`/project/${projectId}/tags`}
-                  className="focus-ring inline-block rounded border border-status-info/50 px-2 py-1 text-[11px] text-status-info transition hover:bg-status-info/10"
+                  className="focus-ring inline-flex items-center gap-1.5 rounded-md border border-status-info/40 px-2.5 py-1 text-xs font-medium text-status-info transition hover:bg-status-info/10"
                 >
+                  <Plus size={12} aria-hidden />
                   Import a tag export
                 </Link>
               </div>
             )}
 
-            <ul className="space-y-1">
-              {openers.map((opener) => (
-                <li key={opener}>
-                  <button
-                    type="button"
-                    onClick={() => setDraft(opener)}
-                    className="focus-ring w-full rounded-md border border-line-subtle px-2.5 py-1.5 text-left text-[11px] leading-snug text-text-secondary transition hover:border-brand-400 hover:text-brand-400"
-                  >
-                    {opener}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <div>
+              <p className="label-eyebrow pb-2">Try</p>
+              <ul className="space-y-1.5">
+                {openers.map((opener) => (
+                  <li key={opener}>
+                    <button
+                      type="button"
+                      onClick={() => setDraft(opener)}
+                      className="focus-ring group flex w-full items-start gap-2 rounded-lg border border-line-subtle bg-surface-raised/50 px-3 py-2 text-left text-xs leading-relaxed text-text-secondary transition hover:border-brand-500/40 hover:bg-surface-raised hover:text-text-primary"
+                    >
+                      <CornerDownLeft
+                        size={12}
+                        aria-hidden
+                        className="mt-0.5 shrink-0 text-text-faint transition group-hover:text-brand-400"
+                      />
+                      <span className="min-w-0">{opener}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-            <div className="rounded-md border border-line-subtle p-2.5">
-              <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-text-faint">
+            <div className="rounded-lg border border-line-subtle p-3">
+              <p className="label-eyebrow flex items-center gap-1.5 pb-2">
                 <Info size={11} aria-hidden />
                 What a request needs
               </p>
-              <ul className="space-y-1.5">
+              <ul className="space-y-2">
                 {requirements.map((r) => (
-                  <li key={r.id} className="flex gap-1.5 text-[11px] leading-snug">
+                  <li key={r.id} className="flex gap-2 text-xs leading-snug">
                     <span
                       aria-hidden
                       className={cn(
-                        "mt-0.5 shrink-0",
-                        r.met ? "text-status-ok" : "text-text-faint",
+                        "mt-px flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full",
+                        r.met
+                          ? "bg-status-ok/15 text-status-ok"
+                          : "bg-surface-hover text-text-faint",
                       )}
                     >
-                      {r.met ? <Check size={11} /> : "·"}
+                      {r.met ? <Check size={9} strokeWidth={3} /> : "·"}
                     </span>
                     <span className="min-w-0">
-                      <span className="text-text-secondary">{r.label}</span>
-                      <span className="block text-text-faint">{r.detail}</span>
+                      <span className="font-medium text-text-secondary">{r.label}</span>
+                      <span className="mt-0.5 block text-text-faint">{r.detail}</span>
                     </span>
                   </li>
                 ))}
@@ -236,35 +279,34 @@ export function ChatPanel() {
 
         {chat.map((message) =>
           message.role === "user" ? (
-            <div key={message.id} className="flex justify-end">
-              <p className="max-w-[92%] rounded-lg rounded-br-sm bg-brand-500/12 px-2.5 py-1.5 text-xs leading-relaxed text-text-primary">
+            <div key={message.id} className="animate-rise flex justify-end">
+              <p className="max-w-[92%] rounded-xl rounded-br-sm border border-brand-500/20 bg-brand-500/10 px-3 py-2 text-xs leading-relaxed text-text-primary">
                 {message.text}
               </p>
             </div>
           ) : (
-            <div key={message.id} className="space-y-1.5">
+            <div key={message.id} className="animate-rise space-y-2">
               {message.pending && !message.text ? (
-                <p className="flex items-center gap-2 text-xs text-text-faint">
-                  <Loader size={12} className="animate-spin" aria-hidden />
-                  Reading the request
+                <p className="is-thinking text-[13px] font-medium">
+                  Reading the request&hellip;
                 </p>
               ) : (
                 message.text && (
-                  <p className="text-xs leading-relaxed text-text-secondary">
+                  <p className="text-[13px] leading-relaxed text-text-secondary">
                     {message.text}
                   </p>
                 )
               )}
 
               {message.questions && message.questions.length > 0 && (
-                <ul className="space-y-1">
+                <ul className="space-y-1.5">
                   {message.questions.map((question) => (
                     <li key={question}>
                       <button
                         type="button"
                         onClick={() => setDraft(question)}
                         title="Put this in the box to answer it"
-                        className="focus-ring w-full rounded-md border border-status-info/40 bg-status-info/5 px-2.5 py-1.5 text-left text-[11px] leading-snug text-status-info transition hover:border-status-info"
+                        className="focus-ring w-full rounded-lg border border-status-info/30 bg-status-info/[0.06] px-3 py-2 text-left text-xs leading-relaxed text-status-info transition hover:border-status-info/60 hover:bg-status-info/10"
                       >
                         {question}
                       </button>
@@ -274,35 +316,52 @@ export function ChatPanel() {
               )}
 
               {message.changes && message.changes.length > 0 && (
-                <ul className="space-y-0.5 border-l-2 border-brand-500/40 pl-2">
+                <ul className="space-y-1 rounded-lg border border-line-subtle bg-surface-raised/40 p-2.5">
                   {message.changes.map((change, i) => (
-                    <li key={i} className="font-mono text-[10px] leading-relaxed text-text-muted">
-                      {change}
+                    <li
+                      key={i}
+                      className="animate-rise flex gap-2 text-[11px] leading-relaxed text-text-muted"
+                      style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+                    >
+                      <Check
+                        size={11}
+                        aria-hidden
+                        strokeWidth={2.5}
+                        className="mt-0.5 shrink-0 text-brand-400"
+                      />
+                      <span className="min-w-0">{change}</span>
                     </li>
                   ))}
                 </ul>
               )}
 
               {message.error && (
-                <p className="flex gap-1.5 rounded-md border border-status-warn/40 bg-status-warn/10 px-2 py-1.5 text-[10px] leading-snug text-status-warn">
-                  <AlertTriangle size={11} aria-hidden className="mt-0.5 shrink-0" />
+                <p className="flex gap-2 rounded-lg border border-status-warn/30 bg-status-warn/[0.08] px-2.5 py-2 text-[11px] leading-snug text-status-warn">
+                  <AlertTriangle size={12} aria-hidden className="mt-px shrink-0" />
                   {message.error}
                 </p>
               )}
 
               {(message.versionAt || message.provider) && !message.pending && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 text-[10px]">
                   {message.provider && (
-                    <Badge tone={message.provider === "local" ? "warn" : "neutral"}>
+                    <span
+                      className={cn(
+                        "rounded px-1.5 py-0.5 font-medium",
+                        message.provider === "local"
+                          ? "bg-status-warn/15 text-status-warn"
+                          : "bg-surface-hover text-text-muted",
+                      )}
+                    >
                       {message.provider}
-                    </Badge>
+                    </span>
                   )}
                   {message.versionAt && (
                     <button
                       type="button"
                       onClick={() => restore(message.versionAt!)}
                       title="Put the project back the way this turn left it"
-                      className="focus-ring inline-flex items-center gap-1 rounded text-[10px] text-text-faint transition hover:text-brand-400"
+                      className="focus-ring inline-flex items-center gap-1 rounded text-text-faint transition hover:text-brand-400"
                     >
                       <RotateCcw size={10} aria-hidden />
                       revert to here
@@ -316,9 +375,9 @@ export function ChatPanel() {
       </div>
 
       {/* The composer, pinned to the foot of the same column. */}
-      <div className="shrink-0 space-y-2 border-t border-line-subtle p-3">
+      <div className="relative shrink-0 border-t border-line-subtle p-3">
         {missing && chat.length > 0 && (
-          <p className="text-[10px] leading-snug text-text-faint">
+          <p className="pb-2 text-[11px] leading-snug text-text-faint">
             {requirements
               .filter((r) => r.id !== "subject" && !r.met)
               .map((r) => r.detail)
@@ -326,8 +385,14 @@ export function ChatPanel() {
           </p>
         )}
 
-        <div className="relative">
-          <Textarea
+        <div
+          className={cn(
+            "relative rounded-xl border bg-surface-raised transition",
+            working ? "border-brand-500/40" : "border-line focus-within:border-brand-500/60",
+          )}
+          style={{ boxShadow: working ? "var(--glow-brand)" : "var(--elev-1)" }}
+        >
+          <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
@@ -347,20 +412,37 @@ export function ChatPanel() {
                 ? "Ask for a change, or another screen…"
                 : "Describe the screen you need…"
             }
-            className="pr-11"
+            className="w-full resize-none bg-transparent px-3 py-2.5 pr-11 text-[13px] leading-relaxed text-text-primary outline-none placeholder:text-text-faint disabled:opacity-60"
           />
-          <Button
-            variant="primary"
-            size="sm"
-            iconOnly
-            className="absolute bottom-2 right-2"
+
+          <button
+            type="button"
             disabled={!draft.trim() || working}
             onClick={submit}
             aria-label="Send"
             title="Send (Enter)"
-            icon={working ? <Loader size={14} className="animate-spin" /> : <ArrowUp size={14} />}
-          />
+            className={cn(
+              "focus-ring absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-lg transition",
+              draft.trim() && !working
+                ? "bg-brand-500 text-text-onbrand hover:bg-brand-600"
+                : "bg-surface-hover text-text-faint",
+            )}
+          >
+            {working ? (
+              <span className="h-3 w-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" />
+            ) : (
+              <ArrowUp size={14} aria-hidden />
+            )}
+          </button>
         </div>
+
+        <p className="pt-1.5 text-[10px] text-text-faint">
+          <kbd className="rounded border border-line-subtle px-1">Enter</kbd> to send
+          {" · "}
+          <kbd className="rounded border border-line-subtle px-1">Shift</kbd>+
+          <kbd className="rounded border border-line-subtle px-1">Enter</kbd> for a new
+          line
+        </p>
       </div>
     </aside>
   );

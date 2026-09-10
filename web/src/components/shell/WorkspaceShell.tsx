@@ -1,14 +1,13 @@
 "use client";
 
 /**
- * The resizable three-pane workspace with the build timeline docked beneath.
+ * The resizable three-pane workspace.
  *
  *   +------------------------------------------------------------------+
  *   |                            TopBar                                |
  *   +------+-----------------------------------------------------------+
- *   | Nav  | intent | canvas | inspector                               |
- *   | Rail |------------------------------------------------------------|
- *   |      |                 build timeline (collapsible)               |
+ *   | Nav  | copilot | canvas | inspector                              |
+ *   | Rail |                                                            |
  *   +------+-----------------------------------------------------------+
  *   |                           StatusBar                              |
  *   +------------------------------------------------------------------+
@@ -68,7 +67,6 @@ export interface WorkspaceShellProps {
   intent: ReactNode;
   canvas: ReactNode;
   inspector: ReactNode;
-  timeline: ReactNode;
   onExport?: () => void;
 }
 
@@ -140,12 +138,11 @@ export function WorkspaceShell({
   intent,
   canvas,
   inspector,
-  timeline,
   onExport,
 }: WorkspaceShellProps) {
   const rows = useDefaultLayout({
     id: "workspace-rows",
-    panelIds: ["content", "timeline"],
+    panelIds: ["content"],
     storage: layoutStorage,
   });
   const columns = useDefaultLayout({
@@ -156,12 +153,10 @@ export function WorkspaceShell({
 
   const intentRef = useRef<PanelImperativeHandle | null>(null);
   const inspectorRef = useRef<PanelImperativeHandle | null>(null);
-  const timelineRef = useRef<PanelImperativeHandle | null>(null);
 
   const [collapsed, setCollapsed] = useState({
     intent: false,
     inspector: false,
-    timeline: false,
   });
 
   /**
@@ -314,36 +309,6 @@ export function WorkspaceShell({
             </Group>
           </Panel>
 
-          <Separator className="h-px" aria-label="Resize the build timeline" />
-
-          <Panel
-            id="timeline"
-            panelRef={timelineRef}
-            defaultSize="24%"
-            minSize="8rem"
-            maxSize="55%"
-            collapsible
-            collapsedSize={RAIL}
-            onResize={sync("timeline", timelineRef)}
-            className="relative min-h-0 bg-surface-panel"
-          >
-            {collapsed.timeline ? (
-              <CollapsedRail
-                label="Build Timeline"
-                side="bottom"
-                onExpand={() => toggle("timeline", timelineRef)}
-              />
-            ) : (
-              <>
-                <CollapseButton
-                  label="the build timeline"
-                  side="bottom"
-                  onCollapse={() => toggle("timeline", timelineRef)}
-                />
-                {timeline}
-              </>
-            )}
-          </Panel>
         </Group>
       </div>
 

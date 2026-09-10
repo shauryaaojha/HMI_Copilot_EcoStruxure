@@ -71,6 +71,22 @@
   --color-text-faint: #4a5764;
   --color-text-onbrand: #ffffff;
 
+  /* ------------------------------------------------------------------ */
+  /* Surfaces by role, not by depth.                                      */
+  /*                                                                      */
+  /* Everything used to be surface-panel or surface-raised, which is why  */
+  /* the app read as one undifferentiated field: the frame, the canvas    */
+  /* and the copilot are three different kinds of thing and they looked   */
+  /* identical. These three give each one its own ground.                 */
+  /* ------------------------------------------------------------------ */
+
+  /* App chrome - the top bar and the nav rail. Recedes; never competes. */
+  --color-surface-frame: #080b0f;
+  /* The copilot pane. Warmer and lifted, because it is where work starts. */
+  --color-surface-copilot: #10171d;
+  /* A floating control over the canvas: toolbars, overlays, menus. */
+  --color-surface-float: #1a222c;
+
   --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: "Cascadia Code", Consolas, ui-monospace, monospace;
 
@@ -81,6 +97,28 @@
   color-scheme: dark;
   --canvas-grid-line: rgba(255, 255, 255, 0.035);
   --canvas-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+
+  /*
+   * Elevation. A flat interface has to say "this is above that" with a border,
+   * and a border is also what separates two things side by side - so
+   * everything ends up looking like a card. These say it with light instead.
+   */
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --elev-2: 0 4px 12px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.5);
+  --elev-3: 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.45);
+
+  /* The copilot's accent glow, used only where something is happening. */
+  --glow-brand: 0 0 0 1px rgba(61, 205, 88, 0.25), 0 0 24px rgba(61, 205, 88, 0.14);
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+[data-theme="light"] {
+  --elev-1: 0 1px 2px rgba(13, 20, 27, 0.08);
+  --elev-2: 0 4px 14px rgba(13, 20, 27, 0.1), 0 1px 2px rgba(13, 20, 27, 0.06);
+  --elev-3: 0 14px 36px rgba(13, 20, 27, 0.14), 0 2px 6px rgba(13, 20, 27, 0.08);
+  --glow-brand: 0 0 0 1px rgba(0, 176, 80, 0.28), 0 0 22px rgba(0, 176, 80, 0.12);
 }
 
 /*
@@ -151,15 +189,46 @@ body {
   outline-offset: 1px;
 }
 
+/*
+ * Scrollbars, in the product's own colour rather than the browser's.
+ *
+ * Every pane in this app scrolls - the conversation, the layers list, the
+ * symbol grid, the tag table - so the default grey bar appeared a dozen times
+ * over and was the one piece of chrome that belonged to nobody. Brand green,
+ * dim at rest so it does not compete with the content it sits beside, full
+ * strength under the pointer.
+ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-brand-500) 55%, transparent)
+    transparent;
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
-::-webkit-scrollbar-thumb {
-  background: var(--color-line-strong);
-  border-radius: 5px;
-}
 ::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-brand-500) 45%, transparent);
+  border-radius: 999px;
+  /* Inset with a transparent border, so the bar reads as a slim pill rather
+     than a full-width slab against the pane edge. */
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background 140ms var(--ease-out);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brand-500);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:active {
+  background: var(--color-brand-400);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-corner {
   background: transparent;
 }
 
@@ -174,4 +243,117 @@ body {
 [data-separator]:focus-visible {
   background: var(--color-brand-500);
   outline: none;
+}
+
+
+/* ---------------------------------------------------------------------- */
+/* Type. A scale rather than a pile of arbitrary text-[11px].              */
+/* ---------------------------------------------------------------------- */
+
+/* Small-caps section labels - the "modern tool" tell, used on every pane. */
+.label-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+}
+
+/* Identifiers: tag names, object names, anything the engineer could type. */
+.text-ident {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-ligatures: none;
+}
+
+/* Numbers that line up in a column. */
+.text-figure {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Motion. Everything here respects prefers-reduced-motion at the bottom.  */
+/* ---------------------------------------------------------------------- */
+
+@keyframes shimmer {
+  0% { background-position: -180% 0; }
+  100% { background-position: 180% 0; }
+}
+
+/* A line of text that is still being produced. */
+.is-thinking {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-text-faint) 30%,
+    var(--color-brand-400) 50%,
+    var(--color-text-faint) 70%
+  );
+  background-size: 180% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 2.4s linear infinite;
+}
+
+@keyframes aurora {
+  0%, 100% { transform: translate3d(-6%, -4%, 0) scale(1.05); }
+  50% { transform: translate3d(6%, 4%, 0) scale(1.15); }
+}
+
+/*
+ * The copilot's ground. Two slow, very dim brand-coloured blooms behind the
+ * conversation - enough that the pane reads as the place something happens,
+ * far short of decoration that competes with the text on top of it.
+ */
+.copilot-aurora::before,
+.copilot-aurora::after {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  pointer-events: none;
+  border-radius: 9999px;
+  filter: blur(60px);
+  opacity: 0.16;
+  background: radial-gradient(closest-side, var(--color-brand-500), transparent 70%);
+  animation: aurora 18s var(--ease-out) infinite;
+}
+.copilot-aurora::after {
+  animation-duration: 26s;
+  animation-direction: reverse;
+  opacity: 0.1;
+  background: radial-gradient(closest-side, var(--color-status-info), transparent 70%);
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* A message, a change line, a card arriving. */
+.animate-rise {
+  animation: rise 260ms var(--ease-out) both;
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+.animate-breathe {
+  animation: breathe 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-thinking,
+  .copilot-aurora::before,
+  .copilot-aurora::after,
+  .animate-rise,
+  .animate-breathe {
+    animation: none;
+  }
+  .is-thinking {
+    -webkit-background-clip: border-box;
+    background-clip: border-box;
+    background-image: none;
+    color: var(--color-text-muted);
+  }
 }

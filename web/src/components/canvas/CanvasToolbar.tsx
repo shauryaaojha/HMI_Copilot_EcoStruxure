@@ -58,6 +58,7 @@ import {
   Ungroup,
   Unlock,
 } from "lucide-react";
+import type { ReactNode } from "react";
 import type { PartType } from "@/lib/ote/schema";
 import { useProject } from "@/store/project";
 import { Badge, Button, cn } from "@/components/ui";
@@ -91,6 +92,13 @@ export interface CanvasToolbarProps {
   onSimulate: (on: boolean) => void;
   activeAlarms: number;
   elapsed: number;
+  /** Board shows every screen at once; screen shows only the live one. */
+  view: "board" | "screen";
+  onView: (view: "board" | "screen") => void;
+  /** One screen is not a board, so the switch is hidden rather than useless. */
+  canBoard: boolean;
+  /** Design / Bindings / JSON, pinned beside the run state. */
+  tabs?: ReactNode;
 }
 
 /** A divider between groups, so the bar reads as sections not as a list. */
@@ -109,6 +117,10 @@ export function CanvasToolbar({
   onSimulate,
   activeAlarms,
   elapsed,
+  view,
+  onView,
+  canBoard,
+  tabs,
 }: CanvasToolbarProps) {
   const selectedIds = useProject((s) => s.selectedIds);
   const objectMeta = useProject((s) => s.objectMeta);
@@ -186,7 +198,7 @@ export function CanvasToolbar({
   );
 
   return (
-    <div className="flex h-11 shrink-0 items-center border-b border-line-subtle">
+    <div className="flex h-11 shrink-0 items-center border-b border-line-subtle bg-surface-panel">
       {/* Everything that acts on the drawing. `min-w-0` is what lets this
           shrink below its content width so the pinned half keeps its room. */}
       <div className="relative flex min-w-0 flex-1">
@@ -343,6 +355,35 @@ export function CanvasToolbar({
 
       {/* Pinned: outside the scroll, so it is in the same place at any width. */}
       <div className="flex shrink-0 items-center gap-2 border-l border-line-subtle px-2">
+        {/* Board or one screen. Pinned outside the scrolling half, because
+            losing the way back to the whole project behind a scrollbar is the
+            fault this bar was already fixed for once. */}
+        {canBoard && (
+          <div className="flex items-center rounded-md border border-line-subtle p-0.5">
+            {(["board", "screen"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => onView(mode)}
+                aria-pressed={view === mode}
+                title={
+                  mode === "board"
+                    ? "Every screen, side by side"
+                    : "Only the screen being edited"
+                }
+                className={cn(
+                  "focus-ring rounded px-2 py-0.5 text-[11px] font-medium capitalize transition",
+                  view === mode
+                    ? "bg-surface-active text-text-primary"
+                    : "text-text-muted hover:text-text-secondary",
+                )}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+        )}
+
         {some && (
           <Badge tone="brand">
             {selectedIds.length === 1
@@ -358,6 +399,8 @@ export function CanvasToolbar({
             {activeAlarms} active
           </Badge>
         )}
+        {tabs}
+
         <Button
           variant={simulating ? "secondary" : "ghost"}
           size="sm"

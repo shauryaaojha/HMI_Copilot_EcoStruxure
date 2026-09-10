@@ -23,7 +23,9 @@ import { useSimulation } from "./useSimulation";
 import { Tabs, cn, type TabItem } from "@/components/ui";
 import { BindingMap } from "@/components/bindings/BindingMap";
 import { ScreenRenderer, type Box } from "./ScreenRenderer";
-import { ScreenTabs } from "./ScreenTabs";
+import { ScreenBoard, boardMetrics } from "./ScreenBoard";
+import { ScreenStrip } from "./ScreenStrip";
+import { RunOverlay } from "@/components/timeline/RunOverlay";
 import { CanvasToolbar } from "./CanvasToolbar";
 import { CanvasContextMenu, type ContextTarget } from "./CanvasContextMenu";
 import { Rulers, RULER } from "./Rulers";
@@ -39,11 +41,21 @@ const TABS: TabItem<CanvasTab>[] = [
   { id: "json", label: "JSON" },
 ];
 
+/**
+ * Board shows every screen at once; screen shows only the live one.
+ *
+ * The board is the default whenever there is more than one, because an HMI
+ * application is a set of displays that have to agree with each other and tabs
+ * are the one arrangement that hides the disagreements.
+ */
+type CanvasView = "board" | "screen";
+
 const ZOOMS = [25, 50, 75, 100, 125, 150, 200, 300, 400];
 const FIT_PADDING = 48;
 
 export function CanvasPane() {
   const [tab, setTab] = useState<CanvasTab>("design");
+  const [view, setView] = useState<CanvasView>("board");
   const [zoom, setZoom] = useState(100);
   const [panMode, setPanMode] = useState(false);
   const [tool, setTool] = useState<PartType | null>(null);
@@ -66,6 +78,7 @@ export function CanvasPane() {
   const nudge = useProject((s) => s.nudge);
   const setBox = useProject((s) => s.setBox);
   const appendObject = useProject((s) => s.appendObject);
+  const setActiveScreen = useProject((s) => s.setActiveScreen);
   const target = useProject((s) => s.target);
   const simulating = useProject((s) => s.simulating);
   // The grid and the snap increment are company standards, not canvas state -
@@ -104,7 +117,10 @@ export function CanvasPane() {
 
   const screen =
     screens.find((s) => s.UniqueId === activeScreenId) ?? screens[0] ?? placeholder;
-  const view = screen.Children[0];
+  const viewBox = screen.Children[0];
+  // One screen is not a board. Below that the board's frame and label are pure
+  // overhead, so a single-screen project just shows the screen.
+  const showBoard = view === "board" && screens.length > 1;
 
   // The engine drives tags; the bindings project them onto screen objects.
   const sim = useSimulation();
@@ -113,24 +129,35 @@ export function CanvasPane() {
   // Live evaluates each alarm against the tag it is actually bound to.
   const rows = simulating ? activeAlarms(alarms, bindings, sim.tags) : [];
 
+  const board = useMemo(
+    () => boardMetrics(screens.length, { width: viewBox.Width, height: viewBox.Height }),
+    [screens.length, viewBox.Width, viewBox.Height],
+  );
+
   const fit = useCallback(() => {
     const box = viewport.current?.getBoundingClientRect();
     if (!box) return;
+    // Whatever is on screen: one panel, or the whole board of them.
+    const wide = showBoard ? board.width : viewBox.Width;
+    const tall = showBoard ? board.height : viewBox.Height;
     const scale = Math.min(
-      (box.width - FIT_PADDING) / view.Width,
-      (box.height - FIT_PADDING) / view.Height,
+      (box.width - FIT_PADDING) / wide,
+      (box.height - FIT_PADDING) / tall,
     );
-    setZoom(Math.max(10, Math.min(400, Math.round(scale * 100))));
-  }, [view.Width, view.Height]);
+    setZoom(Math.max(5, Math.min(400, Math.round(scale * 100))));
+  }, [showBoard, board.width, board.height, viewBox.Width, viewBox.Height]);
 
   // Fit once when a screen first appears, so the demo opens on a whole screen
   // rather than on the top-left corner of one.
   const fitted = useRef<string>("");
   useLayoutEffect(() => {
-    if (fitted.current === screen.UniqueId) return;
-    fitted.current = screen.UniqueId;
+    // Refit when the mode changes or a screen is added, not only when the live
+    // screen changes: switching to a board of nine at 100% shows one corner.
+    const key = `${showBoard ? "board" : "screen"}:${showBoard ? screens.length : screen.UniqueId}`;
+    if (fitted.current === key) return;
+    fitted.current = key;
     fit();
-  }, [screen.UniqueId, fit]);
+  }, [showBoard, screens.length, screen.UniqueId, fit]);
 
   const zoomStep = useCallback((direction: 1 | -1) => {
     setZoom((current) => {
@@ -202,13 +229,8 @@ export function CanvasPane() {
 
   return (
     <section className="flex h-full w-full min-w-0 flex-col">
-      <div className="flex h-10 shrink-0 items-center gap-3 border-b border-line-subtle px-2">
-        <ScreenTabs />
-        <div className="ml-auto shrink-0">
-          <Tabs items={TABS} value={tab} onChange={setTab} variant="pill" aria-label="Canvas view" />
-        </div>
-      </div>
-
+      {/* The toolbar acts on objects. It sits at the top, on its own raised
+          surface, because it is the thing the hand goes to most. */}
       {tab === "design" && (
         <CanvasToolbar
           tool={tool}
@@ -223,8 +245,36 @@ export function CanvasPane() {
           onSimulate={setSimulating}
           activeAlarms={rows.length}
           elapsed={sim.elapsed}
+          view={view}
+          onView={setView}
+          canBoard={screens.length > 1}
+          tabs={
+            <Tabs
+              items={TABS}
+              value={tab}
+              onChange={setTab}
+              variant="pill"
+              aria-label="Canvas view"
+            />
+          }
         />
       )}
+
+      {tab !== "design" && (
+        <div className="flex h-11 shrink-0 items-center border-b border-line-subtle bg-surface-panel px-2">
+          <Tabs
+            items={TABS}
+            value={tab}
+            onChange={setTab}
+            variant="pill"
+            aria-label="Canvas view"
+          />
+        </div>
+      )}
+
+      {/* The screens strip acts on screens. Quieter, and visibly a different
+          kind of control than the toolbar above it. */}
+      {tab === "design" && <ScreenStrip />}
 
       <div
         ref={viewport}
@@ -234,10 +284,10 @@ export function CanvasPane() {
         onPointerUp={endPan}
         onPointerCancel={endPan}
         className={cn(
-          "min-h-0 flex-1",
+          "relative min-h-0 flex-1",
           tab === "design"
             ? cn(
-                "canvas-grid overflow-auto p-6",
+                "canvas-grid overflow-auto p-8",
                 panMode && "cursor-grab active:cursor-grabbing",
               )
             : "overflow-hidden",
@@ -247,6 +297,32 @@ export function CanvasPane() {
           <BindingMap />
         ) : tab === "json" ? (
           <ScreenJson screen={screen} />
+        ) : showBoard ? (
+          <div className="flex min-h-full min-w-full items-start justify-center">
+            <ScreenBoard
+              screens={screens}
+              activeScreenId={screen.UniqueId}
+              scale={scale}
+              selectedIds={selectedIds}
+              hoveredId={hoveredId}
+              objectMeta={objectMeta}
+              values={live}
+              alarms={rows}
+              showGrid={standards.showGrid}
+              gridSize={standards.gridSize}
+              snap={standards.snap}
+              smartGuides={standards.smartGuides}
+              interactive={!panMode}
+              tool={tool}
+              onFocus={setActiveScreen}
+              onSelect={select}
+              onHover={hover}
+              onMove={nudge}
+              onResize={setBox}
+              onDraw={onDraw}
+              onContextMenu={(at, objectId) => setMenu({ ...at, objectId })}
+            />
+          </div>
         ) : (
           <div className="flex min-h-full min-w-full items-center justify-center">
             <div
@@ -254,11 +330,11 @@ export function CanvasPane() {
               style={{ marginLeft: rulers ? RULER : 0, marginTop: rulers ? RULER : 0 }}
             >
               {rulers && (
-                <Rulers width={view.Width} height={view.Height} scale={scale} />
+                <Rulers width={viewBox.Width} height={viewBox.Height} scale={scale} />
               )}
               <div
                 className="canvas-screen"
-                style={{ width: view.Width * scale, height: view.Height * scale }}
+                style={{ width: viewBox.Width * scale, height: viewBox.Height * scale }}
               >
                 <ScreenRenderer
                   screen={screen}
@@ -283,6 +359,14 @@ export function CanvasPane() {
                 />
               </div>
             </div>
+          </div>
+        )}
+
+        {/* The build timeline, over the work rather than under it. It shows
+            itself when a run starts and settles to one line when it ends. */}
+        {tab === "design" && (
+          <div className="pointer-events-none sticky bottom-0 left-0 flex justify-start pt-4">
+            <RunOverlay />
           </div>
         )}
       </div>

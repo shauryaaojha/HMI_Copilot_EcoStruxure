@@ -1,38 +1,30 @@
 "use client";
 
 /**
- * Product identity, project name, target panel, theme and Export.
- * Reference screens 1-6.
+ * The app frame's top edge. Deliberately the quietest thing on screen.
  *
- * Everything here except the product name comes out of the store. A component
- * that hardcodes a project's name cannot show a second project, which is the
- * Phase 0 exit criterion in docs/BUILD_PLAN.md.
+ * It used to be 56px carrying the product name, a tagline, the project name, a
+ * save stamp, a target-panel dropdown, a mismatch warning, a theme toggle and
+ * an Export button - permanently, on every route. Most of that is touched once
+ * a session, and all of it competed with the canvas for attention.
+ *
+ * What survives is what changes while you work: which project this is, whether
+ * it saved, and what the export will actually target. Everything else moved
+ * into the command palette, reachable by name on Ctrl+K - which is how a modern
+ * tool holds infrequent things without spending a bar on them.
+ *
+ * The frame uses surface-frame, a step darker than any pane, so the chrome
+ * recedes and the work sits on top of it rather than beside it.
  */
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Download, Monitor, Pencil, SquarePen } from "lucide-react";
+import { Check, Command, Download, Monitor, Pencil, SquarePen } from "lucide-react";
 import { useProject } from "@/store/project";
-import { Button, Input, Select, cn } from "@/components/ui";
+import { Input, cn } from "@/components/ui";
 import { SchneiderMark } from "./SchneiderMark";
-import { ThemeToggle } from "./theme";
 import { useNewProject } from "./useNewProject";
-
-/**
- * Panels the layout can target.
- *
- * The exported file's panel is not one of these - it comes from Target.dat
- * inside the extracted skeleton, which the app cannot change. Choosing one here
- * sets what the layout is designed for; useActualPanel() below asks the server
- * what the file will actually say, and the header flags a disagreement rather
- * than showing a label the .eote contradicts.
- */
-const TARGETS = [
-  { value: "HMIGTO6310|1024|768", label: "HMIGTO6310 · 1024 × 768" },
-  { value: "HMIGTO5310|800|480", label: "HMIGTO5310 · 800 × 480" },
-  { value: "HMIGTO4310|640|480", label: "HMIGTO4310 · 640 × 480" },
-  { value: "HMISTU855|320|240", label: "HMISTU855 · 320 × 240" },
-];
+import { CommandPalette, useCommandPalette } from "./CommandPalette";
 
 interface Panel {
   model: string;
@@ -74,11 +66,11 @@ function useSavedLabel(savedAt: number | undefined) {
     }
     const render = () => {
       const secs = Math.max(0, Math.round((Date.now() - savedAt) / 1000));
-      if (secs < 45) return setLabel("just now");
+      if (secs < 45) return setLabel("saved");
       const mins = Math.round(secs / 60);
-      if (mins < 60) return setLabel(`${mins} min ago`);
+      if (mins < 60) return setLabel(`saved ${mins}m ago`);
       const hours = Math.round(mins / 60);
-      return setLabel(`${hours} ${hours === 1 ? "hour" : "hours"} ago`);
+      return setLabel(`saved ${hours}h ago`);
     };
     render();
     const timer = setInterval(render, 15_000);
@@ -121,7 +113,7 @@ function ProjectNameField() {
             setEditing(false);
           }
         }}
-        className="h-8 w-56"
+        className="h-7 w-52"
         aria-label="Project name"
       />
     );
@@ -135,13 +127,13 @@ function ProjectNameField() {
         setEditing(true);
       }}
       title="Rename project"
-      className="focus-ring group flex h-8 items-center gap-2 rounded-md border border-line bg-surface-raised px-3 text-sm font-medium text-text-primary transition hover:border-line-strong"
+      className="focus-ring group flex h-7 min-w-0 items-center gap-1.5 rounded-md px-2 text-sm font-semibold text-text-primary transition hover:bg-surface-hover"
     >
-      {name}
+      <span className="truncate">{name}</span>
       <Pencil
-        size={13}
+        size={11}
         aria-hidden
-        className="text-text-faint transition group-hover:text-text-secondary"
+        className="shrink-0 text-transparent transition group-hover:text-text-faint"
       />
     </button>
   );
@@ -154,116 +146,122 @@ export interface TopBarProps {
 
 export function TopBar({ onExport, className }: TopBarProps) {
   const projectId = useProject((s) => s.id);
-  const newProject = useNewProject();
   const target = useProject((s) => s.target);
   const actual = useActualPanel();
   const savedAt = useProject((s) => s.savedAt);
-  const setTarget = useProject((s) => s.setTarget);
   const saved = useSavedLabel(savedAt);
+  const newProject = useNewProject();
+  const palette = useCommandPalette();
 
-  const value = `${target.model}|${target.width}|${target.height}`;
-
-  // The label has to be the file's, not the dropdown's. Saying HMIGTO6310
-  // over a project whose Target.dat reads HMIST6500AWADI is exactly the kind
-  // of small untruth "the preview cannot lie" cannot afford.
-  const actualLabel = actual
-    ? `${actual.model} · ${actual.width} × ${actual.height}`
-    : null;
+  // The label has to be the file's, not the dropdown's. Saying HMIGTO6310 over
+  // a project whose Target.dat reads HMIST6500AWADI is exactly the kind of
+  // small untruth "the preview cannot lie" cannot afford.
   const mismatch =
     actual !== null &&
     (actual.width !== target.width ||
       actual.height !== target.height ||
       actual.model !== target.model);
-  const known = TARGETS.some((t) => t.value === value);
 
   return (
-    <header
-      className={cn(
-        "flex h-14 shrink-0 items-center gap-3 border-b border-line-subtle bg-surface-panel px-4",
-        className,
-      )}
-    >
-      <SchneiderMark className="hidden shrink-0 text-text-primary sm:block" />
-      <span aria-hidden className="hidden h-6 w-px bg-line sm:block" />
-      <span className="shrink-0 text-lg font-semibold tracking-tight">HMI Copilot</span>
-      <span aria-hidden className="hidden h-6 w-px bg-line xl:block" />
-      <span className="hidden shrink-0 text-sm text-text-muted xl:inline">
-        From Intent to HMI — Faster. Smarter. Safer.
-      </span>
-
-      <div className="ml-4 flex min-w-0 items-center gap-3">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => newProject()}
-          icon={<SquarePen size={14} />}
-          title="Start a new project — blank canvas, empty conversation. This one stays on the Projects page."
-        >
-          New
-        </Button>
-        <ProjectNameField />
-        {saved && (
-          <span className="hidden shrink-0 items-center gap-1.5 text-xs text-text-muted lg:flex">
-            <Check size={13} aria-hidden className="text-brand-400" />
-            Saved {saved}
-          </span>
+    <>
+      <header
+        className={cn(
+          "flex h-11 shrink-0 items-center gap-1 border-b border-line-subtle bg-surface-frame px-2",
+          className,
         )}
-      </div>
-
-      <div className="ml-auto flex shrink-0 items-center gap-2">
-        <div
-          className={cn(
-            "hidden items-center gap-2 rounded-md border bg-surface-raised pl-2.5 md:flex",
-            mismatch ? "border-status-warn" : "border-line",
-          )}
-          title={
-            mismatch
-              ? `The exported file targets ${actualLabel} — its Target.dat, which the app cannot change.`
-              : actual
-                ? `Matches the file's Target.dat (${actualLabel}).`
-                : undefined
-          }
+      >
+        <Link
+          href="/"
+          title="HMI Copilot"
+          className="focus-ring flex shrink-0 items-center gap-2 rounded-md px-1.5 py-1 transition hover:bg-surface-hover"
         >
-          <Monitor
-            size={15}
-            aria-hidden
-            className={mismatch ? "text-status-warn" : "text-text-muted"}
-          />
-          <Select
-            aria-label="Target panel"
-            size="sm"
-            className="w-52 border-0 bg-transparent"
-            value={known ? value : TARGETS[0].value}
-            options={TARGETS}
-            onChange={(e) => {
-              const [model, w, h] = e.target.value.split("|");
-              setTarget({ model, width: Number(w), height: Number(h) });
-            }}
-          />
+          <SchneiderMark className="text-brand-400" />
+          <span className="hidden text-sm font-semibold tracking-tight sm:inline">
+            Copilot
+          </span>
+        </Link>
+
+        <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-line-subtle" />
+
+        <button
+          type="button"
+          onClick={() => newProject()}
+          title="New project — blank canvas, empty conversation"
+          aria-label="New project"
+          className="focus-ring shrink-0 rounded-md p-1.5 text-text-muted transition hover:bg-surface-hover hover:text-text-primary"
+        >
+          <SquarePen size={15} aria-hidden />
+        </button>
+
+        <div className="flex min-w-0 items-center gap-2">
+          <ProjectNameField />
+          {saved && (
+            <span className="hidden shrink-0 items-center gap-1 text-[11px] text-text-faint lg:flex">
+              <Check size={11} aria-hidden className="text-brand-400" />
+              {saved}
+            </span>
+          )}
         </div>
 
-        {mismatch && (
-          <span className="hidden text-xs text-status-warn lg:inline" role="status">
-            file targets {actualLabel}
-          </span>
-        )}
-
-        <ThemeToggle />
-
-        {onExport ? (
-          <Button variant="primary" icon={<Download size={16} />} onClick={onExport}>
-            Export
-          </Button>
-        ) : (
-          <Link
-            href={`/project/${projectId}/export`}
-            className="focus-ring inline-flex h-9 items-center gap-2 rounded-md bg-brand-500 px-3.5 text-sm font-medium text-text-onbrand shadow-sm transition hover:bg-brand-600"
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          {/* The panel the file will target. A read-out, not a control - the
+              control is in the palette, because it is set once. */}
+          <button
+            type="button"
+            onClick={() => palette.setOpen(true)}
+            title={
+              mismatch
+                ? `The exported file targets ${actual!.model} ${actual!.width}×${actual!.height} — its Target.dat, which the app cannot change.`
+                : "Change the target panel"
+            }
+            className={cn(
+              "focus-ring hidden items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] transition md:flex",
+              mismatch
+                ? "border-status-warn/50 text-status-warn"
+                : "border-line-subtle text-text-muted hover:border-line hover:text-text-secondary",
+            )}
           >
-            <Download size={16} aria-hidden />
-            Export
-          </Link>
-        )}
-      </div>
-    </header>
+            <Monitor size={12} aria-hidden />
+            <span className="text-figure">
+              {target.width} × {target.height}
+            </span>
+            {mismatch && <span className="font-medium">≠ file</span>}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => palette.setOpen(true)}
+            title="Commands (Ctrl+K)"
+            className="focus-ring flex items-center gap-1.5 rounded-md border border-line-subtle px-2 py-1 text-[11px] text-text-muted transition hover:border-line hover:text-text-secondary"
+          >
+            <Command size={12} aria-hidden />
+            <span className="hidden sm:inline">K</span>
+          </button>
+
+          {onExport ? (
+            <button
+              type="button"
+              onClick={onExport}
+              className="focus-ring inline-flex h-7 items-center gap-1.5 rounded-md bg-brand-500 px-3 text-xs font-medium text-text-onbrand transition hover:bg-brand-600"
+              style={{ boxShadow: "var(--elev-1)" }}
+            >
+              <Download size={14} aria-hidden />
+              Export
+            </button>
+          ) : (
+            <Link
+              href={`/project/${projectId}/export`}
+              className="focus-ring inline-flex h-7 items-center gap-1.5 rounded-md bg-brand-500 px-3 text-xs font-medium text-text-onbrand transition hover:bg-brand-600"
+              style={{ boxShadow: "var(--elev-1)" }}
+            >
+              <Download size={14} aria-hidden />
+              Export
+            </Link>
+          )}
+        </div>
+      </header>
+
+      <CommandPalette open={palette.open} onClose={() => palette.setOpen(false)} />
+    </>
   );
 }
