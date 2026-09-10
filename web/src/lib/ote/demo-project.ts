@@ -107,11 +107,13 @@ export function buildDemoProject(name = "PumpStation1"): PackageInput {
   return {
     name,
     // Matches the skeleton's Target.dat: "1024 x 600" on an HMIST6500AWADI.
-    // The packager refuses a project whose declared panel differs from the file.
     target: { model: "HMIST6500AWADI", width: SCREEN.width, height: SCREEN.height },
     screens: [screenOf(name, parts, SCREEN)],
-    variables: DEMO_VARIABLES,
-    alarms: DEMO_ALARMS,
+    // Copied, not shared. Callers edit what they get back - a test breaking one
+    // alarm to check the validator, the pipeline rewriting a setpoint - and
+    // handing out the module constant lets one caller silently poison the next.
+    variables: DEMO_VARIABLES.map((v) => ({ ...v })),
+    alarms: DEMO_ALARMS.map((a) => ({ ...a })),
     wires,
   };
 }

@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { checkName, normaliseNames, suggestName } from "@/lib/validation/naming";
 import { summarise, validateProject } from "@/lib/validation/rules";
+import { renderReport } from "@/lib/validation/report";
 import { normaliseDataType, parseTags } from "@/lib/tags/parse";
 import { buildDemoProject } from "@/lib/ote/demo-project";
 
@@ -211,5 +212,66 @@ describe("tag ingestion", () => {
 
   it("summarises by data type", () => {
     expect(parsed().summary).toEqual({ total: 7, BOOL: 3, REAL: 3, INT: 1 });
+  });
+});
+
+describe("the sign-off report", () => {
+  const render = (project = buildDemoProject(), panel = PANEL) =>
+    renderReport({
+      project,
+      findings: validateProject(project, panel),
+      panel,
+      generatedAt: new Date("2026-09-10T12:00:00Z"),
+    });
+
+  const PANEL = { model: "HMIST6500AWADI", width: 1024, height: 600 };
+
+  it("is a standalone document with no external asset", () => {
+    const html = render();
+    expect(html.startsWith("<!doctype html>")).toBe(true);
+    // A commissioning laptop has no internet. Nothing may be fetched.
+    expect(html).not.toMatch(/<script/i);
+    expect(html).not.toMatch(/https?:\/\//);
+  });
+
+  it("passes a clean project and names the panel from the file", () => {
+    const html = render();
+    expect(html).toContain("Passed with");
+    expect(html).toContain("HMIST6500AWADI");
+  });
+
+  it("refuses to pass a project with an error, and says what it is", () => {
+    const project = buildDemoProject();
+    project.wires.find((w) => w.part.Type === "Lamp")!.tag = "FT_101_PV";
+    const html = render(project);
+    expect(html).toMatch(/1 error must be resolved/);
+    expect(html).toContain("Type compatibility");
+    expect(html).toContain("FT_101_PV");
+  });
+
+  it("escapes content that came out of a file we did not write", () => {
+    const project = buildDemoProject();
+    project.name = '<script>alert("x")</script>';
+    const html = render(project);
+    expect(html).not.toContain("<script>alert");
+    expect(html).toContain("&lt;script&gt;");
+  });
+
+  it("reports the project's own figures", () => {
+    const html = render();
+    expect(html).toContain("Variables declared");
+    expect(html).toContain("3 bit, 2 level");
+  });
+});
+
+describe("buildDemoProject", () => {
+  it("hands out its own copies, so one caller cannot poison the next", () => {
+    const first = buildDemoProject();
+    first.alarms[3].Value = "";
+    first.variables[0].Name = "MUTATED";
+
+    const second = buildDemoProject();
+    expect(second.alarms[3].Value).toBe("85");
+    expect(second.variables[0].Name).toBe("PMP_101_RUN");
   });
 });
