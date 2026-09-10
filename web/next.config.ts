@@ -1,6 +1,18 @@
 import type { NextConfig } from "next";
 
 const config: NextConfig = {
+  /**
+   * Build somewhere else when asked to.
+   *
+   * `next dev` and `next build` share .next, so building while a dev server is
+   * up replaces the chunks it is serving and the running app starts answering
+   * 500 for routes it had already compiled. Set NEXT_DIST_DIR to verify a
+   * production build without taking the dev server down:
+   *
+   *     NEXT_DIST_DIR=.next-build npx next build
+   */
+  distDir: process.env.NEXT_DIST_DIR || ".next",
+
   // sql.js ships a .wasm that webpack must not try to bundle as a module; the
   // packager loads it from disk on the Node runtime instead.
   serverExternalPackages: ["sql.js"],

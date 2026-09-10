@@ -114,3 +114,53 @@ describe.skipIf(!hasSkeleton)("a Path part survives packaging", () => {
     expect(toPathData(written)).toBe(symbol.d);
   }, 60_000);
 });
+
+/**
+ * The library is fetched, and until it arrives there is nothing to show.
+ *
+ * The Library used to show two symbols, then 474, and which one you saw
+ * depended on when you looked. Two causes, both structural rather than
+ * behavioural, so neither is reachable from here without a DOM - what is
+ * reachable is the shape that allowed them:
+ *
+ *   - two copies of the fetching hook, one per view, so a fix to one left the
+ *     other showing placeholders;
+ *   - memo dependency arrays that omitted `symbols`, so the category list was
+ *     computed once from the placeholders and the grid only recomputed when you
+ *     typed. The index arriving changed nothing until you touched a control.
+ *
+ * `react-hooks/exhaustive-deps` is the real guard for the second and this
+ * project has no ESLint config wired up, so this asserts the first: one
+ * implementation, which is what stops the two views drifting again.
+ */
+describe("one symbol library, not one per view", () => {
+  const read = (name: string) =>
+    fs.readFileSync(
+      path.join(process.cwd(), "src", "components", "library", name),
+      "utf8",
+    );
+
+  it("has exactly one place that fetches the index", () => {
+    const files = ["useSymbols.ts", "LibraryPanel.tsx", "LibraryScreen.tsx"];
+    const fetchers = files.filter((f) => read(f).includes('fetch("/api/symbols")'));
+    expect(fetchers).toEqual(["useSymbols.ts"]);
+  });
+
+  it("has both views reading through that hook", () => {
+    for (const view of ["LibraryPanel.tsx", "LibraryScreen.tsx"]) {
+      expect(read(view)).toMatch(/useSymbols\(\)/);
+    }
+  });
+
+  it("tells its callers whether it is still loading", () => {
+    // "Fetching" and "there is no index on this machine" both used to fall back
+    // to the placeholders, which is why the count appeared to change on its own.
+    const hook = read("useSymbols.ts");
+    for (const state of ["loading", "indexed", "unavailable"]) {
+      expect(hook).toContain(`"${state}"`);
+    }
+    for (const view of ["LibraryPanel.tsx", "LibraryScreen.tsx"]) {
+      expect(read(view), `${view} ignores the loading state`).toContain('"loading"');
+    }
+  });
+});

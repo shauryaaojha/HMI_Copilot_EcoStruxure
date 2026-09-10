@@ -24,7 +24,7 @@ import { Input, Select, cn } from "@/components/ui";
 import { isPlaceable, useSymbols, type Symbol } from "./useSymbols";
 
 export function LibraryPanel() {
-  const { symbols, indexed } = useSymbols();
+  const { symbols, status } = useSymbols();
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
 
@@ -41,11 +41,15 @@ export function LibraryPanel() {
     [symbols],
   );
 
+  // A category chosen from the placeholders would survive the real index
+  // arriving and filter the grid down to nothing.
+  const active = categories.includes(category) ? category : "All";
+
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return symbols
       .filter((symbol) => {
-        if (category !== "All" && symbol.category !== category) return false;
+        if (active !== "All" && symbol.category !== active) return false;
         return !needle || symbol.name.toLowerCase().includes(needle);
       })
       .slice(0, 300);
@@ -90,7 +94,7 @@ export function LibraryPanel() {
           />
         </div>
         <Select
-          value={category}
+          value={active}
           onChange={(e) => setCategory(e.target.value)}
           aria-label="Symbol category"
           options={categories.map((c) => ({ value: c, label: c }))}
@@ -142,13 +146,17 @@ export function LibraryPanel() {
 
         {shown.length === 0 && (
           <li className="col-span-full rounded-md border border-dashed border-line p-6 text-center text-xs text-text-muted">
-            No symbol matches that search.
+            {status === "loading"
+              ? "Reading the graphic object library…"
+              : "No symbol matches that search."}
           </li>
         )}
       </ul>
 
       <p className="shrink-0 border-t border-line-subtle px-3 py-2 text-[10px] leading-relaxed text-text-faint">
-        {indexed ? (
+        {status === "loading" ? (
+          <>Reading the graphic object library…</>
+        ) : status === "indexed" ? (
           <>
             {symbols.length.toLocaleString()} symbols from the installation
             {shown.length >= 300 && " · showing the first 300, narrow the search"}

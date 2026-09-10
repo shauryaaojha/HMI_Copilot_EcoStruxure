@@ -6,8 +6,9 @@
  * The product ships 475 objects under
  * Buildtime/PropertyDefinitions/ScreenDesign/GraphicObjects/. `npm run
  * index:graphics` converts them on a machine that has the installation; the
- * output is gitignored, because they are Schneider's files. Until then this
- * browses `placeholderSymbols` until /api/symbols answers with the real index.
+ * output is gitignored, because they are Schneider's files, so it is served by
+ * /api/symbols rather than imported. Three states, and useSymbols keeps them
+ * apart: fetching, indexed, and no index on this machine.
  *
  * Placing one is deliberately unavailable, and the panel says why. A Path part
  * needs the Commands and Points the .path file carries, and the current index
@@ -19,59 +20,16 @@
  * Phase 2b / Phase 9 of docs/BUILD_PLAN.md.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Info, Plus, Search } from "lucide-react";
-import { placeholderSymbols } from "@/fixtures";
 import { Badge, Button, Input, Panel, Tabs, cn, type TabItem } from "@/components/ui";
 import { useProject } from "@/store/project";
 import { pathPart } from "@/lib/ote/parts";
-
-/** The shape `scripts/index-graphics.mjs` writes, plus the geometry it drops. */
-interface Symbol {
-  name: string;
-  category: string;
-  d: string;
-  width: number;
-  height: number;
-  /** Present only once the index carries them; placement needs both. */
-  Commands?: string;
-  Points?: string;
-}
-
-/**
- * The real index is served, not imported: it is derived from Schneider's own
- * files and gitignored, so importing it would break the build wherever
- * `npm run index:graphics` has not been run. Placeholders stand in until it
- * answers, and the footer says which of the two you are looking at.
- */
-function useSymbols(): { symbols: Symbol[]; indexed: boolean } {
-  const [loaded, setLoaded] = useState<Symbol[] | null>(null);
-
-  useEffect(() => {
-    let live = true;
-    fetch("/api/symbols")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((body) => {
-        if (live && body?.indexed && Array.isArray(body.symbols) && body.symbols.length) {
-          setLoaded(body.symbols as Symbol[]);
-        }
-      })
-      .catch(() => {
-        // No index, or the route is unreachable. The placeholders stand.
-      });
-    return () => {
-      live = false;
-    };
-  }, []);
-
-  return loaded
-    ? { symbols: loaded, indexed: true }
-    : { symbols: placeholderSymbols, indexed: false };
-}
+import { isPlaceable, useSymbols, type Symbol } from "./useSymbols";
 
 export function LibraryScreen() {
-  const { symbols, indexed } = useSymbols();
+  const { symbols, status } = useSymbols();
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
   const [pickedName, setPickedName] = useState<string | null>(null);
@@ -82,8 +40,8 @@ export function LibraryScreen() {
   const setPicked = (s: Symbol | null) => setPickedName(s?.name ?? null);
 
   const categories = useMemo(
-    () => ["All", ...new Set(symbols.map((s) => s.category))],
-    [],
+    () => ["All", ...new Set(symbols.map((s) => s.category))].sort(),
+    [symbols],
   );
   const tabs: TabItem<string>[] = categories.map((c) => ({ id: c, label: c }));
 
@@ -93,9 +51,9 @@ export function LibraryScreen() {
       if (category !== "All" && symbol.category !== category) return false;
       return !needle || symbol.name.toLowerCase().includes(needle);
     });
-  }, [category, query]);
+  }, [symbols, category, query]);
 
-  const placeable = picked?.Commands !== undefined && picked?.Points !== undefined;
+  const placeable = isPlaceable(picked);
 
   const router = useRouter();
   const projectId = useProject((s) => s.id);
@@ -201,9 +159,14 @@ export function LibraryScreen() {
             </li>
           ))}
 
+          {/* "Nothing matches" and "nothing has arrived yet" are different
+              answers, and showing the first while the second is true is what
+              made the count appear to change on its own. */}
           {shown.length === 0 && (
             <li className="col-span-full rounded-panel border border-dashed border-line p-10 text-center text-sm text-text-muted">
-              No symbol matches that search.
+              {status === "loading"
+                ? "Reading the graphic object library…"
+                : "No symbol matches that search."}
             </li>
           )}
         </ul>
@@ -280,7 +243,9 @@ export function LibraryScreen() {
         )}
 
         <p className="text-xs text-text-faint">
-          {indexed ? (
+          {status === "loading" ? (
+            <>Reading the installation&apos;s graphic object library…</>
+          ) : status === "indexed" ? (
             <>
               {symbols.length.toLocaleString()} symbols, indexed from the
               installation&apos;s own graphic object library.
