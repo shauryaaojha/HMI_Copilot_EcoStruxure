@@ -99,6 +99,12 @@ interface ProjectState {
   setSimulating: (on: boolean) => void;
   appendObject: (screenId: string, part: Part) => void;
   updateObject: (id: string, patch: Partial<Part>) => void;
+  /**
+   * Write one property, addressed the way the inspector's schema-derived
+   * fields address them: ["Off", "Fill", "Color", "Value"]. Intermediate
+   * objects are created, so setting an optional property that is absent works.
+   */
+  setProperty: (id: string, path: string[], value: unknown) => void;
   /** Move objects by a delta, which is what dragging on the canvas produces. */
   nudge: (ids: string[], dx: number, dy: number) => void;
   /** Set an object's box outright, which is what a resize handle produces. */
@@ -145,6 +151,7 @@ type ProjectActions = Pick<
   | "setSimulating"
   | "appendObject"
   | "updateObject"
+  | "setProperty"
   | "nudge"
   | "setBox"
   | "removeObjects"
@@ -243,6 +250,22 @@ export const useProject = create<ProjectState>()(
             Object.assign(screen.Children[0].Children[i], patch);
             return;
           }
+        }
+      }),
+
+    setProperty: (id, path, value) =>
+      set((s) => {
+        if (path.length === 0) return;
+        for (const screen of s.screens) {
+          const part = screen.Children[0].Children.find((p) => p.UniqueId === id);
+          if (!part) continue;
+          let node = part as unknown as Record<string, unknown>;
+          for (const step of path.slice(0, -1)) {
+            if (typeof node[step] !== "object" || node[step] === null) node[step] = {};
+            node = node[step] as Record<string, unknown>;
+          }
+          node[path[path.length - 1]] = value;
+          return;
         }
       }),
 

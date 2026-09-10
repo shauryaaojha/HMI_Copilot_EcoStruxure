@@ -1,28 +1,86 @@
 "use client";
 
 /**
- * The right pane: properties, bindings and the object library.
+ * The right pane: properties, tags and the object library.
  * Reference screens 1, 2, 5, 6. Phase 5 of docs/BUILD_PLAN.md.
  *
- * Phase 5 generates the property groups from the Phase 1 zod schemas rather
- * than hand-writing them per part type, so a part gains an editor the moment it
- * gains a schema. What is here now is the frame and the identity block.
+ * The property groups are generated from the Phase 1 zod schemas rather than
+ * hand-written per part type - see schemaFields.ts. A part gains an editor the
+ * moment it gains a schema, and a field FORMAT adds to schema.ts turns up here
+ * on the next reload with a control that already writes back correctly.
+ *
+ * Edits go through useProject.setProperty, which writes into the same tree the
+ * packager serialises, so the canvas re-renders from the edit immediately and
+ * the export carries it.
  */
 
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { useProject } from "@/store/project";
 import { TagTable } from "@/components/tags";
-import { Badge, Button, Field, Input, Panel, Tabs, type TabItem } from "@/components/ui";
+import { Badge, Button, Field, Panel, Tabs, type TabItem } from "@/components/ui";
+import { FieldEditor } from "./editors";
+import { groupsOf, valueAt, type SchemaField } from "./schemaFields";
 
 type InspectorTab = "properties" | "tags" | "library";
+
+/** "TextColor" -> "Text colour" is a step too far; "DecimalDigits" -> "Decimal digits". */
+function label(key: string) {
+  const spaced = key.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+  return spaced.charAt(0) + spaced.slice(1).toLowerCase();
+}
+
+function FieldRow({
+  field,
+  part,
+  onChange,
+}: {
+  field: SchemaField;
+  part: unknown;
+  onChange: (path: string[], value: unknown) => void;
+}) {
+  // A nested group - a Lamp's Off and On states - becomes its own subsection,
+  // because a state is a set of properties rather than a single value.
+  if (field.kind === "group" && field.fields) {
+    return (
+      <div className="rounded-md border border-line-subtle p-2">
+        <p className="mb-2 text-xs font-medium text-text-secondary">
+          {label(field.key)}
+        </p>
+        <div className="space-y-2">
+          {field.fields.map((child) => (
+            <FieldRow
+              key={child.path.join(".")}
+              field={child}
+              part={part}
+              onChange={onChange}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Field label={label(field.key)}>
+      <FieldEditor
+        field={field}
+        value={valueAt(part, field.path)}
+        onChange={onChange}
+      />
+    </Field>
+  );
+}
 
 export function Inspector() {
   const [tab, setTab] = useState<InspectorTab>("properties");
   const screens = useProject((s) => s.screens);
   const variables = useProject((s) => s.variables);
   const bindings = useProject((s) => s.bindings);
+  const findings = useProject((s) => s.findings);
   const selectedIds = useProject((s) => s.selectedIds);
+  const setProperty = useProject((s) => s.setProperty);
+  const removeObjects = useProject((s) => s.removeObjects);
 
   // The inspector edits one object; a marquee selection of several reports the
   // count instead, because a property panel over a heterogeneous selection is a
@@ -33,6 +91,7 @@ export function Inspector() {
     .find((p) => p.UniqueId === only);
 
   const bound = bindings.filter((b) => b.targetId === only);
+  const flagged = findings.filter((f) => f.objectId === only);
 
   const tabs: TabItem<InspectorTab>[] = [
     { id: "properties", label: "Properties" },
@@ -61,8 +120,8 @@ export function Inspector() {
           </p>
         ) : selectedIds.length > 1 ? (
           <p className="p-4 text-sm text-text-muted">
-            {selectedIds.length} objects selected. Arrow keys nudge them; shift-arrow
-            moves by the grid.
+            {selectedIds.length} objects selected. Arrow keys nudge them;
+            shift-arrow moves by the grid.
           </p>
         ) : !part ? (
           <p className="p-4 text-sm text-text-muted">
@@ -84,32 +143,23 @@ export function Inspector() {
                 className="ml-auto"
                 aria-label="Delete object"
                 title="Delete object"
+                onClick={() => removeObjects([part.UniqueId])}
                 icon={<Trash2 size={15} />}
               />
             </div>
 
-            <Panel title="General" collapsible>
-              <div className="space-y-2">
-                <Field label="Name">
-                  <Input value={part.Name} readOnly mono />
-                </Field>
-                <Field label="Type">
-                  <Input value={part.Type} readOnly mono />
-                </Field>
-                <Field label="Position">
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input value={`X ${part.Location.Left}`} readOnly mono />
-                    <Input value={`Y ${part.Location.Top}`} readOnly mono />
-                  </div>
-                </Field>
-                <Field label="Size">
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input value={`W ${part.Width}`} readOnly mono />
-                    <Input value={`H ${part.Height}`} readOnly mono />
-                  </div>
-                </Field>
-              </div>
-            </Panel>
+            {flagged.length > 0 && (
+              <ul className="mx-3 mb-2 space-y-1">
+                {flagged.map((finding, i) => (
+                  <li
+                    key={i}
+                    className="rounded-md border border-status-warn/40 bg-status-warn/10 p-2 text-[11px] text-status-warn"
+                  >
+                    {finding.message}
+                  </li>
+                ))}
+              </ul>
+            )}
 
             <Panel title="Data binding" collapsible>
               {bound.length === 0 ? (
@@ -119,18 +169,34 @@ export function Inspector() {
               ) : (
                 <ul className="space-y-2">
                   {bound.map((b) => (
-                    <li key={`${b.tag}-${b.property}`} className="space-y-1">
-                      <Field label="Source tag">
-                        <Input value={b.tag} readOnly mono />
-                      </Field>
-                      <Field label="Property">
-                        <Input value={b.property} readOnly mono />
-                      </Field>
+                    <li
+                      key={`${b.tag}-${b.property}`}
+                      className="rounded-md border border-line-subtle p-2"
+                    >
+                      <p className="font-mono text-xs text-brand-400">{b.tag}</p>
+                      <p className="text-[11px] text-text-muted">
+                        drives {b.property}
+                      </p>
                     </li>
                   ))}
                 </ul>
               )}
             </Panel>
+
+            {groupsOf(part.Type).map((group) => (
+              <Panel key={group.title} title={group.title} collapsible>
+                <div className="space-y-2">
+                  {group.fields.map((field) => (
+                    <FieldRow
+                      key={field.path.join(".")}
+                      field={field}
+                      part={part}
+                      onChange={(path, value) => setProperty(part.UniqueId, path, value)}
+                    />
+                  ))}
+                </div>
+              </Panel>
+            ))}
           </>
         )}
       </div>

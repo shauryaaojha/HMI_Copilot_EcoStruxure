@@ -25,6 +25,7 @@ import { useProject } from "@/store/project";
 import { demoLiveValues, demoScreen } from "@/fixtures";
 import { activeAlarms } from "@/lib/sim/alarms";
 import { Badge, Button, Tabs, cn, type TabItem } from "@/components/ui";
+import { BindingMap } from "@/components/bindings/BindingMap";
 import { ScreenRenderer } from "./ScreenRenderer";
 
 type CanvasTab = "design" | "bindings" | "script" | "preview" | "json";
@@ -294,11 +295,15 @@ export function CanvasPane() {
         onPointerUp={endPan}
         onPointerCancel={endPan}
         className={cn(
-          "canvas-grid min-h-0 flex-1 overflow-auto p-6",
-          panMode && "cursor-grab active:cursor-grabbing",
+          "min-h-0 flex-1",
+          tab === "design"
+            ? cn("canvas-grid overflow-auto p-6", panMode && "cursor-grab active:cursor-grabbing")
+            : "overflow-hidden",
         )}
       >
-        {tab !== "design" ? (
+        {tab === "bindings" ? (
+          <BindingMap />
+        ) : tab !== "design" ? (
           <p className="flex h-full items-center justify-center text-center text-sm text-text-muted">
             {TABS.find((t) => t.id === tab)?.label} arrives with a later phase — see
             docs/BUILD_PLAN.md.

@@ -11,11 +11,11 @@
  * Phase 3 of docs/BUILD_PLAN.md.
  */
 
-import { useEffect, type ReactNode } from "react";
-import { useProject } from "@/store/project";
+import { type ReactNode } from "react";
 import { NavRail } from "./NavRail";
 import { StatusBar } from "./StatusBar";
 import { TopBar } from "./TopBar";
+import { useProjectHydration } from "./useProjectHydration";
 
 export interface PageShellProps {
   projectId: string;
@@ -33,14 +33,9 @@ export function PageShell({
   actions,
   children,
 }: PageShellProps) {
-  const id = useProject((s) => s.id);
-  const hydrate = useProject((s) => s.hydrate);
-
-  // Deep-linking straight to /project/x/tags should still know which project
-  // it is in, without dragging the workspace's fixture load onto every route.
-  useEffect(() => {
-    if (id !== projectId) hydrate({ id: projectId });
-  }, [id, projectId, hydrate]);
+  // Deep-linking straight to /project/x/validation has to find a project, so
+  // every route hydrates through the same path the workspace does.
+  useProjectHydration(projectId);
 
   return (
     <div className="flex h-screen flex-col bg-surface-base">
