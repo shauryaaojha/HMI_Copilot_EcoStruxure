@@ -92,7 +92,7 @@ export function ScreenTabs() {
                   setDraft(screen.Name);
                 }}
                 title={`${screen.Name} — ${count} object${count === 1 ? "" : "s"}. Double-click to rename.`}
-                className="focus-ring max-w-[12rem] truncate font-medium"
+                className="focus-ring max-w-[12rem] truncate py-1.5 font-medium"
               >
                 {screen.Name}
               </button>
@@ -107,9 +107,9 @@ export function ScreenTabs() {
                   onClick={() => duplicateScreen(screen.UniqueId)}
                   title="Duplicate this screen"
                   aria-label={`Duplicate ${screen.Name}`}
-                  className="focus-ring rounded p-0.5 text-text-muted hover:text-text-primary"
+                  className="focus-ring flex h-6 w-6 items-center justify-center rounded text-text-muted hover:text-text-primary"
                 >
-                  <Copy size={11} aria-hidden />
+                  <Copy size={12} aria-hidden />
                 </button>
                 <button
                   type="button"
@@ -121,9 +121,9 @@ export function ScreenTabs() {
                       : "Delete this screen"
                   }
                   aria-label={`Delete ${screen.Name}`}
-                  className="focus-ring rounded p-0.5 text-text-muted hover:text-status-alarm disabled:opacity-30"
+                  className="focus-ring flex h-6 w-6 items-center justify-center rounded text-text-muted hover:text-status-alarm disabled:opacity-30"
                 >
-                  <Trash2 size={11} aria-hidden />
+                  <Trash2 size={12} aria-hidden />
                 </button>
               </span>
             )}

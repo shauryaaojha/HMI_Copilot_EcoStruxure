@@ -9,10 +9,20 @@
  * there is nothing selected, so the bar reads as a statement about the current
  * state rather than as a wall of buttons.
  *
- * The whole row scrolls sideways rather than wrapping: a toolbar that reflows
- * into two rows moves every button the moment the inspector opens.
+ * The editing half scrolls sideways rather than wrapping: a toolbar that
+ * reflows into two rows moves every button the moment the inspector opens.
+ *
+ * The run-state half does not scroll, and that is the whole point of the split.
+ * It used to sit inside the scrolling row behind an `ml-auto`, which on a
+ * 1440px laptop put Simulate at x=1697 - past the right edge, reachable only by
+ * dragging a scrollbar macOS does not draw until you are already scrolling.
+ * Measured on the demo project, 719px of a 1498px toolbar had no way of being
+ * reached. Whether the screen is live is the one thing the bar must always be
+ * able to say, and say it in the same place, so it is pinned outside the
+ * scroll and the tools give up the width instead.
  */
 
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlignCenterHorizontal,
   AlignCenterVertical,
@@ -123,6 +133,37 @@ export function CanvasToolbar({
   const anyHidden = selectedIds.some((id) => objectMeta[id]?.hidden);
   const anyGrouped = selectedIds.some((id) => objectMeta[id]?.groupId);
 
+  /**
+   * Which edges of the tool half have more behind them.
+   *
+   * Twenty-eight buttons do not fit 610px, so the half scrolls - and macOS
+   * draws no scrollbar until you are already scrolling, which is how the whole
+   * right end of this bar came to be invisible. A fade on whichever side has
+   * more says so without taking any width to say it.
+   */
+  const scroller = useRef<HTMLDivElement>(null);
+  const [edge, setEdge] = useState({ start: false, end: false });
+
+  const measureEdges = useCallback(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const start = el.scrollLeft > 1;
+    const end = el.scrollWidth - el.scrollLeft - el.clientWidth > 1;
+    // Returning the previous object when nothing changed keeps a scroll that
+    // crosses no threshold from committing a render - the same identity rule
+    // that useSimulation documents.
+    setEdge((prev) => (prev.start === start && prev.end === end ? prev : { start, end }));
+  }, []);
+
+  useEffect(() => {
+    measureEdges();
+    const el = scroller.current;
+    if (!el) return;
+    const observer = new ResizeObserver(measureEdges);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [measureEdges]);
+
   const icon = (
     label: string,
     Icon: typeof Square,
@@ -145,133 +186,163 @@ export function CanvasToolbar({
   );
 
   return (
-    <div className="flex h-11 shrink-0 items-center gap-0.5 overflow-x-auto border-b border-line-subtle px-2">
-      {/* --- pointer and tools ------------------------------------------ */}
-      {icon("Select (V)", MousePointer2, () => {
-        onTool(null);
-        onPanMode(false);
-      }, { pressed: !panMode && !tool })}
-      {icon("Pan (H) — or hold the middle mouse button", Hand, () => {
-        onTool(null);
-        onPanMode(true);
-      }, { pressed: panMode })}
+    <div className="flex h-11 shrink-0 items-center border-b border-line-subtle">
+      {/* Everything that acts on the drawing. `min-w-0` is what lets this
+          shrink below its content width so the pinned half keeps its room. */}
+      <div className="relative flex min-w-0 flex-1">
+        <div
+          ref={scroller}
+          onScroll={measureEdges}
+          onWheel={(e) => {
+            // A wheel mouse only sends deltaY, and this scrolls sideways. Without
+            // this the tools are reachable by trackpad and by nothing else.
+            if (e.deltaY === 0 || e.deltaX !== 0) return;
+            e.currentTarget.scrollLeft += e.deltaY;
+          }}
+          className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-2 [scrollbar-width:thin]"
+        >
+          {/* --- pointer and tools ------------------------------------------ */}
+          {icon("Select (V)", MousePointer2, () => {
+            onTool(null);
+            onPanMode(false);
+          }, { pressed: !panMode && !tool })}
+          {icon("Pan (H) — or hold the middle mouse button", Hand, () => {
+            onTool(null);
+            onPanMode(true);
+          }, { pressed: panMode })}
 
-      <Sep />
+          <Sep />
 
-      {TOOLS.map((t) =>
-        icon(`${t.label} (${t.key})`, TOOL_ICON[t.type] ?? Square, () => {
-          onPanMode(false);
-          onTool(tool === t.type ? null : t.type);
-        }, { pressed: tool === t.type }),
-      )}
+          {TOOLS.map((t) =>
+            icon(`${t.label} (${t.key})`, TOOL_ICON[t.type] ?? Square, () => {
+              onPanMode(false);
+              onTool(tool === t.type ? null : t.type);
+            }, { pressed: tool === t.type }),
+          )}
 
-      <Sep />
+          <Sep />
 
-      {/* --- history ---------------------------------------------------- */}
-      {icon("Undo (Ctrl+Z)", Undo2, undo, { disabled: !canUndo })}
-      {icon("Redo (Ctrl+Shift+Z)", Redo2, redo, { disabled: !canRedo })}
+          {/* --- history ---------------------------------------------------- */}
+          {icon("Undo (Ctrl+Z)", Undo2, undo, { disabled: !canUndo })}
+          {icon("Redo (Ctrl+Shift+Z)", Redo2, redo, { disabled: !canRedo })}
 
-      <Sep />
+          <Sep />
 
-      {/* --- act on the selection --------------------------------------- */}
-      {icon("Align left", AlignStartVertical, () => align(selectedIds, "left"), {
-        disabled: !some,
-      })}
-      {icon("Align centres", AlignCenterVertical, () => align(selectedIds, "centre"), {
-        disabled: !some,
-      })}
-      {icon("Align right", AlignEndVertical, () => align(selectedIds, "right"), {
-        disabled: !some,
-      })}
-      {icon("Align top", AlignStartHorizontal, () => align(selectedIds, "top"), {
-        disabled: !some,
-      })}
-      {icon("Align middles", AlignCenterHorizontal, () => align(selectedIds, "middle"), {
-        disabled: !some,
-      })}
-      {icon("Align bottom", AlignEndHorizontal, () => align(selectedIds, "bottom"), {
-        disabled: !some,
-      })}
-      {icon(
-        "Even horizontal gaps",
-        AlignHorizontalSpaceAround,
-        () => spread(selectedIds, "horizontal"),
-        { disabled: !spreadable },
-      )}
-      {icon(
-        "Even vertical gaps",
-        AlignVerticalSpaceAround,
-        () => spread(selectedIds, "vertical"),
-        { disabled: !spreadable },
-      )}
+          {/* --- act on the selection --------------------------------------- */}
+          {icon("Align left", AlignStartVertical, () => align(selectedIds, "left"), {
+            disabled: !some,
+          })}
+          {icon("Align centres", AlignCenterVertical, () => align(selectedIds, "centre"), {
+            disabled: !some,
+          })}
+          {icon("Align right", AlignEndVertical, () => align(selectedIds, "right"), {
+            disabled: !some,
+          })}
+          {icon("Align top", AlignStartHorizontal, () => align(selectedIds, "top"), {
+            disabled: !some,
+          })}
+          {icon("Align middles", AlignCenterHorizontal, () => align(selectedIds, "middle"), {
+            disabled: !some,
+          })}
+          {icon("Align bottom", AlignEndHorizontal, () => align(selectedIds, "bottom"), {
+            disabled: !some,
+          })}
+          {icon(
+            "Even horizontal gaps",
+            AlignHorizontalSpaceAround,
+            () => spread(selectedIds, "horizontal"),
+            { disabled: !spreadable },
+          )}
+          {icon(
+            "Even vertical gaps",
+            AlignVerticalSpaceAround,
+            () => spread(selectedIds, "vertical"),
+            { disabled: !spreadable },
+          )}
 
-      <Sep />
+          <Sep />
 
-      {icon("Bring to front (])", BringToFront, () => restackObjects(selectedIds, "front"), {
-        disabled: !some,
-      })}
-      {icon("Send to back ([)", SendToBack, () => restackObjects(selectedIds, "back"), {
-        disabled: !some,
-      })}
-      {icon("Group (Ctrl+G)", Group, () => group(selectedIds), { disabled: !many })}
-      {icon("Ungroup (Ctrl+Shift+G)", Ungroup, () => ungroup(selectedIds), {
-        disabled: !anyGrouped,
-      })}
-      {icon(
-        anyLocked ? "Unlock" : "Lock",
-        anyLocked ? Unlock : Lock,
-        () => setMeta(selectedIds, { locked: !anyLocked }),
-        { disabled: !some, pressed: anyLocked },
-      )}
-      {icon(
-        anyHidden ? "Show" : "Hide",
-        anyHidden ? EyeOff : Eye,
-        () => setMeta(selectedIds, { hidden: !anyHidden }),
-        { disabled: !some, pressed: anyHidden },
-      )}
-      {icon("Delete (Del)", Trash2, () => removeObjects(selectedIds), {
-        disabled: !some,
-        danger: true,
-      })}
+          {icon("Bring to front (])", BringToFront, () => restackObjects(selectedIds, "front"), {
+            disabled: !some,
+          })}
+          {icon("Send to back ([)", SendToBack, () => restackObjects(selectedIds, "back"), {
+            disabled: !some,
+          })}
+          {icon("Group (Ctrl+G)", Group, () => group(selectedIds), { disabled: !many })}
+          {icon("Ungroup (Ctrl+Shift+G)", Ungroup, () => ungroup(selectedIds), {
+            disabled: !anyGrouped,
+          })}
+          {icon(
+            anyLocked ? "Unlock" : "Lock",
+            anyLocked ? Unlock : Lock,
+            () => setMeta(selectedIds, { locked: !anyLocked }),
+            { disabled: !some, pressed: anyLocked },
+          )}
+          {icon(
+            anyHidden ? "Show" : "Hide",
+            anyHidden ? EyeOff : Eye,
+            () => setMeta(selectedIds, { hidden: !anyHidden }),
+            { disabled: !some, pressed: anyHidden },
+          )}
+          {icon("Delete (Del)", Trash2, () => removeObjects(selectedIds), {
+            disabled: !some,
+            danger: true,
+          })}
 
-      <Sep />
+          <Sep />
 
-      {/* --- the view --------------------------------------------------- */}
-      {icon(
-        `${standards.showGrid ? "Hide" : "Show"} the ${standards.gridSize}px grid`,
-        Grid3x3,
-        () => setStandards({ showGrid: !standards.showGrid }),
-        { pressed: standards.showGrid },
-      )}
-      {icon(
-        `Snap to the ${standards.gridSize}px grid`,
-        Magnet,
-        () => setStandards({ snap: !standards.snap }),
-        { pressed: standards.snap },
-      )}
-      {icon(
-        "Snap to other objects, and show the guide",
-        AlignCenterVertical,
-        () => setStandards({ smartGuides: !standards.smartGuides }),
-        { pressed: standards.smartGuides },
-      )}
-      {icon("Rulers", Ruler, () => setStandards({ showRulers: !standards.showRulers }), {
-        pressed: standards.showRulers,
-      })}
+          {/* --- the view --------------------------------------------------- */}
+          {icon(
+            `${standards.showGrid ? "Hide" : "Show"} the ${standards.gridSize}px grid`,
+            Grid3x3,
+            () => setStandards({ showGrid: !standards.showGrid }),
+            { pressed: standards.showGrid },
+          )}
+          {icon(
+            `Snap to the ${standards.gridSize}px grid`,
+            Magnet,
+            () => setStandards({ snap: !standards.snap }),
+            { pressed: standards.snap },
+          )}
+          {icon(
+            "Snap to other objects, and show the guide",
+            AlignCenterVertical,
+            () => setStandards({ smartGuides: !standards.smartGuides }),
+            { pressed: standards.smartGuides },
+          )}
+          {icon("Rulers", Ruler, () => setStandards({ showRulers: !standards.showRulers }), {
+            pressed: standards.showRulers,
+          })}
 
-      <Sep />
+          <Sep />
 
-      {icon("Zoom out", Minus, () => onZoomStep(-1))}
-      <span className="w-11 shrink-0 text-center text-xs tabular-nums text-text-secondary">
-        {zoom}%
-      </span>
-      {icon("Zoom in", Plus, () => onZoomStep(1))}
-      <Button variant="ghost" size="sm" onClick={onFit} title="Fit the screen to the pane">
-        Fit
-      </Button>
-      {icon("Actual size", Maximize2, () => onZoom(100))}
+          {icon("Zoom out", Minus, () => onZoomStep(-1))}
+          <span className="w-11 shrink-0 text-center text-xs tabular-nums text-text-secondary">
+            {zoom}%
+          </span>
+          {icon("Zoom in", Plus, () => onZoomStep(1))}
+          <Button variant="ghost" size="sm" onClick={onFit} title="Fit the screen to the pane">
+            Fit
+          </Button>
+          {icon("Actual size", Maximize2, () => onZoom(100))}
+        </div>
 
-      <div className="ml-auto flex shrink-0 items-center gap-2 pl-2">
+        {edge.start && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-surface-panel to-transparent"
+          />
+        )}
+        {edge.end && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-surface-panel to-transparent"
+          />
+        )}
+      </div>
+
+      {/* Pinned: outside the scroll, so it is in the same place at any width. */}
+      <div className="flex shrink-0 items-center gap-2 border-l border-line-subtle px-2">
         {some && (
           <Badge tone="brand">
             {selectedIds.length === 1

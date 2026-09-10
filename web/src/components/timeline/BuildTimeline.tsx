@@ -85,7 +85,11 @@ export function BuildTimeline() {
       </div>
 
       <div className="flex min-h-0 flex-1">
-        <ol className="flex min-w-0 flex-1 gap-2 overflow-x-auto p-3">
+        {/* Wraps rather than scrolls. Eight steps at min-w-36 need 1232px and
+            the strip gets about 1048px on a 1440px laptop, so the old
+            overflow-x-auto hid "Build export files" entirely - a progress
+            display that reads "0 of 8" while showing seven. */}
+        <ol className="grid min-w-0 flex-1 grid-cols-4 content-start gap-2 overflow-y-auto p-3">
           {PIPELINE_STEPS.map((step, i) => {
             const state = steps[step] ?? "pending";
             const count = produced[step]?.length ?? 0;
@@ -102,17 +106,29 @@ export function BuildTimeline() {
                       : undefined
                   }
                   className={cn(
-                    "focus-ring flex min-w-36 flex-col items-start gap-1.5 rounded-md p-2 text-left transition",
+                    // The four-column grid on the <ol> sizes these, which is
+                    // why there is no width here: a flex row wrapping on an
+                    // arbitrary calc() width put six on the first line and two
+                    // on the second, and grid tracks subtract the gaps for you.
+                    "focus-ring flex w-full min-w-0 flex-col items-start gap-1 rounded-md p-2 text-left transition",
                     clickable
                       ? "cursor-pointer hover:bg-surface-hover"
                       : "cursor-default",
                   )}
                 >
-                  <StepMark state={state} index={i} />
-                  <span className="text-xs font-medium">{STEP_LABELS[step]}</span>
+                  {/* The mark beside the label rather than above it. Stacked,
+                      a card was 85px and two rows did not fit the dock's 156px
+                      of strip - which is what made wrapping hide step 8 down
+                      instead of across. Inline, a card is around 58px. */}
+                  <span className="flex w-full items-center gap-1.5">
+                    <StepMark state={state} index={i} />
+                    <span className="min-w-0 flex-1 text-xs font-medium leading-tight">
+                      {STEP_LABELS[step]}
+                    </span>
+                  </span>
                   <span
                     className={cn(
-                      "text-[11px]",
+                      "w-full pl-[1.875rem] text-[11px] leading-tight",
                       state === "done" ? "text-brand-400" : "text-text-muted",
                     )}
                   >

@@ -20,9 +20,33 @@ import { ScreenRenderer } from "@/components/canvas/ScreenRenderer";
 import { Badge, Button, Input, Tabs, cn, type TabItem } from "@/components/ui";
 import { CATEGORIES, TEMPLATES, type Template } from "./templates";
 
+/**
+ * A preview part's id, fixed by where it sits rather than drawn at random.
+ *
+ * The parts come out of lib/ote/parts.ts, which stamps every one with
+ * crypto.randomUUID() - correct for a part being placed on a real screen, and
+ * wrong for a preview. This page renders on the server and again on the client,
+ * ScreenRenderer writes UniqueId into data-object-id, and the two passes drew
+ * different ids, so React reported a hydration mismatch it could not patch up
+ * and the dev overlay sat on "1 Issue" on every visit.
+ *
+ * Kept in the uuid shape the schema asks for, and seeded with the template's
+ * own index so ids stay unique across the whole grid of cards, not just within
+ * one of them.
+ */
+function previewId(templateIndex: number, partIndex: number): string {
+  const tail =
+    templateIndex.toString(16).padStart(6, "0") +
+    partIndex.toString(16).padStart(6, "0");
+  return `00000000-0000-4000-8000-${tail}`;
+}
+
 /** Wraps a template's parts in a throwaway screen, purely to preview them. */
 function previewScreen(template: Template): Screen {
-  const parts = template.build({ left: 8, top: 8 }, 1);
+  const t = TEMPLATES.indexOf(template);
+  const parts = template
+    .build({ left: 8, top: 8 }, 1)
+    .map((part, i) => ({ ...part, UniqueId: previewId(t, i) }));
   return {
     Type: "Screen",
     UniqueId: "00000000-0000-4000-8000-000000000000",

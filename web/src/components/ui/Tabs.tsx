@@ -26,6 +26,12 @@ export interface TabsProps<T extends string> {
   onChange: (id: T) => void;
   /** `line` underlines the active tab; `pill` fills it. */
   variant?: "line" | "pill";
+  /**
+   * `sm` for a rail too narrow for the full-size row. The inspector needs it:
+   * Properties, Layers, Library and Tags want 353px and the pane gives 271,
+   * which clipped the Tags tab off its right edge entirely.
+   */
+  size?: "sm" | "md";
   className?: string;
   "aria-label"?: string;
 }
@@ -35,6 +41,7 @@ export function Tabs<T extends string>({
   value,
   onChange,
   variant = "line",
+  size = "md",
   className,
   "aria-label": ariaLabel,
 }: TabsProps<T>) {
@@ -42,7 +49,13 @@ export function Tabs<T extends string>({
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className={cn("flex items-stretch gap-1", className)}
+      // Scrolls rather than clips, so a long label or a fifth tab degrades
+      // into something reachable instead of something invisible.
+      className={cn(
+        "flex min-w-0 items-stretch overflow-x-auto",
+        size === "sm" ? "gap-0.5" : "gap-1",
+        className,
+      )}
     >
       {items.map((item) => {
         const active = item.id === value;
@@ -55,17 +68,20 @@ export function Tabs<T extends string>({
             disabled={item.disabled}
             onClick={() => onChange(item.id)}
             className={cn(
-              "focus-ring inline-flex items-center gap-1.5 whitespace-nowrap text-sm transition",
+              "focus-ring inline-flex shrink-0 items-center whitespace-nowrap transition",
+              size === "sm" ? "gap-1 text-xs" : "gap-1.5 text-sm",
               "disabled:pointer-events-none disabled:opacity-40",
               variant === "line"
                 ? cn(
-                    "border-b-2 px-3 py-2",
+                    "border-b-2 py-2",
+                    size === "sm" ? "px-1.5" : "px-3",
                     active
                       ? "border-brand-400 font-medium text-brand-400"
                       : "border-transparent text-text-muted hover:text-text-secondary",
                   )
                 : cn(
-                    "rounded-md px-3 py-1.5",
+                    "rounded-md py-1.5",
+                    size === "sm" ? "px-2" : "px-3",
                     active
                       ? "bg-surface-active font-medium text-text-primary"
                       : "text-text-muted hover:bg-surface-hover hover:text-text-secondary",

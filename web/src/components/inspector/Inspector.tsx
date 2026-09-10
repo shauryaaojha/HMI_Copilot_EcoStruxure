@@ -115,7 +115,7 @@ export function Inspector() {
   return (
     <aside className="flex h-full w-full flex-col overflow-hidden">
       <div className="flex h-12 shrink-0 items-end border-b border-line-subtle px-2">
-        <Tabs items={tabs} value={tab} onChange={setTab} aria-label="Inspector" />
+        <Tabs items={tabs} value={tab} onChange={setTab} size="sm" aria-label="Inspector" />
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">

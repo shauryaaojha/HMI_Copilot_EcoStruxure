@@ -284,7 +284,9 @@ export function WorkspaceShell({
               <Panel
                 id="inspector"
                 panelRef={inspectorRef}
-                defaultSize="21%"
+                // 23% rather than 21%: its four tabs want 289px once the counts
+                // are real - Layers (80), Tags (1248) - and 21% gave them 271.
+                defaultSize="23%"
                 minSize="16rem"
                 maxSize="32%"
                 collapsible

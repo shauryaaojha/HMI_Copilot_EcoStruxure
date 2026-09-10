@@ -100,10 +100,17 @@ export function ChatPanel() {
   // question about objects, not about screens.
   const hasContent = screens.some((s) => s.Children[0].Children.length > 0);
 
-  /** Follow the tail, but release the moment the engineer scrolls up. */
+  /**
+   * Follow the tail, but release the moment the engineer scrolls up.
+   *
+   * Not before there is a tail to follow. With no messages this pane holds the
+   * opening explanation, the openers and the checklist, and scrolling that to
+   * its bottom on mount cut the first line off - the project opened mid-sentence
+   * at "is right. Every turn edits the project you can see".
+   */
   useEffect(() => {
     const el = thread.current;
-    if (!el || !pinned.current) return;
+    if (!el || !pinned.current || chat.length === 0) return;
     el.scrollTop = el.scrollHeight;
   }, [chat, working]);
 
