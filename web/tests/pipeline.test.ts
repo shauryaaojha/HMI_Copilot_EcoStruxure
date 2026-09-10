@@ -10,6 +10,7 @@
 import { describe, expect, it } from "vitest";
 import { runPipeline } from "@/lib/ai/pipeline";
 import { inferEquipment, proposeAlarms } from "@/lib/ai/infer";
+import { activeProvider, hasApiKey } from "@/lib/ai/plan";
 import { DEMO_VARIABLES } from "@/lib/ote/demo-project";
 import { PIPELINE_STEPS, type GenerationEvent } from "@/types/events";
 
@@ -71,10 +72,17 @@ describe("the pipeline, with no API key", () => {
     expect(events.at(-1)?.type).toBe("done");
   });
 
-  it("says plainly that the model was not involved", async () => {
+  it("says plainly that no model was involved", async () => {
     const { of } = await collect("Two pump station");
-    const said = of("log").some((l) => /No ANTHROPIC_API_KEY/.test(l.message));
+    const said = of("log").some((l) => /No model key set/.test(l.message));
     expect(said).toBe(true);
+  });
+
+  it("never claims a provider read the request when none did", async () => {
+    const { of } = await collect("Two pump station");
+    for (const line of of("log")) {
+      expect(line.message).not.toMatch(/(Gemini|Claude) read the request/);
+    }
   });
 
   it("emits only objects the packager can emit", async () => {
@@ -117,5 +125,48 @@ describe("the pipeline, with no API key", () => {
     const { of } = await collect("Anything", []);
     expect(of("error")).toHaveLength(1);
     expect(of("error")[0].message).toMatch(/tag export/i);
+  });
+});
+
+describe("provider selection", () => {
+  const KEYS = ["GEMINI_API_KEY", "ANTHROPIC_API_KEY"] as const;
+
+  function withKeys(set: Partial<Record<(typeof KEYS)[number], string>>, run: () => void) {
+    const saved = Object.fromEntries(KEYS.map((k) => [k, process.env[k]]));
+    for (const key of KEYS) delete process.env[key];
+    Object.assign(process.env, set);
+    try {
+      run();
+    } finally {
+      for (const key of KEYS) delete process.env[key];
+      for (const [key, value] of Object.entries(saved)) {
+        if (value !== undefined) process.env[key] = value;
+      }
+    }
+  }
+
+  it("prefers Gemini, because that is the configured free tier", () => {
+    withKeys({ GEMINI_API_KEY: "x", ANTHROPIC_API_KEY: "y" }, () => {
+      expect(activeProvider()).toBe("gemini");
+    });
+  });
+
+  it("uses Claude when only that key is set", () => {
+    withKeys({ ANTHROPIC_API_KEY: "y" }, () => {
+      expect(activeProvider()).toBe("claude");
+    });
+  });
+
+  it("reports no provider when neither key is set", () => {
+    withKeys({}, () => {
+      expect(activeProvider()).toBeNull();
+      expect(hasApiKey()).toBe(false);
+    });
+  });
+
+  it("treats a blank key as unset", () => {
+    withKeys({ GEMINI_API_KEY: "   " }, () => {
+      expect(activeProvider()).toBeNull();
+    });
   });
 });

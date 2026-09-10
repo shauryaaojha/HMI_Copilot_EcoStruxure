@@ -16,7 +16,7 @@ is worth stage time.
 cd web
 npm install
 npm run dev          # leave it running
-npm test             # 148 pass with the server up — the demo path is one of them
+npm test             # 172 pass with the server up — the demo path is one of them
 ```
 
 `tests/demo-path.test.ts` is the rehearsal. It checks every beat below: the
@@ -34,8 +34,27 @@ Then, in the browser:
 1. Open `http://localhost:3000` and leave it on the landing page.
 2. Open a second tab on `/project/demo` so the workspace is already warm.
 3. Decide dark or light and set it once. Do not toggle mid-demo except at beat 7.
+4. **Run one generation and throw it away.** Measured on this machine against a
+   production build:
+
+   | | first event | complete |
+   |---|---|---|
+   | cold | 352 ms | **29 s** |
+   | warm | 32 ms | **~10 s** |
+
+   The stream itself starts immediately either way, so the timeline is never
+   dead air — but the objects do not land until the model answers, and the first
+   call of a session takes three times as long as the rest. Spend that thirty
+   seconds before anyone is watching.
 
 **On the presenting machine, do this the night before, not in the room.**
+
+### If the model is slow or unreachable
+
+Nothing breaks. Equipment inference is a parse of the tag names and runs
+offline, so the screen still builds; the timeline says `No model key set` or
+names the failure, and never implies a model was involved when it was not. The
+ten seconds are the only thing you lose.
 
 ---
 
