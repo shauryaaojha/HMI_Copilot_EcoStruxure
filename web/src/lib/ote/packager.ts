@@ -174,6 +174,33 @@ function assertEntriesPresent(
   }
 }
 
+export interface Panel {
+  model: string;
+  width: number;
+  height: number;
+}
+
+/** The panel a skeleton is actually for, read out of its Target.dat. */
+export function readPanel(target: unknown): Panel | null {
+  const info = (target as { TargetInfo?: Record<string, unknown> })?.TargetInfo;
+  const raw = String(info?.Resolution ?? "");
+  const match = raw.match(/(\d+)\s*x\s*(\d+)/i);
+  if (!match) return null;
+  return {
+    model: String(info?.RuntimeModel ?? "unknown"),
+    width: Number(match[1]),
+    height: Number(match[2]),
+  };
+}
+
+/** Reads the panel from a skeleton without packaging anything. */
+export async function panelOf(skeleton?: Skeleton): Promise<Panel | null> {
+  const base = skeleton ?? (await loadSkeleton());
+  const entry = base.entries.get("Target.dat");
+  if (!entry) return null;
+  return readPanel(JSON.parse(Buffer.from(entry).toString("utf8")));
+}
+
 export async function packageProject(
   input: PackageInput,
   skeleton?: Skeleton,
@@ -241,24 +268,15 @@ export async function packageProject(
   if (!entries.has(CONTENTS_HIERARCHY)) entries.set(CONTENTS_HIERARCHY, empty);
 
   // --- target panel -------------------------------------------------------
-  // The panel comes from the skeleton's Target.dat, not from us: RuntimeModel
-  // and Resolution have to agree, and inventing a model string would produce a
-  // project the product cannot map to real hardware. So rather than silently
-  // ignoring input.target, check it against the file and refuse a mismatch -
-  // a project whose declared panel differs from its actual one is worse than
-  // an error here.
-  const targetEntry = entries.get("Target.dat");
-  if (!targetEntry) throw new Error("skeleton has no Target.dat");
-  const target = JSON.parse(Buffer.from(targetEntry).toString("utf8"));
-  const actual = String(target?.TargetInfo?.Resolution ?? "").replace(/\s/g, "");
-  const declared = `${input.target.width}x${input.target.height}`;
-  if (actual && actual !== declared) {
-    throw new Error(
-      `project declares a ${declared} panel but the skeleton's Target.dat is ` +
-        `${actual} (${target?.TargetInfo?.RuntimeModel}). Re-extract the skeleton ` +
-        "from a template for the panel you want, or declare that resolution.",
-    );
-  }
+  // Target.dat is the authority, not input.target: RuntimeModel and Resolution
+  // have to agree with each other, and inventing a model string would produce a
+  // project the product cannot map to real hardware.
+  //
+  // A disagreement is reported by validateProject and surfaced on the export
+  // response, not thrown here. Layout comes from the ViewBox, so a wrong label
+  // does not corrupt the file - and failing an export over metadata would take
+  // the demo down for a caption.
+  if (!entries.has("Target.dat")) throw new Error("skeleton has no Target.dat");
 
   // --- project identity ---------------------------------------------------
   const projectEntry = entries.get("Project.dat");

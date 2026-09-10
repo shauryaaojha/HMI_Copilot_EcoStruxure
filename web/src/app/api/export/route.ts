@@ -8,7 +8,7 @@
  * Phase 7 of docs/BUILD_PLAN.md - the moment the whole pitch rests on.
  */
 
-import { packageProject, type PackageInput } from "@/lib/ote/packager";
+import { packageProject, panelOf, type PackageInput } from "@/lib/ote/packager";
 
 export const runtime = "nodejs";
 
@@ -32,13 +32,19 @@ export async function POST(request: Request) {
 
   try {
     const bytes = await packageProject(input);
-    return new Response(bytes as unknown as BodyInit, {
-      headers: {
-        "Content-Type": "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${safeName(input.name)}.eote"`,
-        "Content-Length": String(bytes.length),
-      },
-    });
+
+    // The panel the file is actually for, so the UI can show the truth rather
+    // than a label typed into a component. Target.dat is the authority.
+    const panel = await panelOf();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/octet-stream",
+      "Content-Disposition": `attachment; filename="${safeName(input.name)}.eote"`,
+      "Content-Length": String(bytes.length),
+    };
+    if (panel) {
+      headers["X-OTE-Panel"] = `${panel.model} ${panel.width}x${panel.height}`;
+    }
+    return new Response(bytes as unknown as BodyInit, { headers });
   } catch (error) {
     const message = error instanceof Error ? error.message : "export failed";
     // A missing skeleton is a setup problem, not a bad request.

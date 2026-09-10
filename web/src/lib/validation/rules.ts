@@ -41,7 +41,17 @@ const ACCEPTS: Partial<Record<Part["Type"], Variable["DataType"][]>> = {
 
 const isNumeric = (t: Variable["DataType"]) => t !== "BOOL" && t !== "STRING";
 
-export function validateProject(project: PackageInput): Finding[] {
+export interface ActualPanel {
+  model: string;
+  width: number;
+  height: number;
+}
+
+export function validateProject(
+  project: PackageInput,
+  /** The panel Target.dat declares, when the caller knows it. */
+  actualPanel?: ActualPanel | null,
+): Finding[] {
   const findings: Finding[] = [];
   const parts = project.screens.flatMap((s) => s.Children[0].Children);
   const byName = new Map(project.variables.map((v) => [v.Name, v]));
@@ -217,6 +227,28 @@ export function validateProject(project: PackageInput): Finding[] {
   }
 
   // --- standards conformance ----------------------------------------------
+  // The declared panel is a label; Target.dat inside the skeleton is the
+  // authority. A caption that disagrees with the file is exactly the kind of
+  // small untruth the "preview cannot lie" claim cannot afford, so it is
+  // reported here rather than failing the export.
+  if (actualPanel) {
+    if (
+      actualPanel.width !== project.target.width ||
+      actualPanel.height !== project.target.height ||
+      (actualPanel.model && actualPanel.model !== project.target.model)
+    ) {
+      findings.push({
+        severity: "warning",
+        rule: "standards",
+        message:
+          `Project is labelled ${project.target.model} ` +
+          `${project.target.width}x${project.target.height}, but the file targets ` +
+          `${actualPanel.model} ${actualPanel.width}x${actualPanel.height}`,
+        suggestion: `Show ${actualPanel.model} ${actualPanel.width}x${actualPanel.height}`,
+      });
+    }
+  }
+
   for (const screen of project.screens) {
     const view = screen.Children[0];
     if (view.Width > project.target.width || view.Height > project.target.height) {
