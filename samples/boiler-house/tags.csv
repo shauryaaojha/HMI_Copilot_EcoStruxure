@@ -1,0 +1,94 @@
+Name,DataType,Comment,Address
+BLR_101_RUN,Bool,Boiler 1 firing,%MX500.0
+BLR_101_FLT,Bool,Boiler 1 fault,%MX500.1
+BLR_101_AVAIL,Bool,Boiler 1 available,%MX500.2
+BLR_101_LOCKOUT,Bool,Boiler 1 burner lockout,%MX500.3
+BLR_101_FLAME,Bool,Boiler 1 flame proven,%MX500.4
+BLR_101_HRS,Real,Boiler 1 run hours,%MD4010
+BLR_101_MOD,Real,Boiler 1 burner modulation percent,%MD4012
+PT_101_PV,Real,Boiler 1 steam pressure bar,%MD4014
+PT_101_HI,Bool,Boiler 1 steam pressure high,%MX501.0
+PT_101_HH,Bool,Boiler 1 steam pressure high high,%MX501.1
+PT_101_LO,Bool,Boiler 1 steam pressure low,%MX501.2
+TT_101_PV,Real,Boiler 1 flue gas temperature degC,%MD4022
+TT_101_HI,Bool,Boiler 1 flue gas temperature high,%MX501.4
+LT_101_PV,Real,Boiler 1 drum level percent,%MD4026
+LT_101_HI,Bool,Boiler 1 drum level high,%MX501.6
+LT_101_LO,Bool,Boiler 1 drum level low,%MX501.7
+LT_101_LL,Bool,Boiler 1 drum level low low,%MX502.0
+FT_101_PV,Real,Boiler 1 steam flow kg/h,%MD4034
+FAN_101_RUN,Bool,Boiler 1 combustion air fan running,%MX502.2
+FAN_101_FLT,Bool,Boiler 1 combustion air fan fault,%MX502.3
+FAN_101_AVAIL,Bool,Boiler 1 combustion air fan available,%MX502.4
+FAN_101_START,Bool,Boiler 1 combustion air fan start command,%MX502.5
+FAN_101_STOP,Bool,Boiler 1 combustion air fan stop command,%MX502.6
+FAN_101_HRS,Real,Boiler 1 combustion air fan run hours,%MD4046
+FAN_101_SPD,Real,Boiler 1 combustion air fan speed feedback percent,%MD4048
+FAN_101_SPD_SP,Real,Boiler 1 combustion air fan speed setpoint percent,%MD4050
+FAN_101_AMPS,Real,Boiler 1 combustion air fan motor current A,%MD4052
+BLR_102_RUN,Bool,Boiler 2 firing,%MX503.3
+BLR_102_FLT,Bool,Boiler 2 fault,%MX503.4
+BLR_102_AVAIL,Bool,Boiler 2 available,%MX503.5
+BLR_102_LOCKOUT,Bool,Boiler 2 burner lockout,%MX503.6
+BLR_102_FLAME,Bool,Boiler 2 flame proven,%MX503.7
+BLR_102_HRS,Real,Boiler 2 run hours,%MD4064
+BLR_102_MOD,Real,Boiler 2 burner modulation percent,%MD4066
+PT_102_PV,Real,Boiler 2 steam pressure bar,%MD4068
+PT_102_HI,Bool,Boiler 2 steam pressure high,%MX504.3
+PT_102_HH,Bool,Boiler 2 steam pressure high high,%MX504.4
+PT_102_LO,Bool,Boiler 2 steam pressure low,%MX504.5
+TT_102_PV,Real,Boiler 2 flue gas temperature degC,%MD4076
+TT_102_HI,Bool,Boiler 2 flue gas temperature high,%MX504.7
+LT_102_PV,Real,Boiler 2 drum level percent,%MD4080
+LT_102_HI,Bool,Boiler 2 drum level high,%MX505.1
+LT_102_LO,Bool,Boiler 2 drum level low,%MX505.2
+LT_102_LL,Bool,Boiler 2 drum level low low,%MX505.3
+FT_102_PV,Real,Boiler 2 steam flow kg/h,%MD4088
+FAN_102_RUN,Bool,Boiler 2 combustion air fan running,%MX505.5
+FAN_102_FLT,Bool,Boiler 2 combustion air fan fault,%MX505.6
+FAN_102_AVAIL,Bool,Boiler 2 combustion air fan available,%MX505.7
+FAN_102_START,Bool,Boiler 2 combustion air fan start command,%MX506.0
+FAN_102_STOP,Bool,Boiler 2 combustion air fan stop command,%MX506.1
+FAN_102_HRS,Real,Boiler 2 combustion air fan run hours,%MD4100
+FAN_102_SPD,Real,Boiler 2 combustion air fan speed feedback percent,%MD4102
+FAN_102_SPD_SP,Real,Boiler 2 combustion air fan speed setpoint percent,%MD4104
+FAN_102_AMPS,Real,Boiler 2 combustion air fan motor current A,%MD4106
+PMP_201_RUN,Bool,Feedwater pump 1 running,%MX506.6
+PMP_201_FLT,Bool,Feedwater pump 1 fault,%MX506.7
+PMP_201_AVAIL,Bool,Feedwater pump 1 available,%MX507.0
+PMP_201_START,Bool,Feedwater pump 1 start command,%MX507.1
+PMP_201_STOP,Bool,Feedwater pump 1 stop command,%MX507.2
+PMP_201_HRS,Real,Feedwater pump 1 run hours,%MD4118
+PMP_201_SPD,Real,Feedwater pump 1 speed feedback percent,%MD4120
+PMP_201_SPD_SP,Real,Feedwater pump 1 speed setpoint percent,%MD4122
+PMP_201_AMPS,Real,Feedwater pump 1 motor current A,%MD4124
+PMP_202_RUN,Bool,Feedwater pump 2 running,%MX507.7
+PMP_202_FLT,Bool,Feedwater pump 2 fault,%MX508.0
+PMP_202_AVAIL,Bool,Feedwater pump 2 available,%MX508.1
+PMP_202_START,Bool,Feedwater pump 2 start command,%MX508.2
+PMP_202_STOP,Bool,Feedwater pump 2 stop command,%MX508.3
+PMP_202_HRS,Real,Feedwater pump 2 run hours,%MD4136
+PMP_202_SPD,Real,Feedwater pump 2 speed feedback percent,%MD4138
+PMP_202_SPD_SP,Real,Feedwater pump 2 speed setpoint percent,%MD4140
+PMP_202_AMPS,Real,Feedwater pump 2 motor current A,%MD4142
+PT_201_PV,Real,Feedwater header pressure bar,%MD4144
+PT_201_LO,Bool,Feedwater header pressure low,%MX509.1
+TT_201_PV,Real,Feedwater temperature degC,%MD4148
+TNK_201_LEVEL,Real,Deaerator level percent,%MD4150
+TNK_201_VOL,Real,Deaerator volume m3,%MD4152
+LT_201_PV,Real,Deaerator level percent,%MD4154
+LT_201_HI,Bool,Deaerator level high,%MX509.6
+LT_201_LO,Bool,Deaerator level low,%MX509.7
+VLV_301_OPEN,Bool,Fuel gas valve open feedback,%MX510.0
+VLV_301_CLOSED,Bool,Fuel gas valve closed feedback,%MX510.1
+VLV_301_CMD,Bool,Fuel gas valve open command,%MX510.2
+VLV_301_FLT,Bool,Fuel gas valve fault,%MX510.3
+VLV_302_OPEN,Bool,Fuel oil valve open feedback,%MX510.4
+VLV_302_CLOSED,Bool,Fuel oil valve closed feedback,%MX510.5
+VLV_302_CMD,Bool,Fuel oil valve open command,%MX510.6
+VLV_302_FLT,Bool,Fuel oil valve fault,%MX510.7
+PT_301_PV,Real,Fuel gas pressure bar,%MD4176
+PT_301_LO,Bool,Fuel gas pressure low,%MX511.1
+HOUSE_MODE,Int,Boiler house mode 0 off 1 lead 2 lag,%MW2090
+HOUSE_LEAD,Int,Lead boiler number,%MW2091
+STEAM HEADER PRESSURE,Real,Header pressure bar,%MD4184

@@ -1,0 +1,149 @@
+Name,DataType,Comment,Address
+FAN_101_RUN,Bool,AHU 1 supply fan running,%MX500.0
+FAN_101_FLT,Bool,AHU 1 supply fan fault,%MX500.1
+FAN_101_AVAIL,Bool,AHU 1 supply fan available,%MX500.2
+FAN_101_START,Bool,AHU 1 supply fan start command,%MX500.3
+FAN_101_STOP,Bool,AHU 1 supply fan stop command,%MX500.4
+FAN_101_HRS,Real,AHU 1 supply fan run hours,%MD4010
+FAN_101_SPD,Real,AHU 1 supply fan speed feedback percent,%MD4012
+FAN_101_SPD_SP,Real,AHU 1 supply fan speed setpoint percent,%MD4014
+FAN_101_AMPS,Real,AHU 1 supply fan motor current A,%MD4016
+FAN_111_RUN,Bool,AHU 1 return fan running,%MX501.1
+FAN_111_FLT,Bool,AHU 1 return fan fault,%MX501.2
+FAN_111_AVAIL,Bool,AHU 1 return fan available,%MX501.3
+FAN_111_START,Bool,AHU 1 return fan start command,%MX501.4
+FAN_111_STOP,Bool,AHU 1 return fan stop command,%MX501.5
+FAN_111_HRS,Real,AHU 1 return fan run hours,%MD4028
+FAN_111_SPD,Real,AHU 1 return fan speed feedback percent,%MD4030
+FAN_111_SPD_SP,Real,AHU 1 return fan speed setpoint percent,%MD4032
+FAN_111_AMPS,Real,AHU 1 return fan motor current A,%MD4034
+TT_101_PV,Real,AHU 1 supply air temperature degC,%MD4036
+TT_101_HI,Bool,AHU 1 supply air temperature high,%MX502.3
+TT_101_LO,Bool,AHU 1 supply air temperature low,%MX502.4
+TT_111_PV,Real,AHU 1 return air temperature degC,%MD4042
+PT_101_PV,Real,AHU 1 filter differential pressure Pa,%MD4044
+PT_101_HI,Bool,AHU 1 filter differential pressure high,%MX502.7
+VLV_101_PV,Real,AHU 1 cooling coil valve position percent,%MD4048
+VLV_101_SP,Real,AHU 1 cooling coil valve position setpoint percent,%MD4050
+VLV_101_FLT,Bool,AHU 1 cooling coil valve fault,%MX503.2
+VLV_111_PV,Real,AHU 1 heating coil valve position percent,%MD4054
+VLV_111_SP,Real,AHU 1 heating coil valve position setpoint percent,%MD4056
+VLV_111_FLT,Bool,AHU 1 heating coil valve fault,%MX503.5
+AHU_101_DAMPER_PV,Real,AHU 1 fresh air damper percent,%MD4060
+AHU_101_DAMPER_SP,Real,AHU 1 fresh air damper setpoint percent,%MD4062
+AHU_101_OCC,Bool,AHU 1 occupied,%MX504.0
+FAN_102_RUN,Bool,AHU 2 supply fan running,%MX504.1
+FAN_102_FLT,Bool,AHU 2 supply fan fault,%MX504.2
+FAN_102_AVAIL,Bool,AHU 2 supply fan available,%MX504.3
+FAN_102_START,Bool,AHU 2 supply fan start command,%MX504.4
+FAN_102_STOP,Bool,AHU 2 supply fan stop command,%MX504.5
+FAN_102_HRS,Real,AHU 2 supply fan run hours,%MD4076
+FAN_102_SPD,Real,AHU 2 supply fan speed feedback percent,%MD4078
+FAN_102_SPD_SP,Real,AHU 2 supply fan speed setpoint percent,%MD4080
+FAN_102_AMPS,Real,AHU 2 supply fan motor current A,%MD4082
+FAN_112_RUN,Bool,AHU 2 return fan running,%MX505.2
+FAN_112_FLT,Bool,AHU 2 return fan fault,%MX505.3
+FAN_112_AVAIL,Bool,AHU 2 return fan available,%MX505.4
+FAN_112_START,Bool,AHU 2 return fan start command,%MX505.5
+FAN_112_STOP,Bool,AHU 2 return fan stop command,%MX505.6
+FAN_112_HRS,Real,AHU 2 return fan run hours,%MD4094
+FAN_112_SPD,Real,AHU 2 return fan speed feedback percent,%MD4096
+FAN_112_SPD_SP,Real,AHU 2 return fan speed setpoint percent,%MD4098
+FAN_112_AMPS,Real,AHU 2 return fan motor current A,%MD4100
+TT_102_PV,Real,AHU 2 supply air temperature degC,%MD4102
+TT_102_HI,Bool,AHU 2 supply air temperature high,%MX506.4
+TT_102_LO,Bool,AHU 2 supply air temperature low,%MX506.5
+TT_112_PV,Real,AHU 2 return air temperature degC,%MD4108
+PT_102_PV,Real,AHU 2 filter differential pressure Pa,%MD4110
+PT_102_HI,Bool,AHU 2 filter differential pressure high,%MX507.0
+VLV_102_PV,Real,AHU 2 cooling coil valve position percent,%MD4114
+VLV_102_SP,Real,AHU 2 cooling coil valve position setpoint percent,%MD4116
+VLV_102_FLT,Bool,AHU 2 cooling coil valve fault,%MX507.3
+VLV_112_PV,Real,AHU 2 heating coil valve position percent,%MD4120
+VLV_112_SP,Real,AHU 2 heating coil valve position setpoint percent,%MD4122
+VLV_112_FLT,Bool,AHU 2 heating coil valve fault,%MX507.6
+AHU_102_DAMPER_PV,Real,AHU 2 fresh air damper percent,%MD4126
+AHU_102_DAMPER_SP,Real,AHU 2 fresh air damper setpoint percent,%MD4128
+AHU_102_OCC,Bool,AHU 2 occupied,%MX508.1
+FAN_103_RUN,Bool,AHU 3 supply fan running,%MX508.2
+FAN_103_FLT,Bool,AHU 3 supply fan fault,%MX508.3
+FAN_103_AVAIL,Bool,AHU 3 supply fan available,%MX508.4
+FAN_103_START,Bool,AHU 3 supply fan start command,%MX508.5
+FAN_103_STOP,Bool,AHU 3 supply fan stop command,%MX508.6
+FAN_103_HRS,Real,AHU 3 supply fan run hours,%MD4142
+FAN_103_SPD,Real,AHU 3 supply fan speed feedback percent,%MD4144
+FAN_103_SPD_SP,Real,AHU 3 supply fan speed setpoint percent,%MD4146
+FAN_103_AMPS,Real,AHU 3 supply fan motor current A,%MD4148
+FAN_113_RUN,Bool,AHU 3 return fan running,%MX509.3
+FAN_113_FLT,Bool,AHU 3 return fan fault,%MX509.4
+FAN_113_AVAIL,Bool,AHU 3 return fan available,%MX509.5
+FAN_113_START,Bool,AHU 3 return fan start command,%MX509.6
+FAN_113_STOP,Bool,AHU 3 return fan stop command,%MX509.7
+FAN_113_HRS,Real,AHU 3 return fan run hours,%MD4160
+FAN_113_SPD,Real,AHU 3 return fan speed feedback percent,%MD4162
+FAN_113_SPD_SP,Real,AHU 3 return fan speed setpoint percent,%MD4164
+FAN_113_AMPS,Real,AHU 3 return fan motor current A,%MD4166
+TT_103_PV,Real,AHU 3 supply air temperature degC,%MD4168
+TT_103_HI,Bool,AHU 3 supply air temperature high,%MX510.5
+TT_103_LO,Bool,AHU 3 supply air temperature low,%MX510.6
+TT_113_PV,Real,AHU 3 return air temperature degC,%MD4174
+PT_103_PV,Real,AHU 3 filter differential pressure Pa,%MD4176
+PT_103_HI,Bool,AHU 3 filter differential pressure high,%MX511.1
+VLV_103_PV,Real,AHU 3 cooling coil valve position percent,%MD4180
+VLV_103_SP,Real,AHU 3 cooling coil valve position setpoint percent,%MD4182
+VLV_103_FLT,Bool,AHU 3 cooling coil valve fault,%MX511.4
+VLV_113_PV,Real,AHU 3 heating coil valve position percent,%MD4186
+VLV_113_SP,Real,AHU 3 heating coil valve position setpoint percent,%MD4188
+VLV_113_FLT,Bool,AHU 3 heating coil valve fault,%MX511.7
+AHU_103_DAMPER_PV,Real,AHU 3 fresh air damper percent,%MD4192
+AHU_103_DAMPER_SP,Real,AHU 3 fresh air damper setpoint percent,%MD4194
+AHU_103_OCC,Bool,AHU 3 occupied,%MX512.2
+CMP_201_RUN,Bool,Chiller 1 running,%MX512.3
+CMP_201_FLT,Bool,Chiller 1 fault,%MX512.4
+CMP_201_AVAIL,Bool,Chiller 1 available,%MX512.5
+CMP_201_START,Bool,Chiller 1 start command,%MX512.6
+CMP_201_STOP,Bool,Chiller 1 stop command,%MX512.7
+CMP_201_HRS,Real,Chiller 1 run hours,%MD4208
+CMP_201_SPD,Real,Chiller 1 speed feedback percent,%MD4210
+CMP_201_SPD_SP,Real,Chiller 1 speed setpoint percent,%MD4212
+CMP_201_AMPS,Real,Chiller 1 motor current A,%MD4214
+TT_201_PV,Real,Chiller 1 chilled water flow temperature degC,%MD4216
+PT_201_PV,Real,Chiller 1 head pressure bar,%MD4218
+PT_201_HI,Bool,Chiller 1 head pressure high,%MX513.6
+CMP_202_RUN,Bool,Chiller 2 running,%MX513.7
+CMP_202_FLT,Bool,Chiller 2 fault,%MX514.0
+CMP_202_AVAIL,Bool,Chiller 2 available,%MX514.1
+CMP_202_START,Bool,Chiller 2 start command,%MX514.2
+CMP_202_STOP,Bool,Chiller 2 stop command,%MX514.3
+CMP_202_HRS,Real,Chiller 2 run hours,%MD4232
+CMP_202_SPD,Real,Chiller 2 speed feedback percent,%MD4234
+CMP_202_SPD_SP,Real,Chiller 2 speed setpoint percent,%MD4236
+CMP_202_AMPS,Real,Chiller 2 motor current A,%MD4238
+TT_202_PV,Real,Chiller 2 chilled water flow temperature degC,%MD4240
+PT_202_PV,Real,Chiller 2 head pressure bar,%MD4242
+PT_202_HI,Bool,Chiller 2 head pressure high,%MX515.2
+PMP_301_RUN,Bool,Chilled water pump 1 running,%MX515.3
+PMP_301_FLT,Bool,Chilled water pump 1 fault,%MX515.4
+PMP_301_AVAIL,Bool,Chilled water pump 1 available,%MX515.5
+PMP_301_START,Bool,Chilled water pump 1 start command,%MX515.6
+PMP_301_STOP,Bool,Chilled water pump 1 stop command,%MX515.7
+PMP_301_HRS,Real,Chilled water pump 1 run hours,%MD4256
+PMP_301_SPD,Real,Chilled water pump 1 speed feedback percent,%MD4258
+PMP_301_SPD_SP,Real,Chilled water pump 1 speed setpoint percent,%MD4260
+PMP_301_AMPS,Real,Chilled water pump 1 motor current A,%MD4262
+PMP_302_RUN,Bool,Chilled water pump 2 running,%MX516.4
+PMP_302_FLT,Bool,Chilled water pump 2 fault,%MX516.5
+PMP_302_AVAIL,Bool,Chilled water pump 2 available,%MX516.6
+PMP_302_START,Bool,Chilled water pump 2 start command,%MX516.7
+PMP_302_STOP,Bool,Chilled water pump 2 stop command,%MX517.0
+PMP_302_HRS,Real,Chilled water pump 2 run hours,%MD4274
+PMP_302_SPD,Real,Chilled water pump 2 speed feedback percent,%MD4276
+PMP_302_SPD_SP,Real,Chilled water pump 2 speed setpoint percent,%MD4278
+PMP_302_AMPS,Real,Chilled water pump 2 motor current A,%MD4280
+FT_301_PV,Real,Chilled water flow LPM,%MD4282
+PT_301_PV,Real,Chilled water differential pressure bar,%MD4284
+PT_301_LO,Bool,Chilled water differential pressure low,%MX517.7
+BLDG_OCCUPIED,Bool,Building occupied,%MX518.0
+BLDG_MODE,Int,Building mode 0 off 1 occupied 2 setback,%MW2145
+BLDG-OUTSIDE-TEMP,Real,Outside air temperature degC,%MD4292
+BLDG_ALARM_COUNT,Int,Active alarm count,%MW2147

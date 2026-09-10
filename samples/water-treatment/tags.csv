@@ -1,0 +1,175 @@
+Name,DataType,Comment,Address
+PMP_101_RUN,Bool,Intake pump 1 running,%MX500.0
+PMP_101_FLT,Bool,Intake pump 1 fault,%MX500.1
+PMP_101_AVAIL,Bool,Intake pump 1 available,%MX500.2
+PMP_101_START,Bool,Intake pump 1 start command,%MX500.3
+PMP_101_STOP,Bool,Intake pump 1 stop command,%MX500.4
+PMP_101_HRS,Real,Intake pump 1 run hours,%MD4010
+PMP_101_SPD,Real,Intake pump 1 speed feedback percent,%MD4012
+PMP_101_SPD_SP,Real,Intake pump 1 speed setpoint percent,%MD4014
+PMP_101_AMPS,Real,Intake pump 1 motor current A,%MD4016
+PMP_102_RUN,Bool,Intake pump 2 running,%MX501.1
+PMP_102_FLT,Bool,Intake pump 2 fault,%MX501.2
+PMP_102_AVAIL,Bool,Intake pump 2 available,%MX501.3
+PMP_102_START,Bool,Intake pump 2 start command,%MX501.4
+PMP_102_STOP,Bool,Intake pump 2 stop command,%MX501.5
+PMP_102_HRS,Real,Intake pump 2 run hours,%MD4028
+PMP_102_SPD,Real,Intake pump 2 speed feedback percent,%MD4030
+PMP_102_SPD_SP,Real,Intake pump 2 speed setpoint percent,%MD4032
+PMP_102_AMPS,Real,Intake pump 2 motor current A,%MD4034
+PMP_103_RUN,Bool,Intake pump 3 running,%MX502.2
+PMP_103_FLT,Bool,Intake pump 3 fault,%MX502.3
+PMP_103_AVAIL,Bool,Intake pump 3 available,%MX502.4
+PMP_103_START,Bool,Intake pump 3 start command,%MX502.5
+PMP_103_STOP,Bool,Intake pump 3 stop command,%MX502.6
+PMP_103_HRS,Real,Intake pump 3 run hours,%MD4046
+PMP_103_SPD,Real,Intake pump 3 speed feedback percent,%MD4048
+PMP_103_SPD_SP,Real,Intake pump 3 speed setpoint percent,%MD4050
+PMP_103_AMPS,Real,Intake pump 3 motor current A,%MD4052
+FT_101_PV,Real,Raw water intake flow LPM,%MD4054
+FT_101_LO,Bool,Raw water intake flow low,%MX503.4
+PT_101_PV,Real,Intake header pressure bar,%MD4058
+TNK_101_LEVEL,Real,Wet well level percent,%MD4060
+TNK_101_VOL,Real,Wet well volume m3,%MD4062
+LT_101_PV,Real,Wet well level percent,%MD4064
+LT_101_HI,Bool,Wet well level high,%MX504.1
+LT_101_HH,Bool,Wet well level high high,%MX504.2
+LT_101_LO,Bool,Wet well level low,%MX504.3
+FIL_201_RUN,Bool,Filter 1 running,%MX504.4
+FIL_201_FLT,Bool,Filter 1 fault,%MX504.5
+FIL_201_AVAIL,Bool,Filter 1 available,%MX504.6
+FIL_201_START,Bool,Filter 1 start command,%MX504.7
+FIL_201_STOP,Bool,Filter 1 stop command,%MX505.0
+FIL_201_HRS,Real,Filter 1 run hours,%MD4082
+PT_201_PV,Real,Filter 1 differential pressure bar,%MD4084
+PT_201_HI,Bool,Filter 1 differential pressure high,%MX505.3
+FT_201_PV,Real,Filter 1 outlet flow LPM,%MD4088
+VLV_201_OPEN,Bool,Filter 1 inlet valve open feedback,%MX505.5
+VLV_201_CLOSED,Bool,Filter 1 inlet valve closed feedback,%MX505.6
+VLV_201_CMD,Bool,Filter 1 inlet valve open command,%MX505.7
+VLV_201_FLT,Bool,Filter 1 inlet valve fault,%MX506.0
+FIL_201_BW_ACTIVE,Bool,Filter 1 backwash in progress,%MX506.1
+FIL_202_RUN,Bool,Filter 2 running,%MX506.2
+FIL_202_FLT,Bool,Filter 2 fault,%MX506.3
+FIL_202_AVAIL,Bool,Filter 2 available,%MX506.4
+FIL_202_START,Bool,Filter 2 start command,%MX506.5
+FIL_202_STOP,Bool,Filter 2 stop command,%MX506.6
+FIL_202_HRS,Real,Filter 2 run hours,%MD4110
+PT_202_PV,Real,Filter 2 differential pressure bar,%MD4112
+PT_202_HI,Bool,Filter 2 differential pressure high,%MX507.1
+FT_202_PV,Real,Filter 2 outlet flow LPM,%MD4116
+VLV_202_OPEN,Bool,Filter 2 inlet valve open feedback,%MX507.3
+VLV_202_CLOSED,Bool,Filter 2 inlet valve closed feedback,%MX507.4
+VLV_202_CMD,Bool,Filter 2 inlet valve open command,%MX507.5
+VLV_202_FLT,Bool,Filter 2 inlet valve fault,%MX507.6
+FIL_202_BW_ACTIVE,Bool,Filter 2 backwash in progress,%MX507.7
+FIL_203_RUN,Bool,Filter 3 running,%MX508.0
+FIL_203_FLT,Bool,Filter 3 fault,%MX508.1
+FIL_203_AVAIL,Bool,Filter 3 available,%MX508.2
+FIL_203_START,Bool,Filter 3 start command,%MX508.3
+FIL_203_STOP,Bool,Filter 3 stop command,%MX508.4
+FIL_203_HRS,Real,Filter 3 run hours,%MD4138
+PT_203_PV,Real,Filter 3 differential pressure bar,%MD4140
+PT_203_HI,Bool,Filter 3 differential pressure high,%MX508.7
+FT_203_PV,Real,Filter 3 outlet flow LPM,%MD4144
+VLV_203_OPEN,Bool,Filter 3 inlet valve open feedback,%MX509.1
+VLV_203_CLOSED,Bool,Filter 3 inlet valve closed feedback,%MX509.2
+VLV_203_CMD,Bool,Filter 3 inlet valve open command,%MX509.3
+VLV_203_FLT,Bool,Filter 3 inlet valve fault,%MX509.4
+FIL_203_BW_ACTIVE,Bool,Filter 3 backwash in progress,%MX509.5
+FIL_204_RUN,Bool,Filter 4 running,%MX509.6
+FIL_204_FLT,Bool,Filter 4 fault,%MX509.7
+FIL_204_AVAIL,Bool,Filter 4 available,%MX510.0
+FIL_204_START,Bool,Filter 4 start command,%MX510.1
+FIL_204_STOP,Bool,Filter 4 stop command,%MX510.2
+FIL_204_HRS,Real,Filter 4 run hours,%MD4166
+PT_204_PV,Real,Filter 4 differential pressure bar,%MD4168
+PT_204_HI,Bool,Filter 4 differential pressure high,%MX510.5
+FT_204_PV,Real,Filter 4 outlet flow LPM,%MD4172
+VLV_204_OPEN,Bool,Filter 4 inlet valve open feedback,%MX510.7
+VLV_204_CLOSED,Bool,Filter 4 inlet valve closed feedback,%MX511.0
+VLV_204_CMD,Bool,Filter 4 inlet valve open command,%MX511.1
+VLV_204_FLT,Bool,Filter 4 inlet valve fault,%MX511.2
+FIL_204_BW_ACTIVE,Bool,Filter 4 backwash in progress,%MX511.3
+PMP_301_RUN,Bool,Backwash pump 1 running,%MX511.4
+PMP_301_FLT,Bool,Backwash pump 1 fault,%MX511.5
+PMP_301_AVAIL,Bool,Backwash pump 1 available,%MX511.6
+PMP_301_START,Bool,Backwash pump 1 start command,%MX511.7
+PMP_301_STOP,Bool,Backwash pump 1 stop command,%MX512.0
+PMP_301_HRS,Real,Backwash pump 1 run hours,%MD4194
+PMP_302_RUN,Bool,Backwash pump 2 running,%MX512.2
+PMP_302_FLT,Bool,Backwash pump 2 fault,%MX512.3
+PMP_302_AVAIL,Bool,Backwash pump 2 available,%MX512.4
+PMP_302_START,Bool,Backwash pump 2 start command,%MX512.5
+PMP_302_STOP,Bool,Backwash pump 2 stop command,%MX512.6
+PMP_302_HRS,Real,Backwash pump 2 run hours,%MD4206
+FT_301_PV,Real,Backwash header flow LPM,%MD4208
+DOS_401_RUN,Bool,Chlorine dosing pump running,%MX513.1
+DOS_401_FLT,Bool,Chlorine dosing pump fault,%MX513.2
+DOS_401_AVAIL,Bool,Chlorine dosing pump available,%MX513.3
+DOS_401_START,Bool,Chlorine dosing pump start command,%MX513.4
+DOS_401_STOP,Bool,Chlorine dosing pump stop command,%MX513.5
+DOS_401_HRS,Real,Chlorine dosing pump run hours,%MD4220
+DOS_401_SPD,Real,Chlorine dosing pump speed feedback percent,%MD4222
+DOS_401_SPD_SP,Real,Chlorine dosing pump speed setpoint percent,%MD4224
+DOS_401_AMPS,Real,Chlorine dosing pump motor current A,%MD4226
+DOS_402_RUN,Bool,Coagulant dosing pump running,%MX514.2
+DOS_402_FLT,Bool,Coagulant dosing pump fault,%MX514.3
+DOS_402_AVAIL,Bool,Coagulant dosing pump available,%MX514.4
+DOS_402_START,Bool,Coagulant dosing pump start command,%MX514.5
+DOS_402_STOP,Bool,Coagulant dosing pump stop command,%MX514.6
+DOS_402_HRS,Real,Coagulant dosing pump run hours,%MD4238
+DOS_402_SPD,Real,Coagulant dosing pump speed feedback percent,%MD4240
+DOS_402_SPD_SP,Real,Coagulant dosing pump speed setpoint percent,%MD4242
+DOS_402_AMPS,Real,Coagulant dosing pump motor current A,%MD4244
+AT_401_PV,Real,Final water chlorine analysis mg/l,%MD4246
+AT_401_HI,Bool,Final water chlorine analysis high,%MX515.4
+AT_401_LO,Bool,Final water chlorine analysis low,%MX515.5
+AT_402_PV,Real,Final water analysis pH,%MD4252
+AT_402_HI,Bool,Final water analysis high,%MX515.7
+AT_402_LO,Bool,Final water analysis low,%MX516.0
+TT_401_PV,Real,Final water temperature degC,%MD4258
+TNK_401_LEVEL,Real,Chlorine day tank level percent,%MD4260
+TNK_401_VOL,Real,Chlorine day tank volume m3,%MD4262
+LT_401_PV,Real,Chlorine day tank level percent,%MD4264
+LT_401_LO,Bool,Chlorine day tank level low,%MX516.5
+LT_401_LL,Bool,Chlorine day tank level low low,%MX516.6
+TNK_402_LEVEL,Real,Coagulant day tank level percent,%MD4270
+TNK_402_VOL,Real,Coagulant day tank volume m3,%MD4272
+LT_402_PV,Real,Coagulant day tank level percent,%MD4274
+LT_402_LO,Bool,Coagulant day tank level low,%MX517.2
+LT_402_LL,Bool,Coagulant day tank level low low,%MX517.3
+PMP_501_RUN,Bool,Distribution pump 1 running,%MX517.4
+PMP_501_FLT,Bool,Distribution pump 1 fault,%MX517.5
+PMP_501_AVAIL,Bool,Distribution pump 1 available,%MX517.6
+PMP_501_START,Bool,Distribution pump 1 start command,%MX517.7
+PMP_501_STOP,Bool,Distribution pump 1 stop command,%MX518.0
+PMP_501_HRS,Real,Distribution pump 1 run hours,%MD4290
+PMP_501_SPD,Real,Distribution pump 1 speed feedback percent,%MD4292
+PMP_501_SPD_SP,Real,Distribution pump 1 speed setpoint percent,%MD4294
+PMP_501_AMPS,Real,Distribution pump 1 motor current A,%MD4296
+PMP_502_RUN,Bool,Distribution pump 2 running,%MX518.5
+PMP_502_FLT,Bool,Distribution pump 2 fault,%MX518.6
+PMP_502_AVAIL,Bool,Distribution pump 2 available,%MX518.7
+PMP_502_START,Bool,Distribution pump 2 start command,%MX519.0
+PMP_502_STOP,Bool,Distribution pump 2 stop command,%MX519.1
+PMP_502_HRS,Real,Distribution pump 2 run hours,%MD4308
+PMP_502_SPD,Real,Distribution pump 2 speed feedback percent,%MD4310
+PMP_502_SPD_SP,Real,Distribution pump 2 speed setpoint percent,%MD4312
+PMP_502_AMPS,Real,Distribution pump 2 motor current A,%MD4314
+TNK_501_LEVEL,Real,Clear well level percent,%MD4316
+TNK_501_VOL,Real,Clear well volume m3,%MD4318
+LT_501_PV,Real,Clear well level percent,%MD4320
+LT_501_HI,Bool,Clear well level high,%MX520.1
+LT_501_LO,Bool,Clear well level low,%MX520.2
+PT_501_PV,Real,Distribution header pressure bar,%MD4326
+PT_501_HI,Bool,Distribution header pressure high,%MX520.4
+PT_501_LO,Bool,Distribution header pressure low,%MX520.5
+FT_501_PV,Real,Distribution flow LPM,%MD4332
+PLANT_RUNNING,Bool,Plant in auto,%MX520.7
+PLANT_ESTOP,Bool,Emergency stop healthy,%MX521.0
+PLANT_MODE,Int,Plant mode 0 manual 1 auto 2 backwash,%MW2169
+PLANT_ALARM_COUNT,Int,Active alarm count,%MW2170
+PMP 601 RUN,Bool,Spare pump running,%MX521.3
+VLV-601-OPEN,Bool,Spare valve open,%MX521.4
+1ST_STAGE_FLOW,Real,First stage flow LPM,%MD4346

@@ -1,0 +1,125 @@
+Name,DataType,Comment,Address
+CNV_101_RUN,Bool,Infeed conveyor running,%MX500.0
+CNV_101_FLT,Bool,Infeed conveyor fault,%MX500.1
+CNV_101_AVAIL,Bool,Infeed conveyor available,%MX500.2
+CNV_101_START,Bool,Infeed conveyor start command,%MX500.3
+CNV_101_STOP,Bool,Infeed conveyor stop command,%MX500.4
+CNV_101_HRS,Real,Infeed conveyor run hours,%MD4010
+CNV_101_SPD,Real,Infeed conveyor speed feedback percent,%MD4012
+CNV_101_SPD_SP,Real,Infeed conveyor speed setpoint percent,%MD4014
+CNV_101_AMPS,Real,Infeed conveyor motor current A,%MD4016
+CNV_101_JAM,Bool,Infeed conveyor jam detected,%MX501.1
+CNV_102_RUN,Bool,Filler conveyor running,%MX501.2
+CNV_102_FLT,Bool,Filler conveyor fault,%MX501.3
+CNV_102_AVAIL,Bool,Filler conveyor available,%MX501.4
+CNV_102_START,Bool,Filler conveyor start command,%MX501.5
+CNV_102_STOP,Bool,Filler conveyor stop command,%MX501.6
+CNV_102_HRS,Real,Filler conveyor run hours,%MD4030
+CNV_102_SPD,Real,Filler conveyor speed feedback percent,%MD4032
+CNV_102_SPD_SP,Real,Filler conveyor speed setpoint percent,%MD4034
+CNV_102_AMPS,Real,Filler conveyor motor current A,%MD4036
+CNV_102_JAM,Bool,Filler conveyor jam detected,%MX502.3
+CNV_103_RUN,Bool,Capper conveyor running,%MX502.4
+CNV_103_FLT,Bool,Capper conveyor fault,%MX502.5
+CNV_103_AVAIL,Bool,Capper conveyor available,%MX502.6
+CNV_103_START,Bool,Capper conveyor start command,%MX502.7
+CNV_103_STOP,Bool,Capper conveyor stop command,%MX503.0
+CNV_103_HRS,Real,Capper conveyor run hours,%MD4050
+CNV_103_SPD,Real,Capper conveyor speed feedback percent,%MD4052
+CNV_103_SPD_SP,Real,Capper conveyor speed setpoint percent,%MD4054
+CNV_103_AMPS,Real,Capper conveyor motor current A,%MD4056
+CNV_103_JAM,Bool,Capper conveyor jam detected,%MX503.5
+CNV_104_RUN,Bool,Labeller conveyor running,%MX503.6
+CNV_104_FLT,Bool,Labeller conveyor fault,%MX503.7
+CNV_104_AVAIL,Bool,Labeller conveyor available,%MX504.0
+CNV_104_START,Bool,Labeller conveyor start command,%MX504.1
+CNV_104_STOP,Bool,Labeller conveyor stop command,%MX504.2
+CNV_104_HRS,Real,Labeller conveyor run hours,%MD4070
+CNV_104_SPD,Real,Labeller conveyor speed feedback percent,%MD4072
+CNV_104_SPD_SP,Real,Labeller conveyor speed setpoint percent,%MD4074
+CNV_104_AMPS,Real,Labeller conveyor motor current A,%MD4076
+CNV_104_JAM,Bool,Labeller conveyor jam detected,%MX504.7
+CNV_105_RUN,Bool,Outfeed conveyor running,%MX505.0
+CNV_105_FLT,Bool,Outfeed conveyor fault,%MX505.1
+CNV_105_AVAIL,Bool,Outfeed conveyor available,%MX505.2
+CNV_105_START,Bool,Outfeed conveyor start command,%MX505.3
+CNV_105_STOP,Bool,Outfeed conveyor stop command,%MX505.4
+CNV_105_HRS,Real,Outfeed conveyor run hours,%MD4090
+CNV_105_SPD,Real,Outfeed conveyor speed feedback percent,%MD4092
+CNV_105_SPD_SP,Real,Outfeed conveyor speed setpoint percent,%MD4094
+CNV_105_AMPS,Real,Outfeed conveyor motor current A,%MD4096
+CNV_105_JAM,Bool,Outfeed conveyor jam detected,%MX506.1
+MTR_201_RUN,Bool,Filler running,%MX506.2
+MTR_201_FLT,Bool,Filler fault,%MX506.3
+MTR_201_AVAIL,Bool,Filler available,%MX506.4
+MTR_201_START,Bool,Filler start command,%MX506.5
+MTR_201_STOP,Bool,Filler stop command,%MX506.6
+MTR_201_HRS,Real,Filler run hours,%MD4110
+MTR_201_SPD,Real,Filler speed feedback percent,%MD4112
+MTR_201_SPD_SP,Real,Filler speed setpoint percent,%MD4114
+MTR_201_AMPS,Real,Filler motor current A,%MD4116
+MTR_201_COUNT,Dint,Filler unit count,%MD4118
+MTR_201_REJECT,Dint,Filler reject count,%MD4120
+MTR_201_READY,Bool,Filler ready,%MX507.5
+MTR_202_RUN,Bool,Capper running,%MX507.6
+MTR_202_FLT,Bool,Capper fault,%MX507.7
+MTR_202_AVAIL,Bool,Capper available,%MX508.0
+MTR_202_START,Bool,Capper start command,%MX508.1
+MTR_202_STOP,Bool,Capper stop command,%MX508.2
+MTR_202_HRS,Real,Capper run hours,%MD4134
+MTR_202_SPD,Real,Capper speed feedback percent,%MD4136
+MTR_202_SPD_SP,Real,Capper speed setpoint percent,%MD4138
+MTR_202_AMPS,Real,Capper motor current A,%MD4140
+MTR_202_COUNT,Dint,Capper unit count,%MD4142
+MTR_202_REJECT,Dint,Capper reject count,%MD4144
+MTR_202_READY,Bool,Capper ready,%MX509.1
+MTR_203_RUN,Bool,Labeller running,%MX509.2
+MTR_203_FLT,Bool,Labeller fault,%MX509.3
+MTR_203_AVAIL,Bool,Labeller available,%MX509.4
+MTR_203_START,Bool,Labeller start command,%MX509.5
+MTR_203_STOP,Bool,Labeller stop command,%MX509.6
+MTR_203_HRS,Real,Labeller run hours,%MD4158
+MTR_203_SPD,Real,Labeller speed feedback percent,%MD4160
+MTR_203_SPD_SP,Real,Labeller speed setpoint percent,%MD4162
+MTR_203_AMPS,Real,Labeller motor current A,%MD4164
+MTR_203_COUNT,Dint,Labeller unit count,%MD4166
+MTR_203_REJECT,Dint,Labeller reject count,%MD4168
+MTR_203_READY,Bool,Labeller ready,%MX510.5
+FT_201_PV,Real,Product fill flow LPM,%MD4172
+FT_201_LO,Bool,Product fill flow low,%MX510.7
+PT_201_PV,Real,Product supply pressure bar,%MD4176
+PT_201_LO,Bool,Product supply pressure low,%MX511.1
+TT_201_PV,Real,Product temperature degC,%MD4180
+TNK_201_LEVEL,Real,Product buffer tank level percent,%MD4182
+TNK_201_VOL,Real,Product buffer tank volume m3,%MD4184
+LT_201_PV,Real,Product buffer tank level percent,%MD4186
+LT_201_HI,Bool,Product buffer tank level high,%MX511.6
+LT_201_LO,Bool,Product buffer tank level low,%MX511.7
+VLV_301_OPEN,Bool,Product supply valve open feedback,%MX512.0
+VLV_301_CLOSED,Bool,Product supply valve closed feedback,%MX512.1
+VLV_301_CMD,Bool,Product supply valve open command,%MX512.2
+VLV_301_FLT,Bool,Product supply valve fault,%MX512.3
+VLV_302_OPEN,Bool,CIP supply valve open feedback,%MX512.4
+VLV_302_CLOSED,Bool,CIP supply valve closed feedback,%MX512.5
+VLV_302_CMD,Bool,CIP supply valve open command,%MX512.6
+VLV_302_FLT,Bool,CIP supply valve fault,%MX512.7
+PMP_401_RUN,Bool,Vacuum pump running,%MX513.0
+PMP_401_FLT,Bool,Vacuum pump fault,%MX513.1
+PMP_401_AVAIL,Bool,Vacuum pump available,%MX513.2
+PMP_401_START,Bool,Vacuum pump start command,%MX513.3
+PMP_401_STOP,Bool,Vacuum pump stop command,%MX513.4
+PMP_401_HRS,Real,Vacuum pump run hours,%MD4218
+PMP_402_RUN,Bool,CIP pump running,%MX513.6
+PMP_402_FLT,Bool,CIP pump fault,%MX513.7
+PMP_402_AVAIL,Bool,CIP pump available,%MX514.0
+PMP_402_START,Bool,CIP pump start command,%MX514.1
+PMP_402_STOP,Bool,CIP pump stop command,%MX514.2
+PMP_402_HRS,Real,CIP pump run hours,%MD4230
+LINE_RUNNING,Bool,Line running,%MX514.4
+LINE_ESTOP,Bool,Emergency stop healthy,%MX514.5
+LINE_MODE,Int,Line mode 0 stop 1 run 2 CIP,%MW2118
+LINE_RATE,Real,Line rate units per minute,%MD4238
+LINE_OEE,Real,Overall equipment effectiveness percent,%MD4240
+BATCH_ID,String,Current batch identifier,%MD4242
+MTR-501-RUN,Bool,Palletiser running,%MX515.2
+2ND_SHIFT_COUNT,Dint,Second shift unit count,%MD4246

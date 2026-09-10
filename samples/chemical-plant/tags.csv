@@ -1,0 +1,719 @@
+Name,DataType,Comment,Address
+TNK_1001_LEVEL,Real,Raw material tank 1 level percent,%MD4000
+TNK_1001_VOL,Real,Raw material tank 1 volume m3,%MD4002
+LT_1001_PV,Real,Raw material tank 1 level percent,%MD4004
+LT_1001_HI,Bool,Raw material tank 1 level high,%MX500.3
+LT_1001_HH,Bool,Raw material tank 1 level high high,%MX500.4
+LT_1001_LO,Bool,Raw material tank 1 level low,%MX500.5
+LT_1001_LL,Bool,Raw material tank 1 level low low,%MX500.6
+TT_1001_PV,Real,Raw material tank 1 temperature degC,%MD4014
+VLV_1001_OPEN,Bool,Raw material tank 1 outlet valve open feedback,%MX501.0
+VLV_1001_CLOSED,Bool,Raw material tank 1 outlet valve closed feedback,%MX501.1
+VLV_1001_CMD,Bool,Raw material tank 1 outlet valve open command,%MX501.2
+VLV_1001_FLT,Bool,Raw material tank 1 outlet valve fault,%MX501.3
+TNK_1002_LEVEL,Real,Raw material tank 2 level percent,%MD4024
+TNK_1002_VOL,Real,Raw material tank 2 volume m3,%MD4026
+LT_1002_PV,Real,Raw material tank 2 level percent,%MD4028
+LT_1002_HI,Bool,Raw material tank 2 level high,%MX501.7
+LT_1002_HH,Bool,Raw material tank 2 level high high,%MX502.0
+LT_1002_LO,Bool,Raw material tank 2 level low,%MX502.1
+LT_1002_LL,Bool,Raw material tank 2 level low low,%MX502.2
+TT_1002_PV,Real,Raw material tank 2 temperature degC,%MD4038
+VLV_1002_OPEN,Bool,Raw material tank 2 outlet valve open feedback,%MX502.4
+VLV_1002_CLOSED,Bool,Raw material tank 2 outlet valve closed feedback,%MX502.5
+VLV_1002_CMD,Bool,Raw material tank 2 outlet valve open command,%MX502.6
+VLV_1002_FLT,Bool,Raw material tank 2 outlet valve fault,%MX502.7
+TNK_1003_LEVEL,Real,Raw material tank 3 level percent,%MD4048
+TNK_1003_VOL,Real,Raw material tank 3 volume m3,%MD4050
+LT_1003_PV,Real,Raw material tank 3 level percent,%MD4052
+LT_1003_HI,Bool,Raw material tank 3 level high,%MX503.3
+LT_1003_HH,Bool,Raw material tank 3 level high high,%MX503.4
+LT_1003_LO,Bool,Raw material tank 3 level low,%MX503.5
+LT_1003_LL,Bool,Raw material tank 3 level low low,%MX503.6
+TT_1003_PV,Real,Raw material tank 3 temperature degC,%MD4062
+VLV_1003_OPEN,Bool,Raw material tank 3 outlet valve open feedback,%MX504.0
+VLV_1003_CLOSED,Bool,Raw material tank 3 outlet valve closed feedback,%MX504.1
+VLV_1003_CMD,Bool,Raw material tank 3 outlet valve open command,%MX504.2
+VLV_1003_FLT,Bool,Raw material tank 3 outlet valve fault,%MX504.3
+TNK_1004_LEVEL,Real,Raw material tank 4 level percent,%MD4072
+TNK_1004_VOL,Real,Raw material tank 4 volume m3,%MD4074
+LT_1004_PV,Real,Raw material tank 4 level percent,%MD4076
+LT_1004_HI,Bool,Raw material tank 4 level high,%MX504.7
+LT_1004_HH,Bool,Raw material tank 4 level high high,%MX505.0
+LT_1004_LO,Bool,Raw material tank 4 level low,%MX505.1
+LT_1004_LL,Bool,Raw material tank 4 level low low,%MX505.2
+TT_1004_PV,Real,Raw material tank 4 temperature degC,%MD4086
+VLV_1004_OPEN,Bool,Raw material tank 4 outlet valve open feedback,%MX505.4
+VLV_1004_CLOSED,Bool,Raw material tank 4 outlet valve closed feedback,%MX505.5
+VLV_1004_CMD,Bool,Raw material tank 4 outlet valve open command,%MX505.6
+VLV_1004_FLT,Bool,Raw material tank 4 outlet valve fault,%MX505.7
+TNK_1005_LEVEL,Real,Raw material tank 5 level percent,%MD4096
+TNK_1005_VOL,Real,Raw material tank 5 volume m3,%MD4098
+LT_1005_PV,Real,Raw material tank 5 level percent,%MD4100
+LT_1005_HI,Bool,Raw material tank 5 level high,%MX506.3
+LT_1005_HH,Bool,Raw material tank 5 level high high,%MX506.4
+LT_1005_LO,Bool,Raw material tank 5 level low,%MX506.5
+LT_1005_LL,Bool,Raw material tank 5 level low low,%MX506.6
+TT_1005_PV,Real,Raw material tank 5 temperature degC,%MD4110
+VLV_1005_OPEN,Bool,Raw material tank 5 outlet valve open feedback,%MX507.0
+VLV_1005_CLOSED,Bool,Raw material tank 5 outlet valve closed feedback,%MX507.1
+VLV_1005_CMD,Bool,Raw material tank 5 outlet valve open command,%MX507.2
+VLV_1005_FLT,Bool,Raw material tank 5 outlet valve fault,%MX507.3
+TNK_1006_LEVEL,Real,Raw material tank 6 level percent,%MD4120
+TNK_1006_VOL,Real,Raw material tank 6 volume m3,%MD4122
+LT_1006_PV,Real,Raw material tank 6 level percent,%MD4124
+LT_1006_HI,Bool,Raw material tank 6 level high,%MX507.7
+LT_1006_HH,Bool,Raw material tank 6 level high high,%MX508.0
+LT_1006_LO,Bool,Raw material tank 6 level low,%MX508.1
+LT_1006_LL,Bool,Raw material tank 6 level low low,%MX508.2
+TT_1006_PV,Real,Raw material tank 6 temperature degC,%MD4134
+VLV_1006_OPEN,Bool,Raw material tank 6 outlet valve open feedback,%MX508.4
+VLV_1006_CLOSED,Bool,Raw material tank 6 outlet valve closed feedback,%MX508.5
+VLV_1006_CMD,Bool,Raw material tank 6 outlet valve open command,%MX508.6
+VLV_1006_FLT,Bool,Raw material tank 6 outlet valve fault,%MX508.7
+PMP_1101_RUN,Bool,Raw material transfer pump 1 running,%MX509.0
+PMP_1101_FLT,Bool,Raw material transfer pump 1 fault,%MX509.1
+PMP_1101_AVAIL,Bool,Raw material transfer pump 1 available,%MX509.2
+PMP_1101_START,Bool,Raw material transfer pump 1 start command,%MX509.3
+PMP_1101_STOP,Bool,Raw material transfer pump 1 stop command,%MX509.4
+PMP_1101_HRS,Real,Raw material transfer pump 1 run hours,%MD4154
+PMP_1101_SPD,Real,Raw material transfer pump 1 speed feedback percent,%MD4156
+PMP_1101_SPD_SP,Real,Raw material transfer pump 1 speed setpoint percent,%MD4158
+PMP_1101_AMPS,Real,Raw material transfer pump 1 motor current A,%MD4160
+PMP_1102_RUN,Bool,Raw material transfer pump 2 running,%MX510.1
+PMP_1102_FLT,Bool,Raw material transfer pump 2 fault,%MX510.2
+PMP_1102_AVAIL,Bool,Raw material transfer pump 2 available,%MX510.3
+PMP_1102_START,Bool,Raw material transfer pump 2 start command,%MX510.4
+PMP_1102_STOP,Bool,Raw material transfer pump 2 stop command,%MX510.5
+PMP_1102_HRS,Real,Raw material transfer pump 2 run hours,%MD4172
+PMP_1102_SPD,Real,Raw material transfer pump 2 speed feedback percent,%MD4174
+PMP_1102_SPD_SP,Real,Raw material transfer pump 2 speed setpoint percent,%MD4176
+PMP_1102_AMPS,Real,Raw material transfer pump 2 motor current A,%MD4178
+PMP_1103_RUN,Bool,Raw material transfer pump 3 running,%MX511.2
+PMP_1103_FLT,Bool,Raw material transfer pump 3 fault,%MX511.3
+PMP_1103_AVAIL,Bool,Raw material transfer pump 3 available,%MX511.4
+PMP_1103_START,Bool,Raw material transfer pump 3 start command,%MX511.5
+PMP_1103_STOP,Bool,Raw material transfer pump 3 stop command,%MX511.6
+PMP_1103_HRS,Real,Raw material transfer pump 3 run hours,%MD4190
+PMP_1103_SPD,Real,Raw material transfer pump 3 speed feedback percent,%MD4192
+PMP_1103_SPD_SP,Real,Raw material transfer pump 3 speed setpoint percent,%MD4194
+PMP_1103_AMPS,Real,Raw material transfer pump 3 motor current A,%MD4196
+FT_1101_PV,Real,Raw material transfer flow m3/h,%MD4198
+FT_1101_LO,Bool,Raw material transfer flow low,%MX512.4
+PT_1101_PV,Real,Raw material header pressure bar,%MD4202
+PT_1101_HI,Bool,Raw material header pressure high,%MX512.6
+PT_1101_LO,Bool,Raw material header pressure low,%MX512.7
+RCT_2001_RUN,Bool,Reactor 1 batch running,%MX513.0
+RCT_2001_FLT,Bool,Reactor 1 fault,%MX513.1
+RCT_2001_AVAIL,Bool,Reactor 1 available,%MX513.2
+RCT_2001_STEP,Int,Reactor 1 batch step number,%MW2107
+RCT_2001_HRS,Real,Reactor 1 run hours,%MD4216
+TT_2001_PV,Real,Reactor 1 temperature degC,%MD4218
+TT_2001_HI,Bool,Reactor 1 temperature high,%MX513.6
+TT_2001_HH,Bool,Reactor 1 temperature high high,%MX513.7
+PT_2001_PV,Real,Reactor 1 pressure bar,%MD4224
+PT_2001_HI,Bool,Reactor 1 pressure high,%MX514.1
+PT_2001_HH,Bool,Reactor 1 pressure high high,%MX514.2
+LT_2001_PV,Real,Reactor 1 level percent,%MD4230
+LT_2001_HI,Bool,Reactor 1 level high,%MX514.4
+LT_2001_LO,Bool,Reactor 1 level low,%MX514.5
+AT_2001_PV,Real,Reactor 1 analysis pH,%MD4236
+AT_2001_HI,Bool,Reactor 1 analysis high,%MX514.7
+AT_2001_LO,Bool,Reactor 1 analysis low,%MX515.0
+MTR_2001_RUN,Bool,Reactor 1 agitator running,%MX515.1
+MTR_2001_FLT,Bool,Reactor 1 agitator fault,%MX515.2
+MTR_2001_AVAIL,Bool,Reactor 1 agitator available,%MX515.3
+MTR_2001_START,Bool,Reactor 1 agitator start command,%MX515.4
+MTR_2001_STOP,Bool,Reactor 1 agitator stop command,%MX515.5
+MTR_2001_HRS,Real,Reactor 1 agitator run hours,%MD4252
+MTR_2001_SPD,Real,Reactor 1 agitator speed feedback percent,%MD4254
+MTR_2001_SPD_SP,Real,Reactor 1 agitator speed setpoint percent,%MD4256
+MTR_2001_AMPS,Real,Reactor 1 agitator motor current A,%MD4258
+VLV_2001_PV,Real,Reactor 1 jacket steam valve position percent,%MD4260
+VLV_2001_SP,Real,Reactor 1 jacket steam valve position setpoint percent,%MD4262
+VLV_2001_FLT,Bool,Reactor 1 jacket steam valve fault,%MX516.4
+VLV_2051_PV,Real,Reactor 1 jacket cooling valve position percent,%MD4266
+VLV_2051_SP,Real,Reactor 1 jacket cooling valve position setpoint percent,%MD4268
+VLV_2051_FLT,Bool,Reactor 1 jacket cooling valve fault,%MX516.7
+VLV_2101_OPEN,Bool,Reactor 1 discharge valve open feedback,%MX517.0
+VLV_2101_CLOSED,Bool,Reactor 1 discharge valve closed feedback,%MX517.1
+VLV_2101_CMD,Bool,Reactor 1 discharge valve open command,%MX517.2
+VLV_2101_FLT,Bool,Reactor 1 discharge valve fault,%MX517.3
+DOS_20011_RUN,Bool,Reactor 1 doser 1 running,%MX517.4
+DOS_20011_FLT,Bool,Reactor 1 doser 1 fault,%MX517.5
+DOS_20011_AVAIL,Bool,Reactor 1 doser 1 available,%MX517.6
+DOS_20011_START,Bool,Reactor 1 doser 1 start command,%MX517.7
+DOS_20011_STOP,Bool,Reactor 1 doser 1 stop command,%MX518.0
+DOS_20011_HRS,Real,Reactor 1 doser 1 run hours,%MD4290
+DOS_20011_SPD,Real,Reactor 1 doser 1 speed feedback percent,%MD4292
+DOS_20011_SPD_SP,Real,Reactor 1 doser 1 speed setpoint percent,%MD4294
+DOS_20011_AMPS,Real,Reactor 1 doser 1 motor current A,%MD4296
+DOS_20012_RUN,Bool,Reactor 1 doser 2 running,%MX518.5
+DOS_20012_FLT,Bool,Reactor 1 doser 2 fault,%MX518.6
+DOS_20012_AVAIL,Bool,Reactor 1 doser 2 available,%MX518.7
+DOS_20012_START,Bool,Reactor 1 doser 2 start command,%MX519.0
+DOS_20012_STOP,Bool,Reactor 1 doser 2 stop command,%MX519.1
+DOS_20012_HRS,Real,Reactor 1 doser 2 run hours,%MD4308
+DOS_20012_SPD,Real,Reactor 1 doser 2 speed feedback percent,%MD4310
+DOS_20012_SPD_SP,Real,Reactor 1 doser 2 speed setpoint percent,%MD4312
+DOS_20012_AMPS,Real,Reactor 1 doser 2 motor current A,%MD4314
+RCT_2002_RUN,Bool,Reactor 2 batch running,%MX519.6
+RCT_2002_FLT,Bool,Reactor 2 fault,%MX519.7
+RCT_2002_AVAIL,Bool,Reactor 2 available,%MX520.0
+RCT_2002_STEP,Int,Reactor 2 batch step number,%MW2161
+RCT_2002_HRS,Real,Reactor 2 run hours,%MD4324
+TT_2002_PV,Real,Reactor 2 temperature degC,%MD4326
+TT_2002_HI,Bool,Reactor 2 temperature high,%MX520.4
+TT_2002_HH,Bool,Reactor 2 temperature high high,%MX520.5
+PT_2002_PV,Real,Reactor 2 pressure bar,%MD4332
+PT_2002_HI,Bool,Reactor 2 pressure high,%MX520.7
+PT_2002_HH,Bool,Reactor 2 pressure high high,%MX521.0
+LT_2002_PV,Real,Reactor 2 level percent,%MD4338
+LT_2002_HI,Bool,Reactor 2 level high,%MX521.2
+LT_2002_LO,Bool,Reactor 2 level low,%MX521.3
+AT_2002_PV,Real,Reactor 2 analysis pH,%MD4344
+AT_2002_HI,Bool,Reactor 2 analysis high,%MX521.5
+AT_2002_LO,Bool,Reactor 2 analysis low,%MX521.6
+MTR_2002_RUN,Bool,Reactor 2 agitator running,%MX521.7
+MTR_2002_FLT,Bool,Reactor 2 agitator fault,%MX522.0
+MTR_2002_AVAIL,Bool,Reactor 2 agitator available,%MX522.1
+MTR_2002_START,Bool,Reactor 2 agitator start command,%MX522.2
+MTR_2002_STOP,Bool,Reactor 2 agitator stop command,%MX522.3
+MTR_2002_HRS,Real,Reactor 2 agitator run hours,%MD4360
+MTR_2002_SPD,Real,Reactor 2 agitator speed feedback percent,%MD4362
+MTR_2002_SPD_SP,Real,Reactor 2 agitator speed setpoint percent,%MD4364
+MTR_2002_AMPS,Real,Reactor 2 agitator motor current A,%MD4366
+VLV_2002_PV,Real,Reactor 2 jacket steam valve position percent,%MD4368
+VLV_2002_SP,Real,Reactor 2 jacket steam valve position setpoint percent,%MD4370
+VLV_2002_FLT,Bool,Reactor 2 jacket steam valve fault,%MX523.2
+VLV_2052_PV,Real,Reactor 2 jacket cooling valve position percent,%MD4374
+VLV_2052_SP,Real,Reactor 2 jacket cooling valve position setpoint percent,%MD4376
+VLV_2052_FLT,Bool,Reactor 2 jacket cooling valve fault,%MX523.5
+VLV_2102_OPEN,Bool,Reactor 2 discharge valve open feedback,%MX523.6
+VLV_2102_CLOSED,Bool,Reactor 2 discharge valve closed feedback,%MX523.7
+VLV_2102_CMD,Bool,Reactor 2 discharge valve open command,%MX524.0
+VLV_2102_FLT,Bool,Reactor 2 discharge valve fault,%MX524.1
+DOS_20021_RUN,Bool,Reactor 2 doser 1 running,%MX524.2
+DOS_20021_FLT,Bool,Reactor 2 doser 1 fault,%MX524.3
+DOS_20021_AVAIL,Bool,Reactor 2 doser 1 available,%MX524.4
+DOS_20021_START,Bool,Reactor 2 doser 1 start command,%MX524.5
+DOS_20021_STOP,Bool,Reactor 2 doser 1 stop command,%MX524.6
+DOS_20021_HRS,Real,Reactor 2 doser 1 run hours,%MD4398
+DOS_20021_SPD,Real,Reactor 2 doser 1 speed feedback percent,%MD4400
+DOS_20021_SPD_SP,Real,Reactor 2 doser 1 speed setpoint percent,%MD4402
+DOS_20021_AMPS,Real,Reactor 2 doser 1 motor current A,%MD4404
+DOS_20022_RUN,Bool,Reactor 2 doser 2 running,%MX525.3
+DOS_20022_FLT,Bool,Reactor 2 doser 2 fault,%MX525.4
+DOS_20022_AVAIL,Bool,Reactor 2 doser 2 available,%MX525.5
+DOS_20022_START,Bool,Reactor 2 doser 2 start command,%MX525.6
+DOS_20022_STOP,Bool,Reactor 2 doser 2 stop command,%MX525.7
+DOS_20022_HRS,Real,Reactor 2 doser 2 run hours,%MD4416
+DOS_20022_SPD,Real,Reactor 2 doser 2 speed feedback percent,%MD4418
+DOS_20022_SPD_SP,Real,Reactor 2 doser 2 speed setpoint percent,%MD4420
+DOS_20022_AMPS,Real,Reactor 2 doser 2 motor current A,%MD4422
+RCT_2003_RUN,Bool,Reactor 3 batch running,%MX526.4
+RCT_2003_FLT,Bool,Reactor 3 fault,%MX526.5
+RCT_2003_AVAIL,Bool,Reactor 3 available,%MX526.6
+RCT_2003_STEP,Int,Reactor 3 batch step number,%MW2215
+RCT_2003_HRS,Real,Reactor 3 run hours,%MD4432
+TT_2003_PV,Real,Reactor 3 temperature degC,%MD4434
+TT_2003_HI,Bool,Reactor 3 temperature high,%MX527.2
+TT_2003_HH,Bool,Reactor 3 temperature high high,%MX527.3
+PT_2003_PV,Real,Reactor 3 pressure bar,%MD4440
+PT_2003_HI,Bool,Reactor 3 pressure high,%MX527.5
+PT_2003_HH,Bool,Reactor 3 pressure high high,%MX527.6
+LT_2003_PV,Real,Reactor 3 level percent,%MD4446
+LT_2003_HI,Bool,Reactor 3 level high,%MX528.0
+LT_2003_LO,Bool,Reactor 3 level low,%MX528.1
+AT_2003_PV,Real,Reactor 3 analysis pH,%MD4452
+AT_2003_HI,Bool,Reactor 3 analysis high,%MX528.3
+AT_2003_LO,Bool,Reactor 3 analysis low,%MX528.4
+MTR_2003_RUN,Bool,Reactor 3 agitator running,%MX528.5
+MTR_2003_FLT,Bool,Reactor 3 agitator fault,%MX528.6
+MTR_2003_AVAIL,Bool,Reactor 3 agitator available,%MX528.7
+MTR_2003_START,Bool,Reactor 3 agitator start command,%MX529.0
+MTR_2003_STOP,Bool,Reactor 3 agitator stop command,%MX529.1
+MTR_2003_HRS,Real,Reactor 3 agitator run hours,%MD4468
+MTR_2003_SPD,Real,Reactor 3 agitator speed feedback percent,%MD4470
+MTR_2003_SPD_SP,Real,Reactor 3 agitator speed setpoint percent,%MD4472
+MTR_2003_AMPS,Real,Reactor 3 agitator motor current A,%MD4474
+VLV_2003_PV,Real,Reactor 3 jacket steam valve position percent,%MD4476
+VLV_2003_SP,Real,Reactor 3 jacket steam valve position setpoint percent,%MD4478
+VLV_2003_FLT,Bool,Reactor 3 jacket steam valve fault,%MX530.0
+VLV_2053_PV,Real,Reactor 3 jacket cooling valve position percent,%MD4482
+VLV_2053_SP,Real,Reactor 3 jacket cooling valve position setpoint percent,%MD4484
+VLV_2053_FLT,Bool,Reactor 3 jacket cooling valve fault,%MX530.3
+VLV_2103_OPEN,Bool,Reactor 3 discharge valve open feedback,%MX530.4
+VLV_2103_CLOSED,Bool,Reactor 3 discharge valve closed feedback,%MX530.5
+VLV_2103_CMD,Bool,Reactor 3 discharge valve open command,%MX530.6
+VLV_2103_FLT,Bool,Reactor 3 discharge valve fault,%MX530.7
+DOS_20031_RUN,Bool,Reactor 3 doser 1 running,%MX531.0
+DOS_20031_FLT,Bool,Reactor 3 doser 1 fault,%MX531.1
+DOS_20031_AVAIL,Bool,Reactor 3 doser 1 available,%MX531.2
+DOS_20031_START,Bool,Reactor 3 doser 1 start command,%MX531.3
+DOS_20031_STOP,Bool,Reactor 3 doser 1 stop command,%MX531.4
+DOS_20031_HRS,Real,Reactor 3 doser 1 run hours,%MD4506
+DOS_20031_SPD,Real,Reactor 3 doser 1 speed feedback percent,%MD4508
+DOS_20031_SPD_SP,Real,Reactor 3 doser 1 speed setpoint percent,%MD4510
+DOS_20031_AMPS,Real,Reactor 3 doser 1 motor current A,%MD4512
+DOS_20032_RUN,Bool,Reactor 3 doser 2 running,%MX532.1
+DOS_20032_FLT,Bool,Reactor 3 doser 2 fault,%MX532.2
+DOS_20032_AVAIL,Bool,Reactor 3 doser 2 available,%MX532.3
+DOS_20032_START,Bool,Reactor 3 doser 2 start command,%MX532.4
+DOS_20032_STOP,Bool,Reactor 3 doser 2 stop command,%MX532.5
+DOS_20032_HRS,Real,Reactor 3 doser 2 run hours,%MD4524
+DOS_20032_SPD,Real,Reactor 3 doser 2 speed feedback percent,%MD4526
+DOS_20032_SPD_SP,Real,Reactor 3 doser 2 speed setpoint percent,%MD4528
+DOS_20032_AMPS,Real,Reactor 3 doser 2 motor current A,%MD4530
+RCT_2004_RUN,Bool,Reactor 4 batch running,%MX533.2
+RCT_2004_FLT,Bool,Reactor 4 fault,%MX533.3
+RCT_2004_AVAIL,Bool,Reactor 4 available,%MX533.4
+RCT_2004_STEP,Int,Reactor 4 batch step number,%MW2269
+RCT_2004_HRS,Real,Reactor 4 run hours,%MD4540
+TT_2004_PV,Real,Reactor 4 temperature degC,%MD4542
+TT_2004_HI,Bool,Reactor 4 temperature high,%MX534.0
+TT_2004_HH,Bool,Reactor 4 temperature high high,%MX534.1
+PT_2004_PV,Real,Reactor 4 pressure bar,%MD4548
+PT_2004_HI,Bool,Reactor 4 pressure high,%MX534.3
+PT_2004_HH,Bool,Reactor 4 pressure high high,%MX534.4
+LT_2004_PV,Real,Reactor 4 level percent,%MD4554
+LT_2004_HI,Bool,Reactor 4 level high,%MX534.6
+LT_2004_LO,Bool,Reactor 4 level low,%MX534.7
+AT_2004_PV,Real,Reactor 4 analysis pH,%MD4560
+AT_2004_HI,Bool,Reactor 4 analysis high,%MX535.1
+AT_2004_LO,Bool,Reactor 4 analysis low,%MX535.2
+MTR_2004_RUN,Bool,Reactor 4 agitator running,%MX535.3
+MTR_2004_FLT,Bool,Reactor 4 agitator fault,%MX535.4
+MTR_2004_AVAIL,Bool,Reactor 4 agitator available,%MX535.5
+MTR_2004_START,Bool,Reactor 4 agitator start command,%MX535.6
+MTR_2004_STOP,Bool,Reactor 4 agitator stop command,%MX535.7
+MTR_2004_HRS,Real,Reactor 4 agitator run hours,%MD4576
+MTR_2004_SPD,Real,Reactor 4 agitator speed feedback percent,%MD4578
+MTR_2004_SPD_SP,Real,Reactor 4 agitator speed setpoint percent,%MD4580
+MTR_2004_AMPS,Real,Reactor 4 agitator motor current A,%MD4582
+VLV_2004_PV,Real,Reactor 4 jacket steam valve position percent,%MD4584
+VLV_2004_SP,Real,Reactor 4 jacket steam valve position setpoint percent,%MD4586
+VLV_2004_FLT,Bool,Reactor 4 jacket steam valve fault,%MX536.6
+VLV_2054_PV,Real,Reactor 4 jacket cooling valve position percent,%MD4590
+VLV_2054_SP,Real,Reactor 4 jacket cooling valve position setpoint percent,%MD4592
+VLV_2054_FLT,Bool,Reactor 4 jacket cooling valve fault,%MX537.1
+VLV_2104_OPEN,Bool,Reactor 4 discharge valve open feedback,%MX537.2
+VLV_2104_CLOSED,Bool,Reactor 4 discharge valve closed feedback,%MX537.3
+VLV_2104_CMD,Bool,Reactor 4 discharge valve open command,%MX537.4
+VLV_2104_FLT,Bool,Reactor 4 discharge valve fault,%MX537.5
+DOS_20041_RUN,Bool,Reactor 4 doser 1 running,%MX537.6
+DOS_20041_FLT,Bool,Reactor 4 doser 1 fault,%MX537.7
+DOS_20041_AVAIL,Bool,Reactor 4 doser 1 available,%MX538.0
+DOS_20041_START,Bool,Reactor 4 doser 1 start command,%MX538.1
+DOS_20041_STOP,Bool,Reactor 4 doser 1 stop command,%MX538.2
+DOS_20041_HRS,Real,Reactor 4 doser 1 run hours,%MD4614
+DOS_20041_SPD,Real,Reactor 4 doser 1 speed feedback percent,%MD4616
+DOS_20041_SPD_SP,Real,Reactor 4 doser 1 speed setpoint percent,%MD4618
+DOS_20041_AMPS,Real,Reactor 4 doser 1 motor current A,%MD4620
+DOS_20042_RUN,Bool,Reactor 4 doser 2 running,%MX538.7
+DOS_20042_FLT,Bool,Reactor 4 doser 2 fault,%MX539.0
+DOS_20042_AVAIL,Bool,Reactor 4 doser 2 available,%MX539.1
+DOS_20042_START,Bool,Reactor 4 doser 2 start command,%MX539.2
+DOS_20042_STOP,Bool,Reactor 4 doser 2 stop command,%MX539.3
+DOS_20042_HRS,Real,Reactor 4 doser 2 run hours,%MD4632
+DOS_20042_SPD,Real,Reactor 4 doser 2 speed feedback percent,%MD4634
+DOS_20042_SPD_SP,Real,Reactor 4 doser 2 speed setpoint percent,%MD4636
+DOS_20042_AMPS,Real,Reactor 4 doser 2 motor current A,%MD4638
+CNV_3001_RUN,Bool,Column 1 feed conveyor running,%MX540.0
+CNV_3001_FLT,Bool,Column 1 feed conveyor fault,%MX540.1
+TT_3001_PV,Real,Column 1 top temperature degC,%MD4644
+TT_3001_HI,Bool,Column 1 top temperature high,%MX540.3
+TT_3051_PV,Real,Column 1 bottom temperature degC,%MD4648
+TT_3051_HI,Bool,Column 1 bottom temperature high,%MX540.5
+PT_3001_PV,Real,Column 1 pressure bar,%MD4652
+PT_3001_HI,Bool,Column 1 pressure high,%MX540.7
+PT_3001_HH,Bool,Column 1 pressure high high,%MX541.0
+LT_3001_PV,Real,Column 1 sump level percent,%MD4658
+LT_3001_HI,Bool,Column 1 sump level high,%MX541.2
+LT_3001_LO,Bool,Column 1 sump level low,%MX541.3
+FT_3001_PV,Real,Column 1 reflux flow m3/h,%MD4664
+FT_3001_LO,Bool,Column 1 reflux flow low,%MX541.5
+PMP_3001_RUN,Bool,Column 1 reflux pump running,%MX541.6
+PMP_3001_FLT,Bool,Column 1 reflux pump fault,%MX541.7
+PMP_3001_AVAIL,Bool,Column 1 reflux pump available,%MX542.0
+PMP_3001_START,Bool,Column 1 reflux pump start command,%MX542.1
+PMP_3001_STOP,Bool,Column 1 reflux pump stop command,%MX542.2
+PMP_3001_HRS,Real,Column 1 reflux pump run hours,%MD4678
+PMP_3001_SPD,Real,Column 1 reflux pump speed feedback percent,%MD4680
+PMP_3001_SPD_SP,Real,Column 1 reflux pump speed setpoint percent,%MD4682
+PMP_3001_AMPS,Real,Column 1 reflux pump motor current A,%MD4684
+PMP_3051_RUN,Bool,Column 1 bottoms pump running,%MX542.7
+PMP_3051_FLT,Bool,Column 1 bottoms pump fault,%MX543.0
+PMP_3051_AVAIL,Bool,Column 1 bottoms pump available,%MX543.1
+PMP_3051_START,Bool,Column 1 bottoms pump start command,%MX543.2
+PMP_3051_STOP,Bool,Column 1 bottoms pump stop command,%MX543.3
+PMP_3051_HRS,Real,Column 1 bottoms pump run hours,%MD4696
+PMP_3051_SPD,Real,Column 1 bottoms pump speed feedback percent,%MD4698
+PMP_3051_SPD_SP,Real,Column 1 bottoms pump speed setpoint percent,%MD4700
+PMP_3051_AMPS,Real,Column 1 bottoms pump motor current A,%MD4702
+HTR_3001_RUN,Bool,Column 1 reboiler running,%MX544.0
+HTR_3001_FLT,Bool,Column 1 reboiler fault,%MX544.1
+HTR_3001_AVAIL,Bool,Column 1 reboiler available,%MX544.2
+HTR_3001_START,Bool,Column 1 reboiler start command,%MX544.3
+HTR_3001_STOP,Bool,Column 1 reboiler stop command,%MX544.4
+HTR_3001_HRS,Real,Column 1 reboiler run hours,%MD4714
+VLV_3001_PV,Real,Column 1 reflux valve position percent,%MD4716
+VLV_3001_SP,Real,Column 1 reflux valve position setpoint percent,%MD4718
+VLV_3001_FLT,Bool,Column 1 reflux valve fault,%MX545.0
+CNV_3002_RUN,Bool,Column 2 feed conveyor running,%MX545.1
+CNV_3002_FLT,Bool,Column 2 feed conveyor fault,%MX545.2
+TT_3002_PV,Real,Column 2 top temperature degC,%MD4726
+TT_3002_HI,Bool,Column 2 top temperature high,%MX545.4
+TT_3052_PV,Real,Column 2 bottom temperature degC,%MD4730
+TT_3052_HI,Bool,Column 2 bottom temperature high,%MX545.6
+PT_3002_PV,Real,Column 2 pressure bar,%MD4734
+PT_3002_HI,Bool,Column 2 pressure high,%MX546.0
+PT_3002_HH,Bool,Column 2 pressure high high,%MX546.1
+LT_3002_PV,Real,Column 2 sump level percent,%MD4740
+LT_3002_HI,Bool,Column 2 sump level high,%MX546.3
+LT_3002_LO,Bool,Column 2 sump level low,%MX546.4
+FT_3002_PV,Real,Column 2 reflux flow m3/h,%MD4746
+FT_3002_LO,Bool,Column 2 reflux flow low,%MX546.6
+PMP_3002_RUN,Bool,Column 2 reflux pump running,%MX546.7
+PMP_3002_FLT,Bool,Column 2 reflux pump fault,%MX547.0
+PMP_3002_AVAIL,Bool,Column 2 reflux pump available,%MX547.1
+PMP_3002_START,Bool,Column 2 reflux pump start command,%MX547.2
+PMP_3002_STOP,Bool,Column 2 reflux pump stop command,%MX547.3
+PMP_3002_HRS,Real,Column 2 reflux pump run hours,%MD4760
+PMP_3002_SPD,Real,Column 2 reflux pump speed feedback percent,%MD4762
+PMP_3002_SPD_SP,Real,Column 2 reflux pump speed setpoint percent,%MD4764
+PMP_3002_AMPS,Real,Column 2 reflux pump motor current A,%MD4766
+PMP_3052_RUN,Bool,Column 2 bottoms pump running,%MX548.0
+PMP_3052_FLT,Bool,Column 2 bottoms pump fault,%MX548.1
+PMP_3052_AVAIL,Bool,Column 2 bottoms pump available,%MX548.2
+PMP_3052_START,Bool,Column 2 bottoms pump start command,%MX548.3
+PMP_3052_STOP,Bool,Column 2 bottoms pump stop command,%MX548.4
+PMP_3052_HRS,Real,Column 2 bottoms pump run hours,%MD4778
+PMP_3052_SPD,Real,Column 2 bottoms pump speed feedback percent,%MD4780
+PMP_3052_SPD_SP,Real,Column 2 bottoms pump speed setpoint percent,%MD4782
+PMP_3052_AMPS,Real,Column 2 bottoms pump motor current A,%MD4784
+HTR_3002_RUN,Bool,Column 2 reboiler running,%MX549.1
+HTR_3002_FLT,Bool,Column 2 reboiler fault,%MX549.2
+HTR_3002_AVAIL,Bool,Column 2 reboiler available,%MX549.3
+HTR_3002_START,Bool,Column 2 reboiler start command,%MX549.4
+HTR_3002_STOP,Bool,Column 2 reboiler stop command,%MX549.5
+HTR_3002_HRS,Real,Column 2 reboiler run hours,%MD4796
+VLV_3002_PV,Real,Column 2 reflux valve position percent,%MD4798
+VLV_3002_SP,Real,Column 2 reflux valve position setpoint percent,%MD4800
+VLV_3002_FLT,Bool,Column 2 reflux valve fault,%MX550.1
+BLR_4001_RUN,Bool,Utility boiler 1 firing,%MX550.2
+BLR_4001_FLT,Bool,Utility boiler 1 fault,%MX550.3
+BLR_4001_MOD,Real,Utility boiler 1 modulation percent,%MD4808
+PT_4001_PV,Real,Utility boiler 1 steam pressure bar,%MD4810
+PT_4001_HI,Bool,Utility boiler 1 steam pressure high,%MX550.6
+PT_4001_LO,Bool,Utility boiler 1 steam pressure low,%MX550.7
+LT_4001_PV,Real,Utility boiler 1 drum level percent,%MD4816
+LT_4001_HI,Bool,Utility boiler 1 drum level high,%MX551.1
+LT_4001_LO,Bool,Utility boiler 1 drum level low,%MX551.2
+LT_4001_LL,Bool,Utility boiler 1 drum level low low,%MX551.3
+FAN_4001_RUN,Bool,Utility boiler 1 air fan running,%MX551.4
+FAN_4001_FLT,Bool,Utility boiler 1 air fan fault,%MX551.5
+FAN_4001_AVAIL,Bool,Utility boiler 1 air fan available,%MX551.6
+FAN_4001_START,Bool,Utility boiler 1 air fan start command,%MX551.7
+FAN_4001_STOP,Bool,Utility boiler 1 air fan stop command,%MX552.0
+FAN_4001_HRS,Real,Utility boiler 1 air fan run hours,%MD4834
+FAN_4001_SPD,Real,Utility boiler 1 air fan speed feedback percent,%MD4836
+FAN_4001_SPD_SP,Real,Utility boiler 1 air fan speed setpoint percent,%MD4838
+FAN_4001_AMPS,Real,Utility boiler 1 air fan motor current A,%MD4840
+BLR_4002_RUN,Bool,Utility boiler 2 firing,%MX552.5
+BLR_4002_FLT,Bool,Utility boiler 2 fault,%MX552.6
+BLR_4002_MOD,Real,Utility boiler 2 modulation percent,%MD4846
+PT_4002_PV,Real,Utility boiler 2 steam pressure bar,%MD4848
+PT_4002_HI,Bool,Utility boiler 2 steam pressure high,%MX553.1
+PT_4002_LO,Bool,Utility boiler 2 steam pressure low,%MX553.2
+LT_4002_PV,Real,Utility boiler 2 drum level percent,%MD4854
+LT_4002_HI,Bool,Utility boiler 2 drum level high,%MX553.4
+LT_4002_LO,Bool,Utility boiler 2 drum level low,%MX553.5
+LT_4002_LL,Bool,Utility boiler 2 drum level low low,%MX553.6
+FAN_4002_RUN,Bool,Utility boiler 2 air fan running,%MX553.7
+FAN_4002_FLT,Bool,Utility boiler 2 air fan fault,%MX554.0
+FAN_4002_AVAIL,Bool,Utility boiler 2 air fan available,%MX554.1
+FAN_4002_START,Bool,Utility boiler 2 air fan start command,%MX554.2
+FAN_4002_STOP,Bool,Utility boiler 2 air fan stop command,%MX554.3
+FAN_4002_HRS,Real,Utility boiler 2 air fan run hours,%MD4872
+FAN_4002_SPD,Real,Utility boiler 2 air fan speed feedback percent,%MD4874
+FAN_4002_SPD_SP,Real,Utility boiler 2 air fan speed setpoint percent,%MD4876
+FAN_4002_AMPS,Real,Utility boiler 2 air fan motor current A,%MD4878
+CMP_4101_RUN,Bool,Air compressor 1 running,%MX555.0
+CMP_4101_FLT,Bool,Air compressor 1 fault,%MX555.1
+CMP_4101_AVAIL,Bool,Air compressor 1 available,%MX555.2
+CMP_4101_START,Bool,Air compressor 1 start command,%MX555.3
+CMP_4101_STOP,Bool,Air compressor 1 stop command,%MX555.4
+CMP_4101_HRS,Real,Air compressor 1 run hours,%MD4890
+CMP_4101_SPD,Real,Air compressor 1 speed feedback percent,%MD4892
+CMP_4101_SPD_SP,Real,Air compressor 1 speed setpoint percent,%MD4894
+CMP_4101_AMPS,Real,Air compressor 1 motor current A,%MD4896
+PT_4101_PV,Real,Air compressor 1 discharge pressure bar,%MD4898
+PT_4101_LO,Bool,Air compressor 1 discharge pressure low,%MX556.2
+CMP_4102_RUN,Bool,Air compressor 2 running,%MX556.3
+CMP_4102_FLT,Bool,Air compressor 2 fault,%MX556.4
+CMP_4102_AVAIL,Bool,Air compressor 2 available,%MX556.5
+CMP_4102_START,Bool,Air compressor 2 start command,%MX556.6
+CMP_4102_STOP,Bool,Air compressor 2 stop command,%MX556.7
+CMP_4102_HRS,Real,Air compressor 2 run hours,%MD4912
+CMP_4102_SPD,Real,Air compressor 2 speed feedback percent,%MD4914
+CMP_4102_SPD_SP,Real,Air compressor 2 speed setpoint percent,%MD4916
+CMP_4102_AMPS,Real,Air compressor 2 motor current A,%MD4918
+PT_4102_PV,Real,Air compressor 2 discharge pressure bar,%MD4920
+PT_4102_LO,Bool,Air compressor 2 discharge pressure low,%MX557.5
+CMP_4201_RUN,Bool,Chiller 1 running,%MX557.6
+CMP_4201_FLT,Bool,Chiller 1 fault,%MX557.7
+CMP_4201_AVAIL,Bool,Chiller 1 available,%MX558.0
+CMP_4201_START,Bool,Chiller 1 start command,%MX558.1
+CMP_4201_STOP,Bool,Chiller 1 stop command,%MX558.2
+CMP_4201_HRS,Real,Chiller 1 run hours,%MD4934
+CMP_4201_SPD,Real,Chiller 1 speed feedback percent,%MD4936
+CMP_4201_SPD_SP,Real,Chiller 1 speed setpoint percent,%MD4938
+CMP_4201_AMPS,Real,Chiller 1 motor current A,%MD4940
+TT_4201_PV,Real,Chiller 1 chilled water temperature degC,%MD4942
+TT_4201_HI,Bool,Chiller 1 chilled water temperature high,%MX559.0
+CMP_4202_RUN,Bool,Chiller 2 running,%MX559.1
+CMP_4202_FLT,Bool,Chiller 2 fault,%MX559.2
+CMP_4202_AVAIL,Bool,Chiller 2 available,%MX559.3
+CMP_4202_START,Bool,Chiller 2 start command,%MX559.4
+CMP_4202_STOP,Bool,Chiller 2 stop command,%MX559.5
+CMP_4202_HRS,Real,Chiller 2 run hours,%MD4956
+CMP_4202_SPD,Real,Chiller 2 speed feedback percent,%MD4958
+CMP_4202_SPD_SP,Real,Chiller 2 speed setpoint percent,%MD4960
+CMP_4202_AMPS,Real,Chiller 2 motor current A,%MD4962
+TT_4202_PV,Real,Chiller 2 chilled water temperature degC,%MD4964
+TT_4202_HI,Bool,Chiller 2 chilled water temperature high,%MX560.3
+PMP_4301_RUN,Bool,Cooling water pump 1 running,%MX560.4
+PMP_4301_FLT,Bool,Cooling water pump 1 fault,%MX560.5
+PMP_4301_AVAIL,Bool,Cooling water pump 1 available,%MX560.6
+PMP_4301_START,Bool,Cooling water pump 1 start command,%MX560.7
+PMP_4301_STOP,Bool,Cooling water pump 1 stop command,%MX561.0
+PMP_4301_HRS,Real,Cooling water pump 1 run hours,%MD4978
+PMP_4301_SPD,Real,Cooling water pump 1 speed feedback percent,%MD4980
+PMP_4301_SPD_SP,Real,Cooling water pump 1 speed setpoint percent,%MD4982
+PMP_4301_AMPS,Real,Cooling water pump 1 motor current A,%MD4984
+PMP_4302_RUN,Bool,Cooling water pump 2 running,%MX561.5
+PMP_4302_FLT,Bool,Cooling water pump 2 fault,%MX561.6
+PMP_4302_AVAIL,Bool,Cooling water pump 2 available,%MX561.7
+PMP_4302_START,Bool,Cooling water pump 2 start command,%MX562.0
+PMP_4302_STOP,Bool,Cooling water pump 2 stop command,%MX562.1
+PMP_4302_HRS,Real,Cooling water pump 2 run hours,%MD4996
+PMP_4302_SPD,Real,Cooling water pump 2 speed feedback percent,%MD4998
+PMP_4302_SPD_SP,Real,Cooling water pump 2 speed setpoint percent,%MD5000
+PMP_4302_AMPS,Real,Cooling water pump 2 motor current A,%MD5002
+FT_4301_PV,Real,Cooling water flow m3/h,%MD5004
+FT_4301_LO,Bool,Cooling water flow low,%MX562.7
+TT_4301_PV,Real,Cooling water return temperature degC,%MD5008
+TT_4301_HI,Bool,Cooling water return temperature high,%MX563.1
+PMP_5001_RUN,Bool,CIP supply pump running,%MX563.2
+PMP_5001_FLT,Bool,CIP supply pump fault,%MX563.3
+PMP_5001_AVAIL,Bool,CIP supply pump available,%MX563.4
+PMP_5001_START,Bool,CIP supply pump start command,%MX563.5
+PMP_5001_STOP,Bool,CIP supply pump stop command,%MX563.6
+PMP_5001_HRS,Real,CIP supply pump run hours,%MD5022
+PMP_5001_SPD,Real,CIP supply pump speed feedback percent,%MD5024
+PMP_5001_SPD_SP,Real,CIP supply pump speed setpoint percent,%MD5026
+PMP_5001_AMPS,Real,CIP supply pump motor current A,%MD5028
+PMP_5002_RUN,Bool,CIP return pump running,%MX564.3
+PMP_5002_FLT,Bool,CIP return pump fault,%MX564.4
+PMP_5002_AVAIL,Bool,CIP return pump available,%MX564.5
+PMP_5002_START,Bool,CIP return pump start command,%MX564.6
+PMP_5002_STOP,Bool,CIP return pump stop command,%MX564.7
+PMP_5002_HRS,Real,CIP return pump run hours,%MD5040
+PMP_5002_SPD,Real,CIP return pump speed feedback percent,%MD5042
+PMP_5002_SPD_SP,Real,CIP return pump speed setpoint percent,%MD5044
+PMP_5002_AMPS,Real,CIP return pump motor current A,%MD5046
+TNK_5001_LEVEL,Real,CIP caustic tank level percent,%MD5048
+TNK_5001_VOL,Real,CIP caustic tank volume m3,%MD5050
+LT_5001_PV,Real,CIP caustic tank level percent,%MD5052
+LT_5001_LO,Bool,CIP caustic tank level low,%MX565.7
+LT_5001_LL,Bool,CIP caustic tank level low low,%MX566.0
+TNK_5002_LEVEL,Real,CIP acid tank level percent,%MD5058
+TNK_5002_VOL,Real,CIP acid tank volume m3,%MD5060
+LT_5002_PV,Real,CIP acid tank level percent,%MD5062
+LT_5002_LO,Bool,CIP acid tank level low,%MX566.4
+LT_5002_LL,Bool,CIP acid tank level low low,%MX566.5
+TNK_5003_LEVEL,Real,CIP rinse water tank level percent,%MD5068
+TNK_5003_VOL,Real,CIP rinse water tank volume m3,%MD5070
+LT_5003_PV,Real,CIP rinse water tank level percent,%MD5072
+LT_5003_LO,Bool,CIP rinse water tank level low,%MX567.1
+TT_5001_PV,Real,CIP supply temperature degC,%MD5076
+TT_5001_LO,Bool,CIP supply temperature low,%MX567.3
+AT_5001_PV,Real,CIP return conductivity analysis mS/cm,%MD5080
+AT_5001_HI,Bool,CIP return conductivity analysis high,%MX567.5
+AT_5001_LO,Bool,CIP return conductivity analysis low,%MX567.6
+FT_5001_PV,Real,CIP supply flow LPM,%MD5086
+FT_5001_LO,Bool,CIP supply flow low,%MX568.0
+VLV_5001_OPEN,Bool,CIP circuit 1 valve open feedback,%MX568.1
+VLV_5001_CLOSED,Bool,CIP circuit 1 valve closed feedback,%MX568.2
+VLV_5001_CMD,Bool,CIP circuit 1 valve open command,%MX568.3
+VLV_5001_FLT,Bool,CIP circuit 1 valve fault,%MX568.4
+VLV_5002_OPEN,Bool,CIP circuit 2 valve open feedback,%MX568.5
+VLV_5002_CLOSED,Bool,CIP circuit 2 valve closed feedback,%MX568.6
+VLV_5002_CMD,Bool,CIP circuit 2 valve open command,%MX568.7
+VLV_5002_FLT,Bool,CIP circuit 2 valve fault,%MX569.0
+VLV_5003_OPEN,Bool,CIP circuit 3 valve open feedback,%MX569.1
+VLV_5003_CLOSED,Bool,CIP circuit 3 valve closed feedback,%MX569.2
+VLV_5003_CMD,Bool,CIP circuit 3 valve open command,%MX569.3
+VLV_5003_FLT,Bool,CIP circuit 3 valve fault,%MX569.4
+CIP_RUN,Bool,CIP sequence running,%MX569.5
+CIP_STEP,Int,CIP step number,%MW2558
+CIP_CIRCUIT,Int,CIP circuit selected,%MW2559
+CNV_6001_RUN,Bool,Packaging conveyor 1 running,%MX570.0
+CNV_6001_FLT,Bool,Packaging conveyor 1 fault,%MX570.1
+CNV_6001_AVAIL,Bool,Packaging conveyor 1 available,%MX570.2
+CNV_6001_START,Bool,Packaging conveyor 1 start command,%MX570.3
+CNV_6001_STOP,Bool,Packaging conveyor 1 stop command,%MX570.4
+CNV_6001_HRS,Real,Packaging conveyor 1 run hours,%MD5130
+CNV_6001_SPD,Real,Packaging conveyor 1 speed feedback percent,%MD5132
+CNV_6001_SPD_SP,Real,Packaging conveyor 1 speed setpoint percent,%MD5134
+CNV_6001_AMPS,Real,Packaging conveyor 1 motor current A,%MD5136
+CNV_6001_JAM,Bool,Packaging conveyor 1 jam detected,%MX571.1
+CNV_6002_RUN,Bool,Packaging conveyor 2 running,%MX571.2
+CNV_6002_FLT,Bool,Packaging conveyor 2 fault,%MX571.3
+CNV_6002_AVAIL,Bool,Packaging conveyor 2 available,%MX571.4
+CNV_6002_START,Bool,Packaging conveyor 2 start command,%MX571.5
+CNV_6002_STOP,Bool,Packaging conveyor 2 stop command,%MX571.6
+CNV_6002_HRS,Real,Packaging conveyor 2 run hours,%MD5150
+CNV_6002_SPD,Real,Packaging conveyor 2 speed feedback percent,%MD5152
+CNV_6002_SPD_SP,Real,Packaging conveyor 2 speed setpoint percent,%MD5154
+CNV_6002_AMPS,Real,Packaging conveyor 2 motor current A,%MD5156
+CNV_6002_JAM,Bool,Packaging conveyor 2 jam detected,%MX572.3
+CNV_6003_RUN,Bool,Packaging conveyor 3 running,%MX572.4
+CNV_6003_FLT,Bool,Packaging conveyor 3 fault,%MX572.5
+CNV_6003_AVAIL,Bool,Packaging conveyor 3 available,%MX572.6
+CNV_6003_START,Bool,Packaging conveyor 3 start command,%MX572.7
+CNV_6003_STOP,Bool,Packaging conveyor 3 stop command,%MX573.0
+CNV_6003_HRS,Real,Packaging conveyor 3 run hours,%MD5170
+CNV_6003_SPD,Real,Packaging conveyor 3 speed feedback percent,%MD5172
+CNV_6003_SPD_SP,Real,Packaging conveyor 3 speed setpoint percent,%MD5174
+CNV_6003_AMPS,Real,Packaging conveyor 3 motor current A,%MD5176
+CNV_6003_JAM,Bool,Packaging conveyor 3 jam detected,%MX573.5
+CNV_6004_RUN,Bool,Packaging conveyor 4 running,%MX573.6
+CNV_6004_FLT,Bool,Packaging conveyor 4 fault,%MX573.7
+CNV_6004_AVAIL,Bool,Packaging conveyor 4 available,%MX574.0
+CNV_6004_START,Bool,Packaging conveyor 4 start command,%MX574.1
+CNV_6004_STOP,Bool,Packaging conveyor 4 stop command,%MX574.2
+CNV_6004_HRS,Real,Packaging conveyor 4 run hours,%MD5190
+CNV_6004_SPD,Real,Packaging conveyor 4 speed feedback percent,%MD5192
+CNV_6004_SPD_SP,Real,Packaging conveyor 4 speed setpoint percent,%MD5194
+CNV_6004_AMPS,Real,Packaging conveyor 4 motor current A,%MD5196
+CNV_6004_JAM,Bool,Packaging conveyor 4 jam detected,%MX574.7
+MTR_6101_RUN,Bool,Filler running,%MX575.0
+MTR_6101_FLT,Bool,Filler fault,%MX575.1
+MTR_6101_AVAIL,Bool,Filler available,%MX575.2
+MTR_6101_START,Bool,Filler start command,%MX575.3
+MTR_6101_STOP,Bool,Filler stop command,%MX575.4
+MTR_6101_HRS,Real,Filler run hours,%MD5210
+MTR_6101_SPD,Real,Filler speed feedback percent,%MD5212
+MTR_6101_SPD_SP,Real,Filler speed setpoint percent,%MD5214
+MTR_6101_AMPS,Real,Filler motor current A,%MD5216
+MTR_6101_COUNT,Dint,Filler unit count,%MD5218
+MTR_6101_REJECT,Dint,Filler reject count,%MD5220
+MTR_6102_RUN,Bool,Capper running,%MX576.3
+MTR_6102_FLT,Bool,Capper fault,%MX576.4
+MTR_6102_AVAIL,Bool,Capper available,%MX576.5
+MTR_6102_START,Bool,Capper start command,%MX576.6
+MTR_6102_STOP,Bool,Capper stop command,%MX576.7
+MTR_6102_HRS,Real,Capper run hours,%MD5232
+MTR_6102_SPD,Real,Capper speed feedback percent,%MD5234
+MTR_6102_SPD_SP,Real,Capper speed setpoint percent,%MD5236
+MTR_6102_AMPS,Real,Capper motor current A,%MD5238
+MTR_6102_COUNT,Dint,Capper unit count,%MD5240
+MTR_6102_REJECT,Dint,Capper reject count,%MD5242
+MTR_6103_RUN,Bool,Palletiser running,%MX577.6
+MTR_6103_FLT,Bool,Palletiser fault,%MX577.7
+MTR_6103_AVAIL,Bool,Palletiser available,%MX578.0
+MTR_6103_START,Bool,Palletiser start command,%MX578.1
+MTR_6103_STOP,Bool,Palletiser stop command,%MX578.2
+MTR_6103_HRS,Real,Palletiser run hours,%MD5254
+MTR_6103_SPD,Real,Palletiser speed feedback percent,%MD5256
+MTR_6103_SPD_SP,Real,Palletiser speed setpoint percent,%MD5258
+MTR_6103_AMPS,Real,Palletiser motor current A,%MD5260
+MTR_6103_COUNT,Dint,Palletiser unit count,%MD5262
+MTR_6103_REJECT,Dint,Palletiser reject count,%MD5264
+TNK_6101_LEVEL,Real,Packaging buffer tank level percent,%MD5266
+TNK_6101_VOL,Real,Packaging buffer tank volume m3,%MD5268
+LT_6101_PV,Real,Packaging buffer tank level percent,%MD5270
+LT_6101_HI,Bool,Packaging buffer tank level high,%MX579.4
+LT_6101_LO,Bool,Packaging buffer tank level low,%MX579.5
+FT_6101_PV,Real,Packaging fill flow LPM,%MD5276
+FT_6101_LO,Bool,Packaging fill flow low,%MX579.7
+PMP_7001_RUN,Bool,Effluent lift pump 1 running,%MX580.0
+PMP_7001_FLT,Bool,Effluent lift pump 1 fault,%MX580.1
+PMP_7001_AVAIL,Bool,Effluent lift pump 1 available,%MX580.2
+PMP_7001_START,Bool,Effluent lift pump 1 start command,%MX580.3
+PMP_7001_STOP,Bool,Effluent lift pump 1 stop command,%MX580.4
+PMP_7001_HRS,Real,Effluent lift pump 1 run hours,%MD5290
+PMP_7001_SPD,Real,Effluent lift pump 1 speed feedback percent,%MD5292
+PMP_7001_SPD_SP,Real,Effluent lift pump 1 speed setpoint percent,%MD5294
+PMP_7001_AMPS,Real,Effluent lift pump 1 motor current A,%MD5296
+PMP_7002_RUN,Bool,Effluent lift pump 2 running,%MX581.1
+PMP_7002_FLT,Bool,Effluent lift pump 2 fault,%MX581.2
+PMP_7002_AVAIL,Bool,Effluent lift pump 2 available,%MX581.3
+PMP_7002_START,Bool,Effluent lift pump 2 start command,%MX581.4
+PMP_7002_STOP,Bool,Effluent lift pump 2 stop command,%MX581.5
+PMP_7002_HRS,Real,Effluent lift pump 2 run hours,%MD5308
+PMP_7002_SPD,Real,Effluent lift pump 2 speed feedback percent,%MD5310
+PMP_7002_SPD_SP,Real,Effluent lift pump 2 speed setpoint percent,%MD5312
+PMP_7002_AMPS,Real,Effluent lift pump 2 motor current A,%MD5314
+FIL_7101_RUN,Bool,Effluent filter 1 running,%MX582.2
+FIL_7101_FLT,Bool,Effluent filter 1 fault,%MX582.3
+FIL_7101_AVAIL,Bool,Effluent filter 1 available,%MX582.4
+FIL_7101_START,Bool,Effluent filter 1 start command,%MX582.5
+FIL_7101_STOP,Bool,Effluent filter 1 stop command,%MX582.6
+FIL_7101_HRS,Real,Effluent filter 1 run hours,%MD5326
+PT_7101_PV,Real,Effluent filter 1 differential pressure bar,%MD5328
+PT_7101_HI,Bool,Effluent filter 1 differential pressure high,%MX583.1
+FIL_7102_RUN,Bool,Effluent filter 2 running,%MX583.2
+FIL_7102_FLT,Bool,Effluent filter 2 fault,%MX583.3
+FIL_7102_AVAIL,Bool,Effluent filter 2 available,%MX583.4
+FIL_7102_START,Bool,Effluent filter 2 start command,%MX583.5
+FIL_7102_STOP,Bool,Effluent filter 2 stop command,%MX583.6
+FIL_7102_HRS,Real,Effluent filter 2 run hours,%MD5342
+PT_7102_PV,Real,Effluent filter 2 differential pressure bar,%MD5344
+PT_7102_HI,Bool,Effluent filter 2 differential pressure high,%MX584.1
+DOS_7201_RUN,Bool,Effluent neutralising doser running,%MX584.2
+DOS_7201_FLT,Bool,Effluent neutralising doser fault,%MX584.3
+DOS_7201_AVAIL,Bool,Effluent neutralising doser available,%MX584.4
+DOS_7201_START,Bool,Effluent neutralising doser start command,%MX584.5
+DOS_7201_STOP,Bool,Effluent neutralising doser stop command,%MX584.6
+DOS_7201_HRS,Real,Effluent neutralising doser run hours,%MD5358
+DOS_7201_SPD,Real,Effluent neutralising doser speed feedback percent,%MD5360
+DOS_7201_SPD_SP,Real,Effluent neutralising doser speed setpoint percent,%MD5362
+DOS_7201_AMPS,Real,Effluent neutralising doser motor current A,%MD5364
+TNK_7001_LEVEL,Real,Effluent balance tank level percent,%MD5366
+TNK_7001_VOL,Real,Effluent balance tank volume m3,%MD5368
+LT_7001_PV,Real,Effluent balance tank level percent,%MD5370
+LT_7001_HI,Bool,Effluent balance tank level high,%MX585.6
+LT_7001_HH,Bool,Effluent balance tank level high high,%MX585.7
+LT_7001_LO,Bool,Effluent balance tank level low,%MX586.0
+AT_7001_PV,Real,Effluent discharge analysis pH,%MD5378
+AT_7001_HI,Bool,Effluent discharge analysis high,%MX586.2
+AT_7001_LO,Bool,Effluent discharge analysis low,%MX586.3
+FT_7001_PV,Real,Effluent discharge flow m3/h,%MD5384
+FT_7001_HI,Bool,Effluent discharge flow high,%MX586.5
+TT_7001_PV,Real,Effluent temperature degC,%MD5388
+MTR_8001_RUN,Bool,Generator 1 running,%MX586.7
+MTR_8001_FLT,Bool,Generator 1 fault,%MX587.0
+MTR_8001_AVAIL,Bool,Generator 1 available,%MX587.1
+MTR_8001_KW,Real,Generator 1 load kW,%MD5396
+MTR_8001_HRS,Real,Generator 1 run hours,%MD5398
+MTR_8002_RUN,Bool,Generator 2 running,%MX587.4
+MTR_8002_FLT,Bool,Generator 2 fault,%MX587.5
+MTR_8002_AVAIL,Bool,Generator 2 available,%MX587.6
+MTR_8002_KW,Real,Generator 2 load kW,%MD5406
+MTR_8002_HRS,Real,Generator 2 run hours,%MD5408
+PWR_MAINS_HEALTHY,Bool,Mains supply healthy,%MX588.1
+PWR_TOTAL_KW,Real,Total plant load kW,%MD5412
+PWR_POWER_FACTOR,Real,Plant power factor,%MD5414
+PWR_FREQUENCY,Real,Supply frequency Hz,%MD5416
+PLANT_RUNNING,Bool,Plant in auto,%MX588.5
+PLANT_ESTOP,Bool,Emergency stop healthy,%MX588.6
+PLANT_MODE,Int,Plant mode 0 manual 1 auto 2 shutdown,%MW2711
+PLANT_ALARM_COUNT,Int,Active alarm count,%MW2712
+PLANT_BATCH_ID,String,Current batch identifier,%MD5426
+PMP 9001 RUN,Bool,Spare pump running,%MX589.2
+VLV-9001-OPEN,Bool,Spare valve open,%MX589.3
+3RD_PARTY_FLOW,Real,Third party metered flow m3/h,%MD5432
+TIME,Real,Plant cycle time seconds,%MD5434

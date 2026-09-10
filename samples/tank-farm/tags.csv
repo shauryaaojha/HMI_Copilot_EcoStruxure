@@ -1,0 +1,130 @@
+Name,DataType,Comment,Address
+TNK_101_LEVEL,Real,Storage tank 1 level percent,%MD4000
+TNK_101_VOL,Real,Storage tank 1 volume m3,%MD4002
+LT_101_PV,Real,Storage tank 1 level percent,%MD4004
+LT_101_HI,Bool,Storage tank 1 level high,%MX500.3
+LT_101_HH,Bool,Storage tank 1 level high high,%MX500.4
+LT_101_LO,Bool,Storage tank 1 level low,%MX500.5
+LT_101_LL,Bool,Storage tank 1 level low low,%MX500.6
+TT_101_PV,Real,Storage tank 1 temperature degC,%MD4014
+PT_101_PV,Real,Storage tank 1 vapour pressure bar,%MD4016
+PT_101_HI,Bool,Storage tank 1 vapour pressure high,%MX501.1
+VLV_101_OPEN,Bool,Tank 1 outlet valve open feedback,%MX501.2
+VLV_101_CLOSED,Bool,Tank 1 outlet valve closed feedback,%MX501.3
+VLV_101_CMD,Bool,Tank 1 outlet valve open command,%MX501.4
+VLV_101_FLT,Bool,Tank 1 outlet valve fault,%MX501.5
+TNK_102_LEVEL,Real,Storage tank 2 level percent,%MD4028
+TNK_102_VOL,Real,Storage tank 2 volume m3,%MD4030
+LT_102_PV,Real,Storage tank 2 level percent,%MD4032
+LT_102_HI,Bool,Storage tank 2 level high,%MX502.1
+LT_102_HH,Bool,Storage tank 2 level high high,%MX502.2
+LT_102_LO,Bool,Storage tank 2 level low,%MX502.3
+LT_102_LL,Bool,Storage tank 2 level low low,%MX502.4
+TT_102_PV,Real,Storage tank 2 temperature degC,%MD4042
+PT_102_PV,Real,Storage tank 2 vapour pressure bar,%MD4044
+PT_102_HI,Bool,Storage tank 2 vapour pressure high,%MX502.7
+VLV_102_OPEN,Bool,Tank 2 outlet valve open feedback,%MX503.0
+VLV_102_CLOSED,Bool,Tank 2 outlet valve closed feedback,%MX503.1
+VLV_102_CMD,Bool,Tank 2 outlet valve open command,%MX503.2
+VLV_102_FLT,Bool,Tank 2 outlet valve fault,%MX503.3
+TNK_103_LEVEL,Real,Storage tank 3 level percent,%MD4056
+TNK_103_VOL,Real,Storage tank 3 volume m3,%MD4058
+LT_103_PV,Real,Storage tank 3 level percent,%MD4060
+LT_103_HI,Bool,Storage tank 3 level high,%MX503.7
+LT_103_HH,Bool,Storage tank 3 level high high,%MX504.0
+LT_103_LO,Bool,Storage tank 3 level low,%MX504.1
+LT_103_LL,Bool,Storage tank 3 level low low,%MX504.2
+TT_103_PV,Real,Storage tank 3 temperature degC,%MD4070
+PT_103_PV,Real,Storage tank 3 vapour pressure bar,%MD4072
+PT_103_HI,Bool,Storage tank 3 vapour pressure high,%MX504.5
+VLV_103_OPEN,Bool,Tank 3 outlet valve open feedback,%MX504.6
+VLV_103_CLOSED,Bool,Tank 3 outlet valve closed feedback,%MX504.7
+VLV_103_CMD,Bool,Tank 3 outlet valve open command,%MX505.0
+VLV_103_FLT,Bool,Tank 3 outlet valve fault,%MX505.1
+TNK_104_LEVEL,Real,Storage tank 4 level percent,%MD4084
+TNK_104_VOL,Real,Storage tank 4 volume m3,%MD4086
+LT_104_PV,Real,Storage tank 4 level percent,%MD4088
+LT_104_HI,Bool,Storage tank 4 level high,%MX505.5
+LT_104_HH,Bool,Storage tank 4 level high high,%MX505.6
+LT_104_LO,Bool,Storage tank 4 level low,%MX505.7
+LT_104_LL,Bool,Storage tank 4 level low low,%MX506.0
+TT_104_PV,Real,Storage tank 4 temperature degC,%MD4098
+PT_104_PV,Real,Storage tank 4 vapour pressure bar,%MD4100
+PT_104_HI,Bool,Storage tank 4 vapour pressure high,%MX506.3
+VLV_104_OPEN,Bool,Tank 4 outlet valve open feedback,%MX506.4
+VLV_104_CLOSED,Bool,Tank 4 outlet valve closed feedback,%MX506.5
+VLV_104_CMD,Bool,Tank 4 outlet valve open command,%MX506.6
+VLV_104_FLT,Bool,Tank 4 outlet valve fault,%MX506.7
+TNK_105_LEVEL,Real,Storage tank 5 level percent,%MD4112
+TNK_105_VOL,Real,Storage tank 5 volume m3,%MD4114
+LT_105_PV,Real,Storage tank 5 level percent,%MD4116
+LT_105_HI,Bool,Storage tank 5 level high,%MX507.3
+LT_105_HH,Bool,Storage tank 5 level high high,%MX507.4
+LT_105_LO,Bool,Storage tank 5 level low,%MX507.5
+LT_105_LL,Bool,Storage tank 5 level low low,%MX507.6
+TT_105_PV,Real,Storage tank 5 temperature degC,%MD4126
+PT_105_PV,Real,Storage tank 5 vapour pressure bar,%MD4128
+PT_105_HI,Bool,Storage tank 5 vapour pressure high,%MX508.1
+VLV_105_OPEN,Bool,Tank 5 outlet valve open feedback,%MX508.2
+VLV_105_CLOSED,Bool,Tank 5 outlet valve closed feedback,%MX508.3
+VLV_105_CMD,Bool,Tank 5 outlet valve open command,%MX508.4
+VLV_105_FLT,Bool,Tank 5 outlet valve fault,%MX508.5
+TNK_106_LEVEL,Real,Storage tank 6 level percent,%MD4140
+TNK_106_VOL,Real,Storage tank 6 volume m3,%MD4142
+LT_106_PV,Real,Storage tank 6 level percent,%MD4144
+LT_106_HI,Bool,Storage tank 6 level high,%MX509.1
+LT_106_HH,Bool,Storage tank 6 level high high,%MX509.2
+LT_106_LO,Bool,Storage tank 6 level low,%MX509.3
+LT_106_LL,Bool,Storage tank 6 level low low,%MX509.4
+TT_106_PV,Real,Storage tank 6 temperature degC,%MD4154
+PT_106_PV,Real,Storage tank 6 vapour pressure bar,%MD4156
+PT_106_HI,Bool,Storage tank 6 vapour pressure high,%MX509.7
+VLV_106_OPEN,Bool,Tank 6 outlet valve open feedback,%MX510.0
+VLV_106_CLOSED,Bool,Tank 6 outlet valve closed feedback,%MX510.1
+VLV_106_CMD,Bool,Tank 6 outlet valve open command,%MX510.2
+VLV_106_FLT,Bool,Tank 6 outlet valve fault,%MX510.3
+PMP_201_RUN,Bool,Transfer pump 1 running,%MX510.4
+PMP_201_FLT,Bool,Transfer pump 1 fault,%MX510.5
+PMP_201_AVAIL,Bool,Transfer pump 1 available,%MX510.6
+PMP_201_START,Bool,Transfer pump 1 start command,%MX510.7
+PMP_201_STOP,Bool,Transfer pump 1 stop command,%MX511.0
+PMP_201_HRS,Real,Transfer pump 1 run hours,%MD4178
+PMP_201_SPD,Real,Transfer pump 1 speed feedback percent,%MD4180
+PMP_201_SPD_SP,Real,Transfer pump 1 speed setpoint percent,%MD4182
+PMP_201_AMPS,Real,Transfer pump 1 motor current A,%MD4184
+PMP_202_RUN,Bool,Transfer pump 2 running,%MX511.5
+PMP_202_FLT,Bool,Transfer pump 2 fault,%MX511.6
+PMP_202_AVAIL,Bool,Transfer pump 2 available,%MX511.7
+PMP_202_START,Bool,Transfer pump 2 start command,%MX512.0
+PMP_202_STOP,Bool,Transfer pump 2 stop command,%MX512.1
+PMP_202_HRS,Real,Transfer pump 2 run hours,%MD4196
+PMP_202_SPD,Real,Transfer pump 2 speed feedback percent,%MD4198
+PMP_202_SPD_SP,Real,Transfer pump 2 speed setpoint percent,%MD4200
+PMP_202_AMPS,Real,Transfer pump 2 motor current A,%MD4202
+PMP_203_RUN,Bool,Loading pump running,%MX512.6
+PMP_203_FLT,Bool,Loading pump fault,%MX512.7
+PMP_203_AVAIL,Bool,Loading pump available,%MX513.0
+PMP_203_START,Bool,Loading pump start command,%MX513.1
+PMP_203_STOP,Bool,Loading pump stop command,%MX513.2
+PMP_203_HRS,Real,Loading pump run hours,%MD4214
+PMP_203_SPD,Real,Loading pump speed feedback percent,%MD4216
+PMP_203_SPD_SP,Real,Loading pump speed setpoint percent,%MD4218
+PMP_203_AMPS,Real,Loading pump motor current A,%MD4220
+FT_201_PV,Real,Transfer header flow m3/h,%MD4222
+FT_201_LO,Bool,Transfer header flow low,%MX514.0
+FT_202_PV,Real,Loading arm flow m3/h,%MD4226
+PT_201_PV,Real,Transfer header pressure bar,%MD4228
+PT_201_HI,Bool,Transfer header pressure high,%MX514.3
+PT_201_LO,Bool,Transfer header pressure low,%MX514.4
+VLV_301_OPEN,Bool,Loading arm valve open feedback,%MX514.5
+VLV_301_CLOSED,Bool,Loading arm valve closed feedback,%MX514.6
+VLV_301_CMD,Bool,Loading arm valve open command,%MX514.7
+VLV_301_FLT,Bool,Loading arm valve fault,%MX515.0
+VLV_302_PV,Real,Recirculation valve position percent,%MD4242
+VLV_302_SP,Real,Recirculation valve position setpoint percent,%MD4244
+VLV_302_FLT,Bool,Recirculation valve fault,%MX515.3
+FARM_MODE,Int,Tank farm mode 0 idle 1 transfer 2 loading,%MW2124
+FARM_ACTIVE_TANK,Int,Tank currently selected,%MW2125
+FARM_TOTALISER,Real,Loading totaliser m3,%MD4252
+FARM_ESTOP,Bool,Emergency stop healthy,%MX515.7
+TIME,Real,Batch elapsed time seconds,%MD4256
