@@ -9,7 +9,13 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { clampToPanel, freeSpaceHint, freeSpot, type Box } from "@/lib/ote/place";
+import {
+  avoidContent,
+  clampToPanel,
+  freeSpaceHint,
+  freeSpot,
+  type Box,
+} from "@/lib/ote/place";
 
 const PANEL = { width: 1024, height: 600 };
 
@@ -140,5 +146,39 @@ describe("freeSpaceHint", () => {
 
   it("says so when there is nowhere left, rather than inventing room", () => {
     expect(freeSpaceHint([box(0, 0, 1024, 600)], PANEL)).toContain("full");
+  });
+});
+
+describe("avoidContent", () => {
+  it("leaves a position alone when nothing is under it", () => {
+    expect(avoidContent(box(400, 300), [box(0, 0, 100, 40)], PANEL)).toEqual(box(400, 300));
+  });
+
+  it("moves off a piece of content, and not far", () => {
+    // The reported case: a reading placed exactly where the header already
+    // prints its level caption.
+    const caption = box(704, 13, 300, 20);
+    const moved = avoidContent(box(704, 8, 160, 30), [caption], PANEL);
+    expect(overlap(moved, caption)).toBe(false);
+    expect(Math.abs(moved.left - 704) + Math.abs(moved.top - 8)).toBeLessThanOrEqual(400);
+  });
+
+  it("prefers moving sideways, because a thing put in a band belongs in it", () => {
+    const blocker = box(400, 0, 200, 44);
+    const moved = avoidContent(box(400, 8, 120, 28), [blocker], PANEL);
+    expect(overlap(moved, blocker)).toBe(false);
+    expect(moved.top).toBe(8);
+  });
+
+  it("stays inside the panel while it looks", () => {
+    const moved = avoidContent(box(900, 560, 120, 36), [box(880, 550, 200, 50)], PANEL);
+    expect(moved.left).toBeGreaterThanOrEqual(0);
+    expect(moved.left + moved.width).toBeLessThanOrEqual(PANEL.width);
+    expect(moved.top + moved.height).toBeLessThanOrEqual(PANEL.height);
+  });
+
+  it("gives the position back rather than wandering when nothing is clear", () => {
+    const wall = [box(0, 0, PANEL.width, PANEL.height)];
+    expect(avoidContent(box(100, 100), wall, PANEL)).toEqual(box(100, 100));
   });
 });

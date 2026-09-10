@@ -133,6 +133,74 @@ export function freeSpot(
 }
 
 /**
+ * The nearest position to the one asked for that does not cover any content.
+ *
+ * A given position is normally respected, because overlap is often the point -
+ * a label sits on the panel rectangle behind it, a reading sits on a card. But
+ * "put the outside air temperature in the header" put a numeric display exactly
+ * where the header already prints LEVEL 1 - PLANT OVERVIEW, on every screen,
+ * and two pieces of text in the same place is not a design decision.
+ *
+ * So the distinction is what is underneath. A Rectangle is a background and may
+ * be covered; a TextBox, a Lamp, a NumericDisplay or an alarm grid is content
+ * and may not. The search walks outward from where it was asked for - sideways
+ * first, because a thing placed in a band usually belongs in that band - and
+ * gives up rather than wander, returning the original position when nothing
+ * close is clear.
+ */
+export function avoidContent(
+  box: Box,
+  content: Box[],
+  panel: Panel,
+  options: { grid?: number; reach?: number } = {},
+): Box {
+  const grid = options.grid ?? GRID;
+  const reach = options.reach ?? 24;
+
+  const clear = (candidate: Box) => !content.some((other) => overlaps(candidate, other));
+  if (clear(box)) return box;
+
+  const tryAt = (dx: number, dy: number): Box | null => {
+    const candidate = clampToPanel(
+      { ...box, left: box.left + dx, top: box.top + dy },
+      panel,
+    );
+    // Clamping can slide a candidate back onto the thing it was avoiding.
+    if (candidate.left === box.left && candidate.top === box.top) return null;
+    return clear(candidate) ? candidate : null;
+  };
+
+  // Sideways across the whole reach before considering anything else. A thing
+  // asked for "in the header" belongs somewhere else along the header, and
+  // dropping it below the band is a different answer to the one requested.
+  for (let ring = 1; ring <= reach; ring++) {
+    const step = ring * grid;
+    for (const dx of [-step, step]) {
+      const found = tryAt(dx, 0);
+      if (found) return found;
+    }
+  }
+
+  // Then out in every direction.
+  for (let ring = 1; ring <= reach; ring++) {
+    const step = ring * grid;
+    for (const [dx, dy] of [
+      [0, step],
+      [0, -step],
+      [-step, step],
+      [step, step],
+      [-step, -step],
+      [step, -step],
+    ]) {
+      const found = tryAt(dx, dy);
+      if (found) return found;
+    }
+  }
+
+  return box;
+}
+
+/**
  * A one-line description of where there is room, for the model's prompt.
  *
  * Telling it "the top 76 units are the header band" is less useful than telling

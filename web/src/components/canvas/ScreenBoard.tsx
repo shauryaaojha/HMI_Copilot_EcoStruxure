@@ -152,6 +152,8 @@ export interface ScreenBoardProps {
   tool?: DrawTool;
 
   onFocus: (screenId: string) => void;
+  /** Double-click a frame: fill the viewport with it, or go back to the board. */
+  onZoomTo?: (screenId: string) => void;
   onSelect?: (ids: string[], add?: boolean) => void;
   onHover?: (id?: string) => void;
   onMove?: (ids: string[], dx: number, dy: number) => void;
@@ -178,6 +180,7 @@ export function ScreenBoard({
   interactive = true,
   tool,
   onFocus,
+  onZoomTo,
   onSelect,
   onHover,
   onMove,
@@ -273,7 +276,8 @@ export function ScreenBoard({
               onPointerCancel={() => {
                 drag.current = null;
               }}
-              title={screen.Name + " - drag to move this screen on the board"}
+              onDoubleClick={() => onZoomTo?.(screen.UniqueId)}
+              title={screen.Name + " - drag to move, double-click to zoom to it"}
               className={cn(
                 "focus-ring flex w-full cursor-grab items-baseline gap-2 truncate px-0.5 text-left transition active:cursor-grabbing",
                 live ? "text-brand-400" : "text-text-muted hover:text-text-secondary",
@@ -285,10 +289,18 @@ export function ScreenBoard({
             </button>
 
             <div
+              data-screen-frame
               onPointerDownCapture={() => {
                 // Any press inside a screen that is not live makes it live, and
                 // the press falls through so the same gesture also selects.
                 if (!live) onFocus(screen.UniqueId);
+              }}
+              onDoubleClick={(event) => {
+                // Not on an object: double-clicking one of those is how a text
+                // box gets edited, and stealing it for a zoom would be worse
+                // than not having the shortcut.
+                if ((event.target as Element).closest("[data-object-id]")) return;
+                onZoomTo?.(screen.UniqueId);
               }}
               className={cn(
                 "canvas-screen relative overflow-hidden ring-1 transition",

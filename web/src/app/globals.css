@@ -129,16 +129,34 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  --color-surface-base: #e9edf2;
-  --color-surface-panel: #ffffff;
-  --color-surface-raised: #f4f6f9;
-  --color-surface-hover: #e8ecf2;
-  --color-surface-active: #dde4ed;
-  --color-surface-canvas: #dfe4eb;
+  /*
+   * Off-white, not white. A pure #ffffff pane beside a 1024x600 HMI screen -
+   * which is itself drawn on the product's own near-white paper - leaves no
+   * edge between the app and the work, and an hour of it is tiring to look at.
+   * Every surface here carries a little of the cool grey the dark theme is
+   * built from, so the two themes are the same design at different weights
+   * rather than two designs.
+   */
+  --color-surface-base: #e8ecf1; /* app background, behind everything */
+  --color-surface-panel: #f7f9fb; /* the panes */
+  --color-surface-raised: #f1f4f8; /* cards, inputs, inert controls */
+  --color-surface-hover: #e7ecf3;
+  --color-surface-active: #dbe3ed;
+  --color-surface-canvas: #dfe4eb; /* the backdrop the HMI screen floats on */
 
-  --color-line-subtle: #e4e9ef;
-  --color-line: #d3dae3;
-  --color-line-strong: #b6c1ce;
+  /*
+   * The three surfaces by role. Without these the frame, the copilot and every
+   * floating control kept the dark theme's values, so light mode had a black
+   * top bar, a black rail and a black conversation pane - which is what a
+   * missing override looks like rather than a design.
+   */
+  --color-surface-frame: #e3e8ef; /* chrome: a step darker, so it recedes */
+  --color-surface-copilot: #f4f8f5; /* a whisper of the brand green */
+  --color-surface-float: #ffffff; /* floating things are the white ones */
+
+  --color-line-subtle: #e2e7ee;
+  --color-line: #d1d9e3;
+  --color-line-strong: #b4bfcd;
 
   --color-text-primary: #0d141b;
   --color-text-secondary: #3a4854;
@@ -322,6 +340,14 @@ body {
   animation-direction: reverse;
   opacity: 0.1;
   background: radial-gradient(closest-side, var(--color-status-info), transparent 70%);
+}
+
+/* The same blooms read as smudges on a light ground; they want half as much. */
+[data-theme="light"] .copilot-aurora::before {
+  opacity: 0.09;
+}
+[data-theme="light"] .copilot-aurora::after {
+  opacity: 0.06;
 }
 
 @keyframes rise {

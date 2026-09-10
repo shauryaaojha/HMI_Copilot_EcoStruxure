@@ -34,7 +34,7 @@ import {
   type LayoutStorage,
   type PanelImperativeHandle,
 } from "react-resizable-panels";
-import { PanelLeft, PanelRight, PanelBottom } from "lucide-react";
+import { ChevronLeft, ChevronRight, PanelLeft, PanelRight } from "lucide-react";
 import { NavRail } from "./NavRail";
 import { StatusBar } from "./StatusBar";
 import { TopBar } from "./TopBar";
@@ -77,10 +77,10 @@ function CollapsedRail({
   onExpand,
 }: {
   label: string;
-  side: "left" | "right" | "bottom";
+  side: "left" | "right";
   onExpand: () => void;
 }) {
-  const vertical = side !== "bottom";
+  const vertical = true;
   return (
     <button
       type="button"
@@ -94,7 +94,6 @@ function CollapsedRail({
     >
       {side === "left" && <PanelLeft size={15} aria-hidden />}
       {side === "right" && <PanelRight size={15} aria-hidden />}
-      {side === "bottom" && <PanelBottom size={15} aria-hidden />}
       <span
         className={cn(
           "whitespace-nowrap text-xs font-medium",
@@ -108,14 +107,25 @@ function CollapsedRail({
   );
 }
 
-/** A collapse control for an open pane, sized to sit in a pane header. */
+/**
+ * A collapse control, on the pane's outer edge rather than over its content.
+ *
+ * It used to be pinned to the top-right corner of the pane it collapses, on top
+ * of whatever was there - which in the copilot is its own Clear and New
+ * buttons, and in the inspector is the Tags tab. Both were covered.
+ *
+ * On the edge, vertically centred, straddling the divider: a pane's content is
+ * never halfway down its own border, so there is nothing to overlap, and it is
+ * where every editor with collapsible panes puts this control. The chevron
+ * points the way the pane will go.
+ */
 function CollapseButton({
   label,
   side,
   onCollapse,
 }: {
   label: string;
-  side: "left" | "right" | "bottom";
+  side: "left" | "right";
   onCollapse: () => void;
 }) {
   return (
@@ -124,11 +134,19 @@ function CollapseButton({
       onClick={onCollapse}
       title={`Hide ${label}`}
       aria-label={`Hide ${label}`}
-      className="focus-ring absolute right-1 top-1 z-10 rounded p-1.5 text-text-muted transition hover:bg-surface-hover hover:text-text-secondary"
+      className={cn(
+        "focus-ring absolute top-1/2 z-20 flex h-12 w-4 -translate-y-1/2 items-center justify-center",
+        "rounded-md border border-line bg-surface-float text-text-muted opacity-0 transition",
+        "hover:text-text-primary focus-visible:opacity-100 group-hover/pane:opacity-100",
+        side === "left" ? "right-0 translate-x-1/2" : "left-0 -translate-x-1/2",
+      )}
+      style={{ boxShadow: "var(--elev-2)" }}
     >
-      {side === "left" && <PanelLeft size={14} aria-hidden />}
-      {side === "right" && <PanelRight size={14} aria-hidden />}
-      {side === "bottom" && <PanelBottom size={14} aria-hidden />}
+      {side === "left" ? (
+        <ChevronLeft size={13} aria-hidden />
+      ) : (
+        <ChevronRight size={13} aria-hidden />
+      )}
     </button>
   );
 }
@@ -248,7 +266,7 @@ export function WorkspaceShell({
                 collapsible
                 collapsedSize={RAIL}
                 onResize={sync("intent", intentRef)}
-                className="relative min-w-0 bg-surface-panel"
+                className="group/pane relative min-w-0 bg-surface-panel"
               >
                 {collapsed.intent ? (
                   <CollapsedRail
@@ -287,7 +305,7 @@ export function WorkspaceShell({
                 collapsible
                 collapsedSize={RAIL}
                 onResize={sync("inspector", inspectorRef)}
-                className="relative min-w-0 bg-surface-panel"
+                className="group/pane relative min-w-0 bg-surface-panel"
               >
                 {collapsed.inspector ? (
                   <CollapsedRail

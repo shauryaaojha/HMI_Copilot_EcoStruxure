@@ -387,14 +387,43 @@ describe("where a conversational edit puts things", () => {
     expect(placed.top + placed.height).toBeLessThanOrEqual(view.Height);
   });
 
-  it("respects a position the model did give, because overlap is often the point", () => {
-    // A label on the panel rectangle behind it is correct, not a mistake.
+  it("respects a position the model did give when it only covers a panel", () => {
+    // A label on the rectangle behind it is correct, not a mistake - so a
+    // Rectangle is a background and may be covered.
+    sparse();
+    const banner = screenOf().Children[0].Children[0];
+    expect(banner.Type).toBe("Rectangle");
     applyOps([
-      { op: "addObject", type: "TextBox", name: "Lbl_On_Panel", left: 40, top: 96, text: "STATUS", note: "n" },
+      { op: "addObject", type: "TextBox", name: "Lbl_On_Panel", left: 40, top: 8, text: "STATUS", note: "n" },
     ]);
     const placed = boxes().at(-1)!;
     expect(placed.left).toBe(40);
-    expect(placed.top).toBe(96);
+    expect(placed.top).toBe(8);
+  });
+
+  it("will not drop a new object on top of existing content", () => {
+    // Reported: "put the outside air temperature in the header" put a numeric
+    // display exactly where the header already printed its level caption, on
+    // every screen. Two pieces of text in the same place is not a decision.
+    sparse();
+    applyOps([
+      { op: "addObject", type: "TextBox", name: "Lbl_First", left: 200, top: 200, width: 160, height: 24, text: "FIRST", note: "n" },
+    ]);
+    const first = boxes().at(-1)!;
+
+    applyOps([
+      { op: "addObject", type: "NumericDisplay", name: "Num_Second", left: 200, top: 200, width: 160, height: 24, note: "n" },
+    ]);
+    const second = boxes().at(-1)!;
+
+    const clash =
+      first.left < second.left + second.width &&
+      first.left + first.width > second.left &&
+      first.top < second.top + second.height &&
+      first.top + first.height > second.top;
+    expect(clash, "the second object landed on the first").toBe(false);
+    // Nearby, not banished to the far corner.
+    expect(Math.abs(second.top - 200)).toBeLessThanOrEqual(200);
   });
 
   it("clamps a move that would push an object off the screen", () => {

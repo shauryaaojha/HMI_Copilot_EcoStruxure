@@ -34,7 +34,7 @@ import {
   WHITE,
 } from "@/lib/ote/palette";
 import type { Alarm, Part, Screen } from "@/lib/ote/schema";
-import { clampToPanel, freeSpot, type Panel } from "@/lib/ote/place";
+import { avoidContent, clampToPanel, freeSpot, type Panel } from "@/lib/ote/place";
 import { CARD_SIZE, equipmentCard, type LayoutUnit } from "@/lib/ote/layout";
 import { inferEquipment } from "@/lib/ai/infer";
 import type { Op } from "@/lib/ai/ops";
@@ -63,6 +63,24 @@ export interface OpOutcome {
 type Store = ReturnType<typeof useProject.getState>;
 
 const viewOf = (screen: Screen) => screen.Children[0];
+
+/**
+ * The objects a new one must not be placed over.
+ *
+ * Rectangles are excluded on purpose: they are the panels and cards that
+ * everything else sits on, and refusing to overlap them would leave nowhere on
+ * a laid-out screen to put anything.
+ */
+function contentBoxes(parts: Part[]) {
+  return parts
+    .filter((part) => part.Type !== "Rectangle")
+    .map((part) => ({
+      left: part.Location.Left,
+      top: part.Location.Top,
+      width: part.Width,
+      height: part.Height,
+    }));
+}
 
 /** The screen's own size, which is what a position has to fit inside. */
 const panelOf = (screen: Screen): Panel => ({
@@ -113,7 +131,13 @@ function boxFrom(
     : { width: 1024, height: 600 };
 
   if (op.left !== undefined && op.top !== undefined) {
-    return clampToPanel({ ...size, left: op.left, top: op.top }, panel);
+    // Respected, but not on top of something with words in it. A Rectangle is
+    // a background and may be covered; anything else is content.
+    return avoidContent(
+      clampToPanel({ ...size, left: op.left, top: op.top }, panel),
+      contentBoxes(view?.Children ?? []),
+      panel,
+    );
   }
 
   const taken = (view?.Children ?? []).map((part) => ({
@@ -319,7 +343,11 @@ export function applyOps(ops: Op[]): OpOutcome {
         };
         const at =
           op.left !== undefined && op.top !== undefined
-            ? clampToPanel({ ...size, left: op.left, top: op.top }, panel)
+            ? avoidContent(
+                clampToPanel({ ...size, left: op.left, top: op.top }, panel),
+                contentBoxes(view.Children),
+                panel,
+              )
             : { ...size, ...freeSpot(
                 view.Children.map((part) => ({
                   left: part.Location.Left,
