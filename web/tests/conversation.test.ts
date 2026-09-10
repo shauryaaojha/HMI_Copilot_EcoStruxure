@@ -112,9 +112,13 @@ describe("applyOps", () => {
   });
 
   it("moves a real object by name", () => {
-    const target = parts()[0];
+    // Not parts()[0] - that is the full-width banner, and a move is clamped
+    // into the panel, so a 1024-wide object on a 1024-wide screen cannot shift
+    // sideways at all. See the clamping test further down.
+    const target = parts().find((p) => p.Width < 400)!;
     applyOps([{ op: "moveObject", target: target.Name, left: 33, top: 44, note: "n" }]);
-    expect(parts()[0].Location).toEqual({ Left: 33, Top: 44 });
+    const moved = parts().find((p) => p.UniqueId === target.UniqueId)!;
+    expect(moved.Location).toEqual({ Left: 33, Top: 44 });
   });
 
   it("will not bind a tag that is not in the tag list", () => {
@@ -286,5 +290,161 @@ describe("what a request needs", () => {
     });
     expect(anythingMissing(requirements)).toBe(true);
     expect(requirements.find((r) => r.id === "tags")!.detail).toContain("Import");
+  });
+});
+
+describe("where a conversational edit puts things", () => {
+  beforeEach(seed);
+
+  const screenOf = () => useProject.getState().screens[0];
+  const boxes = () =>
+    screenOf().Children[0].Children.map((p) => ({
+      left: p.Location.Left,
+      top: p.Location.Top,
+      width: p.Width,
+      height: p.Height,
+    }));
+  const clash = (a: ReturnType<typeof boxes>[number], b: ReturnType<typeof boxes>[number]) =>
+    a.left < b.left + b.width &&
+    a.left + a.width > b.left &&
+    a.top < b.top + b.height &&
+    a.top + a.height > b.top;
+
+  /** A screen with room on it, which is the case that must come out clean. */
+  const sparse = () => {
+    const screen = structuredClone(demoScreen);
+    // Keep the banner; drop everything else, leaving most of the panel free.
+    screen.Children[0].Children = screen.Children[0].Children.slice(0, 1);
+    useProject.getState().hydrate({ screens: [screen], activeScreenId: screen.UniqueId });
+  };
+
+  it("does not stack objects in one corner when no position was given", () => {
+    // Reported from a real session: several turns of editing put everything in
+    // the top-left, on top of each other. Every op below omits left and top,
+    // which is what a model does for "add a lamp for the standby pump".
+    sparse();
+    const before = boxes().length;
+    applyOps([
+      { op: "addObject", type: "Lamp", name: "Lamp_A", note: "n" },
+      { op: "addObject", type: "Lamp", name: "Lamp_B", note: "n" },
+      { op: "addObject", type: "NumericDisplay", name: "Num_A", note: "n" },
+    ]);
+
+    const all = boxes();
+    const added = all.slice(before);
+    expect(added).toHaveLength(3);
+    expect(new Set(added.map((b) => `${b.left},${b.top}`)).size).toBe(3);
+    for (let i = 0; i < added.length; i++) {
+      // Clear of each other, and clear of what was already on the screen.
+      for (let j = i + 1; j < added.length; j++) {
+        expect(clash(added[i], added[j]), "two added objects overlap").toBe(false);
+      }
+      for (const existing of all.slice(0, before)) {
+        expect(clash(added[i], existing), "an added object covers an existing one").toBe(
+          false,
+        );
+      }
+    }
+  });
+
+  it("still spreads them out on a screen with no room left", () => {
+    // A generated screen is mostly full - chrome, faceplates and an alarm
+    // banner - so this is the common case, not the edge case. Nothing can be
+    // placed clear, but they must not all land on the same spot.
+    const before = boxes().length;
+    applyOps([
+      { op: "addObject", type: "Lamp", name: "Full_A", note: "n" },
+      { op: "addObject", type: "Lamp", name: "Full_B", note: "n" },
+    ]);
+
+    const added = boxes().slice(before);
+    expect(new Set(added.map((b) => `${b.left},${b.top}`)).size).toBe(2);
+    const view = screenOf().Children[0];
+    for (const b of added) {
+      expect(b.left + b.width).toBeLessThanOrEqual(view.Width);
+      expect(b.top + b.height).toBeLessThanOrEqual(view.Height);
+    }
+  });
+
+  it("cannot shift a full-width object sideways, because that would clip it", () => {
+    const view = screenOf().Children[0];
+    const banner = parts().find((p) => p.Width === view.Width)!;
+    applyOps([{ op: "moveObject", target: banner.Name, left: 300, top: 0, note: "n" }]);
+    const moved = parts().find((p) => p.UniqueId === banner.UniqueId)!;
+    expect(moved.Location.Left).toBe(0);
+  });
+
+  it("keeps an object the model placed off the panel where it can be seen", () => {
+    // SVG clips anything outside the ViewBox, so top: 900 on a 600-high panel
+    // is an object that exists, binds, and is invisible.
+    const view = screenOf().Children[0];
+    applyOps([
+      { op: "addObject", type: "Rectangle", name: "Off_Panel", left: 2000, top: 900, note: "n" },
+    ]);
+
+    const placed = boxes().at(-1)!;
+    expect(placed.left + placed.width).toBeLessThanOrEqual(view.Width);
+    expect(placed.top + placed.height).toBeLessThanOrEqual(view.Height);
+  });
+
+  it("respects a position the model did give, because overlap is often the point", () => {
+    // A label on the panel rectangle behind it is correct, not a mistake.
+    applyOps([
+      { op: "addObject", type: "TextBox", name: "Lbl_On_Panel", left: 40, top: 96, text: "STATUS", note: "n" },
+    ]);
+    const placed = boxes().at(-1)!;
+    expect(placed.left).toBe(40);
+    expect(placed.top).toBe(96);
+  });
+
+  it("clamps a move that would push an object off the screen", () => {
+    const view = screenOf().Children[0];
+    const target = screenOf().Children[0].Children[0];
+    applyOps([{ op: "moveObject", target: target.Name, left: 5000, top: 5000, note: "n" }]);
+
+    const moved = screenOf().Children[0].Children.find((p) => p.UniqueId === target.UniqueId)!;
+    expect(moved.Location.Left + moved.Width).toBeLessThanOrEqual(view.Width);
+    expect(moved.Location.Top + moved.Height).toBeLessThanOrEqual(view.Height);
+  });
+});
+
+describe("naming an object the request did not name", () => {
+  beforeEach(seed);
+
+  it("binds to what the batch just created, whatever it ended up called", () => {
+    // A model that omits `name` on addObject still has to bind to the thing it
+    // just added, and refers to it by a name it made up - Lamp_1. The real name
+    // depends on what is already on the screen, which it cannot predict. The
+    // bind used to resolve to nothing and the object came out unbound.
+    const tag = useProject.getState().variables.find((v) => v.DataType === "BOOL")!;
+    const { problems } = applyOps([
+      { op: "addObject", type: "Lamp", note: "added the standby lamp" },
+      { op: "bindTag", target: "Lamp_1", tag: tag.Name, note: "bound it" },
+    ]);
+
+    expect(problems).toEqual([]);
+    const bindings = useProject.getState().bindings;
+    expect(bindings).toHaveLength(1);
+    // Bound to the object that actually landed, not to the invented name.
+    const lamp = parts().at(-1)!;
+    expect(bindings[0].targetId).toBe(lamp.UniqueId);
+  });
+
+  it("will not guess when the batch created two of the same type", () => {
+    // Two lamps and a bind to "Lamp_1" is genuinely ambiguous, and binding the
+    // wrong one silently is worse than saying so.
+    const tag = useProject.getState().variables.find((v) => v.DataType === "BOOL")!;
+    const { problems } = applyOps([
+      { op: "addObject", type: "Lamp", note: "n" },
+      { op: "addObject", type: "Lamp", note: "n" },
+      { op: "bindTag", target: "Lamp_1", tag: tag.Name, note: "n" },
+    ]);
+    expect(problems[0]).toContain("Lamp_1");
+    expect(useProject.getState().bindings).toHaveLength(0);
+  });
+
+  it("gives an unnamed object a name carrying its type", () => {
+    applyOps([{ op: "addObject", type: "NumericDisplay", note: "n" }]);
+    expect(parts().at(-1)!.Name).toMatch(/^NumericDisplay_\d+$/);
   });
 });

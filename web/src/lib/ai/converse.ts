@@ -27,6 +27,7 @@ import { ALIGN_MODES, COLOR_NAMES, OP_NAMES, coerceTurn, type Turn } from "./ops
 import { PART_TYPES } from "@/lib/ote/schema";
 import { activeProvider, type Provider } from "./plan";
 import { isUnnamed } from "./name";
+import { freeSpaceHint } from "@/lib/ote/place";
 
 export type { Provider } from "./plan";
 
@@ -35,6 +36,8 @@ export interface ProjectDigest {
   name: string;
   /** Still called Untitled, so a name is worth offering. */
   unnamed?: boolean;
+  /** Where there is room on the active screen, in one line. */
+  freeSpace?: string;
   target: { model: string; width: number; height: number };
   screens: {
     name: string;
@@ -63,9 +66,24 @@ export function digestOf(project: {
       s.Children[0].Children.map((p) => [p.UniqueId, p.Name] as const),
     ),
   );
+  const active =
+    project.screens.find((s) => s.UniqueId === project.activeScreenId) ??
+    project.screens[0];
+
   return {
     name: project.name,
     unnamed: isUnnamed(project.name),
+    freeSpace: active
+      ? freeSpaceHint(
+          active.Children[0].Children.map((p) => ({
+            left: p.Location.Left,
+            top: p.Location.Top,
+            width: p.Width,
+            height: p.Height,
+          })),
+          { width: active.Children[0].Width, height: active.Children[0].Height },
+        )
+      : undefined,
     target: project.target,
     screens: project.screens.map((screen) => ({
       name: screen.Name,
@@ -132,9 +150,28 @@ Screen design, when you lay one out:
 Ops:
 - Only the ops listed in the schema exist. Only the part types listed exist.
 - Refer to objects and screens by their Name, exactly as given to you.
-- Positions are in screen units, origin top-left, inside the panel size given.
 - Every op carries a short note in engineering language: "moved the flow
   reading clear of the alarm banner", never "updated element".
+
+Placing things. You are given every object on the screen with its position and
+size, and where the free space is. Use them:
+- Positions are in screen units, origin top-left. The whole object must fit
+  inside the panel - left+width and top+height cannot exceed it. An object
+  placed past the edge is clipped and the engineer sees nothing.
+- Do not put a new object on top of an existing one. Put it in the free space
+  you were told about. Overlap is only correct when it is the point - a label
+  sitting on the panel rectangle behind it.
+- Line up with what is already there. Match the left edge or the top edge of a
+  neighbour, and keep to multiples of 8.
+- If you genuinely cannot say where something goes, leave left and top out
+  entirely. A position is then computed from the free space, which is better
+  than a guess. Never invent 0,0 or 20,20 to fill the field in.
+- Adding several objects at once: give each a different position, and lay them
+  out as a row or a column rather than scattering them.
+- Give every addObject a name, and use that exact name in any op that follows -
+  a bindTag naming something that does not exist binds nothing. If you leave
+  the name out it is generated as the type and a number, Lamp_1, Lamp_2,
+  NumericDisplay_1, counting the ones already on that screen.
 
 reply is one or two sentences, in the register an engineer uses with another
 engineer. Never describe your own reasoning process.`;
@@ -337,6 +374,7 @@ function prompt({ history, digest }: ConverseInput): string {
     digest.selection.length
       ? `Selected right now: ${digest.selection.join(", ")}`
       : "Nothing is selected.",
+    digest.freeSpace ?? "",
     "",
     "Conversation so far:",
     conversation,

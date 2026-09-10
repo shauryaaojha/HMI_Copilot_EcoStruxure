@@ -34,6 +34,7 @@ import {
   WHITE,
 } from "@/lib/ote/palette";
 import type { Alarm, Part, Screen } from "@/lib/ote/schema";
+import { clampToPanel, freeSpot, type Panel } from "@/lib/ote/place";
 import type { Op } from "@/lib/ai/ops";
 import { useProject } from "@/store/project";
 
@@ -61,6 +62,12 @@ type Store = ReturnType<typeof useProject.getState>;
 
 const viewOf = (screen: Screen) => screen.Children[0];
 
+/** The screen's own size, which is what a position has to fit inside. */
+const panelOf = (screen: Screen): Panel => ({
+  width: viewOf(screen).Width,
+  height: viewOf(screen).Height,
+});
+
 function findScreen(s: Store, name?: string): Screen | undefined {
   if (!name) return s.screens.find((x) => x.UniqueId === s.activeScreenId) ?? s.screens[0];
   const wanted = name.trim().toLowerCase();
@@ -76,25 +83,75 @@ function findPart(s: Store, name: string): { part: Part; screen: Screen } | unde
   return undefined;
 }
 
-/** A box with sensible defaults, because a model may give only some of four. */
-function boxFrom(op: Op, fallback: { width: number; height: number }) {
-  return {
-    left: Math.round(op.left ?? 20),
-    top: Math.round(op.top ?? 20),
+/**
+ * Where the new object goes.
+ *
+ * Two rules, and the difference between them matters. If the model said where,
+ * it is respected - overlap is often deliberate, a label sits on the panel
+ * behind it - and only pulled inside the panel, because an object placed off
+ * the ViewBox is clipped by SVG and simply never appears.
+ *
+ * If it did not say, the position is computed from what is already on the
+ * screen. This used to default to 20,20, so every object added without
+ * coordinates landed on the same spot: three requests, three objects in one
+ * corner on top of each other.
+ */
+function boxFrom(
+  op: Op,
+  fallback: { width: number; height: number },
+  screen?: Screen,
+): { left: number; top: number; width: number; height: number } {
+  const size = {
     width: Math.max(1, Math.round(op.width ?? fallback.width)),
     height: Math.max(1, Math.round(op.height ?? fallback.height)),
   };
+  const view = screen ? viewOf(screen) : undefined;
+  const panel: Panel = view
+    ? { width: view.Width, height: view.Height }
+    : { width: 1024, height: 600 };
+
+  if (op.left !== undefined && op.top !== undefined) {
+    return clampToPanel({ ...size, left: op.left, top: op.top }, panel);
+  }
+
+  const taken = (view?.Children ?? []).map((part) => ({
+    left: part.Location.Left,
+    top: part.Location.Top,
+    width: part.Width,
+    height: part.Height,
+  }));
+  return { ...size, ...freeSpot(taken, size, panel) };
 }
 
-function buildPart(op: Op): Part | null {
-  const name = (op.name ?? op.target ?? op.type ?? "Object").replace(/[^A-Za-z0-9_]/g, "_");
+/**
+ * The name an unnamed object gets: `Lamp_1`, `Lamp_2`, `NumericDisplay_1`.
+ *
+ * The convention exists because a model that omits `name` on addObject still
+ * has to bind to the thing it just added, and it guesses exactly this. Naming
+ * the first lamp `Lamp` instead - which is what a bare type fallback gives -
+ * meant the bind in the very next op resolved to nothing, and the engineer got
+ * an object with no tag on it and a line saying "no object called Lamp_1".
+ */
+function defaultName(type: string, screen?: Screen): string {
+  const existing = screen
+    ? viewOf(screen).Children.filter((p) => p.Type === type).length
+    : 0;
+  return `${type}_${existing + 1}`;
+}
+
+function buildPart(op: Op, screen?: Screen): Part | null {
+  const name = (
+    op.name ??
+    op.target ??
+    (op.type ? defaultName(op.type, screen) : "Object")
+  ).replace(/[^A-Za-z0-9_]/g, "_");
   switch (op.type) {
     case "Rectangle":
-      return rectangle(name, boxFrom(op, { width: 200, height: 120 }), {
+      return rectangle(name, boxFrom(op, { width: 200, height: 120 }, screen), {
         fill: op.color ? COLOR[op.color] : undefined,
       });
     case "TextBox":
-      return textBox(name, op.text ?? name, boxFrom(op, { width: 200, height: 28 }), {
+      return textBox(name, op.text ?? name, boxFrom(op, { width: 200, height: 28 }, screen), {
         size: op.fontSize,
         colour: op.color ? COLOR[op.color] : undefined,
         bold: op.bold,
@@ -104,16 +161,16 @@ function buildPart(op: Op): Part | null {
         name,
         op.offText ?? "OFF",
         op.onText ?? "ON",
-        boxFrom(op, { width: 180, height: 64 }),
+        boxFrom(op, { width: 180, height: 64 }, screen),
       );
     case "NumericDisplay":
       return numericDisplay(
         name,
-        boxFrom(op, { width: 180, height: 52 }),
+        boxFrom(op, { width: 180, height: 52 }, screen),
         op.decimals ?? 1,
       );
     case "AlarmSummary":
-      return alarmSummary(name, boxFrom(op, { width: 600, height: 220 }));
+      return alarmSummary(name, boxFrom(op, { width: 600, height: 220 }, screen));
     default:
       // Path needs geometry from the shipped library, which a model cannot
       // supply - it comes from the library panel or not at all.
@@ -128,6 +185,29 @@ function buildPart(op: Op): Part | null {
 export function applyOps(ops: Op[]): OpOutcome {
   const changes: string[] = [];
   const problems: string[] = [];
+
+  /**
+   * What this batch created, so a later op can refer to it.
+   *
+   * A model that adds an object without naming it still has to bind to the
+   * thing it just added, and it refers to it by a name it made up - Lamp_1.
+   * The real name depends on what is already on the screen, which it cannot
+   * predict. Rather than guess the same way it guesses, an unresolved target
+   * is matched against what this batch actually created.
+   */
+  const created: { name: string; type: string }[] = [];
+
+  /** The type a made-up name implies: Lamp_1 -> Lamp, NumericDisplay_2 -> NumericDisplay. */
+  const impliedType = (name: string) => name.replace(/_\d+$/, "").toLowerCase();
+
+  const resolve = (s: Store, name: string) => {
+    const direct = findPart(s, name);
+    if (direct) return direct;
+    // Only when it is unambiguous: one object of that type in this batch.
+    const wanted = impliedType(name);
+    const candidates = created.filter((c) => c.type.toLowerCase() === wanted);
+    return candidates.length === 1 ? findPart(s, candidates[0].name) : undefined;
+  };
 
   for (const op of ops) {
     const s = useProject.getState();
@@ -169,7 +249,7 @@ export function applyOps(ops: Op[]): OpOutcome {
 
       case "addObject": {
         const screen = findScreen(s, op.screen);
-        const part = buildPart(op);
+        const part = buildPart(op, screen);
         if (!screen) {
           problems.push(`Cannot add ${op.type}: no screen called ${op.screen}`);
           break;
@@ -179,44 +259,61 @@ export function applyOps(ops: Op[]): OpOutcome {
           break;
         }
         s.appendObject(screen.UniqueId, part);
-        changes.push(note || `Added ${part.Type} ${part.Name} to ${screen.Name}`);
+        // appendObject makes the name unique, so read back what it became.
+        const landed =
+          viewOf(useProject.getState().screens.find((x) => x.UniqueId === screen.UniqueId)!)
+            .Children.at(-1) ?? part;
+        created.push({ name: landed.Name, type: landed.Type });
+        changes.push(note || `Added ${landed.Type} ${landed.Name} to ${screen.Name}`);
         break;
       }
 
       case "moveObject": {
-        const found = findPart(s, op.target!);
+        const found = resolve(s, op.target!);
         if (!found) {
           problems.push(`No object called ${op.target}`);
           break;
         }
-        s.setBox(found.part.UniqueId, {
-          left: Math.round(op.left ?? found.part.Location.Left),
-          top: Math.round(op.top ?? found.part.Location.Top),
-          width: found.part.Width,
-          height: found.part.Height,
-        });
+        s.setBox(
+          found.part.UniqueId,
+          clampToPanel(
+            {
+              left: op.left ?? found.part.Location.Left,
+              top: op.top ?? found.part.Location.Top,
+              width: found.part.Width,
+              height: found.part.Height,
+            },
+            panelOf(found.screen),
+          ),
+        );
         changes.push(note || `Moved ${found.part.Name}`);
         break;
       }
 
       case "resizeObject": {
-        const found = findPart(s, op.target!);
+        const found = resolve(s, op.target!);
         if (!found) {
           problems.push(`No object called ${op.target}`);
           break;
         }
-        s.setBox(found.part.UniqueId, {
-          left: found.part.Location.Left,
-          top: found.part.Location.Top,
-          width: Math.max(1, Math.round(op.width ?? found.part.Width)),
-          height: Math.max(1, Math.round(op.height ?? found.part.Height)),
-        });
+        s.setBox(
+          found.part.UniqueId,
+          clampToPanel(
+            {
+              left: found.part.Location.Left,
+              top: found.part.Location.Top,
+              width: op.width ?? found.part.Width,
+              height: op.height ?? found.part.Height,
+            },
+            panelOf(found.screen),
+          ),
+        );
         changes.push(note || `Resized ${found.part.Name}`);
         break;
       }
 
       case "setText": {
-        const found = findPart(s, op.target!);
+        const found = resolve(s, op.target!);
         if (!found) {
           problems.push(`No object called ${op.target}`);
           break;
@@ -238,7 +335,7 @@ export function applyOps(ops: Op[]): OpOutcome {
       }
 
       case "setColor": {
-        const found = findPart(s, op.target!);
+        const found = resolve(s, op.target!);
         const value = op.color ? COLOR[op.color] : undefined;
         if (!found) {
           problems.push(`No object called ${op.target}`);
@@ -256,7 +353,7 @@ export function applyOps(ops: Op[]): OpOutcome {
       }
 
       case "deleteObject": {
-        const found = findPart(s, op.target!);
+        const found = resolve(s, op.target!);
         if (!found) {
           problems.push(`No object called ${op.target}`);
           break;
@@ -267,7 +364,7 @@ export function applyOps(ops: Op[]): OpOutcome {
       }
 
       case "duplicateObject": {
-        const found = findPart(s, op.target!);
+        const found = resolve(s, op.target!);
         if (!found) {
           problems.push(`No object called ${op.target}`);
           break;
@@ -279,7 +376,7 @@ export function applyOps(ops: Op[]): OpOutcome {
 
       case "alignObjects": {
         const ids = (op.targets ?? [])
-          .map((name) => findPart(s, name)?.part.UniqueId)
+          .map((name) => resolve(s, name)?.part.UniqueId)
           .filter((id): id is string => !!id);
         if (ids.length === 0) {
           problems.push("None of those objects exist, so there was nothing to align.");
@@ -293,7 +390,7 @@ export function applyOps(ops: Op[]): OpOutcome {
       }
 
       case "bindTag": {
-        const found = findPart(s, op.target!);
+        const found = resolve(s, op.target!);
         const tag = s.variables.find(
           (v) => v.Name.toLowerCase() === (op.tag ?? "").trim().toLowerCase(),
         );
