@@ -211,8 +211,22 @@ export function useProjectHydration(projectId: string) {
         lastWritten = serialised;
         s.markSaved(saveProject(payload));
         // The Projects page reads a separate index, so a card would otherwise
-        // keep claiming "0 screens" over a project with four.
-        touchProject(s.id, { name: s.name, screens: s.screens.length });
+        // keep claiming "0 screens" over a project with four. Everything here
+        // is a count the project already knows - the card never has to load a
+        // project to describe one.
+        touchProject(s.id, {
+          name: s.name,
+          screens: s.screens.length,
+          objects: s.screens.reduce(
+            (n, screen) => n + screen.Children[0].Children.length,
+            0,
+          ),
+          tags: s.variables.length,
+          alarms: s.alarms.length,
+          bindings: s.bindings.length,
+          target: `${s.target.model} · ${s.target.width} × ${s.target.height}`,
+          intent: s.chat.find((m) => m.role === "user")?.text.slice(0, 120),
+        });
       }, AUTOSAVE_MS);
     });
 

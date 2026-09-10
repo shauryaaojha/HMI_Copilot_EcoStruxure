@@ -13,13 +13,19 @@
  * streams and fills the canvas object by object - that is the demo. An "edit"
  * applies a list of ops through the same store actions the toolbar uses, so it
  * lands in the same undo history.
+ *
+ * A turn also names the project, once, while it is still "Untitled". A new
+ * project cannot be named before there is a request to name it after, so the
+ * engineer is never shown a naming box before they have anything to name.
  */
 
 import { useCallback, useRef } from "react";
 import { digestOf } from "@/lib/ai/converse";
+import { isUnnamed, nameProject } from "@/lib/ai/name";
 import type { Turn } from "@/lib/ai/ops";
 import { useProject } from "@/store/project";
 import type { ChatMessage } from "@/store/types";
+import { loadProjects, touchProject } from "@/store/projects";
 import { useGeneration } from "@/components/generation/useGeneration";
 import { applyOps } from "./applyOps";
 
@@ -31,6 +37,31 @@ const id = () => crypto.randomUUID();
 export function useChat() {
   const { generate } = useGeneration();
   const busy = useRef(false);
+
+  /**
+   * Names the project after what it turned out to be, while it is still
+   * Untitled. Runs after the turn rather than before, so a build has already
+   * produced screen names - which the plan chose carefully and are usually a
+   * better name than anything found in prose.
+   */
+  const nameIfUnnamed = useCallback((request: string, suggested?: string) => {
+    const s = useProject.getState();
+    if (!isUnnamed(s.name)) return;
+
+    const name = nameProject({
+      suggested,
+      intent: request,
+      screens: s.screens.map((screen) => screen.Name),
+      kinds: s.equipment.map((unit) => unit.kind),
+      taken: new Set(loadProjects().map((p) => p.name)),
+    });
+    if (!name) return;
+
+    s.rename(name);
+    // The Projects page reads a separate index, so the card has to be told.
+    touchProject(s.id, { name });
+    s.log(`Project named ${name}`);
+  }, []);
 
   const send = useCallback(
     async (text: string) => {
@@ -95,6 +126,9 @@ export function useChat() {
         patch({ text: turn.reply, provider: body.provider ?? "local" });
 
         if (turn.mode === "clarify") {
+          // Even an ambiguous request usually says what the plant is, so the
+          // project can be named before it is clear what to draw.
+          nameIfUnnamed(request, turn.projectName);
           patch({ pending: false, questions: turn.questions ?? [] });
           return;
         }
@@ -120,6 +154,8 @@ export function useChat() {
           // and the second request must not erase the first.
           await generate(turn.buildIntent || request, { fresh: before === 0 });
 
+          nameIfUnnamed(turn.buildIntent || request, turn.projectName);
+
           const after = useProject.getState();
           const screen = after.screens.at(-1);
           const objects = screen?.Children[0].Children.length ?? 0;
@@ -139,6 +175,7 @@ export function useChat() {
 
         if (turn.mode === "edit" && turn.ops && turn.ops.length > 0) {
           const { changes, problems } = applyOps(turn.ops);
+          nameIfUnnamed(request, turn.projectName);
           const after = useProject.getState();
           const versionAt =
             changes.length > 0
@@ -154,6 +191,7 @@ export function useChat() {
           return;
         }
 
+        nameIfUnnamed(request, turn.projectName);
         patch({ pending: false });
       } catch (caught) {
         const message =
@@ -167,7 +205,7 @@ export function useChat() {
         busy.current = false;
       }
     },
-    [generate],
+    [generate, nameIfUnnamed],
   );
 
   /** A clarifying question answered by clicking it is still a turn. */

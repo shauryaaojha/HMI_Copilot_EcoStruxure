@@ -104,6 +104,15 @@ export const Turn = z.object({
   reply: z.string(),
   /** Only when mode is "clarify" - the specific things still unknown. */
   questions: z.array(z.string()).optional(),
+  /**
+   * What this project should be called, offered only while it is still
+   * "Untitled". A new project cannot be named before there is a request to
+   * name it after, so it is named on the first turn rather than demanded up
+   * front. Ignored once the project has any other name - renaming a project
+   * out from under someone on their fourth request is worse than a slightly
+   * wrong name on the first.
+   */
+  projectName: z.string().optional(),
   /** Only when mode is "edit" - what to change, in order. */
   ops: z.array(Op).optional(),
   /**

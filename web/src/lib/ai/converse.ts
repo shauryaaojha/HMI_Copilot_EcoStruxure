@@ -26,12 +26,15 @@ import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
 import { ALIGN_MODES, COLOR_NAMES, OP_NAMES, coerceTurn, type Turn } from "./ops";
 import { PART_TYPES } from "@/lib/ote/schema";
 import { activeProvider, type Provider } from "./plan";
+import { isUnnamed } from "./name";
 
 export type { Provider } from "./plan";
 
 /** What the model is told about the project. Names and boxes, not the tree. */
 export interface ProjectDigest {
   name: string;
+  /** Still called Untitled, so a name is worth offering. */
+  unnamed?: boolean;
   target: { model: string; width: number; height: number };
   screens: {
     name: string;
@@ -62,6 +65,7 @@ export function digestOf(project: {
   );
   return {
     name: project.name,
+    unnamed: isUnnamed(project.name),
     target: project.target,
     screens: project.screens.map((screen) => ({
       name: screen.Name,
@@ -105,6 +109,10 @@ Every turn you choose exactly one mode:
               Ask at most two specific questions in questions[].
 - "answer"  — they asked something about the project. Explain, change nothing.
 
+If you are told the project has no name yet, set projectName as well as
+whichever mode applies - even on a clarify, because the request already says
+what the plant is even when it is unclear what to draw.
+
 When to clarify, and when not to:
 - Do NOT clarify to confirm something you can reasonably assume. Assume, act,
   and say what you assumed in reply. Undo is one keystroke; an interrogation is
@@ -136,6 +144,10 @@ const D = {
   mode: "clarify | build | edit | answer",
   reply: "One or two sentences back to the engineer",
   questions: "Only for clarify: at most two specific questions",
+  projectName:
+    "Only when told the project is unnamed: a short name for the whole project, " +
+    "two or three words joined by underscores, after the plant or area it is " +
+    "for - Boiler_House, Transfer_Pump_Station. Not after the request",
   buildIntent: "Only for build: the engineer's request, in their words",
   ops: "Only for edit: the changes to make, in order",
   op: `One of: ${OP_NAMES.join(", ")}`,
@@ -178,6 +190,7 @@ function geminiSchema() {
       mode: { type: "STRING", enum: ["clarify", "build", "edit", "answer"], description: D.mode },
       reply: S(D.reply),
       questions: { type: "ARRAY", items: { type: "STRING" }, description: D.questions },
+      projectName: S(D.projectName),
       buildIntent: S(D.buildIntent),
       ops: {
         type: "ARRAY",
@@ -219,7 +232,7 @@ function geminiSchema() {
       },
     },
     required: ["mode", "reply"],
-    propertyOrdering: ["mode", "reply", "questions", "buildIntent", "ops"],
+    propertyOrdering: ["mode", "reply", "projectName", "questions", "buildIntent", "ops"],
   };
 }
 
@@ -230,6 +243,7 @@ const JSON_SCHEMA = {
     mode: { type: "string", enum: ["clarify", "build", "edit", "answer"], description: D.mode },
     reply: { type: "string", description: D.reply },
     questions: { type: "array", items: { type: "string" }, description: D.questions },
+    projectName: { type: "string", description: D.projectName },
     buildIntent: { type: "string", description: D.buildIntent },
     ops: {
       type: "array",
@@ -305,6 +319,9 @@ function prompt({ history, digest }: ConverseInput): string {
 
   return [
     `Panel: ${digest.target.model}, ${digest.target.width}x${digest.target.height} screen units.`,
+    digest.unnamed
+      ? "This project has no name yet. Set projectName to what it should be called."
+      : `The project is called "${digest.name}". Do not rename it.`,
     `Project "${digest.name}" has ${digest.screens.length} screen(s):`,
     screens || "- none yet",
     "",

@@ -16,13 +16,29 @@
 
 const KEY = "hmi-copilot-projects";
 
+/**
+ * What the Projects page can say about a project without opening it.
+ *
+ * Everything below the name is a count the project itself already knows, kept
+ * here so a card does not have to load a whole project - and updated on every
+ * autosave, so it cannot drift into claiming "0 screens" over a project with
+ * four. All optional: a project that has never been opened has none of them.
+ */
 export interface ProjectRecord {
   id: string;
   name: string;
   createdAt: number;
   openedAt: number;
-  /** Present once the project has screens; shown on the card. */
   screens?: number;
+  /** Objects across every screen - the honest measure of how much is built. */
+  objects?: number;
+  tags?: number;
+  alarms?: number;
+  bindings?: number;
+  /** The panel it is designed for, so a card says what hardware it targets. */
+  target?: string;
+  /** The first line of the conversation, which is what it was asked for. */
+  intent?: string;
   starred?: boolean;
 }
 
@@ -39,6 +55,12 @@ export const DEMO: ProjectRecord = {
   createdAt: 0,
   openedAt: 0,
   screens: 1,
+  objects: 19,
+  tags: 7,
+  alarms: 5,
+  bindings: 11,
+  target: "HMIGTO6310 · 1024 × 768",
+  intent: "The built-in demo, lifted from a file that opens in the product.",
 };
 
 export function loadProjects(): ProjectRecord[] {
@@ -81,6 +103,7 @@ export function createProject(name?: string): ProjectRecord {
     createdAt: Date.now(),
     openedAt: Date.now(),
     screens: 0,
+    objects: 0,
   };
   saveProjects([record, ...existing]);
   return record;

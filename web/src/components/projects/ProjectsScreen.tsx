@@ -128,26 +128,54 @@ export function ProjectsScreen() {
             <Link
               href={`/project/${project.id}`}
               className={cn(
-                "focus-ring flex h-40 flex-col rounded-panel border border-line-subtle bg-surface-raised p-4 transition",
+                "focus-ring flex min-h-44 flex-col rounded-panel border border-line-subtle bg-surface-raised p-4 transition",
                 "hover:border-brand-400",
               )}
             >
-              <FolderOpen size={22} aria-hidden className="text-brand-400" />
-              <span className="mt-auto block truncate text-sm font-semibold">
+              <FolderOpen size={22} aria-hidden className="shrink-0 text-brand-400" />
+
+              <span className="mt-3 block truncate text-sm font-semibold">
                 {project.name}
               </span>
-              <span className="mt-1 block text-xs text-text-muted">
-                {project.openedAt === 0
-                  ? "The built-in demo"
-                  : `Last opened ${when(project.openedAt)}`}
-              </span>
-              {project.screens !== undefined && (
-                <span className="mt-2">
-                  <Badge tone="neutral">
-                    {project.screens} {project.screens === 1 ? "screen" : "screens"}
-                  </Badge>
+
+              {/* What it was asked for, which is what the project is. Named
+                  projects get their own sentence back rather than a count. */}
+              {project.intent && (
+                <span className="mt-1 line-clamp-2 block text-xs leading-snug text-text-muted">
+                  {project.intent}
                 </span>
               )}
+
+              <span className="mt-auto block pt-3 text-[11px] text-text-faint">
+                {project.openedAt === 0
+                  ? "The built-in demo"
+                  : `Opened ${when(project.openedAt)}`}
+                {project.target && ` · ${project.target}`}
+              </span>
+
+              {/* Only counts that are non-zero: a wall of zeroes on a project
+                  nobody has built yet says less than nothing. */}
+              <span className="mt-2 flex flex-wrap gap-1">
+                {(
+                  [
+                    ["screen", project.screens],
+                    ["object", project.objects],
+                    ["tag", project.tags],
+                    ["alarm", project.alarms],
+                    ["binding", project.bindings],
+                  ] as const
+                )
+                  .filter(([, n]) => (n ?? 0) > 0)
+                  .map(([noun, n]) => (
+                    <Badge key={noun} tone="neutral">
+                      {n!.toLocaleString()} {noun}
+                      {n === 1 ? "" : "s"}
+                    </Badge>
+                  ))}
+                {!project.screens && (
+                  <Badge tone="warn">empty — nothing built yet</Badge>
+                )}
+              </span>
             </Link>
 
             {project.id !== DEMO_ID && (
