@@ -56,10 +56,10 @@ engineer sees.
 | **9** | Supporting screens | — | ✅ done |
 | **10** | Rehearsal | — | 🟡 script done, live run-through pending |
 
-**271 tests.** 258 of them run anywhere; the other 13 — the Phase 1 packager gate and
+**309 tests.** 296 of them run anywhere; the other 13 — the Phase 1 packager gate and
 the symbol round-trip — need a local EcoStruxure installation to extract a skeleton
-from, and skip without one. So the number a run prints depends on the machine: 258 on
-a Mac, 271 on the Windows laptop. Measured with the app running, since the Phase 10
+from, and skip without one. So the number a run prints depends on the machine: 296 on
+a Mac, 309 on the Windows laptop. Measured with the app running, since the Phase 10
 rehearsal calls the routes.
 
 ```bash
@@ -164,7 +164,7 @@ web/                    the product — Next.js full stack
   src/lib/sim/          the simulation engine — pure client, no format knowledge
   src/components/       canvas, inspector, binding map, timeline, primitives
   src/app/api/          generate (SSE), export, tags/parse, validate
-  public/demo/          Plant_Tags.csv — the 1,248-tag sample export
+  public/demo/          six sample tag exports; see its README for what each covers
   tests/                including the Phase 1 packager gate and the demo rehearsal
 tools/                  the proven generator core, in Python
   make_project.py       writes a complete .eote from a tag list

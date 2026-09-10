@@ -1,0 +1,71 @@
+Name,DataType,Comment,Address
+MTR_1_RUN,Bool,Motor 1 running,%MX190.2
+MTR_1_FLT,Bool,Motor 1 fault,%MX190.4
+MTR 2 RUN,Bool,"Spaces, from the old panel database",%MX190.6
+MTR-2-FLT,Bool,"Hyphens, same source",%MX191.0
+2ND_STAGE_PRESS,Float,Leading digit,%MD1530
+PLANT.LINE.SPEED,REAL,Dotted OPC path,%MD1532
+Order,DINT,SQL reserved word,%MD1534
+Value,REAL,SQL reserved word,%MD1536
+MTR_1_RUN,Bool,Duplicate of row 1,%MX192.2
+MTR_1_RUN,Bool,Second duplicate of row 1,%MX192.4
+TANK_LVL,Analogue,Type spelled the British way,%MD1542
+VALVE_POS,boolean16,Type that means nothing,%MW1544
+PUMP_HRS,??,Type column left as a placeholder,%MD1546
+FEED_TEMP,flt,Abbreviated type,%MD1548
+AUX_501_STS,Bool,Auxiliary point 1,%MX193.6
+AUX_502_STS,Bool,Auxiliary point 2,%MX194.0
+AUX_503_STS,Bool,Auxiliary point 3,%MX194.2
+AUX_504_STS,Bool,Auxiliary point 4,%MX194.4
+AUX_505_STS,Bool,Auxiliary point 5,%MX194.6
+AUX_506_STS,Bool,Auxiliary point 6,%MX195.0
+AUX_507_STS,Bool,Auxiliary point 7,%MX195.2
+AUX_508_STS,Bool,Auxiliary point 8,%MX195.4
+AUX_509_STS,Bool,Auxiliary point 9,%MX195.6
+AUX_510_STS,Bool,Auxiliary point 10,%MX196.0
+AUX_511_STS,Bool,Auxiliary point 11,%MX196.2
+AUX_512_STS,Bool,Auxiliary point 12,%MX196.4
+AUX_513_STS,Bool,Auxiliary point 13,%MX196.6
+AUX_514_STS,Bool,Auxiliary point 14,%MX197.0
+AUX_515_STS,Bool,Auxiliary point 15,%MX197.2
+AUX_516_STS,Bool,Auxiliary point 16,%MX197.4
+AUX_517_STS,Bool,Auxiliary point 17,%MX197.6
+AUX_518_STS,Bool,Auxiliary point 18,%MX198.0
+AUX_519_STS,Bool,Auxiliary point 19,%MX198.2
+AUX_520_STS,Bool,Auxiliary point 20,%MX198.4
+AUX_521_STS,Bool,Auxiliary point 21,%MX198.6
+AUX_522_STS,Bool,Auxiliary point 22,%MX199.0
+AUX_523_STS,Bool,Auxiliary point 23,%MX199.2
+AUX_524_STS,Bool,Auxiliary point 24,%MX199.4
+AUX_525_STS,Bool,Auxiliary point 25,%MX199.6
+AUX_526_STS,Bool,Auxiliary point 26,%MX200.0
+AUX_527_STS,Bool,Auxiliary point 27,%MX200.2
+AUX_528_STS,Bool,Auxiliary point 28,%MX200.4
+AUX_529_STS,Bool,Auxiliary point 29,%MX200.6
+AUX_530_STS,Bool,Auxiliary point 30,%MX201.0
+AUX_531_STS,Bool,Auxiliary point 31,%MX201.2
+AUX_532_STS,Bool,Auxiliary point 32,%MX201.4
+AUX_533_STS,Bool,Auxiliary point 33,%MX201.6
+AUX_534_STS,Bool,Auxiliary point 34,%MX202.0
+AUX_535_STS,Bool,Auxiliary point 35,%MX202.2
+AUX_536_STS,Bool,Auxiliary point 36,%MX202.4
+AUX_537_STS,Bool,Auxiliary point 37,%MX202.6
+AUX_538_STS,Bool,Auxiliary point 38,%MX203.0
+AUX_539_STS,Bool,Auxiliary point 39,%MX203.2
+AUX_540_STS,Bool,Auxiliary point 40,%MX203.4
+AUX_541_STS,Bool,Auxiliary point 41,%MX203.6
+AUX_542_STS,Bool,Auxiliary point 42,%MX204.0
+AUX_543_STS,Bool,Auxiliary point 43,%MX204.2
+AUX_544_STS,Bool,Auxiliary point 44,%MX204.4
+AUX_545_STS,Bool,Auxiliary point 45,%MX204.6
+AUX_546_STS,Bool,Auxiliary point 46,%MX205.0
+AUX_547_STS,Bool,Auxiliary point 47,%MX205.2
+AUX_548_STS,Bool,Auxiliary point 48,%MX205.4
+AUX_549_STS,Bool,Auxiliary point 49,%MX205.6
+AUX_550_STS,Bool,Auxiliary point 50,%MX206.0
+AUX_551_STS,Bool,Auxiliary point 51,%MX206.2
+AUX_552_STS,Bool,Auxiliary point 52,%MX206.4
+AUX_553_STS,Bool,Auxiliary point 53,%MX206.6
+AUX_554_STS,Bool,Auxiliary point 54,%MX207.0
+AUX_555_STS,Bool,Auxiliary point 55,%MX207.2
+AUX_556_STS,Bool,Auxiliary point 56,%MX207.4

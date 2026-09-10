@@ -1,0 +1,126 @@
+Name;DataType;Comment;Address
+CNV_101_RUN;Bool;Conveyor 1 running;%MX137.4
+CNV_101_FLT;Bool;Conveyor 1 fault;%MX137.6
+CNV_101_SPEED;REAL;Conveyor 1 speed (m/min);%MD1104
+CNV_101_PE;Bool;Conveyor 1 photo eye blocked;%MX138.2
+CNV_101_JAM;Bool;Conveyor 1 jam detected;%MX138.4
+CNV_102_RUN;Bool;Conveyor 2 running;%MX138.6
+CNV_102_FLT;Bool;Conveyor 2 fault;%MX139.0
+CNV_102_SPEED;REAL;Conveyor 2 speed (m/min);%MD1114
+CNV_102_PE;Bool;Conveyor 2 photo eye blocked;%MX139.4
+CNV_102_JAM;Bool;Conveyor 2 jam detected;%MX139.6
+CNV_103_RUN;Bool;Conveyor 3 running;%MX140.0
+CNV_103_FLT;Bool;Conveyor 3 fault;%MX140.2
+CNV_103_SPEED;REAL;Conveyor 3 speed (m/min);%MD1124
+CNV_103_PE;Bool;Conveyor 3 photo eye blocked;%MX140.6
+CNV_103_JAM;Bool;Conveyor 3 jam detected;%MX141.0
+CNV_104_RUN;Bool;Conveyor 4 running;%MX141.2
+CNV_104_FLT;Bool;Conveyor 4 fault;%MX141.4
+CNV_104_SPEED;REAL;Conveyor 4 speed (m/min);%MD1134
+CNV_104_PE;Bool;Conveyor 4 photo eye blocked;%MX142.0
+CNV_104_JAM;Bool;Conveyor 4 jam detected;%MX142.2
+CNV_105_RUN;Bool;Conveyor 5 running;%MX142.4
+CNV_105_FLT;Bool;Conveyor 5 fault;%MX142.6
+CNV_105_SPEED;REAL;Conveyor 5 speed (m/min);%MD1144
+CNV_105_PE;Bool;Conveyor 5 photo eye blocked;%MX143.2
+CNV_105_JAM;Bool;Conveyor 5 jam detected;%MX143.4
+CNV_106_RUN;Bool;Conveyor 6 running;%MX143.6
+CNV_106_FLT;Bool;Conveyor 6 fault;%MX144.0
+CNV_106_SPEED;REAL;Conveyor 6 speed (m/min);%MD1154
+CNV_106_PE;Bool;Conveyor 6 photo eye blocked;%MX144.4
+CNV_106_JAM;Bool;Conveyor 6 jam detected;%MX144.6
+CNV_107_RUN;Bool;Conveyor 7 running;%MX145.0
+CNV_107_FLT;Bool;Conveyor 7 fault;%MX145.2
+CNV_107_SPEED;REAL;Conveyor 7 speed (m/min);%MD1164
+CNV_107_PE;Bool;Conveyor 7 photo eye blocked;%MX145.6
+CNV_107_JAM;Bool;Conveyor 7 jam detected;%MX146.0
+CNV_108_RUN;Bool;Conveyor 8 running;%MX146.2
+CNV_108_FLT;Bool;Conveyor 8 fault;%MX146.4
+CNV_108_SPEED;REAL;Conveyor 8 speed (m/min);%MD1174
+CNV_108_PE;Bool;Conveyor 8 photo eye blocked;%MX147.0
+CNV_108_JAM;Bool;Conveyor 8 jam detected;%MX147.2
+CNV_109_RUN;Bool;Conveyor 9 running;%MX147.4
+CNV_109_FLT;Bool;Conveyor 9 fault;%MX147.6
+CNV_109_SPEED;REAL;Conveyor 9 speed (m/min);%MD1184
+CNV_109_PE;Bool;Conveyor 9 photo eye blocked;%MX148.2
+CNV_109_JAM;Bool;Conveyor 9 jam detected;%MX148.4
+CNV_110_RUN;Bool;Conveyor 10 running;%MX148.6
+CNV_110_FLT;Bool;Conveyor 10 fault;%MX149.0
+CNV_110_SPEED;REAL;Conveyor 10 speed (m/min);%MD1194
+CNV_110_PE;Bool;Conveyor 10 photo eye blocked;%MX149.4
+CNV_110_JAM;Bool;Conveyor 10 jam detected;%MX149.6
+CNV_111_RUN;Bool;Conveyor 11 running;%MX150.0
+CNV_111_FLT;Bool;Conveyor 11 fault;%MX150.2
+CNV_111_SPEED;REAL;Conveyor 11 speed (m/min);%MD1204
+CNV_111_PE;Bool;Conveyor 11 photo eye blocked;%MX150.6
+CNV_111_JAM;Bool;Conveyor 11 jam detected;%MX151.0
+CNV_112_RUN;Bool;Conveyor 12 running;%MX151.2
+CNV_112_FLT;Bool;Conveyor 12 fault;%MX151.4
+CNV_112_SPEED;REAL;Conveyor 12 speed (m/min);%MD1214
+CNV_112_PE;Bool;Conveyor 12 photo eye blocked;%MX152.0
+CNV_112_JAM;Bool;Conveyor 12 jam detected;%MX152.2
+CNV_113_RUN;Bool;Conveyor 13 running;%MX152.4
+CNV_113_FLT;Bool;Conveyor 13 fault;%MX152.6
+CNV_113_SPEED;REAL;Conveyor 13 speed (m/min);%MD1224
+CNV_113_PE;Bool;Conveyor 13 photo eye blocked;%MX153.2
+CNV_113_JAM;Bool;Conveyor 13 jam detected;%MX153.4
+CNV_114_RUN;Bool;Conveyor 14 running;%MX153.6
+CNV_114_FLT;Bool;Conveyor 14 fault;%MX154.0
+CNV_114_SPEED;REAL;Conveyor 14 speed (m/min);%MD1234
+CNV_114_PE;Bool;Conveyor 14 photo eye blocked;%MX154.4
+CNV_114_JAM;Bool;Conveyor 14 jam detected;%MX154.6
+CNV_115_RUN;Bool;Conveyor 15 running;%MX155.0
+CNV_115_FLT;Bool;Conveyor 15 fault;%MX155.2
+CNV_115_SPEED;REAL;Conveyor 15 speed (m/min);%MD1244
+CNV_115_PE;Bool;Conveyor 15 photo eye blocked;%MX155.6
+CNV_115_JAM;Bool;Conveyor 15 jam detected;%MX156.0
+CNV_116_RUN;Bool;Conveyor 16 running;%MX156.2
+CNV_116_FLT;Bool;Conveyor 16 fault;%MX156.4
+CNV_116_SPEED;REAL;Conveyor 16 speed (m/min);%MD1254
+CNV_116_PE;Bool;Conveyor 16 photo eye blocked;%MX157.0
+CNV_116_JAM;Bool;Conveyor 16 jam detected;%MX157.2
+CNV_117_RUN;Bool;Conveyor 17 running;%MX157.4
+CNV_117_FLT;Bool;Conveyor 17 fault;%MX157.6
+CNV_117_SPEED;REAL;Conveyor 17 speed (m/min);%MD1264
+CNV_117_PE;Bool;Conveyor 17 photo eye blocked;%MX158.2
+CNV_117_JAM;Bool;Conveyor 17 jam detected;%MX158.4
+CNV_118_RUN;Bool;Conveyor 18 running;%MX158.6
+CNV_118_FLT;Bool;Conveyor 18 fault;%MX159.0
+CNV_118_SPEED;REAL;Conveyor 18 speed (m/min);%MD1274
+CNV_118_PE;Bool;Conveyor 18 photo eye blocked;%MX159.4
+CNV_118_JAM;Bool;Conveyor 18 jam detected;%MX159.6
+CNV_119_RUN;Bool;Conveyor 19 running;%MX160.0
+CNV_119_FLT;Bool;Conveyor 19 fault;%MX160.2
+CNV_119_SPEED;REAL;Conveyor 19 speed (m/min);%MD1284
+CNV_119_PE;Bool;Conveyor 19 photo eye blocked;%MX160.6
+CNV_119_JAM;Bool;Conveyor 19 jam detected;%MX161.0
+CNV_120_RUN;Bool;Conveyor 20 running;%MX161.2
+CNV_120_FLT;Bool;Conveyor 20 fault;%MX161.4
+CNV_120_SPEED;REAL;Conveyor 20 speed (m/min);%MD1294
+CNV_120_PE;Bool;Conveyor 20 photo eye blocked;%MX162.0
+CNV_120_JAM;Bool;Conveyor 20 jam detected;%MX162.2
+DIV_201_LEFT;Bool;Diverter 1 left;%MX162.4
+DIV_201_RIGHT;Bool;Diverter 1 right;%MX162.6
+DIV_201_FLT;Bool;Diverter 1 fault;%MX163.0
+DIV_202_LEFT;Bool;Diverter 2 left;%MX163.2
+DIV_202_RIGHT;Bool;Diverter 2 right;%MX163.4
+DIV_202_FLT;Bool;Diverter 2 fault;%MX163.6
+DIV_203_LEFT;Bool;Diverter 3 left;%MX164.0
+DIV_203_RIGHT;Bool;Diverter 3 right;%MX164.2
+DIV_203_FLT;Bool;Diverter 3 fault;%MX164.4
+DIV_204_LEFT;Bool;Diverter 4 left;%MX164.6
+DIV_204_RIGHT;Bool;Diverter 4 right;%MX165.0
+DIV_204_FLT;Bool;Diverter 4 fault;%MX165.2
+DIV_205_LEFT;Bool;Diverter 5 left;%MX165.4
+DIV_205_RIGHT;Bool;Diverter 5 right;%MX165.6
+DIV_205_FLT;Bool;Diverter 5 fault;%MX166.0
+DIV_206_LEFT;Bool;Diverter 6 left;%MX166.2
+DIV_206_RIGHT;Bool;Diverter 6 right;%MX166.4
+DIV_206_FLT;Bool;Diverter 6 fault;%MX166.6
+SCAN_1_READ;Bool;Barcode scanner read OK;%MX167.0
+SCAN_1_NOREAD;Bool;Barcode scanner no-read;%MX167.2
+SCAN_1_CODE;String;Last barcode read;%MW1340
+SCALE_1_WEIGHT;REAL;Checkweigher weight (kg);%MD1342
+SCALE_1_REJECT;Bool;Checkweigher reject;%MX168.0
+LINE_THROUGHPUT;DINT;Cartons per hour;%MD1346
+LINE_RUN;Bool;Line running;%MX168.4

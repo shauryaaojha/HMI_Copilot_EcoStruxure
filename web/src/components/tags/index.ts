@@ -5,5 +5,7 @@ export {
   useTagImport,
   ACCEPTED,
   SAMPLE_EXPORT,
+  SAMPLES,
   type ImportState,
+  type Sample,
 } from "./useTagImport";

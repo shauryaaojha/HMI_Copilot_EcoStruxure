@@ -26,6 +26,17 @@ import { Part } from "@/lib/ote/schema";
 import type { Binding } from "@/store/project";
 
 const BASE = process.env.DEMO_BASE_URL ?? "http://localhost:3000";
+
+/**
+ * The live beats are generous with time on purpose.
+ *
+ * `next dev` compiles a route the first time it is asked for, and the whole
+ * suite runs in parallel against one server, so the first hit on a page can sit
+ * behind a compile and several other suites. The default 5 s timeout made this
+ * file fail perhaps one run in three - and a rehearsal that cries wolf is worse
+ * than no rehearsal, because the presenter learns to ignore it.
+ */
+const LIVE_TIMEOUT = 30_000;
 const SAMPLE = join(process.cwd(), "public", "demo", "Plant_Tags.csv");
 
 const bindings: Binding[] = demoBindings.Bindings.flatMap((b) => {
@@ -209,14 +220,14 @@ describe.skipIf(!serverUp)("the routes the script visits", () => {
     it(`serves ${route}`, async () => {
       const response = await fetch(`${BASE}${route}`);
       expect(response.status, route).toBe(200);
-    });
+    }, LIVE_TIMEOUT);
   }
 
   it("serves the sample export the Tags screen fetches", async () => {
     const response = await fetch(`${BASE}/demo/Plant_Tags.csv`);
     expect(response.status).toBe(200);
     expect((await response.text()).split("\r\n")[0]).toBe("Name,DataType,Comment,Address");
-  });
+  }, LIVE_TIMEOUT);
 });
 
 describe.skipIf(!serverUp)("the routes the script depends on", () => {
@@ -234,7 +245,7 @@ describe.skipIf(!serverUp)("the routes the script depends on", () => {
     };
     expect(data.variables).toHaveLength(1248);
     expect(data.corrections).toHaveLength(5);
-  });
+  }, LIVE_TIMEOUT);
 
   it("validates the demo project and finds something to talk about", async () => {
     const parts = demoScreen.Children[0].Children;
@@ -260,7 +271,7 @@ describe.skipIf(!serverUp)("the routes the script depends on", () => {
     expect(response.status).toBe(200);
     const { findings } = (await response.json()) as { findings: unknown[] };
     expect(Array.isArray(findings)).toBe(true);
-  });
+  }, LIVE_TIMEOUT);
 
   it("answers the export beat, with a file or with a reason", async () => {
     const response = await fetch(`${BASE}/api/export`, {
@@ -286,5 +297,5 @@ describe.skipIf(!serverUp)("the routes the script depends on", () => {
       const { error } = (await response.json()) as { error: string };
       expect(error).toMatch(/setup:skeleton/);
     }
-  });
+  }, LIVE_TIMEOUT);
 });

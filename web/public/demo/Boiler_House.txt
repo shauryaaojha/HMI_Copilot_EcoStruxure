@@ -1,0 +1,49 @@
+BLR_1_RUN	Bool	Boiler 1 firing	%MX125.2
+BLR_1_FLT	Bool	Boiler 1 lockout	%MX125.4
+BLR_1_FLAME	Bool	Boiler 1 flame proven	%MX125.6
+BLR_1_PRESS	REAL	Boiler 1 drum pressure (bar)	%MD1008
+BLR_1_TEMP	REAL	Boiler 1 flue gas temperature (degC)	%MD1010
+BLR_1_LEVEL	REAL	Boiler 1 drum level (%)	%MD1012
+BLR_1_BURNER_MOD	INT	Boiler 1 burner modulation (%)	%MW1014
+BLR_1_LVL_LO	Bool	Boiler 1 low water alarm	%MX127.0
+BLR_1_PRESS_HI	Bool	Boiler 1 high pressure alarm	%MX127.2
+BLR_2_RUN	Bool	Boiler 2 firing	%MX127.4
+BLR_2_FLT	Bool	Boiler 2 lockout	%MX127.6
+BLR_2_FLAME	Bool	Boiler 2 flame proven	%MX128.0
+BLR_2_PRESS	REAL	Boiler 2 drum pressure (bar)	%MD1026
+BLR_2_TEMP	REAL	Boiler 2 flue gas temperature (degC)	%MD1028
+BLR_2_LEVEL	REAL	Boiler 2 drum level (%)	%MD1030
+BLR_2_BURNER_MOD	INT	Boiler 2 burner modulation (%)	%MW1032
+BLR_2_LVL_LO	Bool	Boiler 2 low water alarm	%MX129.2
+BLR_2_PRESS_HI	Bool	Boiler 2 high pressure alarm	%MX129.4
+BLR_3_RUN	Bool	Boiler 3 firing	%MX129.6
+BLR_3_FLT	Bool	Boiler 3 lockout	%MX130.0
+BLR_3_FLAME	Bool	Boiler 3 flame proven	%MX130.2
+BLR_3_PRESS	REAL	Boiler 3 drum pressure (bar)	%MD1044
+BLR_3_TEMP	REAL	Boiler 3 flue gas temperature (degC)	%MD1046
+BLR_3_LEVEL	REAL	Boiler 3 drum level (%)	%MD1048
+BLR_3_BURNER_MOD	INT	Boiler 3 burner modulation (%)	%MW1050
+BLR_3_LVL_LO	Bool	Boiler 3 low water alarm	%MX131.4
+BLR_3_PRESS_HI	Bool	Boiler 3 high pressure alarm	%MX131.6
+FW_PMP_1_RUN	Bool	Feedwater pump 1 running	%MX132.0
+FW_PMP_1_FLT	Bool	Feedwater pump 1 fault	%MX132.2
+FW_PMP_1_AMPS	REAL	Feedwater pump 1 current (A)	%MD1060
+FW_PMP_2_RUN	Bool	Feedwater pump 2 running	%MX132.6
+FW_PMP_2_FLT	Bool	Feedwater pump 2 fault	%MX133.0
+FW_PMP_2_AMPS	REAL	Feedwater pump 2 current (A)	%MD1066
+FW_TANK_LVL	REAL	Feedwater tank level (%)	%MD1068
+FW_COND	REAL	Feedwater conductivity (uS/cm)	%MD1070
+STM_HDR_PRESS	REAL	Steam header pressure (bar)	%MD1072
+STM_HDR_TEMP	REAL	Steam header temperature (degC)	%MD1074
+STM_FLOW	REAL	Steam flow (t/h)	%MD1076
+STM_TOTAL	LREAL	Steam totaliser (t)	%MD1078
+DA_LVL	REAL	Deaerator level (%)	%MD1080
+DA_PRESS	REAL	Deaerator pressure (bar)	%MD1082
+DA_TEMP	REAL	Deaerator temperature (degC)	%MD1084
+BD_VALVE_OPEN	Bool	Blowdown valve open	%MX135.6
+BD_AUTO	Bool	Blowdown in auto	%MX136.0
+CHEM_PMP_RUN	Bool	Chemical dosing pump running	%MX136.2
+CHEM_TANK_LO	Bool	Chemical tank low	%MX136.4
+PLANT_MODE	INT	Plant mode (0 off, 1 auto, 2 manual)	%MW1094
+PLANT_ESTOP	Bool	Emergency stop healthy	%MX137.0
+SHIFT_ID	String	Current shift identifier	%MW1098

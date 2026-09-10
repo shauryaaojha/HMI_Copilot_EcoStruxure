@@ -18,19 +18,78 @@ import { useProject, type TagImport } from "@/store/project";
 
 export const ACCEPTED = ".csv,.txt,.xlsx,.xls";
 
+export interface Sample {
+  path: string;
+  name: string;
+  /** What the plant is, for the picker. */
+  label: string;
+  tags: number;
+  /** What this file exercises that the others do not. */
+  note: string;
+}
+
 /**
- * A committed plant export, so the demo never depends on finding a file in an
- * OS file dialog on stage. 1,248 tags across pumps, instruments, valves and
- * motors, including five names the corrector has to report - which is the beat
- * that shows corrections are reported and not applied silently.
+ * Committed plant exports, so a demo never depends on finding a file in an OS
+ * file dialog on stage - and so the importer is exercised against more than one
+ * shape of file.
  *
- * Phase 10 of docs/BUILD_PLAN.md.
+ * They are not variations on a theme. Between them they cover every path
+ * lib/tags/parse.ts has: a spreadsheet, a tab-separated file with no header at
+ * all, a semicolon-delimited export of the kind Excel writes on a European
+ * locale, "Symbol" column naming rather than "Name", and one file that is
+ * awkward on purpose. Each figure below is what the live route actually
+ * returns - tests/samples.test.ts holds them to it.
+ *
+ * Phase 10 of docs/BUILD_PLAN.md, and the first stone of the golden corpus
+ * docs/PRODUCTION.md argues for.
  */
-export const SAMPLE_EXPORT = {
-  path: "/demo/Plant_Tags.csv",
-  name: "Plant_Tags.csv",
-  tags: 1248,
-};
+export const SAMPLES: Sample[] = [
+  {
+    path: "/demo/Plant_Tags.csv",
+    name: "Plant_Tags.csv",
+    label: "Water treatment plant",
+    tags: 1248,
+    note: "1,248 tags · 5 names corrected",
+  },
+  {
+    path: "/demo/Bottling_Line.xlsx",
+    name: "Bottling_Line.xlsx",
+    label: "Bottling line",
+    tags: 82,
+    note: "Excel workbook",
+  },
+  {
+    path: "/demo/Conveyor_System.csv",
+    name: "Conveyor_System.csv",
+    label: "Conveyor system",
+    tags: 125,
+    note: "semicolon delimited",
+  },
+  {
+    path: "/demo/Batch_Reactors.txt",
+    name: "Batch_Reactors.txt",
+    label: "Batch reactors",
+    tags: 86,
+    note: "Symbol column naming",
+  },
+  {
+    path: "/demo/Boiler_House.txt",
+    name: "Boiler_House.txt",
+    label: "Boiler house",
+    tags: 49,
+    note: "no header row",
+  },
+  {
+    path: "/demo/Legacy_Retrofit.csv",
+    name: "Legacy_Retrofit.csv",
+    label: "Legacy panel retrofit",
+    tags: 66,
+    note: "6 corrections · 4 rows skipped",
+  },
+];
+
+/** The one the demo script reaches for. */
+export const SAMPLE_EXPORT = SAMPLES[0];
 
 interface ParseResponse {
   variables: Variable[];
@@ -97,22 +156,27 @@ export function useTagImport() {
     [importTags, log, snapshot],
   );
 
-  /** Fetches the committed sample export and puts it through the same path. */
-  const useSample = useCallback(async () => {
-    setState({ status: "parsing", fileName: SAMPLE_EXPORT.name });
-    try {
-      const response = await fetch(SAMPLE_EXPORT.path);
-      if (!response.ok) throw new Error(`sample export not found (${response.status})`);
-      const file = new File([await response.blob()], SAMPLE_EXPORT.name, {
-        type: "text/csv",
-      });
-      return await upload(file);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "could not load the sample";
-      setState({ status: "failed", fileName: SAMPLE_EXPORT.name, message });
-      return null;
-    }
-  }, [upload]);
+  /**
+   * Fetches a committed sample and puts it through the same path a dropped
+   * file takes - same route, same corrections, same reporting. Anything else
+   * would make the samples a demo mode rather than a test of the importer.
+   */
+  const useSample = useCallback(
+    async (sample: Sample = SAMPLE_EXPORT) => {
+      setState({ status: "parsing", fileName: sample.name });
+      try {
+        const response = await fetch(sample.path);
+        if (!response.ok) throw new Error(`sample not found (${response.status})`);
+        return await upload(new File([await response.blob()], sample.name));
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "could not load the sample";
+        setState({ status: "failed", fileName: sample.name, message });
+        return null;
+      }
+    },
+    [upload],
+  );
 
   const reset = useCallback(() => setState({ status: "idle" }), []);
 

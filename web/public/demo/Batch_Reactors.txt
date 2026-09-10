@@ -1,0 +1,87 @@
+Symbol	Type	Comment	Address
+RCT_301_TEMP	Float	Reactor 1 temperature (degC)	%MD1350
+RCT_301_PRESS	Float	Reactor 1 pressure (bar)	%MD1352
+RCT_301_LEVEL	Float	Reactor 1 level (%)	%MD1354
+RCT_301_AGIT_RUN	Bit	Reactor 1 agitator running	%MX169.4
+RCT_301_AGIT_FLT	Bit	Reactor 1 agitator fault	%MX169.6
+RCT_301_AGIT_SPD	Int	Reactor 1 agitator speed (rpm)	%MW1360
+RCT_301_JKT_TEMP	Float	Reactor 1 jacket temperature (degC)	%MD1362
+RCT_301_JKT_VALVE	Int	Reactor 1 jacket valve position (%)	%MW1364
+RCT_301_TEMP_HI	Bit	Reactor 1 high temperature alarm	%MX170.6
+RCT_301_PRESS_HI	Bit	Reactor 1 high pressure alarm	%MX171.0
+RCT_301_BATCH	Text	Reactor 1 batch identifier	%MW1370
+RCT_301_STEP	Int	Reactor 1 recipe step	%MW1372
+RCT_302_TEMP	Float	Reactor 2 temperature (degC)	%MD1374
+RCT_302_PRESS	Float	Reactor 2 pressure (bar)	%MD1376
+RCT_302_LEVEL	Float	Reactor 2 level (%)	%MD1378
+RCT_302_AGIT_RUN	Bit	Reactor 2 agitator running	%MX172.4
+RCT_302_AGIT_FLT	Bit	Reactor 2 agitator fault	%MX172.6
+RCT_302_AGIT_SPD	Int	Reactor 2 agitator speed (rpm)	%MW1384
+RCT_302_JKT_TEMP	Float	Reactor 2 jacket temperature (degC)	%MD1386
+RCT_302_JKT_VALVE	Int	Reactor 2 jacket valve position (%)	%MW1388
+RCT_302_TEMP_HI	Bit	Reactor 2 high temperature alarm	%MX173.6
+RCT_302_PRESS_HI	Bit	Reactor 2 high pressure alarm	%MX174.0
+RCT_302_BATCH	Text	Reactor 2 batch identifier	%MW1394
+RCT_302_STEP	Int	Reactor 2 recipe step	%MW1396
+RCT_303_TEMP	Float	Reactor 3 temperature (degC)	%MD1398
+RCT_303_PRESS	Float	Reactor 3 pressure (bar)	%MD1400
+RCT_303_LEVEL	Float	Reactor 3 level (%)	%MD1402
+RCT_303_AGIT_RUN	Bit	Reactor 3 agitator running	%MX175.4
+RCT_303_AGIT_FLT	Bit	Reactor 3 agitator fault	%MX175.6
+RCT_303_AGIT_SPD	Int	Reactor 3 agitator speed (rpm)	%MW1408
+RCT_303_JKT_TEMP	Float	Reactor 3 jacket temperature (degC)	%MD1410
+RCT_303_JKT_VALVE	Int	Reactor 3 jacket valve position (%)	%MW1412
+RCT_303_TEMP_HI	Bit	Reactor 3 high temperature alarm	%MX176.6
+RCT_303_PRESS_HI	Bit	Reactor 3 high pressure alarm	%MX177.0
+RCT_303_BATCH	Text	Reactor 3 batch identifier	%MW1418
+RCT_303_STEP	Int	Reactor 3 recipe step	%MW1420
+RCT_304_TEMP	Float	Reactor 4 temperature (degC)	%MD1422
+RCT_304_PRESS	Float	Reactor 4 pressure (bar)	%MD1424
+RCT_304_LEVEL	Float	Reactor 4 level (%)	%MD1426
+RCT_304_AGIT_RUN	Bit	Reactor 4 agitator running	%MX178.4
+RCT_304_AGIT_FLT	Bit	Reactor 4 agitator fault	%MX178.6
+RCT_304_AGIT_SPD	Int	Reactor 4 agitator speed (rpm)	%MW1432
+RCT_304_JKT_TEMP	Float	Reactor 4 jacket temperature (degC)	%MD1434
+RCT_304_JKT_VALVE	Int	Reactor 4 jacket valve position (%)	%MW1436
+RCT_304_TEMP_HI	Bit	Reactor 4 high temperature alarm	%MX179.6
+RCT_304_PRESS_HI	Bit	Reactor 4 high pressure alarm	%MX180.0
+RCT_304_BATCH	Text	Reactor 4 batch identifier	%MW1442
+RCT_304_STEP	Int	Reactor 4 recipe step	%MW1444
+DOS_401_RUN	Bit	Dosing pump 1 running	%MX180.6
+DOS_401_FLT	Bit	Dosing pump 1 fault	%MX181.0
+DOS_401_SETPOINT	Float	Dosing pump 1 setpoint (L/h)	%MD1450
+DOS_401_ACTUAL	Float	Dosing pump 1 actual (L/h)	%MD1452
+DOS_402_RUN	Bit	Dosing pump 2 running	%MX181.6
+DOS_402_FLT	Bit	Dosing pump 2 fault	%MX182.0
+DOS_402_SETPOINT	Float	Dosing pump 2 setpoint (L/h)	%MD1458
+DOS_402_ACTUAL	Float	Dosing pump 2 actual (L/h)	%MD1460
+DOS_403_RUN	Bit	Dosing pump 3 running	%MX182.6
+DOS_403_FLT	Bit	Dosing pump 3 fault	%MX183.0
+DOS_403_SETPOINT	Float	Dosing pump 3 setpoint (L/h)	%MD1466
+DOS_403_ACTUAL	Float	Dosing pump 3 actual (L/h)	%MD1468
+DOS_404_RUN	Bit	Dosing pump 4 running	%MX183.6
+DOS_404_FLT	Bit	Dosing pump 4 fault	%MX184.0
+DOS_404_SETPOINT	Float	Dosing pump 4 setpoint (L/h)	%MD1474
+DOS_404_ACTUAL	Float	Dosing pump 4 actual (L/h)	%MD1476
+DOS_405_RUN	Bit	Dosing pump 5 running	%MX184.6
+DOS_405_FLT	Bit	Dosing pump 5 fault	%MX185.0
+DOS_405_SETPOINT	Float	Dosing pump 5 setpoint (L/h)	%MD1482
+DOS_405_ACTUAL	Float	Dosing pump 5 actual (L/h)	%MD1484
+DOS_406_RUN	Bit	Dosing pump 6 running	%MX185.6
+DOS_406_FLT	Bit	Dosing pump 6 fault	%MX186.0
+DOS_406_SETPOINT	Float	Dosing pump 6 setpoint (L/h)	%MD1490
+DOS_406_ACTUAL	Float	Dosing pump 6 actual (L/h)	%MD1492
+DOS_407_RUN	Bit	Dosing pump 7 running	%MX186.6
+DOS_407_FLT	Bit	Dosing pump 7 fault	%MX187.0
+DOS_407_SETPOINT	Float	Dosing pump 7 setpoint (L/h)	%MD1498
+DOS_407_ACTUAL	Float	Dosing pump 7 actual (L/h)	%MD1500
+DOS_408_RUN	Bit	Dosing pump 8 running	%MX187.6
+DOS_408_FLT	Bit	Dosing pump 8 fault	%MX188.0
+DOS_408_SETPOINT	Float	Dosing pump 8 setpoint (L/h)	%MD1506
+DOS_408_ACTUAL	Float	Dosing pump 8 actual (L/h)	%MD1508
+CIP_STEP	Int	Clean-in-place step	%MW1510
+CIP_RUN	Bit	Clean-in-place running	%MX189.0
+CIP_TEMP	Float	CIP supply temperature (degC)	%MD1514
+CIP_COND	Float	CIP conductivity (mS/cm)	%MD1516
+AREA_MODE	Int	Area mode	%MW1518
+AREA_ALARM	Bit	Area common alarm	%MX190.0

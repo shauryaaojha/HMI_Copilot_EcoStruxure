@@ -16,7 +16,7 @@ import { useRef, useState } from "react";
 import { CircleAlert, FileSpreadsheet, Loader, TriangleAlert, Upload } from "lucide-react";
 import { useProject } from "@/store/project";
 import { Badge, Button, Panel, cn } from "@/components/ui";
-import { ACCEPTED, SAMPLE_EXPORT, useTagImport } from "./useTagImport";
+import { ACCEPTED, SAMPLES, useTagImport } from "./useTagImport";
 
 export function TagImport({
   compact = false,
@@ -89,15 +89,31 @@ export function TagImport({
       </div>
 
       {!tagImport && (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void useSample()}
-          className="focus-ring w-full rounded-md border border-line bg-surface-raised px-3 py-2 text-xs text-text-secondary transition hover:border-brand-500 hover:text-brand-400 disabled:opacity-50"
-        >
-          No file to hand? Use the sample plant export —{" "}
-          {SAMPLE_EXPORT.tags.toLocaleString()} tags
-        </button>
+        <div className="space-y-1.5">
+          <p className="text-xs text-text-muted">
+            No file to hand? Use a sample plant export.
+          </p>
+          <ul className={cn("grid gap-1.5", compact ? "grid-cols-1" : "sm:grid-cols-2")}>
+            {SAMPLES.map((sample) => (
+              <li key={sample.path}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void useSample(sample)}
+                  title={`${sample.name} — ${sample.note}`}
+                  className="focus-ring flex w-full items-baseline gap-2 rounded-md border border-line bg-surface-raised px-2.5 py-1.5 text-left text-xs transition hover:border-brand-500 disabled:opacity-50"
+                >
+                  <span className="min-w-0 flex-1 truncate text-text-secondary">
+                    {sample.label}
+                  </span>
+                  <span className="shrink-0 tabular-nums text-text-faint">
+                    {sample.tags.toLocaleString()}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {state.status === "failed" && (
