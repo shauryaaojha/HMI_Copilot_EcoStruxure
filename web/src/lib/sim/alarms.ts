@@ -37,9 +37,9 @@ export function alarmTriggers(bindings: Binding[]): Map<number, string> {
 }
 
 /**
- * Screen objects carry live values keyed by object name; alarms are keyed by
- * variable. The bindings are the translation, so this walks the same edges the
- * runtime would rather than assuming the two names match.
+ * Screen objects carry live values keyed by object name; alarms and the sim
+ * engine are keyed by variable. The bindings are the translation, so these two
+ * walk the same edges the runtime would rather than assuming the names match.
  */
 export function tagValues(
   bindings: Binding[],
@@ -50,6 +50,20 @@ export function tagValues(
     if (ALARM_TARGET.test(binding.targetName)) continue;
     const value = objectValues[binding.targetName];
     if (value !== undefined) out[binding.tag] = value;
+  }
+  return out;
+}
+
+/** The inverse: what the sim engine is driving, projected onto screen objects. */
+export function objectValues(
+  bindings: Binding[],
+  tags: Record<string, number | boolean>,
+): Record<string, number | boolean> {
+  const out: Record<string, number | boolean> = {};
+  for (const binding of bindings) {
+    if (ALARM_TARGET.test(binding.targetName)) continue;
+    const value = tags[binding.tag];
+    if (value !== undefined) out[binding.targetName] = value;
   }
   return out;
 }
@@ -74,15 +88,20 @@ export function isRaised(alarm: Alarm, value: number | boolean | undefined): boo
   return alarm.AlarmType <= 2 ? reading >= setpoint : reading <= setpoint;
 }
 
-/** The rows the AlarmSummary part should list, most severe first. */
+/**
+ * The rows the AlarmSummary part should list, most severe first.
+ *
+ * Takes tag values rather than object values, because that is what the alarms
+ * are actually keyed by and what the engine produces. Call tagValues() first if
+ * all you have is what the screen is showing.
+ */
 export function activeAlarms(
   alarms: Alarm[],
   bindings: Binding[],
-  objectValues: Record<string, number | boolean>,
+  values: Record<string, number | boolean>,
   at = new Date(),
 ): AlarmRow[] {
   const triggers = alarmTriggers(bindings);
-  const values = tagValues(bindings, objectValues);
   const time = at.toLocaleTimeString("en-GB", { hour12: false });
 
   return alarms

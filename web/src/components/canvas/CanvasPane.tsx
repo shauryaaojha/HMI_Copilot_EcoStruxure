@@ -22,8 +22,9 @@ import {
   Square,
 } from "lucide-react";
 import { useProject } from "@/store/project";
-import { demoLiveValues, demoScreen } from "@/fixtures";
+import { demoScreen } from "@/fixtures";
 import { activeAlarms } from "@/lib/sim/alarms";
+import { useSimulation } from "./useSimulation";
 import { Badge, Button, Tabs, cn, type TabItem } from "@/components/ui";
 import { BindingMap } from "@/components/bindings/BindingMap";
 import { ScreenRenderer } from "./ScreenRenderer";
@@ -65,7 +66,6 @@ export function CanvasPane() {
   const nudge = useProject((s) => s.nudge);
   const setBox = useProject((s) => s.setBox);
   const removeObjects = useProject((s) => s.removeObjects);
-  const values = useProject((s) => s.values);
   const simulating = useProject((s) => s.simulating);
   const setSimulating = useProject((s) => s.setSimulating);
 
@@ -76,10 +76,12 @@ export function CanvasPane() {
     screens.find((s) => s.UniqueId === activeScreenId) ?? screens[0] ?? demoScreen;
   const view = screen.Children[0];
 
-  const live = simulating ? { ...demoLiveValues, ...values } : undefined;
+  // The engine drives tags; the bindings project them onto screen objects.
+  const sim = useSimulation();
+  const live = simulating ? sim.objects : undefined;
   // Design state shows an empty grid, exactly as render_screen.py draws it;
-  // Live evaluates each alarm against the tag it is bound to.
-  const rows = simulating ? activeAlarms(alarms, bindings, live ?? {}) : [];
+  // Live evaluates each alarm against the tag it is actually bound to.
+  const rows = simulating ? activeAlarms(alarms, bindings, sim.tags) : [];
 
   const fit = useCallback(() => {
     const box = viewport.current?.getBoundingClientRect();
@@ -267,8 +269,13 @@ export function CanvasPane() {
               </Badge>
             )}
             <Badge tone={simulating ? "ok" : "neutral"} dot={simulating}>
-              {simulating ? "Live" : "Design"}
+              {simulating ? `Live · ${sim.elapsed.toFixed(0)}s` : "Design"}
             </Badge>
+            {simulating && rows.length > 0 && (
+              <Badge tone="alarm" dot>
+                {rows.length} active
+              </Badge>
+            )}
             <Button
               variant={simulating ? "secondary" : "ghost"}
               size="sm"

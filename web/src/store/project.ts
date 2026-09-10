@@ -72,8 +72,11 @@ interface ProjectState {
   selectedIds: string[];
   /** UniqueId under the pointer, for the canvas hover highlight. */
   hoveredId?: string;
-  /** Live values by object name; empty means the design state. */
-  values: Record<string, number | boolean>;
+  /**
+   * Live is a mode, not a value: the values themselves come from the engine in
+   * lib/sim, keyed by tag, and are projected onto objects through the project's
+   * own bindings. Keeping a copy here would be a second source of truth.
+   */
   simulating: boolean;
 
   tagImport?: TagImport;
@@ -182,7 +185,6 @@ export const useProject = create<ProjectState>()(
     equipment: [],
     findings: [],
     selectedIds: [],
-    values: {},
     simulating: false,
     steps: NO_STEPS,
     stepDetail: {},
@@ -233,7 +235,6 @@ export const useProject = create<ProjectState>()(
     setSimulating: (on) =>
       set((s) => {
         s.simulating = on;
-        if (!on) s.values = {};
       }),
 
     appendObject: (screenId, part) =>
@@ -413,7 +414,6 @@ export const useProject = create<ProjectState>()(
         s.findings = [];
         s.selectedIds = [];
         s.hoveredId = undefined;
-        s.values = {};
         s.steps = {} as Record<PipelineStep, StepState>;
         s.stepDetail = {};
         s.produced = {};

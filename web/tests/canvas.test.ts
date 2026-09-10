@@ -20,7 +20,12 @@ import { demoAlarms, demoBindings, demoLiveValues, demoScreen } from "@/fixtures
 import { resolveColor } from "@/lib/ote/palette";
 import { ScreenRenderer } from "@/components/canvas/ScreenRenderer";
 import type { Part } from "@/lib/ote/schema";
-import { activeAlarms, alarmTriggers, tagValues } from "@/lib/sim/alarms";
+import {
+  activeAlarms,
+  alarmTriggers,
+  objectValues,
+  tagValues,
+} from "@/lib/sim/alarms";
 
 /* The palette indices render_screen.py resolves, by the names it uses. */
 const PAPER = resolveColor(2); // #f1f1f1 - the screen background
@@ -211,8 +216,22 @@ describe("the alarm summary is driven by the project's own bindings", () => {
     expect(values.LT_101_PV).toBe(91.8);
   });
 
+  it("projects tag values back onto the objects they drive", () => {
+    // The sim engine works in tags; the canvas works in objects. The bindings
+    // are the only translation, so an unbound object stays static.
+    const objects = objectValues(bindings, { PMP_102_FLT: true, LT_101_PV: 91.8 });
+    expect(objects.Lamp_PUMP2_FLT).toBe(true);
+    expect(objects.Num_Level).toBe(91.8);
+    expect(objects.Banner).toBeUndefined();
+  });
+
+  it("round-trips object values through tags and back", () => {
+    const start = { Lamp_PUMP1_RUN: true, Num_Flow: 62.4 };
+    expect(objectValues(bindings, tagValues(bindings, start))).toEqual(start);
+  });
+
   it("raises a bit alarm on its bit and a level alarm on its setpoint", () => {
-    const rows = activeAlarms(demoAlarms, bindings, demoLiveValues);
+    const rows = activeAlarms(demoAlarms, bindings, tagValues(bindings, demoLiveValues));
     const raised = rows.map((r) => `${r.variable}:${r.message}`);
     // Pump 2 faulted, and the tank is at 91.8 - over Hi (85), under HiHi (95).
     expect(raised).toContain("PMP_102_FLT:Pump 2 fault");

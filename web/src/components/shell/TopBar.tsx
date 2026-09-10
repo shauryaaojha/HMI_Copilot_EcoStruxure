@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Check, Download, Monitor, Pencil } from "lucide-react";
 import { useProject } from "@/store/project";
 import { Button, Input, Select, cn } from "@/components/ui";
@@ -114,6 +115,7 @@ export interface TopBarProps {
 }
 
 export function TopBar({ onExport, className }: TopBarProps) {
+  const projectId = useProject((s) => s.id);
   const target = useProject((s) => s.target);
   const savedAt = useProject((s) => s.savedAt);
   const setTarget = useProject((s) => s.setTarget);
@@ -165,9 +167,19 @@ export function TopBar({ onExport, className }: TopBarProps) {
 
         <ThemeToggle />
 
-        <Button variant="primary" icon={<Download size={16} />} onClick={onExport}>
-          Export
-        </Button>
+        {onExport ? (
+          <Button variant="primary" icon={<Download size={16} />} onClick={onExport}>
+            Export
+          </Button>
+        ) : (
+          <Link
+            href={`/project/${projectId}/export`}
+            className="focus-ring inline-flex h-9 items-center gap-2 rounded-md bg-brand-500 px-3.5 text-sm font-medium text-text-onbrand shadow-sm transition hover:bg-brand-600"
+          >
+            <Download size={16} aria-hidden />
+            Export
+          </Link>
+        )}
       </div>
     </header>
   );
