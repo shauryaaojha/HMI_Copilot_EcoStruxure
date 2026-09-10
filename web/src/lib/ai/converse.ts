@@ -153,6 +153,17 @@ Ops:
 - Every op carries a short note in engineering language: "moved the flow
   reading clear of the alarm banner", never "updated element".
 
+Putting equipment on a screen. Use "addEquipment" with the unit's id or label.
+One op places a whole faceplate - the panel, the name, the running and fault
+lamps, and its readings - laid out and bound the same way the generated screens
+are. This is what "show both boilers and both chillers" means: two
+addEquipment ops per pair, not thirty.
+
+Never build a faceplate by hand out of Rectangle, TextBox and Lamp ops. It
+takes five ops per unit, the arithmetic between them goes wrong, and the result
+is a pile of unaligned pieces. addObject is for a single thing that is not a
+unit - a title, a note, a standalone alarm banner.
+
 Placing things. You are given every object on the screen with its position and
 size, and where the free space is. Use them:
 - Positions are in screen units, origin top-left. The whole object must fit
@@ -192,6 +203,9 @@ const D = {
   target: "Object name the op acts on",
   targets: "Object names, for alignObjects",
   name: "New name, for addScreen / renameScreen / addObject",
+  equipment:
+    "For addEquipment: which unit to place, by the id or label from the " +
+    "equipment list - PMP_101, Boiler 4001",
   type: `Part type, one of: ${PART_TYPES.join(", ")}`,
   text: "Text for a TextBox, or the label of a new object",
   offText: "Lamp text in the off state",
@@ -240,6 +254,7 @@ function geminiSchema() {
             target: S(D.target),
             targets: { type: "ARRAY", items: { type: "STRING" }, description: D.targets },
             name: S(D.name),
+            equipment: S(D.equipment),
             type: { type: "STRING", enum: [...PART_TYPES], description: D.type },
             text: S(D.text),
             offText: S(D.offText),
@@ -293,6 +308,7 @@ const JSON_SCHEMA = {
           target: { type: "string" },
           targets: { type: "array", items: { type: "string" } },
           name: { type: "string" },
+          equipment: { type: "string", description: D.equipment },
           type: { type: "string", enum: [...PART_TYPES] },
           text: { type: "string" },
           offText: { type: "string" },

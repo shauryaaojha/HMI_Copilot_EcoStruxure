@@ -35,6 +35,8 @@ import {
 } from "@/lib/ote/palette";
 import type { Alarm, Part, Screen } from "@/lib/ote/schema";
 import { clampToPanel, freeSpot, type Panel } from "@/lib/ote/place";
+import { CARD_SIZE, equipmentCard, type LayoutUnit } from "@/lib/ote/layout";
+import { inferEquipment } from "@/lib/ai/infer";
 import type { Op } from "@/lib/ai/ops";
 import { useProject } from "@/store/project";
 
@@ -244,6 +246,73 @@ export function applyOps(ops: Op[]): OpOutcome {
         }
         s.removeScreen(screen.UniqueId);
         changes.push(note || `Deleted screen ${screen.Name}`);
+        break;
+      }
+
+      case "addEquipment": {
+        const screen = findScreen(s, op.screen);
+        if (!screen) {
+          problems.push(`Cannot add equipment: no screen called ${op.screen}`);
+          break;
+        }
+
+        // Re-inferred from the variables rather than read off the store's
+        // equipment list: inference is deterministic and always available, and
+        // the card needs the per-tag roles that the event contract flattens
+        // away.
+        const wanted = (op.equipment ?? op.target ?? "").trim().toLowerCase();
+        const units = inferEquipment(s.variables) as unknown as LayoutUnit[];
+        const unit = units.find(
+          (u) =>
+            u.id.toLowerCase() === wanted ||
+            u.label.toLowerCase() === wanted ||
+            u.id.replace(/[^a-z0-9]/gi, "").toLowerCase() ===
+              wanted.replace(/[^a-z0-9]/gi, ""),
+        );
+        if (!unit) {
+          problems.push(
+            `No equipment called ${op.equipment ?? op.target} in the tag list.`,
+          );
+          break;
+        }
+
+        const view = viewOf(screen);
+        const panel: Panel = { width: view.Width, height: view.Height };
+        const size = {
+          width: Math.min(op.width ?? CARD_SIZE.width, panel.width - 24),
+          height: Math.min(op.height ?? CARD_SIZE.height, panel.height - 24),
+        };
+        const at =
+          op.left !== undefined && op.top !== undefined
+            ? clampToPanel({ ...size, left: op.left, top: op.top }, panel)
+            : { ...size, ...freeSpot(
+                view.Children.map((part) => ({
+                  left: part.Location.Left,
+                  top: part.Location.Top,
+                  width: part.Width,
+                  height: part.Height,
+                })),
+                size,
+                panel,
+              ) };
+
+        const built = equipmentCard(unit, at);
+        for (const part of built.parts) s.appendObject(screen.UniqueId, part);
+        // appendObject renames in place, so the wires still point at the right
+        // objects under whatever name they ended up with.
+        for (const wire of built.wires) {
+          useProject.getState().addBinding({
+            tag: wire.tag,
+            targetId: wire.part.UniqueId,
+            targetName: wire.part.Name,
+            property: wire.property,
+          });
+        }
+        created.push(...built.parts.map((p) => ({ name: p.Name, type: p.Type })));
+        changes.push(
+          note ||
+            `Placed ${unit.label} on ${screen.Name} — ${built.parts.length} objects, ${built.wires.length} bound`,
+        );
         break;
       }
 

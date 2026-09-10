@@ -448,3 +448,107 @@ describe("naming an object the request did not name", () => {
     expect(parts().at(-1)!.Name).toMatch(/^NumericDisplay_\d+$/);
   });
 });
+
+describe("adding a whole piece of equipment", () => {
+  beforeEach(seed);
+
+  /** A screen with room, so a placed card can be checked for overlap. */
+  const roomy = () => {
+    const screen = structuredClone(demoScreen);
+    screen.Children[0].Children = screen.Children[0].Children.slice(0, 1);
+    useProject.getState().hydrate({ screens: [screen], activeScreenId: screen.UniqueId });
+  };
+
+  it("places one faceplate from one op, not a pile of primitives", () => {
+    // Reported from a real session: asked to show both boilers and both
+    // chillers, the model built each faceplate out of five separate objects -
+    // container, name, type tag, run lamp, fault lamp - and they scattered.
+    roomy();
+    const before = useProject.getState().screens[0].Children[0].Children.length;
+
+    const { changes, problems } = applyOps([
+      { op: "addEquipment", equipment: "PMP_101", note: "placed pump 101" },
+    ]);
+
+    expect(problems).toEqual([]);
+    expect(changes).toEqual(["placed pump 101"]);
+
+    const parts = useProject.getState().screens[0].Children[0].Children;
+    const added = parts.slice(before);
+    // A faceplate is a panel, a name, a kind, its lamps and its readings.
+    expect(added.length).toBeGreaterThan(4);
+    expect(added.some((p) => p.Name.startsWith("Card_"))).toBe(true);
+    expect(added.some((p) => p.Type === "Lamp")).toBe(true);
+  });
+
+  it("binds the card's lamps and readings as it places them", () => {
+    roomy();
+    applyOps([{ op: "addEquipment", equipment: "PMP_101", note: "n" }]);
+
+    const bindings = useProject.getState().bindings;
+    expect(bindings.length).toBeGreaterThan(0);
+    const ids = new Set(
+      useProject.getState().screens[0].Children[0].Children.map((p) => p.UniqueId),
+    );
+    // Every binding points at an object that is actually on the screen.
+    for (const b of bindings) expect(ids.has(b.targetId)).toBe(true);
+  });
+
+  it("keeps the whole card together, inside the panel", () => {
+    roomy();
+    const before = useProject.getState().screens[0].Children[0].Children.length;
+    applyOps([{ op: "addEquipment", equipment: "PMP_101", note: "n" }]);
+
+    const view = useProject.getState().screens[0].Children[0];
+    const added = view.Children.slice(before);
+    const container = added.find((p) => p.Name.startsWith("Card_"))!;
+
+    for (const part of added) {
+      expect(part.Location.Left).toBeGreaterThanOrEqual(container.Location.Left);
+      expect(part.Location.Top).toBeGreaterThanOrEqual(container.Location.Top);
+      expect(part.Location.Left + part.Width).toBeLessThanOrEqual(
+        container.Location.Left + container.Width,
+      );
+      expect(part.Location.Top + part.Height).toBeLessThanOrEqual(
+        container.Location.Top + container.Height,
+      );
+      expect(part.Location.Left + part.Width).toBeLessThanOrEqual(view.Width);
+      expect(part.Location.Top + part.Height).toBeLessThanOrEqual(view.Height);
+    }
+  });
+
+  it("puts two units side by side rather than on top of each other", () => {
+    roomy();
+    const before = useProject.getState().screens[0].Children[0].Children.length;
+    applyOps([
+      { op: "addEquipment", equipment: "PMP_101", note: "n" },
+      { op: "addEquipment", equipment: "PMP_102", note: "n" },
+    ]);
+
+    const cards = useProject
+      .getState()
+      .screens[0].Children[0].Children.slice(before)
+      .filter((p) => p.Name.startsWith("Card_"));
+    expect(cards).toHaveLength(2);
+
+    const [a, b] = cards.map((p) => ({
+      left: p.Location.Left,
+      top: p.Location.Top,
+      width: p.Width,
+      height: p.Height,
+    }));
+    const clash =
+      a.left < b.left + b.width &&
+      a.left + a.width > b.left &&
+      a.top < b.top + b.height &&
+      a.top + a.height > b.top;
+    expect(clash).toBe(false);
+  });
+
+  it("says so when the equipment is not in the tag list", () => {
+    const { problems } = applyOps([
+      { op: "addEquipment", equipment: "BLR_9999", note: "n" },
+    ]);
+    expect(problems[0]).toContain("BLR_9999");
+  });
+});

@@ -22,6 +22,7 @@ export const OP_NAMES = [
   "renameScreen",
   "deleteScreen",
   "addObject",
+  "addEquipment",
   "moveObject",
   "resizeObject",
   "setText",
@@ -68,6 +69,11 @@ export const Op = z.object({
   target: z.string().optional(),
   targets: z.array(z.string()).optional(),
   name: z.string().optional(),
+  /**
+   * For addEquipment: which unit to place, by the id or label inference gave
+   * it - "PMP_101", "Boiler 4001". One op, one whole faceplate.
+   */
+  equipment: z.string().optional(),
   type: z.enum(PART_TYPES).optional(),
   text: z.string().optional(),
   offText: z.string().optional(),
@@ -133,6 +139,7 @@ export function coerceTurn(value: unknown): Turn | null {
   if (!parsed.success) return null;
   // Ops that name no target for an op that needs one are dropped rather than
   // applied against whatever happened to be selected.
+  const needsEquipment: OpName[] = ["addEquipment"];
   const needsTarget: OpName[] = [
     "moveObject",
     "resizeObject",
@@ -142,8 +149,10 @@ export function coerceTurn(value: unknown): Turn | null {
     "duplicateObject",
     "bindTag",
   ];
-  const ops = (parsed.data.ops ?? []).filter(
-    (op) => !needsTarget.includes(op.op) || !!op.target,
-  );
+  const ops = (parsed.data.ops ?? []).filter((op) => {
+    if (needsTarget.includes(op.op) && !op.target) return false;
+    if (needsEquipment.includes(op.op) && !op.equipment && !op.target) return false;
+    return true;
+  });
   return { ...parsed.data, ops };
 }

@@ -188,8 +188,49 @@ function chrome(
 
 /* --- the content ------------------------------------------------------ */
 
-/** A unit faceplate: what it is, whether it is running, what it is reading. */
+/** One faceplate's worth of parts, and what drives each of them. */
+export interface BuiltCard {
+  parts: Part[];
+  wires: { part: Part; tag: string; property: string }[];
+}
+
+/** The size a faceplate wants. Exported so a caller can find room for one. */
+export const CARD_SIZE = { width: CARD.width, height: CARD.height };
+
+/**
+ * A unit faceplate, standalone: what it is, whether it is running, what it is
+ * reading.
+ *
+ * Exported because the conversation needs it. Asked to "show both boilers", a
+ * model with only rectangles and lamps to work with builds a faceplate out of
+ * five primitives and gets the arithmetic wrong - the container lands in one
+ * place, the label in another, the lamps somewhere else again. The product
+ * already knows how to lay a unit out; the chat reaches the same code rather
+ * than reinventing it one rectangle at a time.
+ */
+export function equipmentCard(unit: LayoutUnit, box: Box): BuiltCard {
+  const built: BuiltCard = { parts: [], wires: [] };
+  const place = {
+    add(part: Part, tag?: string) {
+      built.parts.push(part);
+      if (tag) built.wires.push({ part, tag, property: "CurrentValue" });
+      return part;
+    },
+  };
+  drawCard(place, unit, box);
+  return built;
+}
+
+/** What `add` has to provide, so the Placer and the standalone builder share it. */
+interface Adds {
+  add(part: Part, tag?: string): Part;
+}
+
 function card(place: Placer, unit: LayoutUnit, box: Box) {
+  drawCard(place, unit, box);
+}
+
+function drawCard(place: Adds, unit: LayoutUnit, box: Box) {
   const key = unit.id.replace(/[^A-Za-z0-9]/g, "");
   const { left: x, top: y } = box;
 
