@@ -12,6 +12,7 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { useProject } from "@/store/project";
+import { TagTable } from "@/components/tags";
 import { Badge, Button, Field, Input, Panel, Tabs, type TabItem } from "@/components/ui";
 
 type InspectorTab = "properties" | "tags" | "library";
@@ -46,11 +47,17 @@ export function Inspector() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {tab !== "properties" ? (
+        {tab === "tags" ? (
+          <TagTable
+            variables={variables}
+            compact
+            highlight={bound.map((b) => b.tag)}
+            className="h-full p-3"
+          />
+        ) : tab === "library" ? (
           <p className="p-4 text-sm text-text-muted">
-            {tab === "tags"
-              ? "The tag table arrives with Phase 3."
-              : "The graphic object library arrives with Phase 2b."}
+            The graphic object library arrives with Phase 2b — it is indexed from
+            the 474 objects the product ships, on a machine that has it installed.
           </p>
         ) : selectedIds.length > 1 ? (
           <p className="p-4 text-sm text-text-muted">

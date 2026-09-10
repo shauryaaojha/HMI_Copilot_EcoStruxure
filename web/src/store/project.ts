@@ -25,11 +25,32 @@ export interface ProjectIdentity {
   target: { model: string; width: number; height: number };
 }
 
+/** Mirrors lib/validation/rules.ts, which is what /api/validate returns. */
 export interface Finding {
   severity: "error" | "warning" | "info";
+  /** Which rule fired, for grouping in the UI. */
+  rule?: string;
   message: string;
+  /** UniqueId of the offending screen object, when there is one. */
   objectId?: string;
+  /** Tag name, when the finding is about a variable. */
+  tag?: string;
   suggestion?: string;
+}
+
+/**
+ * What an import of a tag export left behind, beyond the variables themselves.
+ *
+ * Corrections and skipped rows are kept rather than discarded because
+ * lib/tags/parse.ts reports them instead of applying them silently, and an
+ * import that quietly drops a bad row is the behaviour this product replaces.
+ */
+export interface TagImport {
+  fileName: string;
+  at: number;
+  corrections: { from: string; to: string; reason: string }[];
+  skipped: { row: number; value: string; reason: string }[];
+  summary: { total: number } & Partial<Record<string, number>>;
 }
 
 interface ProjectState {
@@ -55,7 +76,15 @@ interface ProjectState {
   values: Record<string, number | boolean>;
   simulating: boolean;
 
+  tagImport?: TagImport;
+
   steps: Record<PipelineStep, StepState>;
+  /** The engineering-language note under each step, e.g. "2 pumps detected". */
+  stepDetail: Partial<Record<PipelineStep, string>>;
+  /** UniqueIds each step produced, so a step can highlight its own output. */
+  produced: Partial<Record<PipelineStep, string[]>>;
+  /** Non-empty while a generation run is in flight. */
+  generating: boolean;
   logs: { at: string; message: string }[];
 
   /** Replace the whole project. The workspace calls this once on mount. */
@@ -78,8 +107,27 @@ interface ProjectState {
     box: { left: number; top: number; width: number; height: number },
   ) => void;
   removeObjects: (ids: string[]) => void;
-  setStep: (step: PipelineStep, state: StepState) => void;
+  importTags: (variables: Variable[], meta: TagImport) => void;
+  /**
+   * Make sure a screen exists whose ViewBox has this id, so the first `object`
+   * event of a run has somewhere to land. The event contract carries a
+   * parentId but no "screen created" event, so the screen is implied by the
+   * first object that names it.
+   */
+  ensureScreen: (viewBoxId: string, name: string) => void;
+  /** Append into the ViewBox with this id, which is what `object` events name. */
+  appendToView: (viewBoxId: string, part: Part) => void;
+  setStep: (step: PipelineStep, state: StepState, detail?: string) => void;
+  /** Record that a step produced an object, for click-to-highlight. */
+  attribute: (step: PipelineStep, id: string) => void;
+  setGenerating: (on: boolean) => void;
+  addBinding: (binding: Binding) => void;
+  addAlarm: (alarm: Alarm) => void;
+  addFinding: (finding: Finding) => void;
+  setEquipment: (equipment: Equipment[]) => void;
   log: (message: string) => void;
+  /** Clear only what a generation run produces, leaving tags and settings. */
+  resetRun: () => void;
   reset: () => void;
 }
 
@@ -100,9 +148,19 @@ type ProjectActions = Pick<
   | "nudge"
   | "setBox"
   | "removeObjects"
+  | "importTags"
+  | "ensureScreen"
+  | "appendToView"
   | "setStep"
+  | "attribute"
+  | "setGenerating"
+  | "addBinding"
+  | "addAlarm"
+  | "addFinding"
+  | "setEquipment"
   | "log"
   | "reset"
+  | "resetRun"
 >;
 
 export const useProject = create<ProjectState>()(
@@ -120,6 +178,9 @@ export const useProject = create<ProjectState>()(
     values: {},
     simulating: false,
     steps: NO_STEPS,
+    stepDetail: {},
+    produced: {},
+    generating: false,
     logs: [],
 
     hydrate: (project) =>
@@ -221,9 +282,77 @@ export const useProject = create<ProjectState>()(
         s.selectedIds = s.selectedIds.filter((id) => !wanted.has(id));
       }),
 
-    setStep: (step, state) =>
+    importTags: (variables, meta) =>
+      set((s) => {
+        s.variables = variables;
+        s.tagImport = meta;
+      }),
+
+    ensureScreen: (viewBoxId, name) =>
+      set((s) => {
+        if (s.screens.some((screen) => screen.Children[0].UniqueId === viewBoxId)) return;
+        const screen: Screen = {
+          Type: "Screen",
+          UniqueId: crypto.randomUUID(),
+          Name: name,
+          Children: [
+            {
+              Type: "ViewBox",
+              UniqueId: viewBoxId,
+              Name: name,
+              Width: s.target.width,
+              Height: s.target.height,
+              Children: [],
+            },
+          ],
+        };
+        s.screens.push(screen);
+        s.activeScreenId = screen.UniqueId;
+      }),
+
+    appendToView: (viewBoxId, part) =>
+      set((s) => {
+        for (const screen of s.screens) {
+          if (screen.Children[0].UniqueId !== viewBoxId) continue;
+          screen.Children[0].Children.push(part);
+          return;
+        }
+      }),
+
+    setStep: (step, state, detail) =>
       set((s) => {
         s.steps[step] = state;
+        if (detail !== undefined) s.stepDetail[step] = detail;
+      }),
+
+    attribute: (step, id) =>
+      set((s) => {
+        (s.produced[step] ??= []).push(id);
+      }),
+
+    setGenerating: (on) =>
+      set((s) => {
+        s.generating = on;
+      }),
+
+    addBinding: (binding) =>
+      set((s) => {
+        s.bindings.push(binding);
+      }),
+
+    addAlarm: (alarm) =>
+      set((s) => {
+        s.alarms.push(alarm);
+      }),
+
+    addFinding: (finding) =>
+      set((s) => {
+        s.findings.push(finding);
+      }),
+
+    setEquipment: (equipment) =>
+      set((s) => {
+        s.equipment = equipment;
       }),
 
     log: (message) =>
@@ -232,6 +361,23 @@ export const useProject = create<ProjectState>()(
           at: new Date().toLocaleTimeString("en-GB", { hour12: false }),
           message,
         });
+      }),
+
+    /** A new run replaces the generated project but keeps the imported tags. */
+    resetRun: () =>
+      set((s) => {
+        s.screens = [];
+        s.activeScreenId = undefined;
+        s.alarms = [];
+        s.bindings = [];
+        s.equipment = [];
+        s.findings = [];
+        s.selectedIds = [];
+        s.hoveredId = undefined;
+        s.steps = {} as Record<PipelineStep, StepState>;
+        s.stepDetail = {};
+        s.produced = {};
+        s.logs = [];
       }),
 
     reset: () =>
@@ -246,6 +392,10 @@ export const useProject = create<ProjectState>()(
         s.hoveredId = undefined;
         s.values = {};
         s.steps = {} as Record<PipelineStep, StepState>;
+        s.stepDetail = {};
+        s.produced = {};
+        s.generating = false;
+        s.tagImport = undefined;
         s.logs = [];
       }),
   })),
