@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens read off docs/ui-reference/. Two surfaces are at work here and
+ * they must not be confused:
+ *
+ *   - the APPLICATION chrome, which is ours and is dark by default
+ *   - the HMI SCREEN on the canvas, whose colours come from the project's own
+ *     palette (lib/ote/palette.ts) and are never themed by us
+ *
+ * Theming the canvas would break the "preview cannot lie about the output" claim.
+ */
+
+@theme {
+  /* Schneider Life Green */
+  --color-brand-50: #eafaef;
+  --color-brand-400: #3dcd58;
+  --color-brand-500: #00b050;
+  --color-brand-600: #008a3e;
+  --color-brand-700: #006c30;
+
+  /* application chrome */
+  --color-chrome-950: #0b0f14;
+  --color-chrome-900: #0f1419;
+  --color-chrome-850: #151b23;
+  --color-chrome-800: #1c2430;
+  --color-chrome-700: #263141;
+  --color-chrome-600: #33415a;
+
+  --color-ink-100: #e6edf3;
+  --color-ink-300: #b3c0cc;
+  --color-ink-500: #7d8b99;
+  --color-ink-700: #4a5764;
+
+  /* status colours, shared with the HMI conventions */
+  --color-status-alarm: #f04438;
+  --color-status-warn: #e3a008;
+  --color-status-ok: #3dcd58;
+  --color-status-info: #3b9eff;
+
+  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "Cascadia Code", Consolas, ui-monospace, monospace;
+
+  --radius-panel: 0.5rem;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-chrome-900);
+  color: var(--color-ink-100);
+  font-family: var(--font-sans);
+  overflow: hidden; /* the workspace manages its own scrolling regions */
+}
+
+/* The canvas grid, as in the reference renders. */
+.canvas-grid {
+  background-color: var(--color-chrome-950);
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/* Selection handles on a selected screen object. */
+.selection-handle {
+  fill: var(--color-brand-400);
+  stroke: #fff;
+  stroke-width: 1;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-chrome-700);
+  border-radius: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

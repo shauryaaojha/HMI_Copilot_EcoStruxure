@@ -1,0 +1,39 @@
+{
+  "name": "hmi-copilot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "From PLC tags to a ready-to-open EcoStruxure project.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "setup:skeleton": "node scripts/extract-skeleton.mjs",
+    "index:graphics": "node scripts/index-graphics.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
+    "immer": "^10.1.1",
+    "jszip": "^3.10.1",
+    "next": "^15.5.4",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "sql.js": "^1.13.0",
+    "xlsx": "^0.18.5",
+    "zod": "^3.25.76",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.13",
+    "@types/node": "^24.5.0",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "@types/sql.js": "^1.4.9",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
