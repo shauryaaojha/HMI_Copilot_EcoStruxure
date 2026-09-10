@@ -7,7 +7,7 @@
  * Buildtime/PropertyDefinitions/ScreenDesign/GraphicObjects/. `npm run
  * index:graphics` converts them on a machine that has the installation; the
  * output is gitignored, because they are Schneider's files. Until then this
- * browses `placeholderSymbols`, which has the same shape.
+ * browses `placeholderSymbols` until /api/symbols answers with the real index.
  *
  * Placing one is deliberately unavailable, and the panel says why. A Path part
  * needs the Commands and Points the .path file carries, and the current index
@@ -19,7 +19,7 @@
  * Phase 2b / Phase 9 of docs/BUILD_PLAN.md.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Info, Plus, Search } from "lucide-react";
 import { placeholderSymbols } from "@/fixtures";
@@ -39,12 +39,47 @@ interface Symbol {
   Points?: string;
 }
 
-const symbols: Symbol[] = placeholderSymbols;
+/**
+ * The real index is served, not imported: it is derived from Schneider's own
+ * files and gitignored, so importing it would break the build wherever
+ * `npm run index:graphics` has not been run. Placeholders stand in until it
+ * answers, and the footer says which of the two you are looking at.
+ */
+function useSymbols(): { symbols: Symbol[]; indexed: boolean } {
+  const [loaded, setLoaded] = useState<Symbol[] | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    fetch("/api/symbols")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => {
+        if (live && body?.indexed && Array.isArray(body.symbols) && body.symbols.length) {
+          setLoaded(body.symbols as Symbol[]);
+        }
+      })
+      .catch(() => {
+        // No index, or the route is unreachable. The placeholders stand.
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  return loaded
+    ? { symbols: loaded, indexed: true }
+    : { symbols: placeholderSymbols, indexed: false };
+}
 
 export function LibraryScreen() {
+  const { symbols, indexed } = useSymbols();
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
-  const [picked, setPicked] = useState<Symbol | null>(symbols[0] ?? null);
+  const [pickedName, setPickedName] = useState<string | null>(null);
+
+  // Held by name, not by object: the list is replaced wholesale when the real
+  // index arrives, and a selection holding a placeholder would survive it.
+  const picked = symbols.find((s) => s.name === pickedName) ?? symbols[0] ?? null;
+  const setPicked = (s: Symbol | null) => setPickedName(s?.name ?? null);
 
   const categories = useMemo(
     () => ["All", ...new Set(symbols.map((s) => s.category))],
@@ -245,9 +280,18 @@ export function LibraryScreen() {
         )}
 
         <p className="text-xs text-text-faint">
-          Showing {symbols.length} placeholder symbols. Run{" "}
-          <code className="font-mono">npm run index:graphics</code> on a machine with
-          EcoStruxure installed for the 474 the product ships.
+          {indexed ? (
+            <>
+              {symbols.length.toLocaleString()} symbols, indexed from the
+              installation&apos;s own graphic object library.
+            </>
+          ) : (
+            <>
+              Showing {symbols.length} placeholder symbols. Run{" "}
+              <code className="font-mono">npm run index:graphics</code> on a machine
+              with EcoStruxure installed for the ones the product ships.
+            </>
+          )}
         </p>
       </div>
     </div>
