@@ -33,3 +33,6 @@ web/src/lib/ote/graphics-index.json
 
 # typescript incremental build cache
 *.tsbuildinfo
+
+# Office lock files
+~$*
