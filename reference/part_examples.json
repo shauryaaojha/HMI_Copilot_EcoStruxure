@@ -1,0 +1,1705 @@
+{
+  "AlarmSummary": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "AlarmSummary",
+      "UniqueId": "11c0fdac-dc66-4a53-9041-2ad7003dace9",
+      "Name": "AlarmSummary_Food_Active2",
+      "Options": 238,
+      "AlarmMode": 1,
+      "Sort": {
+        "ColumnName": "Active Date"
+      },
+      "FontType": {
+        "Type": 2,
+        "Value": "352",
+        "DisplayValue": "352"
+      },
+      "Columns": [
+        {
+          "Title": "Time",
+          "Width": "133"
+        },
+        {
+          "Width": "133"
+        },
+        {
+          "Width": "133"
+        },
+        {
+          "Title": "Message",
+          "Width": "*"
+        }
+      ],
+      "$AvailableColumns": "Active Time,ACK Time,RTN Time,Alarm Message",
+      "Fill": {
+        "Color": {
+          "Transparency": 100
+        }
+      },
+      "Border": {
+        "Type": 0
+      },
+      "ColumnGridColor": {
+        "Color": {
+          "Value": 31,
+          "Transparency": 70
+        }
+      },
+      "TitleFontColor": {
+        "Color": {
+          "Transparency": 20
+        }
+      },
+      "TitleFontSize": 20,
+      "BodyFontSize": 16,
+      "ShowSort": true,
+      "ShowFilter": true,
+      "ActiveFillColor": {
+        "Color": {
+          "Transparency": 25
+        }
+      },
+      "AckFillColor": {
+        "Color": {
+          "Transparency": 25
+        }
+      },
+      "ReturnFillColor": {
+        "Color": {
+          "Transparency": 25
+        }
+      },
+      "Margin": {
+        "Right": 8
+      }
+    }
+  },
+  "Arc": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "Arc",
+      "UniqueId": "2ab1b19a-c1ff-42e0-b43f-420c8f1920d0",
+      "Name": "Arc2",
+      "StartAngle": 93,
+      "EndAngle": 301,
+      "Stroke": {
+        "Color": {
+          "Value": 2
+        }
+      },
+      "Thickness": 2,
+      "Location": {
+        "Left": 20,
+        "Top": 15
+      },
+      "Width": 25,
+      "Height": 25
+    }
+  },
+  "Arch": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "Arch",
+      "UniqueId": "302d7215-3fe5-4c73-882f-58647216e2c5",
+      "Name": "Arch5",
+      "InnerRadius": 95,
+      "Fill": {
+        "Color": {
+          "Value": 31,
+          "Transparency": 90
+        }
+      },
+      "Border": {
+        "Type": 0
+      },
+      "Location": {
+        "Row": 2,
+        "Column": 1
+      },
+      "Width": 183,
+      "Height": 183
+    }
+  },
+  "BarScale": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "BarScale",
+      "UniqueId": "892f48f0-9fd7-43f9-a9df-b650e47db0d2",
+      "Name": "BarScale1",
+      "LabelAttribute": {
+        "Font": {
+          "Type": {
+            "Type": 2,
+            "Value": "0",
+            "DisplayValue": "0"
+          }
+        }
+      },
+      "Location": {
+        "Left": 186,
+        "Top": 79
+      },
+      "Width": 15,
+      "Height": 50
+    }
+  },
+  "Bezier": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "Bezier",
+      "UniqueId": "41df94fa-885f-441d-b2d5-6d4af6203ad5",
+      "Name": "Bezier1",
+      "Stroke": {
+        "Color": {
+          "Value": 2
+        }
+      },
+      "Thickness": 2,
+      "Path": {
+        "Commands": "MCC",
+        "Data": "0,3072,0,3072,0,0,1536,0,3072,0,3072,3072,3072,3072"
+      },
+      "Location": {
+        "Left": 35,
+        "Top": 35
+      },
+      "Width": 30,
+      "Height": 15
+    }
+  },
+  "BlockTrend": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "BlockTrend",
+      "UniqueId": "8f309812-2de8-4350-9974-c2c6cb596d3d",
+      "Name": "BlockTrend1",
+      "Options": 238,
+      "Channels": [
+        {
+          "Variable": "Block1",
+          "Stroke": {
+            "Color": {
+              "Value": 6
+            }
+          },
+          "Fill": {
+            "Type": 1,
+            "Color": {
+              "Value": 6
+            }
+          },
+          "UseGlobalRange": false,
+          "DisplayFormat": 2,
+          "NumberOfData": 12
+        },
+        {
+          "Variable": "Block2",
+          "Stroke": {
+            "Color": {
+              "Value": 4
+            }
+          },
+          "UseGlobalRange": false,
+          "Mark": 1,
+          "NumberOfData": 12
+        }
+      ],
+      "NumberOfDataPoints": 12,
+      "HScale": {
+        "ShowAxis": true
+      },
+      "DataScalesFullCommon": {
+        "DataLabelEnabled": true
+      },
+      "DataScalesFull": [
+        {
+          "DataSource": 1,
+          "ShowAxis": true
+        },
+        {
+          "DataSource": 2,
+          "Position": 2,
+          "ShowAxis": true
+        }
+      ],
+      "DataScalesDivideCommon": {
+        "ShowAxis": true,
+        "DataLabelEnabled": true
+      },
+      "DataScalesDivide": [
+        {
+          "DataSource": 1
+        },
+        {
+          "DataSource": 2
+        }
+      ],
+      "Location": {
+        "ColumnSpan": 2
+      }
+    }
+  },
+  "Canvas": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "Canvas",
+      "UniqueId": "a2527638-8e98-4bcd-a480-1d1e5414e8e7",
+      "Name": "Canvas",
+      "Options": 108,
+      "ObjectAlignment": {
+        "Horizontal": 1,
+        "Vertical": 32
+      }
+    }
+  },
+  "CheckBox": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "CheckBox",
+      "UniqueId": "53955f9e-2a51-4f52-a862-c5264656e999",
+      "Name": "CheckBox1",
+      "Off": {
+        "Font": {
+          "Type": {
+            "Type": 2,
+            "Value": "0",
+            "DisplayValue": "0"
+          }
+        },
+        "TextLayout": {
+          "Wrap": true
+        }
+      },
+      "On": {
+        "Font": {
+          "Type": {
+            "Type": 2,
+            "Value": "0",
+            "DisplayValue": "0"
+          }
+        },
+        "TextLayout": {
+          "Wrap": true
+        }
+      },
+      "Margin": {
+        "Left": 2,
+        "Right": 2,
+        "Top": 2,
+        "Bottom": 2
+      }
+    }
+  },
+  "CircleScale": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "CircleScale",
+      "UniqueId": "b53cfd92-888d-4950-ad44-59c73b54d3a3",
+      "Name": "Manifold1_scale",
+      "ScaleLabel": true,
+      "LabelAttribute": {
+        "Max": 10,
+        "TextColor": {
+          "Color": {
+            "Value": 2
+          }
+        },
+        "Font": {
+          "Size": 10,
+          "Type": {
+            "Type": 2,
+            "Value": "0",
+            "DisplayValue": "0"
+          }
+        },
+        "IntegerDigits": 5,
+        "FloatDigits": 1
+      },
+      "ScaleAttribute": {
+        "Type": 2
+      },
+      "Stroke": {
+        "Color": {
+          "Value": 2
+        }
+      },
+      "Width": 60,
+      "Height": 60
+    }
+  },
+  "ClipArt": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "ClipArt",
+      "UniqueId": "5d1c1a9b-3f8b-4778-8628-66a6911d3c12",
+      "Name": "SimpleValve1",
+      "ImagePath": {
+        "Value": "ab5bade85a43646033592c52e8d4a44356534f80",
+        "DisplayValue": "C:\\Program Files\\Pro-face\\BLUE 3.4\\Buildtime\\PropertyDefinitions\\ScreenDesign\\GraphicObjects\\04-Cliparts\\Valves\\SimpleValve.png"
+      },
+      "Location": {
+        "Left": 80,
+        "Top": 104
+      },
+      "Width": 56,
+      "Height": 76
+    }
+  },
+  "Content": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "Content",
+      "UniqueId": "04080d9b-ca5b-4fe1-8fcb-d55099c56d27",
+      "Name": "MultiScreen_HVAC1",
+      "ContentID": 957
+    }
+  },
+  "ContentDisplay": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "ContentDisplay",
+      "UniqueId": "d01bc685-10e3-49d8-b85d-8c3ef64316dd",
+      "Name": "ContentDisplay1",
+      "ScreenId": 700
+    }
+  },
+  "DateTimeDisplay": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "DateTimeDisplay",
+      "UniqueId": "095bb7b0-5d71-45c6-90b9-935b6e697d20",
+      "Name": "DateTimeDisplay1",
+      "IsInputModeEnabled": false,
+      "SelectedColor": 0,
+      "Font": {
+        "Type": {
+          "Type": 2,
+          "Value": "0",
+          "DisplayValue": "0"
+        }
+      },
+      "Location": {
+        "Row": 14
+      },
+      "Margin": {
+        "Left": 4,
+        "Right": 4,
+        "Top": 4,
+        "Bottom": 4
+      }
+    }
+  },
+  "DockPanel": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "DockPanel",
+      "UniqueId": "93b6760b-1deb-43a2-ba0e-6044631f543b",
+      "Name": "DockPanel1",
+      "Location": {
+        "Row": 1
+      },
+      "Fill": {
+        "Type": 0
+      }
+    }
+  },
+  "Doughnut": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "Doughnut",
+      "UniqueId": "93fafa67-743f-44fd-bd6f-5720bad9df4f",
+      "Name": "Doughnut1",
+      "InnerRadius": 80,
+      "Fill": {
+        "Type": 5,
+        "Speed": 4,
+        "Color1": {
+          "Value": 2,
+          "Transparency": 20
+        },
+        "Color2": {
+          "Value": 2,
+          "Transparency": 85
+        }
+      },
+      "Border": {
+        "Type": 0
+      },
+      "Location": {
+        "Row": 7,
+        "Column": 1,
+        "RowSpan": 2,
+        "ColumnSpan": 2
+      },
+      "Width": 42,
+      "Height": 42,
+      "Margin": {
+        "Left": -8
+      }
+    }
+  },
+  "DropdownList": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "DropdownList",
+      "UniqueId": "c707712d-144e-4dac-ab4f-1b8d78d093a2",
+      "Name": "DropdownList3",
+      "Items": [
+        {},
+        {},
+        {},
+        {}
+      ],
+      "SelectedIndex": 1,
+      "NumberOfDisplayLine": 4,
+      "Font": {
+        "Type": {
+          "Type": 2,
+          "Value": "0",
+          "DisplayValue": "0"
+        }
+      },
+      "SelectedColor": 0,
+      "Margin": {
+        "Left": 4,
+        "Right": 4,
+        "Top": 4,
+        "Bottom": 4
+      }
+    }
+  },
+  "Ellipse": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "Ellipse",
+      "UniqueId": "61a22703-c921-4d71-8fc9-8461ad9a552f",
+      "Name": "Ellipse1",
+      "Fill": {
+        "Color": {
+          "Value": 2
+        }
+      },
+      "Border": {
+        "Type": 0
+      },
+      "Location": {
+        "Left": 796,
+        "Top": 769
+      },
+      "Width": 24,
+      "Height": 24
+    }
+  },
+  "FileManager": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "FileManager",
+      "UniqueId": "3a2f1cb6-d3a4-4183-ab46-cd7cd7dce8e2",
+      "Name": "FileManager1",
+      "Options": 238,
+      "Storages": [
+        {
+          "Storage": 2
+        },
+        {
+          "Storage": 0
+        }
+      ],
+      "FileSort": {
+        "Column": 0,
+        "Order": 2
+      },
+      "DisplaySort": true,
+      "DisplayFilter": true,
+      "FontType": {
+        "Type": 2,
+        "Value": "352",
+        "DisplayValue": "352"
+      },
+      "SwitchFontColor": {
+        "Color": {
+          "Transparency": 20
+        }
+      },
+      "SwitchFontSize": 20,
+      "TitleFontColor": {
+        "Color": {
+          "Transparency": 20
+        }
+      },
+      "TitleFontSize": 26,
+      "BodyTextColor": {
+        "Color": {
+          "Transparency": 20
+        }
+      },
+      "BodyFontSize": 20,
+      "SwitchFill": {
+        "Color": {
+          "Value": 31,
+          "Transparency": 20
+        }
+      },
+      "SwitchBorder": {
+        "Color": {
+          "Value": 41,
+          "Transparency": 70
+        }
+      },
+      "SwitchBorderThickness": 1,
+      "Fill": {
+        "Color": {
+          "Value": 31,
+          "Transparency": 10
+        }
+      },
+      "Border": {
+        "Color": {
+          "Value": 41,
+          "Transparency": 70
+        }
+      },
+      "ColumnGridColor": {
+        "Type": 0
+      },
+      "Columns": [
+        {
+          "Title": "File"
+        }
+      ],
+      "IsShowDefaultColumns": false,
+      "Location": {
+        "Row": 1,
+        "Column": 1
+      }
+    }
+  },
+  "Grid": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "Grid",
+      "UniqueId": "2ccb486a-b2e4-4fc4-a798-f4fffef341dd",
+      "Name": "Grid1",
+      "Rows": [
+        {}
+      ],
+      "Columns": [
+        {}
+      ],
+      "Width": 1366,
+      "Height": 678,
+      "Fill": {
+        "Type": 0
+      }
+    }
+  },
+  "GroupObject": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "GroupObject",
+      "UniqueId": "a6946180-631e-49c9-8802-ecefcfad632b",
+      "Name": "Two_way_motor_valve_V1",
+      "Location": {
+        "Left": 510,
+        "Top": 80
+      },
+      "Width": 45,
+      "Height": 40
+    }
+  },
+  "HardwareConfiguration": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "HardwareConfiguration",
+      "UniqueId": "c2bdf573-7b93-4ebd-8d6e-aefd784b695a",
+      "Name": "HardwareConfiguration1",
+      "Options": 238,
+      "Location": {
+        "Column": 1,
+        "RowSpan": 3
+      }
+    }
+  },
+  "Image": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "Image",
+      "UniqueId": "4d9485da-26ce-4d1d-81df-05c10181fad0",
+      "Name": "SIcon_Day2",
+      "ImagePath": {
+        "Value": "73e01044ed46ab899bfc17e9bc7fd79d39c3d5b9",
+        "DisplayValue": "C:\\Users\\SESA265997\\Desktop\\On Schedule\\2018 Demo Screen Related\\Images\\ST6000\\Icons\\Home_Day.png"
+      },
+      "ImageLayout": {
+        "ProportionalMode": 0,
+        "HorizontalAlignment": 4,
+        "VerticalAlignment": 128
+      },
+      "Transparency": 50
+    }
+  },
+  "IngredientViewer": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "IngredientViewer",
+      "UniqueId": "0d653db3-39af-483c-b076-4fb77944c8d3",
+      "Name": "IngredientViewer3",
+      "Options": 238,
+      "Columns": [
+        {
+          "Title": "Palameter Name",
+          "Width": "3*"
+        },
+        {}
+      ],
+      "FontType": {
+        "Type": 2,
+        "Value": "352",
+        "DisplayValue": "352"
+      },
+      "TitleFontColor": {
+        "Color": {
+          "Value": 32
+        }
+      },
+      "TitleFontSize": 18,
+      "BodyFontSize": 16,
+      "BodyFill1": {
+        "Color": {
+          "Transparency": 50
+        }
+      },
+      "BodyFill2": {
+        "Color": {
+          "Transparency": 50
+        }
+      },
+      "Fill": {
+        "Color": {
+          "Value": 31,
+          "Transparency": 50
+        }
+      },
+      "Location": {
+        "Row": 5,
+        "Column": 1,
+        "RowSpan": 5,
+        "ColumnSpan": 3
+      },
+      "Margin": {
+        "Left": 10,
+        "Right": 10,
+        "Bottom": 10
+      }
+    }
+  },
+  "Lamp": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "Lamp",
+      "UniqueId": "51a89dc1-3e46-4f25-bd54-b65b1b49b069",
+      "Name": "SW_FileDisplayOFF",
+      "ClickTrigger": {
+        "OperationType": 1,
+        "Operation": 1
+      },
+      "TouchBeepType": 1,
+      "Off": {
+        "TextColor": {
+          "Color": {
+            "Value": 2,
+            "Transparency": 50
+          }
+        },
+        "Font": {
+          "Size": 21,
+          "Type": {
+            "Type": 2,
+            "Value": "352",
+            "DisplayValue": "352"
+          }
+        },
+        "TextLayout": {
+          "Wrap": true
+        },
+        "Fill": {
+          "Color": {
+            "Value": 31,
+            "Transparency": 90
+          }
+        },
+        "Border": {
+          "Type": 0
+        },
+        "Thickness": 1
+      },
+      "On": {
+        "TextColor": {
+          "Color": {
+            "Value": 1,
+            "Transparency": 25
+          }
+        },
+        "Font": {
+          "Size": 21,
+          "Type": {
+            "Type": 2,
+            "Value": "352",
+            "DisplayValue": "352"
+          }
+        },
+        "TextLayout": {
+          "Wrap": true
+        },
+        "Fill": {
+          "Color": {
+            "Value": 49,
+            "Transparency": 25
+          }
+        },
+        "Border": {
+          "Type": 0
+        },
+        "Thickness": 1
+      },
+      "Shadow": {
+        "Enabled": true
+      },
+      "Location": {
+        "Row": 1
+      }
+    }
+  },
+  "Line": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "Line",
+      "UniqueId": "a9ed3202-c6d9-4401-98e4-7e284331a2b7",
+      "Name": "Line1",
+      "Height": 1,
+      "Stroke": {
+        "Color": {
+          "Value": 4
+        }
+      },
+      "Thickness": 3,
+      "Path": {
+        "Data": "0,0,3072,0"
+      },
+      "Location": {
+        "Top": 25
+      }
+    }
+  },
+  "N-StateLamp": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "N-StateLamp",
+      "UniqueId": "9409d312-6f20-486a-a4d4-2e9437c1cbb9",
+      "Name": "N_StateLamp1",
+      "NumberOfStates": 3,
+      "States": [
+        {
+          "TextColor": {
+            "Color": {
+              "Value": 2,
+              "Transparency": 25
+            }
+          },
+          "Text": "2046",
+          "Font": {
+            "Size": 28,
+            "Type": {
+              "Type": 2,
+              "Value": "352",
+              "DisplayValue": "352"
+            }
+          },
+          "TextLayout": {
+            "Wrap": true,
+            "HorizontalAlignment": 1,
+            "VerticalAlignment": 32,
+            "PaddingTop": 10
+          },
+          "Fill": {
+            "Type": 0
+          },
+          "Border": {
+            "Type": 0
+          }
+        },
+        {
+          "TextColor": {
+            "Color": {
+              "Value": 2,
+              "Transparency": 25
+            }
+          },
+          "Text": "2047",
+          "Font": {
+            "Size": 28,
+            "Type": {
+              "Type": 2,
+              "Value": "352",
+              "DisplayValue": "352"
+            }
+          },
+          "TextLayout": {
+            "Wrap": true,
+            "HorizontalAlignment": 1,
+            "VerticalAlignment": 32,
+            "PaddingTop": 10
+          },
+          "Fill": {
+            "Type": 0
+          },
+          "Border": {
+            "Type": 0
+          }
+        },
+        {
+          "TextColor": {
+            "Color": {
+              "Value": 2,
+              "Transparency": 25
+            }
+          },
+          "Text": "2048",
+          "Font": {
+            "Size": 28,
+            "Type": {
+              "Type": 2,
+              "Value": "352",
+              "DisplayValue": "352"
+            }
+          },
+          "TextLayout": {
+            "Wrap": true,
+            "HorizontalAlignment": 1,
+            "VerticalAlignment": 32,
+            "PaddingTop": 10
+          },
+          "Fill": {
+            "Type": 0
+          },
+          "Border": {
+            "Type": 0
+          }
+        }
+      ],
+      "Invalid": {
+        "Font": {
+          "Size": 20,
+          "Type": {
+            "Type": 2,
+            "Value": "352",
+            "DisplayValue": "352"
+          }
+        },
+        "TextLayout": {
+          "Wrap": true
+        }
+      },
+      "Shadow": {
+        "Enabled": true,
+        "Color": {
+          "ColorIndexEnabled": false,
+          "Value": 0,
+          "Transparency": 90
+        }
+      },
+      "Location": {
+        "Column": 1,
+        "RowSpan": 2,
+        "ColumnSpan": 3
+      },
+      "Width": 404,
+      "Height": 51,
+      "ObjectAlignment": {
+        "Horizontal": 1,
+        "Vertical": 32
+      }
+    }
+  },
+  "NumericDisplay": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "NumericDisplay",
+      "UniqueId": "cd9ba922-c9c1-4191-b073-2a27eda1394d",
+      "Name": "NumericDisplay8",
+      "CurrentValue": null,
+      "SelectedColor": 0,
+      "Location": {
+        "Column": 2
+      },
+      "Margin": {
+        "Left": 4,
+        "Right": 4,
+        "Top": 4,
+        "Bottom": 4
+      }
+    }
+  },
+  "Path": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "Path",
+      "UniqueId": "9dffdda1-eb16-4d68-ac41-c7104af8eefd",
+      "Name": "Liquide_receiver_V",
+      "Fill": {
+        "Color": {
+          "Value": 32
+        }
+      },
+      "Border": {
+        "Color": {
+          "Value": 2
+        }
+      },
+      "Thickness": 2,
+      "Path": {
+        "Commands": "MCCCLCCz",
+        "Data": "3072,219,3072,219,3072,2853,3072,2853,3072,2853,3072,3072,1536,3072,0,3072,0,2853,0,2853,0,219,0,219,0,0,1536,0,3072,0,3072,219,3072,219"
+      },
+      "Location": {
+        "Left": 310,
+        "Top": 10
+      },
+      "Width": 60,
+      "Height": 70
+    }
+  },
+  "PictureDisplay": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "PictureDisplay",
+      "UniqueId": "eecee49a-fa28-43ee-bb0f-eadf1dbd2c4c",
+      "Name": "PictureDisplayEng",
+      "DataDriveInRuntime": 0,
+      "DataFolderInRuntime": "/FeatureDemo/ManualEng",
+      "Fill": {
+        "Color": {
+          "Value": 1
+        }
+      },
+      "Border": {
+        "Type": 0
+      }
+    }
+  },
+  "Pie": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "Pie",
+      "UniqueId": "1a883b14-c63b-4788-bd0b-b7ab13dc9958",
+      "Name": "Pie1",
+      "StartAngle": 180,
+      "EndAngle": 360,
+      "Fill": {
+        "Color": {
+          "Value": 31,
+          "Transparency": 100
+        }
+      },
+      "Border": {
+        "Type": 0
+      },
+      "Location": {
+        "Row": 4,
+        "Column": 11,
+        "RowSpan": 10,
+        "ColumnSpan": 10
+      }
+    }
+  },
+  "Pipe": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "Pipe",
+      "UniqueId": "854b745f-9ad4-4721-8bf8-cdded5a7ed01",
+      "Name": "Pipe1",
+      "States": [
+        {
+          "Fill": {
+            "Color": {
+              "Value": 6
+            }
+          },
+          "Border": {
+            "Color": {
+              "Value": 2
+            }
+          },
+          "FillThickness": 3,
+          "BorderThickness": 7
+        },
+        {
+          "Fill": {
+            "Color": {
+              "Value": 2
+            }
+          },
+          "FillThickness": 3,
+          "BorderThickness": 7
+        }
+      ],
+      "Invalid": {
+        "Fill": {
+          "Color": {
+            "Value": 2
+          }
+        },
+        "Border": {
+          "Color": {
+            "Value": 1
+          }
+        }
+      },
+      "Path": {
+        "Commands": "ML",
+        "Data": [
+          {
+            "Location": {
+              "Left": 0,
+              "Top": 0
+            }
+          },
+          {
+            "Location": {
+              "Left": 3072,
+              "Top": 3072
+            }
+          }
+        ]
+      },
+      "Location": {
+        "Left": 155,
+        "Top": 164
+      },
+      "Width": 1,
+      "Height": 237
+    }
+  },
+  "PolyLine": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "PolyLine",
+      "UniqueId": "af889ffd-1d8d-40e4-98b5-6f1abe21b75c",
+      "Name": "PolyLine2",
+      "Thickness": 6,
+      "Path": {
+        "Data": "0,614,0,3072,3072,3072,3072,0"
+      },
+      "Shadow": {
+        "Enabled": true,
+        "Color": {
+          "ColorIndexEnabled": false,
+          "Value": 0
+        }
+      },
+      "Location": {
+        "Left": 280,
+        "Top": 140
+      },
+      "Width": 440,
+      "Height": 100
+    }
+  },
+  "Polygon": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "Polygon",
+      "UniqueId": "de5f2026-10c0-4f5e-9356-f8002685c0c3",
+      "Name": "Polygon3",
+      "Fill": {
+        "Color": {
+          "ColorIndexEnabled": false,
+          "Value": 16777215,
+          "Transparency": 90
+        }
+      },
+      "Border": {
+        "Type": 0
+      },
+      "Path": {
+        "Data": "3072,0,0,3072,3072,3072"
+      },
+      "Location": {
+        "Left": 360,
+        "Top": 40
+      },
+      "Width": 415,
+      "Height": 251,
+      "Angle": 180,
+      "Margin": {
+        "Left": 1,
+        "Right": 1,
+        "Top": 1,
+        "Bottom": 172
+      },
+      "Animation": {
+        "FillLevel": {
+          "Enable": true,
+          "BackColor": {
+            "Transparency": 80
+          }
+        }
+      }
+    }
+  },
+  "RadioButton": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "RadioButton",
+      "UniqueId": "21a2291b-2acc-46f0-ade4-da979310d697",
+      "Name": "RadioMenu1",
+      "CurrentValue": true,
+      "Unselect": {
+        "TextColor": {
+          "Color": {
+            "Value": 41
+          }
+        },
+        "Text": null,
+        "Font": {
+          "Type": {
+            "Type": 2,
+            "Value": "0",
+            "DisplayValue": "0"
+          }
+        },
+        "TextLayout": {
+          "Wrap": true
+        },
+        "Fill": {
+          "Color": {
+            "Value": 3
+          }
+        }
+      },
+      "Select": {
+        "TextColor": {
+          "Color": {
+            "Value": 51
+          }
+        },
+        "Text": null,
+        "Font": {
+          "Type": {
+            "Type": 2,
+            "Value": "0",
+            "DisplayValue": "0"
+          }
+        },
+        "TextLayout": {
+          "Wrap": true
+        },
+        "Fill": {
+          "Color": {
+            "Value": 1
+          }
+        },
+        "Border": {
+          "Color": {
+            "Value": 1
+          }
+        }
+      },
+      "Margin": {
+        "Left": 4,
+        "Top": 4,
+        "Bottom": 4
+      }
+    }
+  },
+  "RecipeDropdownList": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "RecipeDropdownList",
+      "UniqueId": "599ec6f0-7054-4ce9-9658-e4c6161371e6",
+      "Name": "RecipeDropdownList7",
+      "Content": 1,
+      "NumberOfDisplayLine": 3,
+      "SelectedColor": 0,
+      "TextLayout": {
+        "PaddingLeft": 5,
+        "PaddingTop": 5,
+        "PaddingBottom": 5
+      },
+      "TextColor": {
+        "Color": {
+          "Value": 32
+        }
+      },
+      "Font": {
+        "Size": 21,
+        "Type": {
+          "Type": 2,
+          "Value": "352",
+          "DisplayValue": "352"
+        }
+      },
+      "Fill": {
+        "Color": {
+          "Value": 31,
+          "Transparency": 10
+        }
+      },
+      "Border": {
+        "Type": 0
+      },
+      "Location": {
+        "Row": 1,
+        "ColumnSpan": 2
+      },
+      "Margin": {
+        "Left": 10,
+        "Right": 10
+      }
+    }
+  },
+  "Rectangle": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "Rectangle",
+      "UniqueId": "626e55af-a360-4987-98e0-25233e8bb10b",
+      "Name": "Rectangle1",
+      "Fill": {
+        "Type": 0
+      },
+      "Border": {
+        "Type": 0
+      }
+    }
+  },
+  "Screen": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "Screen",
+      "UniqueId": "03c4b36a-d65e-44f5-880f-4cff08af4afb",
+      "Name": "Basic",
+      "ScreenID": 10,
+      "NavigationSwitch": {
+        "Label": "Screen1"
+      }
+    }
+  },
+  "ScrollGrid": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "ScrollGrid",
+      "UniqueId": "3ce3bff5-5dc4-4633-83a0-a6f92950ade4",
+      "Name": "ScrollGrid",
+      "Options": 108,
+      "Rows": [
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {}
+      ],
+      "Columns": [
+        {}
+      ],
+      "Stripe": true,
+      "Width": 400,
+      "Height": 1500,
+      "ObjectAlignment": {
+        "Horizontal": 1,
+        "Vertical": 32
+      },
+      "Fill": {
+        "Type": 0
+      }
+    }
+  },
+  "SlideContentDisplay": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "SlideContentDisplay",
+      "UniqueId": "319a4478-a9ca-4baa-90e9-ab73882c2328",
+      "Name": "SlideContentDisplay3",
+      "NumberOfContent": 3,
+      "ContentIdList": [
+        101,
+        102,
+        103
+      ],
+      "Location": {
+        "Row": 1,
+        "Column": 1,
+        "ColumnSpan": 4
+      },
+      "Margin": {
+        "Top": 31
+      }
+    }
+  },
+  "StackPanel": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "StackPanel",
+      "UniqueId": "b9812fde-bd42-4961-9f1c-12f3c72de30f",
+      "Name": "StackPanel1",
+      "Orientation": 1,
+      "Location": {
+        "Column": 2
+      },
+      "Fill": {
+        "Type": 0
+      }
+    }
+  },
+  "StringDisplay": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "StringDisplay",
+      "UniqueId": "4bb93c32-1a28-4597-b46f-b6fa6fab6286",
+      "Name": "StringDisplay1",
+      "DisplayLength": 20,
+      "TextColor": {
+        "Color": {
+          "Value": 36
+        }
+      },
+      "Font": {
+        "Size": 21,
+        "Type": {
+          "Type": 2,
+          "Value": "352",
+          "DisplayValue": "352"
+        }
+      },
+      "TextLayout": {
+        "Wrap": true,
+        "HorizontalAlignment": 1,
+        "PaddingLeft": 20
+      },
+      "Fill": {
+        "Type": 5,
+        "Speed": 1,
+        "Color1": {
+          "Value": 15,
+          "Transparency": 100
+        },
+        "Color2": {
+          "Value": 55,
+          "Transparency": 100
+        }
+      },
+      "Border": {
+        "Type": 0
+      },
+      "Location": {
+        "Row": 1,
+        "Column": 2
+      }
+    }
+  },
+  "Switch": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "Switch",
+      "UniqueId": "4d3c5b6a-77c7-4c21-abda-7e17bae91109",
+      "Name": "Switch13",
+      "ClickTrigger": {
+        "OperationType": 2,
+        "Source": "2",
+        "Screen": 1,
+        "Content": 1
+      },
+      "Release": {
+        "Text": "\u65e5\u672c\u8a9e",
+        "Font": {
+          "Type": {
+            "Type": 2,
+            "Value": "352",
+            "DisplayValue": "352"
+          }
+        },
+        "TextLayout": {
+          "Wrap": true
+        }
+      },
+      "Press": {
+        "Text": "\u65e5\u672c\u8a9e",
+        "Font": {
+          "Type": {
+            "Type": 2,
+            "Value": "352",
+            "DisplayValue": "352"
+          }
+        },
+        "TextLayout": {
+          "Wrap": true
+        }
+      },
+      "Location": {
+        "Row": 1
+      },
+      "Margin": {
+        "Left": 4,
+        "Right": 4,
+        "Top": 4,
+        "Bottom": 4
+      }
+    }
+  },
+  "SymPolygon": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "SymPolygon",
+      "UniqueId": "e18de738-9b39-4207-b9da-5c65fbe792af",
+      "Name": "SymPolygon1",
+      "Symmetric": {
+        "NumberOfNodes": 3
+      },
+      "Fill": {
+        "Color": {
+          "Value": 41,
+          "Transparency": 50
+        }
+      },
+      "Border": {
+        "Type": 0
+      },
+      "Location": {
+        "Row": 1,
+        "Column": 1
+      },
+      "Width": 31,
+      "Height": 15,
+      "Angle": 270
+    }
+  },
+  "TextBox": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "TextBox",
+      "UniqueId": "dd8c1a48-7730-4ac8-ba31-6cb488821393",
+      "Name": "TextBox3",
+      "Font": {
+        "Type": {
+          "Type": 2,
+          "Value": "0",
+          "DisplayValue": "0"
+        }
+      },
+      "TextLayout": {
+        "HorizontalAlignment": 1,
+        "VerticalAlignment": 64
+      },
+      "Margin": {
+        "Left": 4,
+        "Right": 4,
+        "Top": 4,
+        "Bottom": 4
+      }
+    }
+  },
+  "TimeDisplay": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "TimeDisplay",
+      "UniqueId": "4e3590a2-5825-43b9-9828-06313e9e644a",
+      "Name": "TimeDisplay1",
+      "TimeFormat": "nn:ss",
+      "IsInputModeEnabled": false,
+      "SelectedColor": 0,
+      "TextColor": {
+        "Color": {
+          "Value": 2
+        }
+      },
+      "Font": {
+        "Type": {
+          "Type": 2,
+          "Value": "0",
+          "DisplayValue": "0"
+        }
+      },
+      "Fill": {
+        "Type": 0
+      },
+      "Border": {
+        "Type": 0
+      },
+      "Location": {
+        "Column": 3
+      }
+    }
+  },
+  "ToggleSwitch": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "ToggleSwitch",
+      "UniqueId": "61cceaf8-8a78-48d2-ba3d-7490693a37fd",
+      "Name": "ToggleSwitch1",
+      "InterlockState": false,
+      "Off": {
+        "Font": {
+          "Type": {
+            "Type": 2,
+            "Value": "352",
+            "DisplayValue": "352"
+          }
+        }
+      },
+      "On": {
+        "Font": {
+          "Type": {
+            "Type": 2,
+            "Value": "352",
+            "DisplayValue": "352"
+          }
+        }
+      },
+      "Location": {
+        "Left": 20,
+        "Top": 1180
+      },
+      "Width": 200,
+      "Height": 100
+    }
+  },
+  "TrendGraph": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "TrendGraph",
+      "UniqueId": "37784ecc-a5d1-4bb9-b558-a16fb00db352",
+      "Name": "TrendGraph1",
+      "Options": 238,
+      "Channels": [
+        {
+          "Stroke": {
+            "Color": {
+              "Value": 4
+            }
+          },
+          "Fill": {
+            "Type": 1,
+            "Color": {
+              "Value": 4
+            }
+          },
+          "DisplayFormat": 1
+        },
+        {
+          "Stroke": {
+            "Color": {
+              "Value": 6
+            }
+          },
+          "UseGlobalRange": false,
+          "Mark": 1
+        }
+      ],
+      "GraphType": 1,
+      "CursorLabelsEnabled": true,
+      "DataScalesFullCommon": {
+        "DataLabelEnabled": true
+      },
+      "DataScalesFull": [
+        {
+          "DataSource": 2,
+          "ShowAxis": true
+        },
+        {
+          "DataSource": 1,
+          "Position": 2,
+          "ShowAxis": true
+        }
+      ],
+      "DataScalesDivideCommon": {
+        "ShowAxis": true,
+        "DataLabelEnabled": true
+      },
+      "DataScalesDivide": [
+        {
+          "DataSource": 1
+        },
+        {
+          "DataSource": 2
+        }
+      ],
+      "DisplayHistoricalData": true,
+      "Location": {
+        "ColumnSpan": 2
+      }
+    }
+  },
+  "UniformGrid": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "UniformGrid",
+      "UniqueId": "cee7ba2d-2e63-47a3-9d7c-75ef2cba5c81",
+      "Name": "UniformGrid1",
+      "Location": {
+        "ColumnSpan": 6
+      },
+      "Height": 678,
+      "Fill": {
+        "Type": 0
+      }
+    }
+  },
+  "ViewBox": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "ViewBox",
+      "UniqueId": "9477381c-2aa1-440b-8224-cdf780a2c69c",
+      "Name": "ViewBox",
+      "Options": 108,
+      "Height": 678,
+      "ObjectAlignment": {
+        "Horizontal": 1,
+        "Vertical": 32
+      },
+      "Fill": {
+        "Type": 0
+      }
+    }
+  },
+  "ZoomCanvas": {
+    "source": "Demo 1.eote",
+    "example": {
+      "Type": "ZoomCanvas",
+      "UniqueId": "f207fd88-4dbd-4e83-ad0a-c3717d5d684d",
+      "Name": "ZoomCanvas",
+      "Options": 108,
+      "Width": 2500,
+      "Height": 1600,
+      "ObjectAlignment": {
+        "Horizontal": 1,
+        "Vertical": 32
+      },
+      "Fill": {
+        "Color": {
+          "Value": 31,
+          "Transparency": 95
+        }
+      }
+    }
+  }
+}

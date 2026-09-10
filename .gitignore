@@ -1,0 +1,28 @@
+# dependencies / build output
+node_modules/
+.next/
+out/
+dist/
+__pycache__/
+*.pyc
+
+# secrets
+.env
+.env.local
+.env*.local
+
+# EcoStruxure writes these when it opens a project
+*_backup_*.eote
+
+# regenerable exports
+assets/deck_png/
+
+# superseded poster draft
+Encode PS 3 - HMI Copilot.pptx
+
+# raw phone photos of the problem statement slide (3 MB each, text is in docs/SOLUTION.md)
+image-*.jpg
+
+# Schneider's own shipped database files, extracted locally by scripts/extract-skeleton.mjs.
+# Not redistributed - every developer pulls them from their own OTE installation.
+web/src/lib/ote/skeleton/
