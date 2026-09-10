@@ -17,7 +17,7 @@
     "build:symbols": "tsx scripts/build-symbol-demo.mts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.68.0",
+    "@anthropic-ai/sdk": "^0.124.0",
     "immer": "^10.1.1",
     "jszip": "^3.10.1",
     "lucide-react": "^1.44.0",

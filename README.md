@@ -46,17 +46,17 @@ engineer sees.
 | **0** | Foundation — tokens, primitives, shell | — | ✅ done |
 | **1** | The OTE model layer *(the moat)* | ✅ **verified in OTE 4.4** | — |
 | **2** | The canvas *(the hero)* | — | ✅ done |
-| **2b** | Graphic object library | 🟡 partial | 🟡 partial |
+| **2b** | Graphic object library | ✅ done | 🟡 place button pending |
 | **3** | Tags and project state | ✅ done | ✅ done |
-| **4** | Generation pipeline and streaming | ⬜ stub | ✅ done |
+| **4** | Generation pipeline and streaming | ✅ done | ✅ done |
 | **5** | Inspector and editing | — | ✅ done |
 | **6** | Binding map and validation | ✅ done | ✅ done |
-| **7** | Export *(the climax)* | 🟡 route done, report pending | ✅ done |
+| **7** | Export *(the climax)* | ✅ done | 🟡 report toggle pending |
 | **8** | Simulation | — | ✅ done |
 | **9** | Supporting screens | — | ✅ done |
 | **10** | Rehearsal | — | 🟡 script done, live run-through pending |
 
-**148 tests pass** with the app running; 9 more are the Phase 1 packager gate, which
+**167 tests pass** with the app running; 9 more are the Phase 1 packager gate, which
 skips on a machine without an EcoStruxure installation to extract a skeleton from.
 
 ```bash
@@ -65,24 +65,22 @@ cd web && npm test
 
 ### What the partials mean
 
-- **2b — the library index drops the geometry a `Path` part needs.**
-  `scripts/index-graphics.mjs` converts 474 of the 475 shipped objects with no
-  geometry errors, but stores only the SVG `d` it derives and discards the
-  `Commands` and `Points` the `.path` file carries. A `Path` part is written from
-  those two, so a symbol browsed in the Library cannot yet become one. The Library
-  screen browses and previews; placement is **deliberately disabled with the reason
-  on screen**, because a button that put an object on the canvas the packager could
-  not emit would break the one rule below. Fix is two more fields in the symbol
-  record, after which the button appears on its own.
-- **4 — `/api/generate` still answers `pipeline not implemented`.**
-  The event contract in `web/src/types/events.ts` is frozen, so the UI is built
-  against it and not against the route. It asks the route first, recognises the
-  stub's own error event, and falls back to a local emitter that produces the same
-  events in the same order — labelling itself `local pipeline` so the demo never
-  claims the model was involved when it was not.
-- **7 — the HTML validation report is not written yet.**
-  `POST /api/export` returns a real `.eote`, verified against a production build.
-  The rules exist (Phase 6); rendering them to a report is the remaining half.
+- **2b — the index now carries the geometry; the Place button is not built.**
+  Every symbol keeps `Commands` and `Points` beside the derived `d`, a test asserts
+  the two can never drift, and a `Path` part round-trips through the packager with
+  its geometry byte-identical. `npm run build:symbols` writes a project with
+  Pump01, Tank01, Valve01 and Fan01 in it. The Library's placeable badge reads
+  *yes*; wiring the button to `pathPart()` is the remaining half.
+- **4 — the route answers with real events; the model half needs a key.**
+  Equipment inference is a parse of the tag names and runs offline, so the screen
+  builds with no `ANTHROPIC_API_KEY` set — a log line says so in those words rather
+  than passing the fallback off as the model. With a key in `web/.env.local`,
+  Claude reads the engineer's sentence and decides what the screen shows.
+- **7 — the report is written; the export screen has no toggle for it yet.**
+  `POST /api/export/report` renders a standalone HTML sign-off document — no
+  stylesheet, no font host, no script, because a commissioning laptop has no
+  internet. The export screen offers `.eote` and `.csv`; adding the third toggle
+  is the remaining half.
 - **10 — nobody has walked the script on the presenting machine.**
   `web/tests/demo-path.test.ts` checks the data, the routes and the engine behind
   every beat, but it cannot check that a button is where the script says it is.

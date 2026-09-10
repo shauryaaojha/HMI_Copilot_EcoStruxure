@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Validation report &mdash; Pump_Station_Demo</title>
+<style>
+  :root {
+    --ink: #16202b; --soft: #44535f; --muted: #6b7a85;
+    --rule: #d5dee4; --ground: #f5f8f9; --surface: #fff;
+    --ok: #0a7a4a; --warn: #96620a; --err: #b3352b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font: 15px/1.6 "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  .sheet { max-width: 960px; margin: 0 auto; padding: 40px 24px 64px; }
+  header { border-bottom: 2px solid var(--ink); padding-bottom: 18px; margin-bottom: 26px; }
+  .kicker {
+    font: 500 11px/1 ui-monospace, Consolas, monospace;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px;
+  }
+  h1 { font-size: 28px; line-height: 1.15; margin: 0 0 6px; letter-spacing: -.01em; }
+  .subject { color: var(--soft); margin: 0; }
+  .verdict {
+    display: inline-flex; align-items: center; gap: 9px;
+    margin-top: 18px; padding: 9px 16px; border-radius: 3px;
+    font-weight: 600; font-size: 15px;
+    background: #e6f4ec;
+    color: var(--ok);
+    border: 1px solid #b9dfc9;
+  }
+  .verdict::before {
+    content: ""; width: 9px; height: 9px; border-radius: 50%;
+    background: var(--ok);
+  }
+  h2 {
+    font-size: 13px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); margin: 34px 0 12px; font-weight: 600;
+  }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+  .cell { background: var(--surface); padding: 13px 15px; }
+  .cell dt { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  .cell dd { margin: 0; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .cell dd.small { font-size: 14px; font-weight: 500; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--rule); font-size: 13.5px; }
+  th {
+    text-align: left; padding: 9px 14px; border-bottom: 1px solid #b9c6ce;
+    font: 600 10.5px/1.4 ui-monospace, Consolas, monospace;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+  }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; color: var(--soft); }
+  tr:last-child td { border-bottom: 0; }
+  td.sev { width: 92px; }
+  td.rule { width: 168px; color: var(--ink); }
+  td.where { width: 132px; }
+  .pill {
+    display: inline-block; padding: 2px 8px; border-radius: 999px;
+    font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+  }
+  .pill.error { background: #fbeae8; color: var(--err); }
+  .pill.warning { background: #fdf3e2; color: var(--warn); }
+  .pill.info { background: #eaf0f4; color: var(--muted); }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; color: var(--ink); }
+  code.id { color: var(--muted); }
+  .fix { margin-top: 5px; font-size: 12.5px; color: var(--muted); }
+  .clean { background: var(--surface); border: 1px solid var(--rule); padding: 22px; color: var(--soft); }
+  .scope { list-style: none; padding: 0; margin: 0; border: 1px solid var(--rule); background: var(--surface); }
+  .scope li { padding: 11px 15px; border-bottom: 1px solid var(--rule); font-size: 13.5px; color: var(--soft); }
+  .scope li:last-child { border-bottom: 0; }
+  .scope b { color: var(--ink); font-weight: 600; }
+  footer {
+    margin-top: 34px; padding-top: 16px; border-top: 1px solid var(--rule);
+    font-size: 12px; color: var(--muted);
+  }
+  @media print {
+    body { background: #fff; }
+    .sheet { padding: 0; max-width: none; }
+    tr { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+<header>
+  <p class="kicker">Design-time validation report</p>
+  <h1>Pump_Station_Demo</h1>
+  <p class="subject">
+    EcoStruxure Operator Terminal Expert 4.4 &middot; HMIST6500AWADI &middot; 1024 &times; 600
+  </p>
+  <div class="verdict">Passed with 1 warning</div>
+</header>
+
+<h2>Findings</h2>
+<dl class="grid">
+  <div class="cell"><dt>Errors</dt><dd>0</dd></div>
+  <div class="cell"><dt>Warnings</dt><dd>1</dd></div>
+  <div class="cell"><dt>Information</dt><dd>1</dd></div>
+  <div class="cell"><dt>Total checks reported</dt><dd>2</dd></div>
+</dl>
+
+<table>
+  <thead><tr><th>Severity</th><th>Check</th><th>Finding</th><th>Object / tag</th></tr></thead>
+  <tbody>
+<tr class="sev-warning">
+      <td class="sev"><span class="pill warning">Warning</span></td>
+      <td class="rule">Completeness</td>
+      <td class="msg">PMP_102_FLT looks like a fault tag but raises no alarm<div class="fix">Suggested: <code>Add a bit alarm triggered by PMP_102_FLT</code></div></td>
+      <td class="where"><code>PMP_102_FLT</code></td>
+    </tr>
+<tr class="sev-info">
+      <td class="sev"><span class="pill info">Information</span></td>
+      <td class="rule">Unused tags</td>
+      <td class="msg">SPARE_01 is declared but nothing on the screen uses it</td>
+      <td class="where"><code>SPARE_01</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Project contents</h2>
+<dl class="grid">
+  <div class="cell"><dt>Screens</dt><dd>1</dd></div>
+  <div class="cell"><dt>Objects placed</dt><dd>19</dd></div>
+  <div class="cell"><dt>Variables declared</dt><dd>8</dd></div>
+  <div class="cell"><dt>Alarms configured</dt><dd class="small">4 (2 bit, 2 level)</dd></div>
+  <div class="cell"><dt>Tag bindings</dt><dd>10</dd></div>
+  <div class="cell"><dt>Target panel</dt><dd class="small">HMIST6500AWADI &middot; 1024 &times; 600</dd></div>
+</dl>
+
+<h2>Objects on screen</h2>
+<dl class="grid">
+  <div class="cell"><dt>TextBox</dt><dd>9</dd></div>
+  <div class="cell"><dt>Lamp</dt><dd>4</dd></div>
+  <div class="cell"><dt>Rectangle</dt><dd>3</dd></div>
+  <div class="cell"><dt>NumericDisplay</dt><dd>2</dd></div>
+  <div class="cell"><dt>AlarmSummary</dt><dd>1</dd></div>
+</dl>
+
+<h2>What was checked</h2>
+<ul class="scope">
+  <li><b>Naming conventions.</b> Reserved words, leading digits, illegal characters and duplicates, against the product's own documented rules.</li>
+  <li><b>Binding integrity.</b> Every binding resolves to a declared tag; every value-displaying object is driven by one.</li>
+  <li><b>Type compatibility.</b> A tag's IEC data type is one the bound part accepts.</li>
+  <li><b>Alarm configuration.</b> Bit alarms trigger on BOOL, level alarms on a numeric with a numeric setpoint.</li>
+  <li><b>Completeness.</b> Fault tags raise an alarm; the project has at least one screen.</li>
+  <li><b>Standards conformance.</b> Screens fit the target panel and objects fall inside the screen area.</li>
+</ul>
+
+<footer>
+  Generated by HMI Copilot on 2026-09-10 15:58:51 UTC.
+  Naming rules are taken from the product's own documented conventions; part shapes
+  and binding properties from the sample projects it ships.
+</footer>
+
+</div>
+</body>
+</html>
