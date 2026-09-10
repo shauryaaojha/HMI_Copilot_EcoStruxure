@@ -21,6 +21,23 @@ export interface Binding {
  * than inside them is what lets the packager keep writing exactly the JSON the
  * product accepts: the one rule in docs/BUILD_PLAN.md survives a layers panel.
  */
+/**
+ * Where a screen has been dragged to on the board.
+ *
+ * Board coordinates, in screen units, of the frame's top-left corner. Absent
+ * for a screen that has never been moved, which then falls back to its place in
+ * the automatic grid - so a project that nobody has rearranged still lays
+ * itself out, and one that has been keeps the arrangement.
+ *
+ * Deliberately not on the Screen itself: Screen.dat has no field for it, and a
+ * board position is a fact about this editor rather than about the project the
+ * product opens.
+ */
+export interface ScreenPlacement {
+  x: number;
+  y: number;
+}
+
 export interface ObjectMeta {
   locked?: boolean;
   hidden?: boolean;

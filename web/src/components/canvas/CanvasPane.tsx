@@ -23,7 +23,7 @@ import { useSimulation } from "./useSimulation";
 import { Tabs, cn, type TabItem } from "@/components/ui";
 import { BindingMap } from "@/components/bindings/BindingMap";
 import { ScreenRenderer, type Box } from "./ScreenRenderer";
-import { ScreenBoard, boardMetrics } from "./ScreenBoard";
+import { ScreenBoard, boardExtent } from "./ScreenBoard";
 import { ScreenStrip } from "./ScreenStrip";
 import { RunOverlay } from "@/components/timeline/RunOverlay";
 import { CanvasToolbar } from "./CanvasToolbar";
@@ -79,6 +79,8 @@ export function CanvasPane() {
   const setBox = useProject((s) => s.setBox);
   const appendObject = useProject((s) => s.appendObject);
   const setActiveScreen = useProject((s) => s.setActiveScreen);
+  const screenPlacement = useProject((s) => s.screenPlacement);
+  const placeScreen = useProject((s) => s.placeScreen);
   const target = useProject((s) => s.target);
   const simulating = useProject((s) => s.simulating);
   // The grid and the snap increment are company standards, not canvas state -
@@ -130,8 +132,13 @@ export function CanvasPane() {
   const rows = simulating ? activeAlarms(alarms, bindings, sim.tags) : [];
 
   const board = useMemo(
-    () => boardMetrics(screens.length, { width: viewBox.Width, height: viewBox.Height }),
-    [screens.length, viewBox.Width, viewBox.Height],
+    () =>
+      boardExtent(
+        { width: viewBox.Width, height: viewBox.Height },
+        screens.map((x) => x.UniqueId),
+        screenPlacement,
+      ),
+    [screens, viewBox.Width, viewBox.Height, screenPlacement],
   );
 
   const fit = useCallback(() => {
@@ -175,11 +182,45 @@ export function CanvasPane() {
     enabled: tab === "design",
   });
 
-  /** Ctrl/Cmd + wheel zooms, as every design tool does; plain wheel scrolls. */
+  /**
+   * The wheel zooms, towards whatever is under the pointer.
+   *
+   * It used to need Ctrl held down, and it zoomed towards the top-left corner
+   * regardless of where you were looking - so zooming in on a screen in the
+   * bottom right of a board sent it off the edge and you had to scroll back to
+   * it. Anchoring is the whole difference between a zoom you can aim and one
+   * you have to chase.
+   *
+   * Shift+wheel scrolls sideways, which is the convention, and dragging with
+   * the middle button or the Hand tool still pans.
+   */
   function onWheel(event: React.WheelEvent) {
-    if (!event.ctrlKey && !event.metaKey) return;
+    const el = viewport.current;
+    if (!el || event.shiftKey) return;
     event.preventDefault();
-    setZoom((z) => Math.round(Math.max(10, Math.min(400, z * (1 - event.deltaY / 500)))));
+
+    const rect = el.getBoundingClientRect();
+    // Where the pointer is over the content, in pre-zoom pixels.
+    const pointerX = event.clientX - rect.left;
+    const pointerY = event.clientY - rect.top;
+    const contentX = pointerX + el.scrollLeft;
+    const contentY = pointerY + el.scrollTop;
+
+    setZoom((previous) => {
+      const next = Math.round(
+        Math.max(5, Math.min(400, previous * (1 - event.deltaY / 500))),
+      );
+      if (next === previous) return previous;
+
+      // Put the same content point back under the pointer once the new scale
+      // has been laid out. Anything sooner reads the old scroll extent.
+      const ratio = next / previous;
+      requestAnimationFrame(() => {
+        el.scrollLeft = contentX * ratio - pointerX;
+        el.scrollTop = contentY * ratio - pointerY;
+      });
+      return next;
+    });
   }
 
   function onPointerDown(event: React.PointerEvent) {
@@ -298,11 +339,13 @@ export function CanvasPane() {
         ) : tab === "json" ? (
           <ScreenJson screen={screen} />
         ) : showBoard ? (
-          <div className="flex min-h-full min-w-full items-start justify-center">
+          <div className="flex min-h-full min-w-full items-start justify-center p-4">
             <ScreenBoard
               screens={screens}
               activeScreenId={screen.UniqueId}
               scale={scale}
+              placements={screenPlacement}
+              onPlace={placeScreen}
               selectedIds={selectedIds}
               hoveredId={hoveredId}
               objectMeta={objectMeta}

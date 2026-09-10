@@ -18,6 +18,7 @@ import type {
   Binding,
   ChatMessage,
   ObjectMeta,
+  ScreenPlacement,
   Standards,
   TagImport,
   Version,
@@ -26,7 +27,7 @@ import type {
 const KEY = (id: string) => `hmi-copilot:project:${id}`;
 
 /** Bumped whenever the shape below changes, so a stale save is ignored. */
-const VERSION = 2;
+const VERSION = 3;
 
 /** Exactly what is worth surviving a reload - not selection, not the run log. */
 export interface PersistedProject {
@@ -40,6 +41,7 @@ export interface PersistedProject {
   alarms: Alarm[];
   bindings: Binding[];
   objectMeta: Record<string, ObjectMeta>;
+  screenPlacement: Record<string, ScreenPlacement>;
   standards: Standards;
   versions: Version[];
   chat: ChatMessage[];

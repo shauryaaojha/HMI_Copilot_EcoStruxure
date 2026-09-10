@@ -126,6 +126,7 @@ export function useProjectHydration(projectId: string) {
         alarms: saved.alarms,
         bindings: saved.bindings,
         objectMeta: saved.objectMeta ?? {},
+        screenPlacement: saved.screenPlacement ?? {},
         standards: saved.standards,
         versions: saved.versions ?? [],
         chat: saved.chat ?? [],
@@ -165,6 +166,7 @@ export function useProjectHydration(projectId: string) {
       alarms: [],
       bindings: [],
       objectMeta: {},
+      screenPlacement: {},
       versions: [],
       chat: [],
     });
@@ -201,6 +203,7 @@ export function useProjectHydration(projectId: string) {
           alarms: s.alarms,
           bindings: s.bindings,
           objectMeta: s.objectMeta,
+          screenPlacement: s.screenPlacement,
           standards: s.standards,
           versions: s.versions,
           chat: s.chat,

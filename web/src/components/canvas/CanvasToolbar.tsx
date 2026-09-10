@@ -133,6 +133,8 @@ export function CanvasToolbar({
   const ungroup = useProject((s) => s.ungroup);
   const setMeta = useProject((s) => s.setMeta);
   const removeObjects = useProject((s) => s.removeObjects);
+  const tidyBoard = useProject((s) => s.tidyBoard);
+  const rearranged = useProject((s) => Object.keys(s.screenPlacement).length > 0);
   const undo = useProject((s) => s.undo);
   const redo = useProject((s) => s.redo);
   const canUndo = useProject((s) => s.past.length > 0);
@@ -358,6 +360,17 @@ export function CanvasToolbar({
         {/* Board or one screen. Pinned outside the scrolling half, because
             losing the way back to the whole project behind a scrollbar is the
             fault this bar was already fixed for once. */}
+        {canBoard && rearranged && view === "board" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={tidyBoard}
+            title="Put every screen back in the automatic grid"
+          >
+            Tidy
+          </Button>
+        )}
+
         {canBoard && (
           <div className="flex items-center rounded-md border border-line-subtle p-0.5">
             {(["board", "screen"] as const).map((mode) => (

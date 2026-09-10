@@ -13,6 +13,7 @@
 
 import { describe, expect, it } from "vitest";
 import { layoutApplication, type LayoutUnit, type ScreenSpec } from "@/lib/ote/layout";
+import { boardExtent, boardMetrics, placementOf } from "@/components/canvas/ScreenBoard";
 import type { Part } from "@/lib/ote/schema";
 
 const PANEL = { width: 1024, height: 600 };
@@ -162,5 +163,41 @@ describe("a screen with nothing on it", () => {
     const [built] = layoutApplication([spec({ include: [] })], units, PANEL);
     const texts = built.parts.filter((p) => p.Type === "TextBox").map((p) => p.Text);
     expect(texts.some((t) => t.includes("No equipment"))).toBe(true);
+  });
+});
+
+describe("the board", () => {
+  it("leaves a gap between frames that survives being zoomed out", () => {
+    // 72 units vanished at the zoom that fits a whole plant - about eight
+    // pixels across a twenty-one screen board.
+    const metrics = boardMetrics(9, PANEL);
+    expect(metrics.cell.width - PANEL.width).toBeGreaterThanOrEqual(120);
+    expect(metrics.cell.height - PANEL.height).toBeGreaterThanOrEqual(120);
+  });
+
+  it("puts screens in a grid until one is moved", () => {
+    const metrics = boardMetrics(4, PANEL);
+    expect(placementOf(0, metrics)).toEqual({ x: 0, y: 0 });
+    expect(placementOf(1, metrics)).toEqual({ x: metrics.cell.width, y: 0 });
+    expect(placementOf(2, metrics)).toEqual({ x: 0, y: metrics.cell.height });
+  });
+
+  it("uses a hand placement over the grid slot", () => {
+    const metrics = boardMetrics(4, PANEL);
+    expect(placementOf(2, metrics, { x: 42, y: 7 })).toEqual({ x: 42, y: 7 });
+  });
+
+  it("grows the board to hold a screen dragged past the grid", () => {
+    const extent = boardExtent(PANEL, ["a", "b"], { b: { x: 5000, y: 3000 } });
+    expect(extent.width).toBeGreaterThanOrEqual(5000 + PANEL.width);
+    expect(extent.height).toBeGreaterThanOrEqual(3000 + PANEL.height);
+  });
+
+  it("shifts the origin for a screen dragged above or left of the grid", () => {
+    // A negative offset would be unreachable in a scroll container.
+    const extent = boardExtent(PANEL, ["a", "b"], { b: { x: -800, y: -400 } });
+    expect(extent.originX).toBe(-800);
+    expect(extent.originY).toBe(-400);
+    expect(extent.width).toBeGreaterThan(PANEL.width);
   });
 });

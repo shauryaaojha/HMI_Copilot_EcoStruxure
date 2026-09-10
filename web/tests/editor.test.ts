@@ -273,3 +273,45 @@ describe("a new project", () => {
     expect(s().screens[0].Children[0].Children).toHaveLength(1);
   });
 });
+
+describe("arranging screens on the board", () => {
+  beforeEach(seed);
+
+  it("remembers where a screen was dragged to", () => {
+    const id = s().addScreen("Second");
+    s().placeScreen(id, { x: 1400, y: 320 });
+    expect(s().screenPlacement[id]).toEqual({ x: 1400, y: 320 });
+  });
+
+  it("rounds, because a board position is in screen units", () => {
+    const id = s().addScreen("Second");
+    s().placeScreen(id, { x: 100.6, y: -40.2 });
+    expect(s().screenPlacement[id]).toEqual({ x: 101, y: -40 });
+  });
+
+  it("ignores a screen that is not in the project", () => {
+    s().placeScreen("not-a-screen", { x: 10, y: 10 });
+    expect(s().screenPlacement["not-a-screen"]).toBeUndefined();
+  });
+
+  it("is undoable like any other edit", () => {
+    const id = s().addScreen("Second");
+    s().placeScreen(id, { x: 900, y: 0 });
+    s().undo();
+    expect(s().screenPlacement[id]).toBeUndefined();
+  });
+
+  it("tidying puts every screen back in the automatic grid", () => {
+    const id = s().addScreen("Second");
+    s().placeScreen(id, { x: 900, y: 0 });
+    s().tidyBoard();
+    expect(s().screenPlacement).toEqual({});
+  });
+
+  it("forgets a deleted screen's placement", () => {
+    const id = s().addScreen("Second");
+    s().placeScreen(id, { x: 900, y: 0 });
+    s().removeScreen(id);
+    expect(s().screenPlacement[id]).toBeUndefined();
+  });
+});

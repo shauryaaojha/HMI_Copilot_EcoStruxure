@@ -27,6 +27,7 @@ import type {
   ChatMessage,
   Finding,
   ObjectMeta,
+  ScreenPlacement,
   Standards,
   TagImport,
   Version,
@@ -39,6 +40,7 @@ export type {
   Finding,
   ObjectMeta,
   Requirement,
+  ScreenPlacement,
   Standards,
   TagImport,
   Version,
@@ -55,6 +57,7 @@ interface EditSnapshot {
   label: string;
   screens: Screen[];
   objectMeta: Record<string, ObjectMeta>;
+  screenPlacement: Record<string, ScreenPlacement>;
   activeScreenId?: string;
   selectedIds: string[];
 }
@@ -77,6 +80,8 @@ interface ProjectState {
   findings: Finding[];
   /** Editing state the .eote has no field for, keyed by object UniqueId. */
   objectMeta: Record<string, ObjectMeta>;
+  /** Where each screen has been dragged to on the board, keyed by screen id. */
+  screenPlacement: Record<string, ScreenPlacement>;
 
   selectedIds: string[];
   hoveredId?: string;
@@ -114,6 +119,10 @@ interface ProjectState {
   removeScreen: (id: string) => void;
   setActiveScreen: (id: string) => void;
   reorderScreens: (from: number, to: number) => void;
+  /** Put a screen's frame somewhere on the board. Undoable, like any edit. */
+  placeScreen: (id: string, at: ScreenPlacement) => void;
+  /** Forget every hand placement, so the automatic grid takes over again. */
+  tidyBoard: () => void;
 
   /* --- objects ------------------------------------------------------- */
   appendObject: (screenId: string, part: Part) => void;
@@ -170,7 +179,8 @@ type ProjectActions = Pick<
   ProjectState,
   | "hydrate" | "rename" | "setTarget" | "markSaved" | "select" | "selectAll"
   | "hover" | "setSimulating" | "addScreen" | "duplicateScreen" | "renameScreen"
-  | "removeScreen" | "setActiveScreen" | "reorderScreens" | "appendObject"
+  | "removeScreen" | "setActiveScreen" | "reorderScreens" | "placeScreen"
+  | "tidyBoard" | "appendObject"
   | "updateObject" | "setProperty" | "nudge" | "setBox" | "removeObjects"
   | "duplicateObjects" | "copyObjects" | "cutObjects" | "pasteObjects" | "align"
   | "spread" | "restackObjects" | "setMeta" | "group" | "ungroup" | "undo"
@@ -194,6 +204,7 @@ function remember(s: Draft, label: string) {
     label,
     screens: current(s.screens),
     objectMeta: current(s.objectMeta),
+    screenPlacement: current(s.screenPlacement),
     activeScreenId: s.activeScreenId,
     selectedIds: current(s.selectedIds),
   });
@@ -260,6 +271,7 @@ export const useProject = create<ProjectState>()(
     equipment: [],
     findings: [],
     objectMeta: {},
+    screenPlacement: {},
     selectedIds: [],
     simulating: false,
     clipboard: [],
@@ -403,6 +415,7 @@ export const useProject = create<ProjectState>()(
         remember(s, "Delete screen");
         const [gone] = s.screens.splice(at, 1);
         for (const part of viewOf(gone).Children) delete s.objectMeta[part.UniqueId];
+        delete s.screenPlacement[gone.UniqueId];
         if (s.activeScreenId === id) {
           s.activeScreenId = s.screens[Math.min(at, s.screens.length - 1)].UniqueId;
         }
@@ -415,6 +428,20 @@ export const useProject = create<ProjectState>()(
         s.activeScreenId = id;
         s.selectedIds = [];
         s.hoveredId = undefined;
+      }),
+
+    placeScreen: (id, at) =>
+      set((s) => {
+        if (!s.screens.some((x) => x.UniqueId === id)) return;
+        remember(s, "Move screen");
+        s.screenPlacement[id] = { x: Math.round(at.x), y: Math.round(at.y) };
+      }),
+
+    tidyBoard: () =>
+      set((s) => {
+        if (Object.keys(s.screenPlacement).length === 0) return;
+        remember(s, "Tidy board");
+        s.screenPlacement = {};
       }),
 
     reorderScreens: (from, to) =>
@@ -631,11 +658,13 @@ export const useProject = create<ProjectState>()(
           label: previous.label,
           screens: current(s.screens),
           objectMeta: current(s.objectMeta),
+          screenPlacement: current(s.screenPlacement),
           activeScreenId: s.activeScreenId,
           selectedIds: current(s.selectedIds),
         });
         s.screens = previous.screens;
         s.objectMeta = previous.objectMeta;
+        s.screenPlacement = previous.screenPlacement;
         s.activeScreenId = previous.activeScreenId;
         s.selectedIds = previous.selectedIds;
       }),
@@ -648,11 +677,13 @@ export const useProject = create<ProjectState>()(
           label: next.label,
           screens: current(s.screens),
           objectMeta: current(s.objectMeta),
+          screenPlacement: current(s.screenPlacement),
           activeScreenId: s.activeScreenId,
           selectedIds: current(s.selectedIds),
         });
         s.screens = next.screens;
         s.objectMeta = next.objectMeta;
+        s.screenPlacement = next.screenPlacement;
         s.activeScreenId = next.activeScreenId;
         s.selectedIds = next.selectedIds;
       }),
@@ -812,6 +843,7 @@ export const useProject = create<ProjectState>()(
         s.equipment = [];
         s.findings = [];
         s.objectMeta = {};
+        s.screenPlacement = {};
         s.selectedIds = [];
         s.hoveredId = undefined;
         s.steps = {} as Record<PipelineStep, StepState>;
@@ -831,6 +863,7 @@ export const useProject = create<ProjectState>()(
         s.equipment = [];
         s.findings = [];
         s.objectMeta = {};
+        s.screenPlacement = {};
         s.selectedIds = [];
         s.hoveredId = undefined;
         s.clipboard = [];
