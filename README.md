@@ -156,6 +156,7 @@ docs/
   BUILD_PLAN.md         the eleven phases, and why they are ordered that way
   WORKSTREAMS.md        the two parallel workstreams, and who owns which files
   DEMO.md               the ninety-second demo path, with fallbacks
+  PRODUCTION.md         what it would take to put this in front of real engineers
   FRONTEND_PROMPTS.md   paste-ready prompts for the UI screens
   ui-reference/         the agreed UI design, 6 reference renders
 web/                    the product — Next.js full stack
