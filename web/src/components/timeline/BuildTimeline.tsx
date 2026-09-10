@@ -11,15 +11,18 @@
  * Clicking a step selects the objects it produced, so the timeline is a way
  * back into the screen rather than a read-only log.
  *
+ * The run's narrative output lives in the intent pane, beneath the prompt that
+ * started it - see components/generation/RunOutput. This dock is the step
+ * strip: where the run is, not what it said.
+ *
  * The header is h-10, matching the dock's collapsed size in WorkspaceShell, so
  * collapsing the pane leaves the title bar rather than an empty strip.
  */
 
-import { useEffect, useRef, useState } from "react";
 import { Check, Loader, Radio, X } from "lucide-react";
 import { PIPELINE_STEPS, STEP_LABELS, type PipelineStep, type StepState } from "@/types/events";
 import { useProject } from "@/store/project";
-import { Badge, Toggle, cn } from "@/components/ui";
+import { Badge, cn } from "@/components/ui";
 
 const MARK: Record<StepState, string> = {
   done: "bg-brand-500 text-white border-brand-500",
@@ -53,18 +56,8 @@ export function BuildTimeline() {
   const steps = useProject((s) => s.steps);
   const stepDetail = useProject((s) => s.stepDetail);
   const produced = useProject((s) => s.produced);
-  const logs = useProject((s) => s.logs);
   const generating = useProject((s) => s.generating);
   const select = useProject((s) => s.select);
-
-  const [autoScroll, setAutoScroll] = useState(true);
-  const logPane = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (autoScroll && logPane.current) {
-      logPane.current.scrollTop = logPane.current.scrollHeight;
-    }
-  }, [logs.length, autoScroll]);
 
   const done = PIPELINE_STEPS.filter((s) => steps[s] === "done").length;
 
@@ -87,13 +80,6 @@ export function BuildTimeline() {
             ? "running"
             : `${done} of ${PIPELINE_STEPS.length} steps completed`}
         </Badge>
-        <Toggle
-          className="ml-auto"
-          size="sm"
-          checked={autoScroll}
-          onChange={setAutoScroll}
-          label="Auto-scroll"
-        />
       </div>
 
       <div className="flex min-h-0 flex-1">
@@ -136,23 +122,6 @@ export function BuildTimeline() {
           })}
         </ol>
 
-        <div
-          ref={logPane}
-          className="w-[26rem] shrink-0 overflow-y-auto border-l border-line-subtle p-3 font-mono text-[11px]"
-        >
-          {logs.length === 0 ? (
-            <p className="text-text-faint">
-              Waiting for a generation run. Describe what you need on the left.
-            </p>
-          ) : (
-            logs.map((l, i) => (
-              <p key={i} className="flex gap-2 py-px">
-                <span className="shrink-0 text-text-faint">{l.at}</span>
-                <span className="min-w-0 text-text-secondary">{l.message}</span>
-              </p>
-            ))
-          )}
-        </div>
       </div>
     </section>
   );

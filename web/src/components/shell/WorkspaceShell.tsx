@@ -13,26 +13,36 @@
  *   |                           StatusBar                              |
  *   +------------------------------------------------------------------+
  *
+ * All three side regions collapse to a rail you can click to bring them back,
+ * because at 1280 wide three panes and a canvas do not fit and the canvas is
+ * the one that matters. Below that width they collapse on their own: the
+ * inspector first, then the intent pane. Reopening one by hand wins - the
+ * automatic collapse only fires when the viewport crosses a breakpoint, not on
+ * every resize tick, so it cannot fight the engineer.
+ *
  * Layout is persisted per group, so an engineer who widened the inspector once
  * does not have to widen it again. Reference screens 1, 2, 3, 5 and 6.
  *
  * Phase 0 of docs/BUILD_PLAN.md.
  */
 
-import { type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Group,
   Panel,
   Separator,
   useDefaultLayout,
   type LayoutStorage,
+  type PanelImperativeHandle,
 } from "react-resizable-panels";
+import { PanelLeft, PanelRight, PanelBottom } from "lucide-react";
 import { NavRail } from "./NavRail";
 import { StatusBar } from "./StatusBar";
 import { TopBar } from "./TopBar";
+import { cn } from "@/components/ui";
 
-/** The timeline collapses to its own title bar rather than disappearing. */
-const TIMELINE_COLLAPSED = "2.5rem";
+/** Each region collapses to a strip you can still see and click. */
+const RAIL = "2.25rem";
 
 /**
  * useDefaultLayout defaults to `localStorage`, which does not exist while the
@@ -62,6 +72,69 @@ export interface WorkspaceShellProps {
   onExport?: () => void;
 }
 
+/** A collapsed pane's strip: the label, turned on its side, and a way back. */
+function CollapsedRail({
+  label,
+  side,
+  onExpand,
+}: {
+  label: string;
+  side: "left" | "right" | "bottom";
+  onExpand: () => void;
+}) {
+  const vertical = side !== "bottom";
+  return (
+    <button
+      type="button"
+      onClick={onExpand}
+      title={`Show ${label}`}
+      aria-label={`Show ${label}`}
+      className={cn(
+        "focus-ring group flex h-full w-full items-center gap-2 bg-surface-panel text-text-muted transition hover:bg-surface-hover hover:text-text-secondary",
+        vertical ? "flex-col justify-start py-3" : "justify-start px-4",
+      )}
+    >
+      {side === "left" && <PanelLeft size={15} aria-hidden />}
+      {side === "right" && <PanelRight size={15} aria-hidden />}
+      {side === "bottom" && <PanelBottom size={15} aria-hidden />}
+      <span
+        className={cn(
+          "whitespace-nowrap text-xs font-medium",
+          vertical && "[writing-mode:vertical-rl]",
+          side === "left" && "rotate-180",
+        )}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
+
+/** A collapse control for an open pane, sized to sit in a pane header. */
+function CollapseButton({
+  label,
+  side,
+  onCollapse,
+}: {
+  label: string;
+  side: "left" | "right" | "bottom";
+  onCollapse: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onCollapse}
+      title={`Hide ${label}`}
+      aria-label={`Hide ${label}`}
+      className="focus-ring absolute right-1 top-1 z-10 rounded p-1.5 text-text-muted transition hover:bg-surface-hover hover:text-text-secondary"
+    >
+      {side === "left" && <PanelLeft size={14} aria-hidden />}
+      {side === "right" && <PanelRight size={14} aria-hidden />}
+      {side === "bottom" && <PanelBottom size={14} aria-hidden />}
+    </button>
+  );
+}
+
 export function WorkspaceShell({
   projectId,
   intent,
@@ -80,6 +153,74 @@ export function WorkspaceShell({
     panelIds: ["intent", "canvas", "inspector"],
     storage: layoutStorage,
   });
+
+  const intentRef = useRef<PanelImperativeHandle | null>(null);
+  const inspectorRef = useRef<PanelImperativeHandle | null>(null);
+  const timelineRef = useRef<PanelImperativeHandle | null>(null);
+
+  const [collapsed, setCollapsed] = useState({
+    intent: false,
+    inspector: false,
+    timeline: false,
+  });
+
+  /**
+   * Takes the ref, not `ref.current`: current is null while this renders, so a
+   * handler built from it would ask a null handle forever and the panes would
+   * never report being dragged shut.
+   */
+  const sync = useCallback(
+    (
+      key: keyof typeof collapsed,
+      ref: React.RefObject<PanelImperativeHandle | null>,
+    ) =>
+      () => {
+        const is = ref.current?.isCollapsed() ?? false;
+        setCollapsed((prev) => (prev[key] === is ? prev : { ...prev, [key]: is }));
+      },
+    [],
+  );
+
+  const toggle = (
+    key: keyof typeof collapsed,
+    ref: React.RefObject<PanelImperativeHandle | null>,
+  ) => {
+    const handle = ref.current;
+    if (!handle) return;
+    if (handle.isCollapsed()) handle.expand();
+    else handle.collapse();
+    setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  /**
+   * Narrow viewports give the canvas the room instead. Driven by matchMedia
+   * change events, not by width, so it fires once per crossing and an engineer
+   * who reopens a pane keeps it open until the viewport actually changes band.
+   */
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+
+    const bands: [MediaQueryList, React.RefObject<PanelImperativeHandle | null>, keyof typeof collapsed][] = [
+      [window.matchMedia("(max-width: 1279px)"), inspectorRef, "inspector"],
+      [window.matchMedia("(max-width: 1023px)"), intentRef, "intent"],
+    ];
+
+    const listeners = bands.map(([query, ref, key]) => {
+      const apply = (narrow: boolean) => {
+        const handle = ref.current;
+        if (!handle) return;
+        if (narrow && !handle.isCollapsed()) handle.collapse();
+        if (!narrow && handle.isCollapsed()) handle.expand();
+        setCollapsed((prev) => ({ ...prev, [key]: narrow }));
+      };
+      apply(query.matches);
+      const onChange = (e: MediaQueryListEvent) => apply(e.matches);
+      query.addEventListener("change", onChange);
+      return () => query.removeEventListener("change", onChange);
+    });
+
+    return () => listeners.forEach((off) => off());
+  }, []);
 
   return (
     <div className="flex h-screen flex-col bg-surface-base">
@@ -105,18 +246,36 @@ export function WorkspaceShell({
             >
               <Panel
                 id="intent"
+                panelRef={intentRef}
                 defaultSize="22%"
                 minSize="17rem"
                 maxSize="34%"
                 collapsible
-                className="min-w-0 bg-surface-panel"
+                collapsedSize={RAIL}
+                onResize={sync("intent", intentRef)}
+                className="relative min-w-0 bg-surface-panel"
               >
-                {intent}
+                {collapsed.intent ? (
+                  <CollapsedRail
+                    label="Intent"
+                    side="left"
+                    onExpand={() => toggle("intent", intentRef)}
+                  />
+                ) : (
+                  <>
+                    <CollapseButton
+                      label="the intent pane"
+                      side="left"
+                      onCollapse={() => toggle("intent", intentRef)}
+                    />
+                    {intent}
+                  </>
+                )}
               </Panel>
 
               <Separator className="w-px" aria-label="Resize the intent pane" />
 
-              <Panel id="canvas" minSize="30%" className="min-w-0 bg-surface-panel">
+              <Panel id="canvas" minSize="20rem" className="min-w-0 bg-surface-panel">
                 {canvas}
               </Panel>
 
@@ -124,13 +283,31 @@ export function WorkspaceShell({
 
               <Panel
                 id="inspector"
+                panelRef={inspectorRef}
                 defaultSize="21%"
                 minSize="16rem"
                 maxSize="32%"
                 collapsible
-                className="min-w-0 bg-surface-panel"
+                collapsedSize={RAIL}
+                onResize={sync("inspector", inspectorRef)}
+                className="relative min-w-0 bg-surface-panel"
               >
-                {inspector}
+                {collapsed.inspector ? (
+                  <CollapsedRail
+                    label="Inspector"
+                    side="right"
+                    onExpand={() => toggle("inspector", inspectorRef)}
+                  />
+                ) : (
+                  <>
+                    <CollapseButton
+                      label="the inspector"
+                      side="right"
+                      onCollapse={() => toggle("inspector", inspectorRef)}
+                    />
+                    {inspector}
+                  </>
+                )}
               </Panel>
             </Group>
           </Panel>
@@ -139,14 +316,31 @@ export function WorkspaceShell({
 
           <Panel
             id="timeline"
-            defaultSize="26%"
-            minSize="9rem"
+            panelRef={timelineRef}
+            defaultSize="24%"
+            minSize="8rem"
             maxSize="55%"
             collapsible
-            collapsedSize={TIMELINE_COLLAPSED}
-            className="min-h-0 bg-surface-panel"
+            collapsedSize={RAIL}
+            onResize={sync("timeline", timelineRef)}
+            className="relative min-h-0 bg-surface-panel"
           >
-            {timeline}
+            {collapsed.timeline ? (
+              <CollapsedRail
+                label="Build Timeline"
+                side="bottom"
+                onExpand={() => toggle("timeline", timelineRef)}
+              />
+            ) : (
+              <>
+                <CollapseButton
+                  label="the build timeline"
+                  side="bottom"
+                  onCollapse={() => toggle("timeline", timelineRef)}
+                />
+                {timeline}
+              </>
+            )}
           </Panel>
         </Group>
       </div>
