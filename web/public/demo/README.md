@@ -9,12 +9,16 @@ importer has.
 
 | File | Plant | Tags | Format | What it exercises |
 |---|---|---|---|---|
+| `Transfer_Pumps.csv` | Transfer pump station | 20 | CSV, header | the shortest run — small enough to read every object on a projector |
 | `Plant_Tags.csv` | Water treatment | 1,248 | CSV, header | scale, and the five names the corrector reports |
 | `Bottling_Line.xlsx` | Bottling line | 82 | XLSX | the spreadsheet path through SheetJS |
 | `Conveyor_System.csv` | Conveyor system | 125 | CSV, `;` | the delimiter Excel writes on a European locale |
 | `Batch_Reactors.txt` | Batch reactors | 86 | TSV, header | `Symbol`/`Type` column naming rather than `Name`/`DataType` |
 | `Boiler_House.txt` | Boiler house | 49 | TSV, **no header** | the positional fallback: name, type, comment, address |
 | `Legacy_Retrofit.csv` | Legacy panel retrofit | 66 | CSV, awkward | corrections, duplicates and unusable rows |
+
+`Transfer_Pumps.csv` carries one name the corrector has to report
+(`PMP 103 RUN`), which is the smallest possible version of that beat.
 
 Every figure above is what `POST /api/tags/parse` actually returns, not what the
 files contain — `Legacy_Retrofit.csv` has 70 rows and yields 66 tags, because
@@ -59,9 +63,10 @@ and these are the screens they actually produced:
 | Batch reactors | **3** | 85 | `PlantOverview` + reactor detail, dosing pumps |
 | Conveyor system | **3** | 81 | `PlantOverview` + conveyors, sort and weigh |
 
-The legacy retrofit has no such prompt on purpose. It is a two-motor panel; a
-hierarchy over it would be padding, and `tests/samples.test.ts` asserts it stays
-absent.
+Neither the legacy retrofit nor the transfer pump station has such a prompt, on
+purpose. One is a two-motor panel and the other is two duty pumps and a standby;
+a hierarchy over either would be padding, and `tests/samples.test.ts` asserts
+both stay absent.
 
 Note that the reactor prompt asks for a screen per reactor and gets one
 `ReactorDetail` for all four. That is the units-per-screen rule working, not
@@ -72,6 +77,24 @@ contains, and — for the retrofit, which loses its tank and valve tags to
 unusable types — that it does not promise equipment the import dropped. A prompt
 that asks for a tank the file has no tags for produces a screen bound to
 nothing, and the engineer blames the model rather than the sentence.
+
+## The figures above predate the inference vocabulary growing
+
+The two tables were recorded before `lib/ai/infer.ts` learned to recognise
+boilers, reactors, dosers, conveyors, filters and heaters as machines rather
+than folding them into one unnamed group. That changed what several of these
+samples infer, and so what a generation produces from them:
+
+| Sample | Units before | Units now |
+|---|---|---|
+| `Boiler_House.txt` | 1 unnamed group | 3 boilers + 7 instruments |
+| `Batch_Reactors.txt` | 4 unnamed groups | 4 reactors + 8 dosers |
+| `Conveyor_System.csv` | mostly instruments | 20 conveyors |
+| `Bottling_Line.xlsx` | mostly instruments | 4 filters + 6 conveyors |
+
+The screen and object counts in the two tables above are therefore low. Re-run
+each prompt through `POST /api/generate` and update them rather than trusting
+them; `tests/samples.test.ts` is the part that is actually enforced.
 
 ## Why the awkward one matters
 

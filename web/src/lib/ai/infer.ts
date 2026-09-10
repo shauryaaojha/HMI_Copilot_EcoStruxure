@@ -39,6 +39,18 @@ const MACHINES: Record<string, { kind: string; symbol: string }> = {
   TNK: { kind: "tank", symbol: "Tanks/Tank01" },
   TK: { kind: "tank", symbol: "Tanks/Tank01" },
   CMP: { kind: "compressor", symbol: "Air Compressors/AirCompressor01" },
+  // A boiler is a fired heater and the shipped library has no boiler, so
+  // Heater01 is the honest match rather than a tank that looks nothing like one.
+  BLR: { kind: "boiler", symbol: "General/Heater01" },
+  BOILER: { kind: "boiler", symbol: "General/Heater01" },
+  HTR: { kind: "heater", symbol: "General/Heater01" },
+  FIL: { kind: "filter", symbol: "General/Filter" },
+  FLTR: { kind: "filter", symbol: "General/Filter" },
+  CNV: { kind: "conveyor", symbol: "General/Conveyor01" },
+  CONV: { kind: "conveyor", symbol: "General/Conveyor01" },
+  RCT: { kind: "reactor", symbol: "Tanks/Tank01" },
+  REA: { kind: "reactor", symbol: "Tanks/Tank01" },
+  DOS: { kind: "doser", symbol: "Pumps/Pump01" },
 };
 
 /** Role suffixes, longest first so _FAULT wins over _F. */

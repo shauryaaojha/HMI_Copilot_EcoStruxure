@@ -303,11 +303,17 @@ export function fallbackPlan(
   if (hasReadings) sections.push("process");
   if (hasFaults || hasReadings) sections.push("alarms");
 
-  const kind = equipment[0]?.kind;
-  const stem =
-    kind && kind !== "instrument"
-      ? `${kind.charAt(0).toUpperCase()}${kind.slice(1)}Station`
-      : "Unit";
+  // The most common machine kind, not the first one seen: a boiler house whose
+  // first inferred unit happens to be a fan is not a fan station.
+  const counts = new Map<string, number>();
+  for (const unit of equipment) {
+    if (unit.kind === "instrument") continue;
+    counts.set(unit.kind, (counts.get(unit.kind) ?? 0) + 1);
+  }
+  const kind = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  const stem = kind
+    ? `${kind.charAt(0).toUpperCase()}${kind.slice(1)}Station`
+    : "Unit";
 
   const screens: ScreenSpec[] = [];
   if (equipment.length > OVERVIEW_THRESHOLD) {

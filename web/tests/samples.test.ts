@@ -42,6 +42,7 @@ interface Expected {
 }
 
 const EXPECTED: Record<string, Expected> = {
+  "Transfer_Pumps.csv": { tags: 20, corrections: 1, skipped: 0, contains: "PMP_101_RUN" },
   "Plant_Tags.csv": { tags: 1248, corrections: 5, skipped: 0, contains: "PMP_101_RUN" },
   "Bottling_Line.xlsx": { tags: 82, corrections: 0, skipped: 0, contains: "FIL_101_RUN" },
   "Conveyor_System.csv": { tags: 125, corrections: 0, skipped: 0, contains: "CNV_101_RUN" },
@@ -110,6 +111,7 @@ describe("every sample carries a prompt that fits its own tags", () => {
    * checked against the tags its own file actually yields.
    */
   const KEYWORDS: Record<string, string[]> = {
+    "Transfer_Pumps.csv": ["PMP_", "FT_", "LT_", "TNK_"],
     "Plant_Tags.csv": ["PMP", "FT_", "LT_"],
     "Bottling_Line.xlsx": ["FIL_", "CAP_", "LBL_"],
     "Conveyor_System.csv": ["CNV_", "SCALE_"],
@@ -125,8 +127,11 @@ describe("every sample carries a prompt that fits its own tags", () => {
 
       it("asks for a whole application only where the tags justify one", () => {
         // A hierarchy generated over a two-motor panel is padding, so the
-        // retrofit deliberately has no full-application prompt.
-        if (sample.name === "Legacy_Retrofit.csv") {
+        // retrofit deliberately has no full-application prompt - and neither
+        // does the transfer pump station, which is two duty pumps and a
+        // standby. Both are one screen, honestly.
+        const SINGLE_SCREEN = ["Legacy_Retrofit.csv", "Transfer_Pumps.csv"];
+        if (SINGLE_SCREEN.includes(sample.name)) {
           expect(sample.intentFull).toBeUndefined();
           return;
         }

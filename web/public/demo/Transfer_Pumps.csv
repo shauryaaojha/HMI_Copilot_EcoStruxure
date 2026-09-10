@@ -1,0 +1,21 @@
+Name,DataType,Comment,Address
+PMP_101_RUN,Bool,Transfer pump 1 running,%MX500.0
+PMP_101_FLT,Bool,Transfer pump 1 fault,%MX500.1
+PMP_101_AVAIL,Bool,Transfer pump 1 available,%MX500.2
+PMP_101_START,Bool,Transfer pump 1 start command,%MX500.3
+PMP_101_STOP,Bool,Transfer pump 1 stop command,%MX500.4
+PMP_101_HRS,Real,Transfer pump 1 run hours,%MW1010
+PMP_102_RUN,Bool,Transfer pump 2 running,%MX500.6
+PMP_102_FLT,Bool,Transfer pump 2 fault,%MX500.7
+PMP_102_AVAIL,Bool,Transfer pump 2 available,%MX501.0
+PMP_102_START,Bool,Transfer pump 2 start command,%MX501.1
+PMP_102_STOP,Bool,Transfer pump 2 stop command,%MX501.2
+PMP_102_HRS,Real,Transfer pump 2 run hours,%MW1022
+FT_101_PV,Real,Discharge header flow LPM,%MW1024
+FT_101_LO,Bool,Discharge header flow low,%MX501.5
+LT_101_PV,Real,Break tank level percent,%MW1028
+LT_101_HI,Bool,Break tank level high,%MX501.7
+LT_101_LO,Bool,Break tank level low,%MX502.0
+TNK_101_LEVEL,Real,Break tank level percent,%MW1034
+TNK_101_VOL,Real,Break tank volume m3,%MW1036
+PMP 103 RUN,Bool,Standby pump running,%MX502.3

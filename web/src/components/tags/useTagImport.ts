@@ -67,6 +67,25 @@ export interface Sample {
  */
 export const SAMPLES: Sample[] = [
   {
+    path: "/demo/Transfer_Pumps.csv",
+    name: "Transfer_Pumps.csv",
+    label: "Transfer pump station",
+    tags: 20,
+    note: "20 tags · the shortest run",
+    intent:
+      "Create a transfer pump station screen. Show which pump is running, flag " +
+      "any fault, display the discharge flow and the break tank level, and warn " +
+      "before the tank overfills.",
+    // No application prompt, for the same reason the retrofit has none: two
+    // duty pumps and a standby are one screen. A hierarchy over them would be
+    // padding, and tests/samples.test.ts asserts it stays absent.
+    followUps: [
+      "make the fault lamps red when they are off as well",
+      "move the flow reading above the level reading",
+      "add a high alarm on the break tank at 85 percent",
+    ],
+  },
+  {
     path: "/demo/Plant_Tags.csv",
     name: "Plant_Tags.csv",
     label: "Water treatment plant",
