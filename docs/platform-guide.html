@@ -1,0 +1,1298 @@
+<title>HMI Copilot Field Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  /* ---- tokens: light is the base, both dark states redefine only colours ---- */
+  :root {
+    --ground:      #F4F7F8;
+    --surface:     #FFFFFF;
+    --surface-2:   #EDF2F4;
+    --ink:         #16202B;
+    --ink-soft:    #3C4B58;
+    --muted:       #64757F;
+    --rule:        #D3DDE3;
+    --rule-strong: #B3C2CB;
+
+    --signal:      #00784A;   /* running / healthy */
+    --signal-soft: #E2F0E8;
+    --warn:        #9A6200;
+    --warn-soft:   #F7EEDC;
+    --alarm:       #B33A30;
+    --alarm-soft:  #F8E7E5;
+    --wire:        #7C8D97;
+
+    --shadow: 0 1px 2px rgba(22, 32, 43, .06), 0 8px 24px -16px rgba(22, 32, 43, .28);
+
+    --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --body: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+
+    --measure: 68ch;
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0D141A;
+      --surface:     #141E26;
+      --surface-2:   #1B2831;
+      --ink:         #E6EDF2;
+      --ink-soft:    #C2CFD8;
+      --muted:       #8A9BA6;
+      --rule:        #27363F;
+      --rule-strong: #3A4C57;
+
+      --signal:      #45C98A;
+      --signal-soft: #10312A;
+      --warn:        #D9A441;
+      --warn-soft:   #33270F;
+      --alarm:       #E8776B;
+      --alarm-soft:  #38191A;
+      --wire:        #566C79;
+
+      --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 10px 30px -18px rgba(0, 0, 0, .9);
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:      #0D141A;
+    --surface:     #141E26;
+    --surface-2:   #1B2831;
+    --ink:         #E6EDF2;
+    --ink-soft:    #C2CFD8;
+    --muted:       #8A9BA6;
+    --rule:        #27363F;
+    --rule-strong: #3A4C57;
+
+    --signal:      #45C98A;
+    --signal-soft: #10312A;
+    --warn:        #D9A441;
+    --warn-soft:   #33270F;
+    --alarm:       #E8776B;
+    --alarm-soft:  #38191A;
+    --wire:        #566C79;
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 10px 30px -18px rgba(0, 0, 0, .9);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 0 72px;
+  }
+
+  /* ---- masthead ---- */
+  header.masthead {
+    border-bottom: 2px solid var(--ink);
+    padding-block: 44px 22px;
+    margin-bottom: 36px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--signal);
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(34px, 6vw, 56px);
+    line-height: 1.02;
+    letter-spacing: -.022em;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-size: clamp(16px, 2.2vw, 19px);
+    color: var(--ink-soft);
+    max-width: var(--measure);
+    margin: 0 0 24px;
+  }
+  .masthead-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .masthead-meta b { color: var(--ink-soft); font-weight: 500; }
+
+  /* ---- layout ---- */
+  .columns { display: grid; grid-template-columns: 1fr; gap: 40px; }
+  @media (min-width: 940px) {
+    .columns { grid-template-columns: 208px minmax(0, 1fr); gap: 56px; align-items: start; }
+    nav.toc { position: sticky; top: 24px; }
+  }
+
+  nav.toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+  nav.toc li { counter-increment: toc; }
+  nav.toc a {
+    display: flex;
+    gap: 10px;
+    padding: 7px 0;
+    font-size: 13.5px;
+    color: var(--muted);
+    text-decoration: none;
+    border-bottom: 1px solid var(--rule);
+    transition: color .12s;
+  }
+  nav.toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--rule-strong);
+    padding-top: 2px;
+  }
+  nav.toc a:hover { color: var(--signal); }
+  nav.toc .toc-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 8px;
+  }
+
+  section { margin-bottom: 64px; scroll-margin-top: 20px; }
+  h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(23px, 3.4vw, 30px);
+    letter-spacing: -.015em;
+    line-height: 1.15;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+  .section-kicker {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 4px;
+  }
+  h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 17.5px;
+    letter-spacing: -.005em;
+    margin: 34px 0 10px;
+  }
+  h4 {
+    font-family: var(--body);
+    font-weight: 600;
+    font-size: 14.5px;
+    margin: 0 0 6px;
+  }
+  p { max-width: var(--measure); margin: 0 0 14px; }
+  .lede { font-size: 17px; color: var(--ink-soft); }
+  ul, ol.prose { max-width: var(--measure); padding-left: 20px; margin: 0 0 16px; }
+  li { margin-bottom: 6px; }
+  strong { font-weight: 600; }
+  code {
+    font-family: var(--mono);
+    font-size: .88em;
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 1px 4px;
+    white-space: nowrap;
+  }
+  a { color: var(--signal); }
+
+  .rule { height: 1px; background: var(--rule); border: 0; margin: 0 0 26px; }
+
+  /* ---- signal chain ---- */
+  .chain {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 1fr;
+    margin: 20px 0 8px;
+  }
+  @media (min-width: 720px) { .chain { grid-template-columns: repeat(5, 1fr); gap: 8px; } }
+  .chain-step {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--wire);
+    padding: 14px 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .chain-step:nth-child(3) { border-top-color: var(--signal); }
+  .chain-n {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    color: var(--muted);
+  }
+  .chain-step h4 { margin: 0; }
+  .chain-step p { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.5; }
+  .chain-note {
+    font-size: 13px;
+    color: var(--muted);
+    font-family: var(--mono);
+    margin-top: 4px;
+  }
+
+  /* ---- split comparison ---- */
+  .split { display: grid; gap: 16px; grid-template-columns: 1fr; margin: 22px 0; }
+  @media (min-width: 720px) { .split { grid-template-columns: 1fr 1fr; } }
+  .pane {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .pane-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--signal);
+  }
+  .pane h3 { margin: 0; font-size: 19px; }
+  .pane p { font-size: 14px; margin: 0; color: var(--ink-soft); }
+  .pane dl { margin: 6px 0 0; display: grid; gap: 8px; font-size: 13.5px; }
+  .pane dt {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .pane dd { margin: 2px 0 0; color: var(--ink-soft); }
+
+  /* ---- tag decoder ---- */
+  .decoder {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 22px 20px;
+    margin: 20px 0;
+    overflow-x: auto;
+  }
+  .decoder-row { display: flex; gap: 4px; font-family: var(--mono); }
+  .decoder-seg { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .decoder-chip {
+    font-size: clamp(16px, 3.4vw, 24px);
+    font-weight: 600;
+    padding: 8px 12px;
+    border-radius: 3px;
+    white-space: nowrap;
+    text-align: center;
+  }
+  .seg-a { background: var(--signal-soft); color: var(--signal); }
+  .seg-b { background: var(--surface-2); color: var(--ink-soft); }
+  .seg-c { background: var(--warn-soft); color: var(--warn); }
+  .decoder-what {
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: center;
+  }
+  .decoder-say { font-size: 12.5px; color: var(--ink-soft); text-align: center; line-height: 1.4; }
+  .decoder-sep { align-self: start; padding-top: 10px; color: var(--rule-strong); font-size: 22px; }
+
+  /* ---- tables ---- */
+  .table-scroll { overflow-x: auto; margin: 18px 0 22px; border: 1px solid var(--rule); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 480px; }
+  th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--rule-strong);
+    white-space: nowrap;
+  }
+  td { padding: 9px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; color: var(--ink-soft); }
+  tr:last-child td { border-bottom: 0; }
+  td.k { font-family: var(--mono); color: var(--ink); font-weight: 500; white-space: nowrap; }
+  td.num { font-variant-numeric: tabular-nums; }
+
+  /* ---- file tree ---- */
+  .tree {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 18px 16px;
+    margin: 18px 0 22px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.95;
+  }
+  .tree-line { display: flex; gap: 14px; white-space: nowrap; }
+  .tree-path { color: var(--ink); min-width: 250px; }
+  .tree-kind {
+    color: var(--signal);
+    min-width: 62px;
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding-top: 1px;
+  }
+  .tree-kind.db { color: var(--warn); }
+  .tree-what { color: var(--muted); white-space: normal; }
+
+  /* ---- binding diagram ---- */
+  .bindfig {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 20px 16px 16px;
+    margin: 20px 0;
+    overflow-x: auto;
+  }
+  .bindfig svg { display: block; min-width: 560px; width: 100%; height: auto; }
+  .bindfig figcaption { font-size: 13px; color: var(--muted); margin-top: 12px; max-width: var(--measure); }
+
+  /* ---- callout ---- */
+  .callout {
+    border-left: 3px solid var(--signal);
+    background: var(--surface);
+    border-top: 1px solid var(--rule);
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    padding: 16px 18px;
+    margin: 22px 0;
+  }
+  .callout.warn { border-left-color: var(--warn); }
+  .callout p { margin: 0; font-size: 14.5px; }
+  .callout p + p { margin-top: 10px; }
+  .callout-label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  /* ---- status list ---- */
+  .status { display: grid; gap: 12px; grid-template-columns: 1fr; margin: 20px 0; }
+  @media (min-width: 720px) { .status { grid-template-columns: 1fr 1fr; } }
+  .status-col {
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    padding: 18px;
+  }
+  .status-col h4 { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 12px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .dot.ok { background: var(--signal); }
+  .dot.pending { background: var(--warn); }
+  .status-col ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 9px; }
+  .status-col li { font-size: 13.5px; color: var(--ink-soft); padding-left: 15px; position: relative; margin: 0; line-height: 1.5; }
+  .status-col li::before {
+    content: "";
+    position: absolute; left: 0; top: 8px;
+    width: 6px; height: 1px; background: var(--rule-strong);
+  }
+
+  /* ---- glossary ---- */
+  .glossary-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin: 18px 0 14px;
+  }
+  #gloss-search {
+    flex: 1 1 220px;
+    min-width: 0;
+    font-family: var(--body);
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--rule-strong);
+    border-radius: 3px;
+    padding: 9px 12px;
+  }
+  #gloss-search::placeholder { color: var(--muted); }
+  #gloss-search:focus-visible { outline: 2px solid var(--signal); outline-offset: 1px; }
+  .chip {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--rule-strong);
+    border-radius: 999px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  .chip[aria-pressed="true"] { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+  .chip:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+  .gloss-count { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .gloss-list { display: grid; gap: 0; border: 1px solid var(--rule); background: var(--surface); }
+  .gloss-item {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2px 18px;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--rule);
+  }
+  @media (min-width: 640px) {
+    .gloss-item { grid-template-columns: 168px minmax(0, 1fr); align-items: baseline; }
+  }
+  .gloss-item:last-child { border-bottom: 0; }
+  .gloss-term { font-family: var(--mono); font-size: 13.5px; font-weight: 600; color: var(--ink); }
+  .gloss-term span { display: block; font-weight: 400; font-size: 11px; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; margin-top: 3px; }
+  .gloss-def { font-size: 13.5px; color: var(--ink-soft); line-height: 1.55; }
+  .gloss-empty { padding: 24px 16px; font-size: 14px; color: var(--muted); }
+
+  footer.end {
+    border-top: 2px solid var(--ink);
+    padding-top: 20px;
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 28px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">Field guide &middot; Schneider Electric HMI hackathon</p>
+  <h1>How the platform works, and what we built on top of it</h1>
+  <p class="standfirst">
+    Everything from a sensor on a pipe to the file that opens in EcoStruxure Operator
+    Terminal Expert &mdash; the vocabulary, the machinery, and where HMI Copilot fits.
+  </p>
+  <div class="masthead-meta">
+    <span><b>Target</b> EcoStruxure Operator Terminal Expert 4.4</span>
+    <span><b>Panel</b> HMIST6500AWADI &middot; 1024 &times; 600</span>
+    <span><b>Problem statement</b> 3</span>
+  </div>
+</header>
+
+<div class="columns">
+
+  <nav class="toc" aria-label="Contents">
+    <div class="toc-label">Contents</div>
+    <ol>
+      <li><a href="#world">The world this lives in</a></li>
+      <li><a href="#ote">Buildtime and RunTime</a></li>
+      <li><a href="#tags">Reading a tag name</a></li>
+      <li><a href="#alarms">How alarms work</a></li>
+      <li><a href="#eote">Inside a .eote file</a></li>
+      <li><a href="#bindings">The binding graph</a></li>
+      <li><a href="#copilot">What HMI Copilot does</a></li>
+      <li><a href="#status">Proven vs designed</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+  <!-- ============ 1 ============ -->
+  <section id="world">
+    <p class="section-kicker">Section 01</p>
+    <h2>The world this lives in</h2>
+    <hr class="rule">
+
+    <p class="lede">
+      An <strong>HMI</strong> is a Human&ndash;Machine Interface: the touchscreen bolted
+      to the front of a control cabinet that an operator looks at all shift. It shows
+      whether pump 1 is running, what the tank level is, and what has gone wrong.
+    </p>
+
+    <p>
+      It is not the thing doing the controlling. The controlling is done by a
+      <strong>PLC</strong> &mdash; a Programmable Logic Controller, an industrial computer
+      that reads sensors and drives motors and valves on a cycle of a few milliseconds.
+      The HMI is a window onto the PLC's memory. That distinction is the single most
+      useful thing to hold on to: <em>the PLC decides, the HMI displays.</em>
+    </p>
+
+    <div class="chain">
+      <div class="chain-step">
+        <span class="chain-n">01</span>
+        <h4>Field device</h4>
+        <p>A flow meter on a pipe, a level probe in a tank, a motor starter. Produces a signal.</p>
+      </div>
+      <div class="chain-step">
+        <span class="chain-n">02</span>
+        <h4>PLC</h4>
+        <p>Reads every input, runs the control logic, writes outputs. Holds the result in named memory.</p>
+      </div>
+      <div class="chain-step">
+        <span class="chain-n">03</span>
+        <h4>Tag</h4>
+        <p>One named piece of that memory &mdash; <code>FT_101_PV</code>. This is what both sides agree on.</p>
+      </div>
+      <div class="chain-step">
+        <span class="chain-n">04</span>
+        <h4>HMI panel</h4>
+        <p>Polls the PLC over a fieldbus and paints the value onto a screen object.</p>
+      </div>
+      <div class="chain-step">
+        <span class="chain-n">05</span>
+        <h4>Operator</h4>
+        <p>Sees a number move, a lamp turn green, an alarm appear. Acts on it.</p>
+      </div>
+    </div>
+    <p class="chain-note">The tag is the contract. Everything our project does happens at step 03 &rarr; 04.</p>
+
+    <h3>Who is actually involved</h3>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Role</th><th>What they do</th><th>What they feel</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="k">Control engineer</td>
+            <td>Writes the PLC logic and names the tags.</td>
+            <td>Owns the tag list. Hands it over as a spreadsheet.</td>
+          </tr>
+          <tr>
+            <td class="k">HMI engineer</td>
+            <td>Draws every screen and wires every tag to every object, by hand.</td>
+            <td>This is the job HMI Copilot is aimed at. Hundreds of bindings per project.</td>
+          </tr>
+          <tr>
+            <td class="k">Commissioning engineer</td>
+            <td>Takes it to site, downloads to the panel, makes it work against real hardware.</td>
+            <td>Discovers the mistakes. On site, under time pressure, with the customer watching.</td>
+          </tr>
+          <tr>
+            <td class="k">Operator</td>
+            <td>Uses the finished HMI every day.</td>
+            <td>Never sees the engineering. Just needs the screen to be right.</td>
+          </tr>
+          <tr>
+            <td class="k">System integrator / OEM</td>
+            <td>The company delivering the whole panel. Often builds 40 near-identical machines.</td>
+            <td>Pays for the repetition. Wants consistency across engineers.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <span class="callout-label">Why this problem is worth money</span>
+      <p>
+        An HMI engineer hand-places every lamp and hand-types every binding, then repeats
+        it for the next near-identical machine. A single wrong binding is invisible until
+        commissioning &mdash; and by then the panel is on a customer's floor and the fix
+        costs a site visit.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ 2 ============ -->
+  <section id="ote">
+    <p class="section-kicker">Section 02</p>
+    <h2>EcoStruxure Operator Terminal Expert</h2>
+    <hr class="rule">
+
+    <p class="lede">
+      <strong>EcoStruxure</strong> is Schneider Electric's umbrella brand for its industrial
+      software and hardware. <strong>Operator Terminal Expert</strong> &mdash; OTE &mdash; is
+      the specific product for designing HMI screens. Version 4.4 is what we target.
+    </p>
+
+    <p>
+      OTE is two programs that ship together, and confusing them is the most common
+      misunderstanding. They run on different machines, in different languages, at
+      different times.
+    </p>
+
+    <div class="split">
+      <div class="pane">
+        <p class="pane-tag">Runs on the engineer's PC</p>
+        <h3>Buildtime</h3>
+        <p>
+          The editor. Where a human draws screens, declares variables, configures alarms
+          and wires bindings. Produces a project file. Nothing here talks to real hardware.
+        </p>
+        <dl>
+          <dt>Stack</dt>
+          <dd>.NET / C# shell with native Qt5 C++ modules</dd>
+          <dt>Evidence</dt>
+          <dd><code>*.deps.json</code>, EF Core, Roslyn, <code>Qt5Core_x64.dll</code></dd>
+          <dt>Output</dt>
+          <dd>a <code>.eote</code> project file</dd>
+          <dt>Our relationship to it</dt>
+          <dd>We produce the file it opens. We never modify the program.</dd>
+        </dl>
+      </div>
+      <div class="pane">
+        <p class="pane-tag">Runs on the panel</p>
+        <h3>RunTime</h3>
+        <p>
+          What is downloaded onto the physical HMI terminal and executes in the plant.
+          Polls the PLC, evaluates alarms, draws the screens the engineer designed.
+        </p>
+        <dl>
+          <dt>Stack</dt>
+          <dd>pure C++ / Qt5 with embedded Lua</dd>
+          <dt>Evidence</dt>
+          <dd><code>PCPlatform.exe</code>, <code>CoreDriver.dll</code>, <code>INIT.luac</code></dd>
+          <dt>Input</dt>
+          <dd>a compiled download from Buildtime</dd>
+          <dt>Our relationship to it</dt>
+          <dd>None. We stop at the artifact boundary.</dd>
+        </dl>
+      </div>
+    </div>
+
+    <h3>The workflow OTE expects</h3>
+    <ol class="prose">
+      <li><strong>Create a project</strong> and pick a target panel model, which fixes the screen resolution.</li>
+      <li><strong>Declare variables</strong> &mdash; every tag the HMI will read, with its data type.</li>
+      <li><strong>Draw screens</strong> &mdash; drag parts from the Tool Chest onto a canvas.</li>
+      <li><strong>Bind</strong> each object property to a variable, one at a time.</li>
+      <li><strong>Configure alarms</strong> against trigger tags and thresholds.</li>
+      <li><strong>Validate</strong>, then <strong>download</strong> to the panel.</li>
+    </ol>
+
+    <div class="callout">
+      <span class="callout-label">The insight the whole project rests on</span>
+      <p>
+        Steps 2&ndash;5 are mechanical. They are determined by the tag list plus engineering
+        convention &mdash; a pump gets a run lamp and a fault alarm, a level gets a numeric
+        display and a high-level alarm. That is knowledge, not creativity, and knowledge can
+        be encoded.
+      </p>
+    </div>
+
+    <h3>Panel model names, decoded</h3>
+    <p>
+      A model string like <code>HMIST6500AWADI</code> looks like noise but is a spec sheet.
+      Ours is a Harmony ST6 series, 10-inch, wide, analogue-resistive touch.
+    </p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Term</th><th>Means</th></tr></thead>
+        <tbody>
+          <tr><td class="k">HMI</td><td>product family prefix</td></tr>
+          <tr><td class="k">ST6</td><td>Harmony ST6 series &mdash; the mid-range panel line</td></tr>
+          <tr><td class="k">Resolution</td><td>1024 &times; 600, landscape &mdash; fixed by the model, stored in <code>Target.dat</code></td></tr>
+          <tr><td class="k">Target</td><td>OTE's word for "the panel this project is for"</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      This matters because a screen is authored at the panel's exact pixel size. Ours is
+      1024 &times; 600 because the target says so &mdash; not because we chose it.
+    </p>
+  </section>
+
+  <!-- ============ 3 ============ -->
+  <section id="tags">
+    <p class="section-kicker">Section 03</p>
+    <h2>Reading a tag name</h2>
+    <hr class="rule">
+
+    <p class="lede">
+      Tag names are not arbitrary. Most plants follow <strong>ISA-5.1</strong>, an
+      instrumentation standard that gives every measuring device a letter code. Once you can
+      read it, a tag list tells you what the plant physically contains.
+    </p>
+
+    <div class="decoder" role="figure" aria-label="FT_101_PV broken into its parts">
+      <div class="decoder-row">
+        <div class="decoder-seg">
+          <div class="decoder-chip seg-a">FT</div>
+          <div class="decoder-what">Instrument</div>
+          <div class="decoder-say">F = Flow<br>T = Transmitter</div>
+        </div>
+        <div class="decoder-sep">_</div>
+        <div class="decoder-seg">
+          <div class="decoder-chip seg-b">101</div>
+          <div class="decoder-what">Loop number</div>
+          <div class="decoder-say">Which physical<br>circuit it belongs to</div>
+        </div>
+        <div class="decoder-sep">_</div>
+        <div class="decoder-seg">
+          <div class="decoder-chip seg-c">PV</div>
+          <div class="decoder-what">Role</div>
+          <div class="decoder-say">Process Value &mdash;<br>the live reading</div>
+        </div>
+      </div>
+    </div>
+
+    <p>
+      So <code>FT_101_PV</code> is <em>the live flow reading from the flow transmitter on
+      loop 101</em>. And because <code>PMP_101_RUN</code>, <code>PMP_101_FLT</code> and
+      <code>FT_101_PV</code> share loop 101, they describe one pump and its instrumentation.
+      That shared middle number is exactly what lets a machine infer equipment from a tag list.
+    </p>
+
+    <h3>First letter &mdash; what is measured</h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Letter</th><th>Variable</th><th>Second letter</th><th>Function</th></tr></thead>
+        <tbody>
+          <tr><td class="k">F</td><td>Flow</td><td class="k">T</td><td>Transmitter &mdash; sends a value</td></tr>
+          <tr><td class="k">L</td><td>Level</td><td class="k">I</td><td>Indicator &mdash; displays it</td></tr>
+          <tr><td class="k">P</td><td>Pressure</td><td class="k">C</td><td>Controller &mdash; acts on it</td></tr>
+          <tr><td class="k">T</td><td>Temperature</td><td class="k">S</td><td>Switch &mdash; trips at a threshold</td></tr>
+          <tr><td class="k">A</td><td>Analysis (pH, conductivity)</td><td class="k">V</td><td>Valve</td></tr>
+          <tr><td class="k">S</td><td>Speed</td><td class="k">E</td><td>Element &mdash; the raw sensor</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Suffixes you will meet constantly</h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Suffix</th><th>Means</th><th>Type</th></tr></thead>
+        <tbody>
+          <tr><td class="k">_PV</td><td>Process Value &mdash; the actual measurement</td><td>REAL</td></tr>
+          <tr><td class="k">_SP</td><td>Setpoint &mdash; the value being aimed at</td><td>REAL</td></tr>
+          <tr><td class="k">_RUN</td><td>Running feedback &mdash; is it actually turning</td><td>BOOL</td></tr>
+          <tr><td class="k">_FLT</td><td>Fault &mdash; something is wrong with this device</td><td>BOOL</td></tr>
+          <tr><td class="k">_CMD</td><td>Command &mdash; the operator asking for something</td><td>BOOL</td></tr>
+          <tr><td class="k">_HI / _LO</td><td>High / low limit reached</td><td>BOOL</td></tr>
+          <tr><td class="k">_SPD</td><td>Speed reference or feedback</td><td>REAL / INT</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Data types &mdash; IEC 61131-3</h3>
+    <p>
+      <strong>IEC 61131-3</strong> is the international standard for PLC programming
+      languages, and it fixes the type names. OTE uses them directly.
+    </p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Type</th><th>Holds</th><th>Typical use</th></tr></thead>
+        <tbody>
+          <tr><td class="k">BOOL</td><td>true / false, one bit</td><td>running, fault, high level</td></tr>
+          <tr><td class="k">INT</td><td>signed 16-bit whole number</td><td>counts, small setpoints</td></tr>
+          <tr><td class="k">DINT</td><td>signed 32-bit whole number</td><td>totalisers</td></tr>
+          <tr><td class="k">UINT / UDINT</td><td>unsigned 16 / 32-bit</td><td>counters that never go negative</td></tr>
+          <tr><td class="k">WORD / DWORD</td><td>16 / 32 raw bits</td><td>status registers, bit-packed flags</td></tr>
+          <tr><td class="k">REAL</td><td>32-bit floating point</td><td>flow, pressure, temperature</td></tr>
+          <tr><td class="k">LREAL</td><td>64-bit floating point</td><td>high-precision analysis</td></tr>
+          <tr><td class="k">STRING</td><td>text</td><td>batch IDs, messages</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-label">A trap that costs a commissioning day</span>
+      <p>
+        A <code>REAL</code> bound to a lamp is a type mismatch: the lamp expects
+        <code>BOOL</code>. OTE will accept the project and the error appears as a lamp that
+        never changes. Our validator catches this at design time, which is the entire point
+        of the exercise.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ 4 ============ -->
+  <section id="alarms">
+    <p class="section-kicker">Section 04</p>
+    <h2>How alarms work</h2>
+    <hr class="rule">
+
+    <p class="lede">
+      An alarm is a named condition the panel watches continuously and announces when it
+      becomes true. OTE stores them in <code>Alarm.db</code>, grouped, and each one is bound
+      to a trigger tag.
+    </p>
+
+    <h3>Two kinds, and they are configured differently</h3>
+    <div class="split">
+      <div class="pane">
+        <p class="pane-tag">AlarmRecordType 1</p>
+        <h3>Bit alarm</h3>
+        <p>Fires when a <code>BOOL</code> goes true. There is no threshold &mdash; the PLC already decided.</p>
+        <dl>
+          <dt>Example</dt>
+          <dd><code>PMP_101_FLT</code> &rarr; "Pump 1 fault"</dd>
+          <dt>IsOnTrigger</dt>
+          <dd>1</dd>
+        </dl>
+      </div>
+      <div class="pane">
+        <p class="pane-tag">AlarmRecordType 2</p>
+        <h3>Level alarm</h3>
+        <p>Fires when a numeric tag crosses a setpoint. The threshold lives in the alarm, not the PLC.</p>
+        <dl>
+          <dt>Example</dt>
+          <dd><code>LT_101_PV</code> &gt; 85 &rarr; "Tank level high"</dd>
+          <dt>IsOnTrigger</dt>
+          <dd>0</dd>
+        </dl>
+      </div>
+    </div>
+
+    <h3>Severity levels &mdash; HiHi, Hi, Lo, LoLo</h3>
+    <p>
+      Process alarms come in nested pairs. <strong>Hi</strong> is "pay attention",
+      <strong>HiHi</strong> is "act now"; <strong>Lo</strong> and <strong>LoLo</strong> mirror
+      them downward. A tank typically has all four: too empty to pump, and too full to fill.
+    </p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Name</th><th>AlarmType</th><th>Meaning</th><th>In our demo</th></tr></thead>
+        <tbody>
+          <tr><td class="k">HiHi</td><td class="num">1</td><td>critical high &mdash; intervene</td><td><code>LT_101_PV</code> &gt; 95</td></tr>
+          <tr><td class="k">Hi</td><td class="num">2</td><td>warning high</td><td><code>LT_101_PV</code> &gt; 85</td></tr>
+          <tr><td class="k">Lo</td><td class="num">3</td><td>warning low</td><td>&mdash;</td></tr>
+          <tr><td class="k">LoLo</td><td class="num">4</td><td>critical low</td><td>&mdash;</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>The lifecycle an operator sees</h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>State</th><th>Short</th><th>What happened</th></tr></thead>
+        <tbody>
+          <tr><td class="k">Active</td><td class="k">ACT</td><td>The condition is true right now.</td></tr>
+          <tr><td class="k">Unacknowledged</td><td class="k">UNACK</td><td>Nobody has pressed acknowledge yet. Usually flashing.</td></tr>
+          <tr><td class="k">Acknowledged</td><td class="k">ACK</td><td>An operator has seen it. Stops flashing, stays listed.</td></tr>
+          <tr><td class="k">Return to normal</td><td class="k">RTN</td><td>The condition cleared.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      <strong>Deadband</strong> is the hysteresis that stops an alarm chattering: once fired
+      at 85, it will not clear until the value drops meaningfully below 85.
+    </p>
+  </section>
+
+  <!-- ============ 5 ============ -->
+  <section id="eote">
+    <p class="section-kicker">Section 05</p>
+    <h2>Inside a .eote file</h2>
+    <hr class="rule">
+
+    <p class="lede">
+      A <code>.eote</code> is a ZIP archive of plain JSON and plain SQLite. No encryption,
+      no signature. That single fact is what makes the whole project possible.
+    </p>
+
+    <div class="tree" role="figure" aria-label="Contents of a .eote archive">
+      <div class="tree-line"><span class="tree-path">project.eote</span><span class="tree-kind">ZIP</span><span class="tree-what">entries use BACKSLASH separators</span></div>
+      <div class="tree-line"><span class="tree-path">&nbsp;&#9500;&#9472; Project.dat</span><span class="tree-kind">JSON</span><span class="tree-what">identity, version, theme</span></div>
+      <div class="tree-line"><span class="tree-path">&nbsp;&#9500;&#9472; Target.dat</span><span class="tree-kind">JSON</span><span class="tree-what">panel model and resolution</span></div>
+      <div class="tree-line"><span class="tree-path">&nbsp;&#9500;&#9472; Variables.db</span><span class="tree-kind db">SQLITE</span><span class="tree-what">the tags</span></div>
+      <div class="tree-line"><span class="tree-path">&nbsp;&#9500;&#9472; Alarm.db</span><span class="tree-kind db">SQLITE</span><span class="tree-what">alarm groups and alarms</span></div>
+      <div class="tree-line"><span class="tree-path">&nbsp;&#9500;&#9472; Recipe.db, Security.db &hellip;</span><span class="tree-kind db">SQLITE</span><span class="tree-what">subsystems we copy through untouched</span></div>
+      <div class="tree-line"><span class="tree-path">&nbsp;&#9500;&#9472; Bindings.dat</span><span class="tree-kind">JSON</span><span class="tree-what">Sources &rarr; Bindings &rarr; Targets</span></div>
+      <div class="tree-line"><span class="tree-path">&nbsp;&#9500;&#9472; Screens\Hierarchy.dat</span><span class="tree-kind">JSON</span><span class="tree-what">screen order</span></div>
+      <div class="tree-line"><span class="tree-path">&nbsp;&#9492;&#9472; Screens\&lt;guid&gt;\</span><span class="tree-kind"></span><span class="tree-what">one folder per screen</span></div>
+      <div class="tree-line"><span class="tree-path">&nbsp;&nbsp;&nbsp;&nbsp;&#9500;&#9472; Screen.dat</span><span class="tree-kind">JSON</span><span class="tree-what">the object tree &mdash; every part on the screen</span></div>
+      <div class="tree-line"><span class="tree-path">&nbsp;&nbsp;&nbsp;&nbsp;&#9500;&#9472; Metadata.dat</span><span class="tree-kind">JSON</span><span class="tree-what">screen name and order</span></div>
+      <div class="tree-line"><span class="tree-path">&nbsp;&nbsp;&nbsp;&nbsp;&#9492;&#9472; LocalVariables.db</span><span class="tree-kind db">SQLITE</span><span class="tree-what">variables scoped to this screen</span></div>
+    </div>
+
+    <h3>Four properties that make automation possible</h3>
+    <ol class="prose">
+      <li>
+        <strong>Everything meaningful is JSON or SQLite.</strong> <code>Screen.dat</code> is a
+        tree of <code>Type</code> / <code>Children</code> / <code>Location</code> /
+        <code>Width</code> / <code>Height</code>. It generates and diffs like any document.
+      </li>
+      <li>
+        <strong>No signature, no encryption.</strong> Every project carries
+        <code>EncryptionInfo: null</code> and <code>SignatureInfo: null</code>. Nothing has to
+        be defeated &mdash; there is nothing there.
+      </li>
+      <li>
+        <strong>Bindings are declarative.</strong> Wiring a tag to a display is one JSON
+        object, not code.
+      </li>
+      <li>
+        <strong>Geometry maps onto the browser.</strong> Parts are absolutely positioned
+        inside a <code>ViewBox</code> &mdash; a direct match for absolutely-positioned SVG.
+      </li>
+    </ol>
+
+    <h3>Colours are palette indices, not RGB</h3>
+    <p>
+      A screen never stores <code>#00B050</code>. It stores <code>3</code>, an index into the
+      project's colour set &mdash; ours is ColorSet 4, "Green-Simple", defined in the
+      product's own <code>Colors.lua</code>. Change the project's palette and every screen
+      follows. It is why a generated screen matches house style by construction.
+    </p>
+
+    <div class="callout warn">
+      <span class="callout-label">The trap that ate three hours</span>
+      <p>
+        ZIP entry names use <strong>backslash</strong> separators, the way the product writes
+        them. Python's <code>zipfile</code> silently rewrites them to forward slashes. And in
+        a TypeScript string, <code>"Contents\Hierarchy.dat"</code> contains <code>\H</code>
+        &mdash; not a valid escape, so the backslash is simply <em>dropped</em> and the entry
+        silently becomes <code>ContentsHierarchy.dat</code>.
+      </p>
+      <p>
+        Both failures are silent. Verify entry names against the raw bytes, never against a
+        library's own name list.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ 6 ============ -->
+  <section id="bindings">
+    <p class="section-kicker">Section 06</p>
+    <h2>The binding graph</h2>
+    <hr class="rule">
+
+    <p class="lede">
+      This is the file that does the work the problem statement calls "complex tag
+      integration". Understand this and you understand the product.
+    </p>
+
+    <p>
+      <code>Bindings.dat</code> holds three arrays. <strong>Sources</strong> are tags.
+      <strong>Targets</strong> are things that can be driven. <strong>Bindings</strong> join
+      them by index. One tag can drive many targets &mdash; which is exactly where hand-wiring
+      goes wrong.
+    </p>
+
+    <figure class="bindfig">
+      <svg viewBox="0 0 620 210" role="img" aria-label="LT_101_PV drives one display and two alarms">
+        <rect x="8" y="80" width="150" height="34" rx="3" fill="var(--signal-soft)" stroke="var(--signal)" stroke-width="1"></rect>
+        <text x="83" y="102" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="13" fill="var(--signal)">LT_101_PV</text>
+        <text x="83" y="66" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9.5" letter-spacing="1" fill="var(--muted)">SOURCE</text>
+
+        <path d="M158 97 C 230 97, 250 34, 320 34" fill="none" stroke="var(--signal)" stroke-width="1.6"></path>
+        <path d="M158 97 C 230 97, 250 105, 320 105" fill="none" stroke="var(--warn)" stroke-width="1.6"></path>
+        <path d="M158 97 C 230 97, 250 168, 320 168" fill="none" stroke="var(--warn)" stroke-width="1.6"></path>
+
+        <rect x="322" y="18" width="290" height="32" rx="3" fill="var(--surface-2)" stroke="var(--rule-strong)" stroke-width="1"></rect>
+        <text x="336" y="38" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--ink)">Num_Level.CurrentValue</text>
+
+        <rect x="322" y="89" width="290" height="32" rx="3" fill="var(--surface-2)" stroke="var(--rule-strong)" stroke-width="1"></rect>
+        <text x="336" y="109" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--ink)">Alarm4.Hi.VariableName</text>
+
+        <rect x="322" y="152" width="290" height="32" rx="3" fill="var(--surface-2)" stroke="var(--rule-strong)" stroke-width="1"></rect>
+        <text x="336" y="172" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--ink)">Alarm5.HiHi.VariableName</text>
+
+        <text x="467" y="10" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9.5" letter-spacing="1" fill="var(--muted)">TARGETS</text>
+        <text x="612" y="204" text-anchor="end" font-family="IBM Plex Sans, sans-serif" font-size="10.5" fill="var(--muted)">green = display binding &nbsp;&middot;&nbsp; amber = alarm binding</text>
+      </svg>
+      <figcaption>
+        One tank-level tag drives three things at once: the number on screen, a Hi alarm and a
+        HiHi alarm. Missing the third by hand is a classic commissioning bug &mdash; the screen
+        looks finished and the critical alarm never fires.
+      </figcaption>
+    </figure>
+
+    <h3>The two binding shapes are not the same</h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th></th><th>Display binding</th><th>Alarm binding</th></tr></thead>
+        <tbody>
+          <tr><td class="k">Drives</td><td>a property of a screen part</td><td>an alarm's trigger</td></tr>
+          <tr><td class="k">Target ObjectType</td><td class="num">8</td><td class="num">30</td></tr>
+          <tr><td class="k">SubType</td><td>the part type, e.g. <code>Lamp</code></td><td><code>BoolAlarm</code> / <code>LevelAlarm</code></td></tr>
+          <tr><td class="k">TargetProperty</td><td><code>CurrentValue</code></td><td><code>VariableName</code></td></tr>
+          <tr><td class="k">BindingText</td><td><code>LT_101_PV.Value</code></td><td><code>LT_101_PV</code> &mdash; no suffix</td></tr>
+          <tr><td class="k">Mode</td><td class="num">2</td><td class="num">1</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      That asymmetry &mdash; the <code>.Value</code> suffix on one and not the other &mdash;
+      is the kind of detail that is impossible to guess and trivial to read off a real file.
+      Everything we emit came from the sample projects the product ships.
+    </p>
+  </section>
+
+  <!-- ============ 7 ============ -->
+  <section id="copilot">
+    <p class="section-kicker">Section 07</p>
+    <h2>What HMI Copilot does</h2>
+    <hr class="rule">
+
+    <p class="lede">
+      A PLC tag export plus one sentence of plain English becomes a complete, validated
+      EcoStruxure project &mdash; screens drawn, tags declared, alarms configured, bindings
+      wired &mdash; while the engineer watches each object appear and approves it.
+    </p>
+
+    <h3>The pipeline</h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>#</th><th>Step</th><th>What it does</th><th>Lives in</th></tr></thead>
+        <tbody>
+          <tr><td class="num">1</td><td class="k">Ingest</td><td>Parse the tag export; normalise names and types; report every correction.</td><td class="k">lib/tags</td></tr>
+          <tr><td class="num">2</td><td class="k">Infer equipment</td><td>Cluster tags by loop number. <code>PMP_101_*</code> becomes one pump.</td><td class="k">lib/ai</td></tr>
+          <tr><td class="num">3</td><td class="k">Select parts</td><td>Choose real OTE part types &mdash; a BOOL gets a Lamp, a REAL a NumericDisplay.</td><td class="k">lib/ote/parts</td></tr>
+          <tr><td class="num">4</td><td class="k">Lay out</td><td>Position parts absolutely inside a ViewBox sized to the panel.</td><td class="k">lib/ai</td></tr>
+          <tr><td class="num">5</td><td class="k">Generate alarms</td><td>Every fault tag gets an alarm; every level gets Hi and HiHi.</td><td class="k">lib/ote/databases</td></tr>
+          <tr><td class="num">6</td><td class="k">Wire bindings</td><td>Build the Sources &rarr; Bindings &rarr; Targets graph.</td><td class="k">lib/ote/bindings</td></tr>
+          <tr><td class="num">7</td><td class="k">Validate</td><td>Naming, binding integrity, type mismatch, completeness, standards fit.</td><td class="k">lib/validation</td></tr>
+          <tr><td class="num">8</td><td class="k">Package</td><td>Write the databases, add the screens, repack as a native <code>.eote</code>.</td><td class="k">lib/ote/packager</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Why the preview cannot lie</h3>
+    <p>
+      The browser canvas renders <code>Screen.dat</code> into SVG &mdash; the <em>same</em>
+      JSON the packager writes into the file. One model, two renderers. What the engineer
+      approves is what OTE opens, because there is no second representation that could drift.
+    </p>
+    <p>
+      We enforce it in the type system: the canvas switches exhaustively over the part union,
+      so adding a part to the schema breaks the build until the canvas can draw it.
+    </p>
+
+    <h3>Where we meet the product</h3>
+    <p>
+      At the <strong>artifact boundary</strong> &mdash; we produce the files OTE already
+      reads. We never touch its C# or C++ internals. That boundary is language-agnostic, so
+      our stack and theirs never need to meet, and the tool works with any OTE 4.4+ install
+      and survives upgrades.
+    </p>
+
+    <div class="callout">
+      <span class="callout-label">The number that matters</span>
+      <p>
+        <code>HMICopilot_TS.eote</code> &mdash; 25 KB, 19 parts, 7 tags, 5 alarms, 11
+        bindings, zero objects placed by hand. Written entirely by TypeScript running behind
+        an HTTP endpoint, never saved by Schneider's software. It opens in EcoStruxure
+        Operator Terminal Expert 4.4.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ 8 ============ -->
+  <section id="status">
+    <p class="section-kicker">Section 08</p>
+    <h2>Proven vs designed</h2>
+    <hr class="rule">
+    <p class="lede">
+      Know the line before a judge finds it. Everything on the left has been run; everything
+      on the right is architecture we can defend but have not finished.
+    </p>
+
+    <div class="status">
+      <div class="status-col">
+        <h4><span class="dot ok"></span> Working, and verified</h4>
+        <ul>
+          <li>The <code>.eote</code> generator in Python and in TypeScript, producing structurally identical files</li>
+          <li>A generated project opening in OTE 4.4 with its screen, 7 variables, 5 alarms and 11 bindings intact</li>
+          <li><code>POST /api/export</code> returning a real project file from a production build</li>
+          <li>Tag ingestion from csv / txt / xlsx with corrections reported, not silent</li>
+          <li>Validation against the product's own documented naming rules</li>
+          <li>474 of the 475 shipped graphic objects converted to SVG path data</li>
+          <li>The canvas rendering a real <code>Screen.dat</code> in the browser</li>
+        </ul>
+      </div>
+      <div class="status-col">
+        <h4><span class="dot pending"></span> Designed, not yet built</h4>
+        <ul>
+          <li>The streaming generation pipeline &mdash; event contract is fixed, the model calls are not wired</li>
+          <li>Live Modbus / OPC-UA; a simulator drives the canvas today</li>
+          <li>Multi-screen projects with navigation between them</li>
+          <li>Customer standards packs</li>
+          <li>The full workspace UI &mdash; shell and canvas exist, the inspector and binding map do not</li>
+        </ul>
+      </div>
+    </div>
+
+    <p>
+      Deliberately out of scope: device driver configuration, PLC logic, panel download and
+      safety-instrumented functions. Generated variables are internal, which keeps the demo
+      hardware-free.
+    </p>
+  </section>
+
+  <!-- ============ 9 ============ -->
+  <section id="glossary">
+    <p class="section-kicker">Section 09</p>
+    <h2>Glossary</h2>
+    <hr class="rule">
+    <p>Every abbreviation and term of art in one place. Type to filter, or pick a category.</p>
+
+    <div class="glossary-controls">
+      <input id="gloss-search" type="search" placeholder="Filter 68 terms&hellip;" aria-label="Filter glossary">
+      <button class="chip" data-cat="all" aria-pressed="true">All</button>
+      <button class="chip" data-cat="industry" aria-pressed="false">Industry</button>
+      <button class="chip" data-cat="ote" aria-pressed="false">EcoStruxure</button>
+      <button class="chip" data-cat="format" aria-pressed="false">File format</button>
+      <button class="chip" data-cat="ours" aria-pressed="false">Our project</button>
+      <span class="gloss-count" id="gloss-count"></span>
+    </div>
+
+    <div class="gloss-list" id="gloss-list"></div>
+  </section>
+
+  <footer class="end">
+    <span>HMI Copilot &mdash; field guide</span>
+    <span>Verified against a local EcoStruxure Operator Terminal Expert 4.4 installation</span>
+  </footer>
+
+  </main>
+</div>
+</div>
+
+<script>
+  const TERMS = [
+    // ---- industry ----
+    ["HMI", "Human-Machine Interface", "industry", "The operator touchscreen on a control cabinet. Displays plant state; does not control it."],
+    ["PLC", "Programmable Logic Controller", "industry", "The industrial computer that actually runs the control logic, scanning inputs and writing outputs every few milliseconds."],
+    ["SCADA", "Supervisory Control and Data Acquisition", "industry", "The plant-wide layer above individual HMIs - many machines, historical data, central control room."],
+    ["OT", "Operational Technology", "industry", "The computing that runs physical processes, as opposed to IT. Different priorities: uptime and safety over features."],
+    ["Tag", "", "industry", "One named value in PLC memory. The contract between the PLC and everything that reads it."],
+    ["Loop", "", "industry", "One control circuit, identified by a number. Tags sharing a loop number describe the same equipment."],
+    ["ISA-5.1", "", "industry", "The instrumentation standard that gives tags their letter codes - F for flow, L for level, T for transmitter."],
+    ["IEC 61131-3", "", "industry", "The international standard for PLC programming languages. Fixes the data type names OTE uses."],
+    ["PV", "Process Value", "industry", "The live measured reading from an instrument."],
+    ["SP", "Setpoint", "industry", "The value the control system is aiming for."],
+    ["FT", "Flow Transmitter", "industry", "Measures flow and sends the value to the PLC."],
+    ["LT", "Level Transmitter", "industry", "Measures how full a tank is."],
+    ["PT", "Pressure Transmitter", "industry", "Measures pressure."],
+    ["TT", "Temperature Transmitter", "industry", "Measures temperature."],
+    ["Fieldbus", "", "industry", "The network between PLC and HMI. Modbus and OPC-UA are the two you will meet."],
+    ["Modbus", "", "industry", "An old, simple, universal industrial protocol. Still everywhere."],
+    ["OPC-UA", "Open Platform Communications Unified Architecture", "industry", "The modern, typed, secure successor. Carries structure, not just registers."],
+    ["Commissioning", "", "industry", "Taking the finished system to site and making it work against real hardware. Where hidden errors surface."],
+    ["Greenfield", "", "industry", "A brand-new plant with nothing to inherit."],
+    ["Brownfield", "", "industry", "An existing plant being modified. Harder: you inherit someone else's conventions."],
+    ["OEM", "Original Equipment Manufacturer", "industry", "A company building machines in volume - the ones paying most for repeated HMI work."],
+    ["System integrator", "", "industry", "The contractor assembling PLC, HMI and panel into a delivered system."],
+    ["Deadband", "", "industry", "Hysteresis on an alarm, so a value hovering at the threshold does not chatter on and off."],
+    ["Scan rate", "", "industry", "How often the HMI polls a tag. Faster costs bandwidth."],
+
+    // ---- alarms ----
+    ["HiHi", "", "industry", "Critical high alarm level. AlarmType 1. Act now."],
+    ["Hi", "", "industry", "Warning high alarm level. AlarmType 2. Pay attention."],
+    ["Lo", "", "industry", "Warning low alarm level. AlarmType 3."],
+    ["LoLo", "", "industry", "Critical low alarm level. AlarmType 4."],
+    ["ACK", "Acknowledge", "industry", "An operator has seen the alarm. It stops flashing but stays listed while active."],
+    ["UNACK", "Unacknowledged", "industry", "Fired but not yet seen by anyone."],
+    ["RTN", "Return to normal", "industry", "The alarm condition has cleared."],
+    ["Bit alarm", "", "industry", "Fires when a BOOL goes true. AlarmRecordType 1. The PLC already made the decision."],
+    ["Level alarm", "", "industry", "Fires when a numeric crosses a threshold stored in the alarm. AlarmRecordType 2."],
+
+    // ---- data types ----
+    ["BOOL", "", "industry", "One bit: true or false. Running, fault, limit reached."],
+    ["INT / DINT", "", "industry", "Signed 16-bit and 32-bit whole numbers."],
+    ["UINT / UDINT", "", "industry", "Unsigned 16-bit and 32-bit whole numbers."],
+    ["WORD / DWORD", "", "industry", "16 and 32 raw bits, used for packed status flags."],
+    ["REAL / LREAL", "", "industry", "32-bit and 64-bit floating point. Flow, pressure, temperature."],
+
+    // ---- EcoStruxure ----
+    ["EcoStruxure", "", "ote", "Schneider Electric's brand covering its industrial software and hardware portfolio."],
+    ["OTE", "Operator Terminal Expert", "ote", "The specific Schneider product for designing HMI screens. Version 4.4 is our target."],
+    ["Buildtime", "", "ote", "The OTE editor that runs on an engineer's PC. .NET/C# with native Qt5 C++ modules. Produces the project file."],
+    ["RunTime", "", "ote", "What is downloaded onto the physical panel and executes in the plant. C++/Qt5 with embedded Lua."],
+    ["Target", "", "ote", "OTE's word for the panel a project is built for. Fixes the screen resolution."],
+    ["Harmony ST6", "", "ote", "The Schneider panel series our target model belongs to. Ours is 1024 x 600."],
+    ["Tool Chest", "", "ote", "The palette of parts an engineer drags onto a screen in Buildtime."],
+    ["Project Explorer", "", "ote", "The tree view of everything in a project - screens, variables, alarms, logging, security."],
+    ["Part", "", "ote", "One drawable object on a screen: Lamp, NumericDisplay, Switch, TrendGraph, AlarmSummary. OTE ships 50 types."],
+    ["Compound object", "", "ote", "A reusable group of parts saved as a .co file. Creating them is licence-gated, which is why we generate whole projects instead."],
+    ["ClipArt / GraphicObject", "", "ote", "The 475 shipped symbols - pumps, tanks, valves, fans - stored as .path files of SVG-style geometry."],
+    ["propDef", "", "ote", "Machine-readable schema files defining every property of every object type. What constrains our generation."],
+    ["ColorSet", "", "ote", "A project's colour palette. Screens store indices into it, never RGB. Ours is ColorSet 4, 'Green-Simple'."],
+    ["Lua", "", "ote", "The scripting language embedded in both OTE layers. The product's sanctioned extension point."],
+
+    // ---- file format ----
+    [".eote", "", "format", "An OTE project file. A ZIP of plain JSON and plain SQLite, unsigned and unencrypted."],
+    [".co", "", "format", "A compound object file. A nested ZIP of JSON. Secondary output for us."],
+    ["Screen.dat", "", "format", "JSON object tree for one screen. Every part, its position, size and colours."],
+    ["ViewBox", "", "format", "The container inside a Screen sized to the panel. Parts are positioned absolutely within it."],
+    ["Bindings.dat", "", "format", "The Sources -> Bindings -> Targets graph. Where tag integration actually lives."],
+    ["Sources", "", "format", "The tags in a binding graph. ObjectType 4."],
+    ["Targets", "", "format", "The things a tag can drive. ObjectType 8 for a screen part, 30 for an alarm."],
+    ["TargetProperty", "", "format", "Which property is driven. CurrentValue for a display, VariableName for an alarm trigger."],
+    ["Variables.db", "", "format", "SQLite table of every tag in the project, with type, comment and address."],
+    ["Alarm.db", "", "format", "SQLite tables AlarmGroup and Alarm, holding every configured alarm."],
+    ["Target.dat", "", "format", "JSON describing the panel: RuntimeModel and Resolution."],
+    ["Hierarchy.dat", "", "format", "JSON listing screen order. There is one for Screens and one for Contents."],
+
+    // ---- ours ----
+    ["HMI Copilot", "", "ours", "Our product. Turns a PLC tag export plus plain-English intent into a complete, validated EcoStruxure project."],
+    ["Artifact boundary", "", "ours", "Where we meet the product: we write the files it already reads, and never touch its internals. Language-agnostic, survives upgrades."],
+    ["Skeleton", "", "ours", "Blank.eote's entries, extracted from a local install. Everything we do not write is copied through verbatim. Never committed - they are Schneider's files."],
+    ["Two renderers", "", "ours", "The canvas and the packager consume the same Screen.dat, so the preview cannot disagree with the exported file."],
+    ["The one rule", "", "ours", "The canvas may only render what the packager can emit. Enforced by an exhaustive type switch, not by discipline."],
+    ["FORMAT / SURFACE", "", "ours", "The two parallel workstreams. FORMAT owns everything touching the .eote and needs Windows; SURFACE owns the UI and builds against committed fixtures."],
+    ["Fixtures", "", "ours", "Real screen, binding, tag and alarm data lifted out of a project that opens in OTE, so the UI can be built with no installation present."]
+  ];
+
+  const list = document.getElementById("gloss-list");
+  const count = document.getElementById("gloss-count");
+  const search = document.getElementById("gloss-search");
+  const chips = Array.from(document.querySelectorAll(".chip"));
+  let category = "all";
+
+  const CAT_NAME = {
+    industry: "Industry",
+    ote: "EcoStruxure",
+    format: "File format",
+    ours: "Our project"
+  };
+
+  function render() {
+    const q = search.value.trim().toLowerCase();
+    const rows = TERMS.filter(function (t) {
+      if (category !== "all" && t[2] !== category) return false;
+      if (!q) return true;
+      return (t[0] + " " + t[1] + " " + t[3]).toLowerCase().includes(q);
+    });
+
+    count.textContent = rows.length + (rows.length === 1 ? " term" : " terms");
+
+    if (rows.length === 0) {
+      list.innerHTML = '<p class="gloss-empty">Nothing matches that. Try a shorter word.</p>';
+      return;
+    }
+
+    list.innerHTML = rows.map(function (t) {
+      const expansion = t[1] ? '<span>' + t[1] + '</span>' : '<span>' + CAT_NAME[t[2]] + '</span>';
+      return '<div class="gloss-item">' +
+        '<div class="gloss-term">' + t[0] + expansion + '</div>' +
+        '<div class="gloss-def">' + t[3] + '</div>' +
+        '</div>';
+    }).join("");
+  }
+
+  search.addEventListener("input", render);
+  chips.forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      category = chip.dataset.cat;
+      chips.forEach(function (c) { c.setAttribute("aria-pressed", String(c === chip)); });
+      render();
+    });
+  });
+
+  search.placeholder = "Filter " + TERMS.length + " terms…";
+  render();
+</script>
