@@ -16,7 +16,7 @@ is worth stage time.
 cd web
 npm install
 npm run dev          # leave it running
-npm test             # 172 pass with the server up — the demo path is one of them
+npm test             # see ../README.md#status for the count on this machine
 ```
 
 `tests/demo-path.test.ts` is the rehearsal. It checks every beat below: the
@@ -33,7 +33,12 @@ Then, in the browser:
 
 1. Open `http://localhost:3000` and leave it on the landing page.
 2. Open a second tab on `/project/demo` so the workspace is already warm.
-3. Decide dark or light and set it once. Do not toggle mid-demo except at beat 7.
+3. **Make the window at least 1280 wide, ideally 1440.** Below 1280 the
+   inspector collapses to a rail on its own, and below 1024 the intent pane
+   does too. That is deliberate — the canvas is what matters on a small screen —
+   but it will quietly remove beat 6 if the projector forces a narrow window.
+   Click the rail to bring a collapsed pane back.
+4. Decide dark or light and set it once. Do not toggle mid-demo except at beat 7.
 4. **Run one generation and throw it away.** Measured on this machine against a
    production build:
 
@@ -63,9 +68,9 @@ ten seconds are the only thing you lose.
 | # | ~t | Do | Say |
 |---|----|----|-----|
 | 1 | 0:00 | Landing page. Click **Open the workspace**. | "An HMI engineer's week starts with a tag list and ends with a screen. We compressed that." |
-| 2 | 0:08 | Left pane → **Import PLC tags** → *Use the sample plant export*. | "This is a real plant export. Twelve hundred tags." |
-| 3 | 0:15 | Point at the summary and the corrections panel. Expand it. | "1,248 tags. Five names it had to correct — and it tells you, rather than silently fixing them. That's the difference between a tool you trust and one you check." |
-| 4 | 0:25 | Type the intent, or click the **Pump station** quick prompt. Press **Generate Screen**. | "Now one sentence of plain English." |
+| 2 | 0:08 | Nav rail → **Tags** → *Use the sample plant export*. | "This is a real plant export. Twelve hundred tags." |
+| 3 | 0:15 | Point at the Tag Summary and expand the corrections panel. | "1,248 tags. Five names it had to correct — and it tells you, rather than silently fixing them. That's the difference between a tool you trust and one you check." |
+| 4 | 0:25 | **Generate a screen** (top right) → back on the workspace, click the **Pump station** quick prompt, press **Generate Screen**. | "Now one sentence of plain English." |
 | 5 | 0:32 | Say nothing for a beat. Let objects land on the canvas one at a time and the timeline fill. | "It's not thinking. It's parsing tags, inferring equipment, choosing parts, laying out, configuring alarms, resolving bindings, validating, packaging — and telling you which, in engineering language." |
 | 6 | 0:50 | Click a **NumericDisplay** on the canvas. Point at the inspector. | "Every object is real. These property editors are generated from the same schemas the file format defines — so the inspector can't offer you a property EcoStruxure doesn't have." |
 | 7 | 0:58 | **Toggle the theme in the top bar.** Point at the canvas. | "Watch the screen. The app changes; the HMI doesn't. Its colours are palette indices out of the project's own colour set. The preview can't lie about the output." |
@@ -119,8 +124,14 @@ and reproducible, so it will not "sometimes" fail — check
 
 **The sample export won't load.**
 Drag any `.csv` with a `Name` column onto the drop zone instead. Failing that,
-the workspace already has the fixture's seven tags and beat 3 can be skipped —
-go straight from beat 1 to beat 4.
+the workspace already carries the fixture's seven tags, so generation still
+works — skip beats 2 and 3 and go straight from beat 1 to beat 4. The screen is
+the same one; only the "twelve hundred tags" line is lost.
+
+**Generation refuses with "No tags to generate from".**
+`/api/generate` will not invent a tag list. Beat 2 is load-bearing: import
+something first, or open `/project/demo` fresh so the fixture's seven tags are
+in the store.
 
 **Everything is broken.**
 Open `assets/screen_design.png`, `assets/screen_live.png`, `assets/binding_map.png`

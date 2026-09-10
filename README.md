@@ -56,8 +56,11 @@ engineer sees.
 | **9** | Supporting screens | — | ✅ done |
 | **10** | Rehearsal | — | 🟡 script done, live run-through pending |
 
-**187 tests pass** with the app running; 9 more are the Phase 1 packager gate, which
-skips on a machine without an EcoStruxure installation to extract a skeleton from.
+**192 tests.** 179 of them run anywhere; the other 13 — the Phase 1 packager gate and
+the symbol round-trip — need a local EcoStruxure installation to extract a skeleton
+from, and skip without one. So the number a run prints depends on the machine: 179 on
+a Mac, 192 on the Windows laptop. Measured with the app running, since the Phase 10
+rehearsal calls the routes.
 
 ```bash
 cd web && npm test

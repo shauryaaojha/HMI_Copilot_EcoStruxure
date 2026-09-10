@@ -6,7 +6,7 @@ Next.js full stack. See [`../docs/BUILD_PLAN.md`](../docs/BUILD_PLAN.md) for the
 kept in one place so it cannot go stale in two.
 
 ```bash
-npm test        # 148 pass with the app running; the 9 skipped are the Phase 1 gate
+npm test        # the count is in ../README.md#status, so it cannot drift here
 ```
 
 ## Setup
