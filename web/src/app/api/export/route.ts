@@ -12,21 +12,37 @@ import { packageProject, type PackageInput } from "@/lib/ote/packager";
 
 export const runtime = "nodejs";
 
+/** A filename the OS will accept, derived from the project name. */
+function safeName(name: string): string {
+  const cleaned = name.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^_+|_+$/g, "");
+  return cleaned.length > 0 ? cleaned : "project";
+}
+
 export async function POST(request: Request) {
-  const input = (await request.json()) as PackageInput;
+  let input: PackageInput;
+  try {
+    input = (await request.json()) as PackageInput;
+  } catch {
+    return Response.json({ error: "expected a JSON project" }, { status: 400 });
+  }
+
+  if (!input?.screens?.length) {
+    return Response.json({ error: "a project needs at least one screen" }, { status: 400 });
+  }
 
   try {
     const bytes = await packageProject(input);
-    return new Response(bytes as BodyInit, {
+    return new Response(bytes as unknown as BodyInit, {
       headers: {
         "Content-Type": "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${input.name}.eote"`,
+        "Content-Disposition": `attachment; filename="${safeName(input.name)}.eote"`,
+        "Content-Length": String(bytes.length),
       },
     });
   } catch (error) {
-    return Response.json(
-      { error: error instanceof Error ? error.message : "export failed" },
-      { status: 501 },
-    );
+    const message = error instanceof Error ? error.message : "export failed";
+    // A missing skeleton is a setup problem, not a bad request.
+    const status = message.includes("setup:skeleton") ? 503 : 500;
+    return Response.json({ error: message }, { status });
   }
 }

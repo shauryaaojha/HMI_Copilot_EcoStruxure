@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "setup:skeleton": "node scripts/extract-skeleton.mjs",
-    "index:graphics": "node scripts/index-graphics.mjs"
+    "index:graphics": "node scripts/index-graphics.mjs",
+    "build:demo": "tsx scripts/build-demo.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",
@@ -35,6 +36,7 @@
     "@types/react-dom": "^19.1.9",
     "@types/sql.js": "^1.4.9",
     "tailwindcss": "^4.1.13",
+    "tsx": "^4.23.13",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   }
