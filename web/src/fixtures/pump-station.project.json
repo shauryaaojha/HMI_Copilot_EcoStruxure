@@ -1,0 +1,83 @@
+{
+ "variables": [
+  {
+   "Name": "PMP_101_RUN",
+   "DataType": "BOOL",
+   "Comments": "Pump 1 running",
+   "DeviceAddress": ""
+  },
+  {
+   "Name": "PMP_101_FLT",
+   "DataType": "BOOL",
+   "Comments": "Pump 1 fault",
+   "DeviceAddress": ""
+  },
+  {
+   "Name": "PMP_102_RUN",
+   "DataType": "BOOL",
+   "Comments": "Pump 2 running",
+   "DeviceAddress": ""
+  },
+  {
+   "Name": "PMP_102_FLT",
+   "DataType": "BOOL",
+   "Comments": "Pump 2 fault",
+   "DeviceAddress": ""
+  },
+  {
+   "Name": "FT_101_PV",
+   "DataType": "REAL",
+   "Comments": "Flow, LPM",
+   "DeviceAddress": ""
+  },
+  {
+   "Name": "LT_101_PV",
+   "DataType": "REAL",
+   "Comments": "Tank level, percent",
+   "DeviceAddress": ""
+  },
+  {
+   "Name": "LT_101_HI",
+   "DataType": "BOOL",
+   "Comments": "Tank high level",
+   "DeviceAddress": ""
+  }
+ ],
+ "alarms": [
+  {
+   "Message": "Pump 1 fault",
+   "AlarmType": 1,
+   "AlarmRecordType": 1,
+   "Severity": 5,
+   "Value": "0"
+  },
+  {
+   "Message": "Pump 2 fault",
+   "AlarmType": 1,
+   "AlarmRecordType": 1,
+   "Severity": 5,
+   "Value": "0"
+  },
+  {
+   "Message": "Tank high level",
+   "AlarmType": 1,
+   "AlarmRecordType": 1,
+   "Severity": 3,
+   "Value": "0"
+  },
+  {
+   "Message": "Tank level high",
+   "AlarmType": 2,
+   "AlarmRecordType": 2,
+   "Severity": 3,
+   "Value": "85"
+  },
+  {
+   "Message": "Tank level critically high",
+   "AlarmType": 1,
+   "AlarmRecordType": 2,
+   "Severity": 5,
+   "Value": "95"
+  }
+ ]
+}

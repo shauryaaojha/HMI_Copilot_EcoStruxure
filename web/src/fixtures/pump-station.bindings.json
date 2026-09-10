@@ -1,0 +1,249 @@
+{
+ "Sources": [
+  {
+   "ObjectType": 4,
+   "ReferenceId": 0,
+   "ObjectId": "4FF482B6-CD26-49D5-B478-7F456352A85C",
+   "ObjectFullName": "PMP_101_RUN"
+  },
+  {
+   "ObjectType": 4,
+   "ReferenceId": 1,
+   "ObjectId": "5D47191D-77AD-4FAE-8055-590E36D1F079",
+   "ObjectFullName": "PMP_101_FLT"
+  },
+  {
+   "ObjectType": 4,
+   "ReferenceId": 2,
+   "ObjectId": "BF785805-CC4B-4DE5-BA55-2E878EF27B97",
+   "ObjectFullName": "PMP_102_RUN"
+  },
+  {
+   "ObjectType": 4,
+   "ReferenceId": 3,
+   "ObjectId": "26B5B6D6-8C9F-4AF1-86CD-1BA0935CC5B2",
+   "ObjectFullName": "PMP_102_FLT"
+  },
+  {
+   "ObjectType": 4,
+   "ReferenceId": 4,
+   "ObjectId": "5A2BEB52-612A-4F18-BAF0-EADD4784CDDD",
+   "ObjectFullName": "FT_101_PV"
+  },
+  {
+   "ObjectType": 4,
+   "ReferenceId": 5,
+   "ObjectId": "B7DEA232-7652-4A93-A15D-3E8A6E0DC6D0",
+   "ObjectFullName": "LT_101_PV"
+  },
+  {
+   "ObjectType": 4,
+   "ReferenceId": 6,
+   "ObjectId": "0D14184D-DA98-454B-8EF6-4A70B21B1A8B",
+   "ObjectFullName": "LT_101_HI"
+  }
+ ],
+ "Targets": [
+  {
+   "ObjectType": 8,
+   "SubType": "Lamp",
+   "ReferenceId": 0,
+   "ObjectId": "9d414c43-ff35-4a98-ab6d-bf135c197819",
+   "ParentIds": "CB78C838-A680-4D21-8E64-A879BCC118C4",
+   "ScreenId": "cb78c838-a680-4d21-8e64-a879bcc118c4",
+   "ObjectFullName": "Lamp_PUMP1_RUN"
+  },
+  {
+   "ObjectType": 8,
+   "SubType": "Lamp",
+   "ReferenceId": 1,
+   "ObjectId": "fd4f866d-a42a-4655-b093-1fe2ee69f4bb",
+   "ParentIds": "CB78C838-A680-4D21-8E64-A879BCC118C4",
+   "ScreenId": "cb78c838-a680-4d21-8e64-a879bcc118c4",
+   "ObjectFullName": "Lamp_PUMP1_FLT"
+  },
+  {
+   "ObjectType": 8,
+   "SubType": "Lamp",
+   "ReferenceId": 2,
+   "ObjectId": "dcd4b8f3-14ed-45a0-8f9d-6c0f96a15b67",
+   "ParentIds": "CB78C838-A680-4D21-8E64-A879BCC118C4",
+   "ScreenId": "cb78c838-a680-4d21-8e64-a879bcc118c4",
+   "ObjectFullName": "Lamp_PUMP2_RUN"
+  },
+  {
+   "ObjectType": 8,
+   "SubType": "Lamp",
+   "ReferenceId": 3,
+   "ObjectId": "d4e1e341-20bf-4bc0-9037-d66fc3babd33",
+   "ParentIds": "CB78C838-A680-4D21-8E64-A879BCC118C4",
+   "ScreenId": "cb78c838-a680-4d21-8e64-a879bcc118c4",
+   "ObjectFullName": "Lamp_PUMP2_FLT"
+  },
+  {
+   "ObjectType": 8,
+   "SubType": "NumericDisplay",
+   "ReferenceId": 4,
+   "ObjectId": "a05a1b1e-fb33-4c78-98a1-794485efd91f",
+   "ParentIds": "CB78C838-A680-4D21-8E64-A879BCC118C4",
+   "ScreenId": "cb78c838-a680-4d21-8e64-a879bcc118c4",
+   "ObjectFullName": "Num_Flow"
+  },
+  {
+   "ObjectType": 8,
+   "SubType": "NumericDisplay",
+   "ReferenceId": 5,
+   "ObjectId": "4db95b25-a9fe-4f7c-b197-a771673d3d05",
+   "ParentIds": "CB78C838-A680-4D21-8E64-A879BCC118C4",
+   "ScreenId": "cb78c838-a680-4d21-8e64-a879bcc118c4",
+   "ObjectFullName": "Num_Level"
+  },
+  {
+   "ObjectType": 30,
+   "SubType": "BoolAlarm",
+   "ReferenceId": 6,
+   "ObjectId": "8B6B7F91-6E2D-44DB-9DA9-86953A85DA3A",
+   "ObjectFullName": "AlarmGroup1.Alarm1.HiHi"
+  },
+  {
+   "ObjectType": 30,
+   "SubType": "BoolAlarm",
+   "ReferenceId": 7,
+   "ObjectId": "FFBD4A1D-58F0-4956-A716-59657C74E553",
+   "ObjectFullName": "AlarmGroup1.Alarm2.HiHi"
+  },
+  {
+   "ObjectType": 30,
+   "SubType": "BoolAlarm",
+   "ReferenceId": 8,
+   "ObjectId": "44E9ADFB-B986-4025-B1A6-3338AE376B87",
+   "ObjectFullName": "AlarmGroup1.Alarm3.HiHi"
+  },
+  {
+   "ObjectType": 30,
+   "SubType": "LevelAlarm",
+   "ReferenceId": 9,
+   "ObjectId": "34E8D0DF-2B3A-44CF-92D0-944743C0F894",
+   "ObjectFullName": "AlarmGroup1.Alarm4.Hi"
+  },
+  {
+   "ObjectType": 30,
+   "SubType": "LevelAlarm",
+   "ReferenceId": 10,
+   "ObjectId": "BE401935-282C-4512-AEF3-2439BA9A0BBD",
+   "ObjectFullName": "AlarmGroup1.Alarm5.HiHi"
+  }
+ ],
+ "Bindings": [
+  {
+   "Type": 2,
+   "Mode": 2,
+   "BindingText": "PMP_101_RUN.Value",
+   "ConverterId": null,
+   "ConverterName": null,
+   "Target": 0,
+   "TargetProperty": "CurrentValue",
+   "Sources": "0"
+  },
+  {
+   "Type": 2,
+   "Mode": 2,
+   "BindingText": "PMP_101_FLT.Value",
+   "ConverterId": null,
+   "ConverterName": null,
+   "Target": 1,
+   "TargetProperty": "CurrentValue",
+   "Sources": "1"
+  },
+  {
+   "Type": 2,
+   "Mode": 2,
+   "BindingText": "PMP_102_RUN.Value",
+   "ConverterId": null,
+   "ConverterName": null,
+   "Target": 2,
+   "TargetProperty": "CurrentValue",
+   "Sources": "2"
+  },
+  {
+   "Type": 2,
+   "Mode": 2,
+   "BindingText": "PMP_102_FLT.Value",
+   "ConverterId": null,
+   "ConverterName": null,
+   "Target": 3,
+   "TargetProperty": "CurrentValue",
+   "Sources": "3"
+  },
+  {
+   "Type": 2,
+   "Mode": 2,
+   "BindingText": "FT_101_PV.Value",
+   "ConverterId": null,
+   "ConverterName": null,
+   "Target": 4,
+   "TargetProperty": "CurrentValue",
+   "Sources": "4"
+  },
+  {
+   "Type": 2,
+   "Mode": 2,
+   "BindingText": "LT_101_PV.Value",
+   "ConverterId": null,
+   "ConverterName": null,
+   "Target": 5,
+   "TargetProperty": "CurrentValue",
+   "Sources": "5"
+  },
+  {
+   "Type": 2,
+   "Mode": 1,
+   "BindingText": "PMP_101_FLT",
+   "ConverterId": null,
+   "ConverterName": null,
+   "Target": 6,
+   "TargetProperty": "VariableName",
+   "Sources": "1"
+  },
+  {
+   "Type": 2,
+   "Mode": 1,
+   "BindingText": "PMP_102_FLT",
+   "ConverterId": null,
+   "ConverterName": null,
+   "Target": 7,
+   "TargetProperty": "VariableName",
+   "Sources": "3"
+  },
+  {
+   "Type": 2,
+   "Mode": 1,
+   "BindingText": "LT_101_HI",
+   "ConverterId": null,
+   "ConverterName": null,
+   "Target": 8,
+   "TargetProperty": "VariableName",
+   "Sources": "6"
+  },
+  {
+   "Type": 2,
+   "Mode": 1,
+   "BindingText": "LT_101_PV",
+   "ConverterId": null,
+   "ConverterName": null,
+   "Target": 9,
+   "TargetProperty": "VariableName",
+   "Sources": "5"
+  },
+  {
+   "Type": 2,
+   "Mode": 1,
+   "BindingText": "LT_101_PV",
+   "ConverterId": null,
+   "ConverterName": null,
+   "Target": 10,
+   "TargetProperty": "VariableName",
+   "Sources": "5"
+  }
+ ]
+}

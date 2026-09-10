@@ -17,6 +17,7 @@
 
 import type { Part, Screen } from "@/lib/ote/schema";
 import { colorIndexOf, resolveColor } from "@/lib/ote/palette";
+import { boundsOf, toPathData } from "@/lib/ote/graphics";
 
 export interface ScreenRendererProps {
   screen: Screen;
@@ -173,19 +174,31 @@ function PartNode({
       );
     }
 
-    case "Path":
+    case "Path": {
       // A symbol from the shipped graphic object library, drawn from the very
-      // geometry the project will contain. See lib/ote/graphics.ts.
+      // geometry the project will contain. Commands and Points are stored the
+      // way the product stores them and have to be zipped into an SVG `d` -
+      // handing the raw command string to <path> would silently draw nothing.
+      const geometry = toPathData(part);
+      const natural = boundsOf(part);
       return (
-        <svg x={x} y={y} width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+        <svg
+          x={x}
+          y={y}
+          width={w}
+          height={h}
+          viewBox={`0 0 ${natural.width} ${natural.height}`}
+          preserveAspectRatio="xMidYMid meet"
+        >
           <path
-            d={part.Commands}
+            d={geometry}
             fill={fill(part, "Fill", "#2b7fd4")}
             stroke={fill(part, "Border", "#0d3f6e")}
             strokeWidth={part.Thickness ?? 1}
           />
         </svg>
       );
+    }
 
     case "AlarmSummary":
       // Rendered by AlarmSummaryPart, which needs the alarm list rather than the

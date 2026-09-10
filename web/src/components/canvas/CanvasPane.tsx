@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { useProject } from "@/store/project";
+import { demoLiveValues, demoScreen } from "@/fixtures";
 import { ScreenRenderer } from "./ScreenRenderer";
 
 const TABS = ["Design", "Binding Map", "Script", "Preview (SVG)", "JSON"] as const;
@@ -17,8 +18,11 @@ export function CanvasPane() {
   const { screens, activeScreenId, selectedObjectId, select, values, simulating } =
     useProject();
 
+  // Until the generation pipeline lands, fall back to the fixture lifted out of
+  // demo_project/HMICopilot_PumpStation.eote, so the canvas can be built and
+  // judged against a real project on a machine with no EcoStruxure install.
   const screen =
-    screens.find((s) => s.UniqueId === activeScreenId) ?? screens[0];
+    screens.find((s) => s.UniqueId === activeScreenId) ?? screens[0] ?? demoScreen;
 
   return (
     <section className="flex min-w-0 flex-1 flex-col border-x border-chrome-800">
@@ -62,7 +66,7 @@ export function CanvasPane() {
               screen={screen}
               selectedId={selectedObjectId}
               onSelect={select}
-              values={simulating ? values : undefined}
+              values={simulating ? { ...demoLiveValues, ...values } : undefined}
             />
           </div>
         ) : (
