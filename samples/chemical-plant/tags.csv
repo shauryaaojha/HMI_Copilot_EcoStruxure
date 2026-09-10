@@ -461,26 +461,26 @@ CMP_4102_SPD_SP,Real,Air compressor 2 speed setpoint percent,%MD4916
 CMP_4102_AMPS,Real,Air compressor 2 motor current A,%MD4918
 PT_4102_PV,Real,Air compressor 2 discharge pressure bar,%MD4920
 PT_4102_LO,Bool,Air compressor 2 discharge pressure low,%MX557.5
-CMP_4201_RUN,Bool,Chiller 1 running,%MX557.6
-CMP_4201_FLT,Bool,Chiller 1 fault,%MX557.7
-CMP_4201_AVAIL,Bool,Chiller 1 available,%MX558.0
-CMP_4201_START,Bool,Chiller 1 start command,%MX558.1
-CMP_4201_STOP,Bool,Chiller 1 stop command,%MX558.2
-CMP_4201_HRS,Real,Chiller 1 run hours,%MD4934
-CMP_4201_SPD,Real,Chiller 1 speed feedback percent,%MD4936
-CMP_4201_SPD_SP,Real,Chiller 1 speed setpoint percent,%MD4938
-CMP_4201_AMPS,Real,Chiller 1 motor current A,%MD4940
+CHL_4201_RUN,Bool,Chiller 1 running,%MX557.6
+CHL_4201_FLT,Bool,Chiller 1 fault,%MX557.7
+CHL_4201_AVAIL,Bool,Chiller 1 available,%MX558.0
+CHL_4201_START,Bool,Chiller 1 start command,%MX558.1
+CHL_4201_STOP,Bool,Chiller 1 stop command,%MX558.2
+CHL_4201_HRS,Real,Chiller 1 run hours,%MD4934
+CHL_4201_SPD,Real,Chiller 1 speed feedback percent,%MD4936
+CHL_4201_SPD_SP,Real,Chiller 1 speed setpoint percent,%MD4938
+CHL_4201_AMPS,Real,Chiller 1 motor current A,%MD4940
 TT_4201_PV,Real,Chiller 1 chilled water temperature degC,%MD4942
 TT_4201_HI,Bool,Chiller 1 chilled water temperature high,%MX559.0
-CMP_4202_RUN,Bool,Chiller 2 running,%MX559.1
-CMP_4202_FLT,Bool,Chiller 2 fault,%MX559.2
-CMP_4202_AVAIL,Bool,Chiller 2 available,%MX559.3
-CMP_4202_START,Bool,Chiller 2 start command,%MX559.4
-CMP_4202_STOP,Bool,Chiller 2 stop command,%MX559.5
-CMP_4202_HRS,Real,Chiller 2 run hours,%MD4956
-CMP_4202_SPD,Real,Chiller 2 speed feedback percent,%MD4958
-CMP_4202_SPD_SP,Real,Chiller 2 speed setpoint percent,%MD4960
-CMP_4202_AMPS,Real,Chiller 2 motor current A,%MD4962
+CHL_4202_RUN,Bool,Chiller 2 running,%MX559.1
+CHL_4202_FLT,Bool,Chiller 2 fault,%MX559.2
+CHL_4202_AVAIL,Bool,Chiller 2 available,%MX559.3
+CHL_4202_START,Bool,Chiller 2 start command,%MX559.4
+CHL_4202_STOP,Bool,Chiller 2 stop command,%MX559.5
+CHL_4202_HRS,Real,Chiller 2 run hours,%MD4956
+CHL_4202_SPD,Real,Chiller 2 speed feedback percent,%MD4958
+CHL_4202_SPD_SP,Real,Chiller 2 speed setpoint percent,%MD4960
+CHL_4202_AMPS,Real,Chiller 2 motor current A,%MD4962
 TT_4202_PV,Real,Chiller 2 chilled water temperature degC,%MD4964
 TT_4202_HI,Bool,Chiller 2 chilled water temperature high,%MX560.3
 PMP_4301_RUN,Bool,Cooling water pump 1 running,%MX560.4

@@ -98,27 +98,27 @@ VLV_113_FLT,Bool,AHU 3 heating coil valve fault,%MX511.7
 AHU_103_DAMPER_PV,Real,AHU 3 fresh air damper percent,%MD4192
 AHU_103_DAMPER_SP,Real,AHU 3 fresh air damper setpoint percent,%MD4194
 AHU_103_OCC,Bool,AHU 3 occupied,%MX512.2
-CMP_201_RUN,Bool,Chiller 1 running,%MX512.3
-CMP_201_FLT,Bool,Chiller 1 fault,%MX512.4
-CMP_201_AVAIL,Bool,Chiller 1 available,%MX512.5
-CMP_201_START,Bool,Chiller 1 start command,%MX512.6
-CMP_201_STOP,Bool,Chiller 1 stop command,%MX512.7
-CMP_201_HRS,Real,Chiller 1 run hours,%MD4208
-CMP_201_SPD,Real,Chiller 1 speed feedback percent,%MD4210
-CMP_201_SPD_SP,Real,Chiller 1 speed setpoint percent,%MD4212
-CMP_201_AMPS,Real,Chiller 1 motor current A,%MD4214
+CHL_201_RUN,Bool,Chiller 1 running,%MX512.3
+CHL_201_FLT,Bool,Chiller 1 fault,%MX512.4
+CHL_201_AVAIL,Bool,Chiller 1 available,%MX512.5
+CHL_201_START,Bool,Chiller 1 start command,%MX512.6
+CHL_201_STOP,Bool,Chiller 1 stop command,%MX512.7
+CHL_201_HRS,Real,Chiller 1 run hours,%MD4208
+CHL_201_SPD,Real,Chiller 1 speed feedback percent,%MD4210
+CHL_201_SPD_SP,Real,Chiller 1 speed setpoint percent,%MD4212
+CHL_201_AMPS,Real,Chiller 1 motor current A,%MD4214
 TT_201_PV,Real,Chiller 1 chilled water flow temperature degC,%MD4216
 PT_201_PV,Real,Chiller 1 head pressure bar,%MD4218
 PT_201_HI,Bool,Chiller 1 head pressure high,%MX513.6
-CMP_202_RUN,Bool,Chiller 2 running,%MX513.7
-CMP_202_FLT,Bool,Chiller 2 fault,%MX514.0
-CMP_202_AVAIL,Bool,Chiller 2 available,%MX514.1
-CMP_202_START,Bool,Chiller 2 start command,%MX514.2
-CMP_202_STOP,Bool,Chiller 2 stop command,%MX514.3
-CMP_202_HRS,Real,Chiller 2 run hours,%MD4232
-CMP_202_SPD,Real,Chiller 2 speed feedback percent,%MD4234
-CMP_202_SPD_SP,Real,Chiller 2 speed setpoint percent,%MD4236
-CMP_202_AMPS,Real,Chiller 2 motor current A,%MD4238
+CHL_202_RUN,Bool,Chiller 2 running,%MX513.7
+CHL_202_FLT,Bool,Chiller 2 fault,%MX514.0
+CHL_202_AVAIL,Bool,Chiller 2 available,%MX514.1
+CHL_202_START,Bool,Chiller 2 start command,%MX514.2
+CHL_202_STOP,Bool,Chiller 2 stop command,%MX514.3
+CHL_202_HRS,Real,Chiller 2 run hours,%MD4232
+CHL_202_SPD,Real,Chiller 2 speed feedback percent,%MD4234
+CHL_202_SPD_SP,Real,Chiller 2 speed setpoint percent,%MD4236
+CHL_202_AMPS,Real,Chiller 2 motor current A,%MD4238
 TT_202_PV,Real,Chiller 2 chilled water flow temperature degC,%MD4240
 PT_202_PV,Real,Chiller 2 head pressure bar,%MD4242
 PT_202_HI,Bool,Chiller 2 head pressure high,%MX515.2

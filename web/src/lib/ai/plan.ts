@@ -397,5 +397,78 @@ export async function planScreen(
     };
   });
 
-  return { provider, plan: { ...plan, screens } };
+  return {
+    provider,
+    plan: { ...plan, screens: placeEveryUnit(screens, equipment, seen) },
+  };
+}
+
+/**
+ * Puts the units the model left out somewhere.
+ *
+ * Asked for a whole plant, a model reliably plans the areas it was told about
+ * and stops - on a 94-unit plant it planned nine screens covering 48 of them.
+ * The other 46 were inferred, named in the prompt, and then simply absent from
+ * the project: no faceplate, no binding, no alarm. "48 of 94 units" in the
+ * build timeline reads as a bug because it is one.
+ *
+ * The model's grouping is kept - it read the request and knows which area is
+ * which. Leftovers fill the screens it already made, preferring one that
+ * already holds the same kind of equipment because that is the best available
+ * guess at which area a unit belongs to, and whatever is still homeless gets
+ * screens of its own, grouped by kind.
+ */
+export function placeEveryUnit(
+  screens: ScreenSpec[],
+  equipment: InferredEquipment[],
+  takenNames: Set<string>,
+): ScreenSpec[] {
+  const placed = new Set(screens.flatMap((s) => s.include));
+  const missing = equipment.filter((unit) => !placed.has(unit.id));
+  if (missing.length === 0) return screens;
+
+  const out = screens.map((s) => ({ ...s, include: [...s.include] }));
+  // A level 1 overview is a summary, not an inventory - filling it to the cap
+  // with leftovers is the opposite of what it is for.
+  const detail = out.filter((s) => s.level !== 1);
+  const kindOf = new Map(equipment.map((e) => [e.id, e.kind]));
+
+  const homeless: InferredEquipment[] = [];
+  for (const unit of missing) {
+    const sameKind = detail.find(
+      (s) =>
+        s.include.length < UNITS_PER_SCREEN &&
+        s.include.some((id) => kindOf.get(id) === unit.kind),
+    );
+    const anyRoom = detail.find((s) => s.include.length < UNITS_PER_SCREEN);
+    const home = sameKind ?? anyRoom;
+    if (home) home.include.push(unit.id);
+    else homeless.push(unit);
+  }
+
+  // Whatever is still left gets its own screens, grouped by kind so a screen
+  // is about something rather than being the remainder.
+  const byKind = new Map<string, InferredEquipment[]>();
+  for (const unit of homeless) {
+    const key = unit.kind === "instrument" ? "Instruments" : unit.kind;
+    (byKind.get(key) ?? byKind.set(key, []).get(key)!).push(unit);
+  }
+
+  for (const [kind, units] of byKind) {
+    const stem = `${kind.charAt(0).toUpperCase()}${kind.slice(1)}`;
+    for (let i = 0; i < units.length; i += UNITS_PER_SCREEN) {
+      let name = `${stem}Area${Math.floor(i / UNITS_PER_SCREEN) + 1}`;
+      for (let n = 2; takenNames.has(name.toLowerCase()); n++) name = `${stem}Area${n}`;
+      takenNames.add(name.toLowerCase());
+      out.push({
+        screenName: name,
+        title: `${stem} — ${units.length} unit${units.length === 1 ? "" : "s"}`,
+        level: 2,
+        include: units.slice(i, i + UNITS_PER_SCREEN).map((u) => u.id),
+        sections: ["status", "process", "alarms"],
+      });
+    }
+  }
+
+  return out;
 }

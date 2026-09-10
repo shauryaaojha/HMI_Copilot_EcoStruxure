@@ -39,6 +39,12 @@ const MACHINES: Record<string, { kind: string; symbol: string }> = {
   TNK: { kind: "tank", symbol: "Tanks/Tank01" },
   TK: { kind: "tank", symbol: "Tanks/Tank01" },
   CMP: { kind: "compressor", symbol: "Air Compressors/AirCompressor01" },
+  // A chiller and an air compressor are both CMP to a naming convention that
+  // has not thought about it, and a screen that calls one the other is wrong
+  // in a way an operator notices. The shipped library has no chiller, so an
+  // air conditioner is the honest match.
+  CHL: { kind: "chiller", symbol: "Air Conditioners/AirConditioner01" },
+  CH: { kind: "chiller", symbol: "Air Conditioners/AirConditioner01" },
   // A boiler is a fired heater and the shipped library has no boiler, so
   // Heater01 is the honest match rather than a tank that looks nothing like one.
   BLR: { kind: "boiler", symbol: "General/Heater01" },

@@ -39,6 +39,7 @@ they share the loop number. The prefixes `web/src/lib/ai/infer.ts` knows:
 ```
 PMP PUMP P   pump       MTR MOT   motor      FAN       fan
 VLV VAL      valve      TNK TK    tank       CMP       compressor
+CHL CH       chiller
 BLR BOILER   boiler     HTR       heater     FIL FLTR  filter
 CNV CONV     conveyor   RCT REA   reactor    DOS       doser
 ```

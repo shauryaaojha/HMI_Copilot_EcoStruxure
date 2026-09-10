@@ -264,7 +264,7 @@ def hvac_building() -> Plant:
         ]
 
     for loop, label in ((201, "Chiller 1"), (202, "Chiller 2")):
-        rows += machine("CMP", loop, label, WITH_VSD)
+        rows += machine("CHL", loop, label, WITH_VSD)
         rows += instrument("T", loop, f"{label} chilled water flow", unit="degC")
         rows += instrument("P", loop, f"{label} head", ("HI",), "bar")
 
@@ -583,7 +583,7 @@ def chemical_plant() -> Plant:
         rows += machine("CMP", loop, f"Air compressor {n}", WITH_VSD)
         rows += instrument("P", loop, f"Air compressor {n} discharge", ("LO",), "bar")
     for n, loop in ((1, 4201), (2, 4202)):
-        rows += machine("CMP", loop, f"Chiller {n}", WITH_VSD)
+        rows += machine("CHL", loop, f"Chiller {n}", WITH_VSD)
         rows += instrument("T", loop, f"Chiller {n} chilled water", ("HI",), "degC")
     for loop, label in ((4301, "Cooling water pump 1"), (4302, "Cooling water pump 2")):
         rows += machine("PMP", loop, label, WITH_VSD)
@@ -855,6 +855,7 @@ they share the loop number. The prefixes `web/src/lib/ai/infer.ts` knows:
 ```
 PMP PUMP P   pump       MTR MOT   motor      FAN       fan
 VLV VAL      valve      TNK TK    tank       CMP       compressor
+CHL CH       chiller
 BLR BOILER   boiler     HTR       heater     FIL FLTR  filter
 CNV CONV     conveyor   RCT REA   reactor    DOS       doser
 ```
