@@ -22,6 +22,34 @@ four carry types the normaliser cannot place and are reported rather than
 guessed at. `tests/samples.test.ts` holds all six to these numbers, so a change
 to the parser that quietly alters what an import produces fails there.
 
+## The prompt that goes with each one
+
+A tag export on its own does not demo. Each sample carries the sentence it was
+written for, in `SAMPLES` in `src/components/tags/useTagImport.ts`, and the
+Copilot offers it once that sample is the import — the generic openers stay for
+everything else, because a project with no tags should not suggest equipment it
+does not have.
+
+Every one was run through `POST /api/generate` against its own parsed tags:
+
+| Sample | Screen produced | Objects | Bindings |
+|---|---|---|---|
+| Water treatment | `PumpStation1` | 29 | 8 |
+| Bottling line | `BottlingLineOverview` | 51 | 16 |
+| Conveyor system | `ConveyorOverview` | 31 | 7 |
+| Batch reactors | `ReactorScreen` | 22 | 4 |
+| Boiler house | `BoilerHouseOverview` | 31 | 6 |
+| Legacy retrofit | `MotorControlScreen` | 26 | 5 |
+
+All eight pipeline steps complete on all six, in one and a half to three and a
+half seconds.
+
+`tests/samples.test.ts` checks each intent names equipment the file actually
+contains, and — for the retrofit, which loses its tank and valve tags to
+unusable types — that it does not promise equipment the import dropped. A prompt
+that asks for a tank the file has no tags for produces a screen bound to
+nothing, and the engineer blames the model rather than the sentence.
+
 ## Why the awkward one matters
 
 `Legacy_Retrofit.csv` is deliberately what a twenty-year-old panel database

@@ -26,6 +26,18 @@ export interface Sample {
   tags: number;
   /** What this file exercises that the others do not. */
   note: string;
+  /**
+   * A sentence that generates a sensible screen from *these* tags.
+   *
+   * The Copilot's own openers are deliberately generic - a new project should
+   * not suggest equipment it has no tags for. Once a known sample is loaded
+   * that objection goes away, so this is offered as a starting point instead.
+   * Every one names only equipment the file actually contains, and
+   * tests/samples.test.ts checks that it still does.
+   */
+  intent: string;
+  /** Follow-ups that show the conversation is not one shot. */
+  followUps: string[];
 }
 
 /**
@@ -50,6 +62,14 @@ export const SAMPLES: Sample[] = [
     label: "Water treatment plant",
     tags: 1248,
     note: "1,248 tags · 5 names corrected",
+    intent:
+      "Create a pump station screen with 2 pumps. Show running status, flow, " +
+      "pressure, temperature and a high-level alarm.",
+    followUps: [
+      "make the pump 2 fault lamp red",
+      "add a high alarm on the tank level",
+      "add a second screen for the filtration area",
+    ],
   },
   {
     path: "/demo/Bottling_Line.xlsx",
@@ -57,6 +77,15 @@ export const SAMPLES: Sample[] = [
     label: "Bottling line",
     tags: 82,
     note: "Excel workbook",
+    intent:
+      "Create a bottling line overview showing the fillers, cappers and " +
+      "labellers with running status and fault lamps, plus the line rate and " +
+      "efficiency.",
+    followUps: [
+      "add the reject count beside each capper",
+      "add a high alarm on the capper torque",
+      "add a screen for the CIP skid",
+    ],
   },
   {
     path: "/demo/Conveyor_System.csv",
@@ -64,6 +93,14 @@ export const SAMPLES: Sample[] = [
     label: "Conveyor system",
     tags: 125,
     note: "semicolon delimited",
+    intent:
+      "Create a conveyor overview showing running status and jam detection for " +
+      "the conveyors, with the checkweigher weight and the line throughput.",
+    followUps: [
+      "make the jam lamps red",
+      "add an alarm for any conveyor jam",
+      "add a screen for the diverters",
+    ],
   },
   {
     path: "/demo/Batch_Reactors.txt",
@@ -71,6 +108,15 @@ export const SAMPLES: Sample[] = [
     label: "Batch reactors",
     tags: 86,
     note: "Symbol column naming",
+    intent:
+      "Create a reactor screen for the four reactors showing temperature, " +
+      "pressure, level and agitator status, with high temperature and high " +
+      "pressure alarms.",
+    followUps: [
+      "add the batch identifier and recipe step for each reactor",
+      "add the dosing pump setpoints and actuals",
+      "move the agitator lamps below the readings",
+    ],
   },
   {
     path: "/demo/Boiler_House.txt",
@@ -78,6 +124,15 @@ export const SAMPLES: Sample[] = [
     label: "Boiler house",
     tags: 49,
     note: "no header row",
+    intent:
+      "Create a boiler house screen for the three boilers showing firing " +
+      "status, flame proven, drum pressure and drum level, plus the steam " +
+      "header pressure and flow.",
+    followUps: [
+      "add low water alarms for each boiler",
+      "add the two feedwater pumps",
+      "move the steam header readings to the top",
+    ],
   },
   {
     path: "/demo/Legacy_Retrofit.csv",
@@ -85,6 +140,13 @@ export const SAMPLES: Sample[] = [
     label: "Legacy panel retrofit",
     tags: 66,
     note: "6 corrections · 4 rows skipped",
+    intent:
+      "Create a motor control screen for the two motors showing running status " +
+      "and faults, with the line speed and the second stage pressure.",
+    followUps: [
+      "make the motor 2 fault lamp red",
+      "add a fault alarm for each motor",
+    ],
   },
 ];
 

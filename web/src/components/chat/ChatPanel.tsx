@@ -34,6 +34,7 @@ import {
 import Link from "next/link";
 import { useProject } from "@/store/project";
 import { useNewProject } from "@/components/shell/useNewProject";
+import { SAMPLES } from "@/components/tags";
 import { Badge, Button, Textarea, cn } from "@/components/ui";
 import { anythingMissing, requirementsOf } from "./requirements";
 import { useChat } from "./useChat";
@@ -63,8 +64,23 @@ export function ChatPanel() {
   const alarms = useProject((s) => s.alarms);
   const target = useProject((s) => s.target);
   const clearChat = useProject((s) => s.clearChat);
+  const tagImport = useProject((s) => s.tagImport);
   const restore = useProject((s) => s.restore);
   const projectId = useProject((s) => s.id);
+
+  /**
+   * Once a known sample is loaded, the objection to a worked example goes away:
+   * the equipment it names is equipment this project has. So the opener list
+   * gains the sentence that sample was written for, and its follow-ups appear
+   * after the first screen exists.
+   */
+  const sample = SAMPLES.find((s) => s.name === tagImport?.fileName);
+  const openers =
+    sample && screens.length === 0
+      ? [sample.intent, ...OPENERS]
+      : sample
+        ? [...sample.followUps, ...OPENERS]
+        : OPENERS;
 
   const { send } = useChat();
   const newProject = useNewProject();
@@ -167,7 +183,7 @@ export function ChatPanel() {
             )}
 
             <ul className="space-y-1">
-              {OPENERS.map((opener) => (
+              {openers.map((opener) => (
                 <li key={opener}>
                   <button
                     type="button"

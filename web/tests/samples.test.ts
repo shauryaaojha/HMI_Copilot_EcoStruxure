@@ -102,6 +102,58 @@ describe("every sample the app offers can actually be imported", () => {
   }
 });
 
+describe("every sample carries a prompt that fits its own tags", () => {
+  /**
+   * A prompt that names equipment the file does not contain is worse than no
+   * prompt: it produces a screen full of objects bound to nothing, and the
+   * engineer blames the model rather than the sentence. So each intent is
+   * checked against the tags its own file actually yields.
+   */
+  const KEYWORDS: Record<string, string[]> = {
+    "Plant_Tags.csv": ["PMP", "FT_", "LT_"],
+    "Bottling_Line.xlsx": ["FIL_", "CAP_", "LBL_"],
+    "Conveyor_System.csv": ["CNV_", "SCALE_"],
+    "Batch_Reactors.txt": ["RCT_", "DOS_"],
+    "Boiler_House.txt": ["BLR_", "STM_"],
+    "Legacy_Retrofit.csv": ["MTR_", "PLANT_LINE_SPEED"],
+  };
+
+  for (const sample of SAMPLES) {
+    describe(sample.name, () => {
+      const parsed = read(sample.name);
+      const names = parsed.variables.map((v) => v.Name);
+
+      it("has an intent and at least two follow-ups", () => {
+        expect(sample.intent.length).toBeGreaterThan(40);
+        expect(sample.followUps.length).toBeGreaterThanOrEqual(2);
+        for (const f of sample.followUps) expect(f.length).toBeGreaterThan(10);
+      });
+
+      it("names equipment the file actually contains", () => {
+        for (const prefix of KEYWORDS[sample.name]) {
+          expect(
+            names.some((n) => n.startsWith(prefix) || n === prefix),
+            `${sample.name}: no tag matching ${prefix}, but the prompt implies one`,
+          ).toBe(true);
+        }
+      });
+
+      it("does not promise equipment the import dropped", () => {
+        // Legacy_Retrofit loses TANK_LVL and VALVE_POS to unusable types, so a
+        // prompt mentioning a tank or a valve would be asking for nothing.
+        const dropped = parsed.skipped.map((k) => k.value.split(" ")[0]);
+        for (const gone of dropped) {
+          const word = gone.split("_")[0].toLowerCase();
+          expect(
+            sample.intent.toLowerCase().includes(word),
+            `${sample.name}: intent mentions ${word}, which was skipped on import`,
+          ).toBe(false);
+        }
+      });
+    });
+  }
+});
+
 describe("the awkward file is awkward in the ways that matter", () => {
   const parsed = read("Legacy_Retrofit.csv");
 
