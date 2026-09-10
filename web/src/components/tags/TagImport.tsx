@@ -16,7 +16,7 @@ import { useRef, useState } from "react";
 import { CircleAlert, FileSpreadsheet, Loader, TriangleAlert, Upload } from "lucide-react";
 import { useProject } from "@/store/project";
 import { Badge, Button, Panel, cn } from "@/components/ui";
-import { ACCEPTED, useTagImport } from "./useTagImport";
+import { ACCEPTED, SAMPLE_EXPORT, useTagImport } from "./useTagImport";
 
 export function TagImport({
   compact = false,
@@ -25,7 +25,7 @@ export function TagImport({
   compact?: boolean;
   className?: string;
 }) {
-  const { state, upload } = useTagImport();
+  const { state, upload, useSample } = useTagImport();
   const tagImport = useProject((s) => s.tagImport);
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
@@ -87,6 +87,18 @@ export function TagImport({
           }}
         />
       </div>
+
+      {!tagImport && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void useSample()}
+          className="focus-ring w-full rounded-md border border-line bg-surface-raised px-3 py-2 text-xs text-text-secondary transition hover:border-brand-500 hover:text-brand-400 disabled:opacity-50"
+        >
+          No file to hand? Use the sample plant export —{" "}
+          {SAMPLE_EXPORT.tags.toLocaleString()} tags
+        </button>
+      )}
 
       {state.status === "failed" && (
         <p className="flex items-start gap-2 rounded-md border border-status-alarm/40 bg-status-alarm/10 p-3 text-xs text-status-alarm">

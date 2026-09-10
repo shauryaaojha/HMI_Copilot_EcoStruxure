@@ -18,6 +18,20 @@ import { useProject, type TagImport } from "@/store/project";
 
 export const ACCEPTED = ".csv,.txt,.xlsx,.xls";
 
+/**
+ * A committed plant export, so the demo never depends on finding a file in an
+ * OS file dialog on stage. 1,248 tags across pumps, instruments, valves and
+ * motors, including five names the corrector has to report - which is the beat
+ * that shows corrections are reported and not applied silently.
+ *
+ * Phase 10 of docs/BUILD_PLAN.md.
+ */
+export const SAMPLE_EXPORT = {
+  path: "/demo/Plant_Tags.csv",
+  name: "Plant_Tags.csv",
+  tags: 1248,
+};
+
 interface ParseResponse {
   variables: Variable[];
   corrections: TagImport["corrections"];
@@ -83,7 +97,24 @@ export function useTagImport() {
     [importTags, log, snapshot],
   );
 
+  /** Fetches the committed sample export and puts it through the same path. */
+  const useSample = useCallback(async () => {
+    setState({ status: "parsing", fileName: SAMPLE_EXPORT.name });
+    try {
+      const response = await fetch(SAMPLE_EXPORT.path);
+      if (!response.ok) throw new Error(`sample export not found (${response.status})`);
+      const file = new File([await response.blob()], SAMPLE_EXPORT.name, {
+        type: "text/csv",
+      });
+      return await upload(file);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "could not load the sample";
+      setState({ status: "failed", fileName: SAMPLE_EXPORT.name, message });
+      return null;
+    }
+  }, [upload]);
+
   const reset = useCallback(() => setState({ status: "idle" }), []);
 
-  return { state, upload, reset };
+  return { state, upload, useSample, reset };
 }

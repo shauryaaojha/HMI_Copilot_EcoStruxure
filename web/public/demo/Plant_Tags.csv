@@ -1,0 +1,1249 @@
+Name,DataType,Comment,Address
+PMP_101_RUN,Bool,Pump 1 running,%MX500.2
+PMP_101_FLT,Bool,Pump 1 fault,%MX500.4
+PMP_101_AVAIL,Bool,Pump 1 available,%MX500.6
+PMP_101_START,Bool,Pump 1 start command,%MX501.0
+PMP_101_STOP,Bool,Pump 1 stop command,%MX501.2
+PMP_101_HOURS,DINT,Pump 1 run hours,%MD4012
+PMP_101_AMPS,Float,Pump 1 motor current,%MD4014
+PMP_101_SPEED,REAL,Pump 1 speed feedback,%MD4016
+PMP_102_RUN,Bool,Pump 2 running,%MX502.2
+PMP_102_FLT,Bool,Pump 2 fault,%MX502.4
+PMP_102_AVAIL,Bool,Pump 2 available,%MX502.6
+PMP_102_START,Bool,Pump 2 start command,%MX503.0
+PMP_102_STOP,Bool,Pump 2 stop command,%MX503.2
+PMP_102_HOURS,DINT,Pump 2 run hours,%MD4028
+PMP_102_AMPS,Float,Pump 2 motor current,%MD4030
+PMP_102_SPEED,REAL,Pump 2 speed feedback,%MD4032
+PMP_103_RUN,Bool,Pump 3 running,%MX504.2
+PMP_103_FLT,Bool,Pump 3 fault,%MX504.4
+PMP_103_AVAIL,Bool,Pump 3 available,%MX504.6
+PMP_103_START,Bool,Pump 3 start command,%MX505.0
+PMP_103_STOP,Bool,Pump 3 stop command,%MX505.2
+PMP_103_HOURS,DINT,Pump 3 run hours,%MD4044
+PMP_103_AMPS,Float,Pump 3 motor current,%MD4046
+PMP_103_SPEED,REAL,Pump 3 speed feedback,%MD4048
+PMP_104_RUN,Bool,Pump 4 running,%MX506.2
+PMP_104_FLT,Bool,Pump 4 fault,%MX506.4
+PMP_104_AVAIL,Bool,Pump 4 available,%MX506.6
+PMP_104_START,Bool,Pump 4 start command,%MX507.0
+PMP_104_STOP,Bool,Pump 4 stop command,%MX507.2
+PMP_104_HOURS,DINT,Pump 4 run hours,%MD4060
+PMP_104_AMPS,Float,Pump 4 motor current,%MD4062
+PMP_104_SPEED,REAL,Pump 4 speed feedback,%MD4064
+PMP_105_RUN,Bool,Pump 5 running,%MX508.2
+PMP_105_FLT,Bool,Pump 5 fault,%MX508.4
+PMP_105_AVAIL,Bool,Pump 5 available,%MX508.6
+PMP_105_START,Bool,Pump 5 start command,%MX509.0
+PMP_105_STOP,Bool,Pump 5 stop command,%MX509.2
+PMP_105_HOURS,DINT,Pump 5 run hours,%MD4076
+PMP_105_AMPS,Float,Pump 5 motor current,%MD4078
+PMP_105_SPEED,REAL,Pump 5 speed feedback,%MD4080
+PMP_106_RUN,Bool,Pump 6 running,%MX510.2
+PMP_106_FLT,Bool,Pump 6 fault,%MX510.4
+PMP_106_AVAIL,Bool,Pump 6 available,%MX510.6
+PMP_106_START,Bool,Pump 6 start command,%MX511.0
+PMP_106_STOP,Bool,Pump 6 stop command,%MX511.2
+PMP_106_HOURS,DINT,Pump 6 run hours,%MD4092
+PMP_106_AMPS,Float,Pump 6 motor current,%MD4094
+PMP_106_SPEED,REAL,Pump 6 speed feedback,%MD4096
+PMP_107_RUN,Bool,Pump 7 running,%MX512.2
+PMP_107_FLT,Bool,Pump 7 fault,%MX512.4
+PMP_107_AVAIL,Bool,Pump 7 available,%MX512.6
+PMP_107_START,Bool,Pump 7 start command,%MX513.0
+PMP_107_STOP,Bool,Pump 7 stop command,%MX513.2
+PMP_107_HOURS,DINT,Pump 7 run hours,%MD4108
+PMP_107_AMPS,Float,Pump 7 motor current,%MD4110
+PMP_107_SPEED,REAL,Pump 7 speed feedback,%MD4112
+PMP_108_RUN,Bool,Pump 8 running,%MX514.2
+PMP_108_FLT,Bool,Pump 8 fault,%MX514.4
+PMP_108_AVAIL,Bool,Pump 8 available,%MX514.6
+PMP_108_START,Bool,Pump 8 start command,%MX515.0
+PMP_108_STOP,Bool,Pump 8 stop command,%MX515.2
+PMP_108_HOURS,DINT,Pump 8 run hours,%MD4124
+PMP_108_AMPS,Float,Pump 8 motor current,%MD4126
+PMP_108_SPEED,REAL,Pump 8 speed feedback,%MD4128
+PMP_109_RUN,Bool,Pump 9 running,%MX516.2
+PMP_109_FLT,Bool,Pump 9 fault,%MX516.4
+PMP_109_AVAIL,Bool,Pump 9 available,%MX516.6
+PMP_109_START,Bool,Pump 9 start command,%MX517.0
+PMP_109_STOP,Bool,Pump 9 stop command,%MX517.2
+PMP_109_HOURS,DINT,Pump 9 run hours,%MD4140
+PMP_109_AMPS,Float,Pump 9 motor current,%MD4142
+PMP_109_SPEED,REAL,Pump 9 speed feedback,%MD4144
+PMP_110_RUN,Bool,Pump 10 running,%MX518.2
+PMP_110_FLT,Bool,Pump 10 fault,%MX518.4
+PMP_110_AVAIL,Bool,Pump 10 available,%MX518.6
+PMP_110_START,Bool,Pump 10 start command,%MX519.0
+PMP_110_STOP,Bool,Pump 10 stop command,%MX519.2
+PMP_110_HOURS,DINT,Pump 10 run hours,%MD4156
+PMP_110_AMPS,Float,Pump 10 motor current,%MD4158
+PMP_110_SPEED,REAL,Pump 10 speed feedback,%MD4160
+PMP_111_RUN,Bool,Pump 11 running,%MX520.2
+PMP_111_FLT,Bool,Pump 11 fault,%MX520.4
+PMP_111_AVAIL,Bool,Pump 11 available,%MX520.6
+PMP_111_START,Bool,Pump 11 start command,%MX521.0
+PMP_111_STOP,Bool,Pump 11 stop command,%MX521.2
+PMP_111_HOURS,DINT,Pump 11 run hours,%MD4172
+PMP_111_AMPS,Float,Pump 11 motor current,%MD4174
+PMP_111_SPEED,REAL,Pump 11 speed feedback,%MD4176
+PMP_112_RUN,Bool,Pump 12 running,%MX522.2
+PMP_112_FLT,Bool,Pump 12 fault,%MX522.4
+PMP_112_AVAIL,Bool,Pump 12 available,%MX522.6
+PMP_112_START,Bool,Pump 12 start command,%MX523.0
+PMP_112_STOP,Bool,Pump 12 stop command,%MX523.2
+PMP_112_HOURS,DINT,Pump 12 run hours,%MD4188
+PMP_112_AMPS,Float,Pump 12 motor current,%MD4190
+PMP_112_SPEED,REAL,Pump 12 speed feedback,%MD4192
+FT_101_PV,analog,Flow transmitter 1 process value (m3/h),%MD4194
+FT_101_SP,REAL,Flow transmitter 1 setpoint,%MD4196
+FT_101_HI,Bool,Flow transmitter 1 high alarm,%MX524.6
+FT_101_LO,Bool,Flow transmitter 1 low alarm,%MX525.0
+FT_101_FAIL,Bool,Flow transmitter 1 signal fault,%MX525.2
+FT_102_PV,analog,Flow transmitter 2 process value (m3/h),%MD4204
+FT_102_SP,REAL,Flow transmitter 2 setpoint,%MD4206
+FT_102_HI,Bool,Flow transmitter 2 high alarm,%MX526.0
+FT_102_LO,Bool,Flow transmitter 2 low alarm,%MX526.2
+FT_102_FAIL,Bool,Flow transmitter 2 signal fault,%MX526.4
+FT_103_PV,analog,Flow transmitter 3 process value (m3/h),%MD4214
+FT_103_SP,REAL,Flow transmitter 3 setpoint,%MD4216
+FT_103_HI,Bool,Flow transmitter 3 high alarm,%MX527.2
+FT_103_LO,Bool,Flow transmitter 3 low alarm,%MX527.4
+FT_103_FAIL,Bool,Flow transmitter 3 signal fault,%MX527.6
+FT_104_PV,analog,Flow transmitter 4 process value (m3/h),%MD4224
+FT_104_SP,REAL,Flow transmitter 4 setpoint,%MD4226
+FT_104_HI,Bool,Flow transmitter 4 high alarm,%MX528.4
+FT_104_LO,Bool,Flow transmitter 4 low alarm,%MX528.6
+FT_104_FAIL,Bool,Flow transmitter 4 signal fault,%MX529.0
+FT_105_PV,analog,Flow transmitter 5 process value (m3/h),%MD4234
+FT_105_SP,REAL,Flow transmitter 5 setpoint,%MD4236
+FT_105_HI,Bool,Flow transmitter 5 high alarm,%MX529.6
+FT_105_LO,Bool,Flow transmitter 5 low alarm,%MX530.0
+FT_105_FAIL,Bool,Flow transmitter 5 signal fault,%MX530.2
+FT_106_PV,analog,Flow transmitter 6 process value (m3/h),%MD4244
+FT_106_SP,REAL,Flow transmitter 6 setpoint,%MD4246
+FT_106_HI,Bool,Flow transmitter 6 high alarm,%MX531.0
+FT_106_LO,Bool,Flow transmitter 6 low alarm,%MX531.2
+FT_106_FAIL,Bool,Flow transmitter 6 signal fault,%MX531.4
+FT_107_PV,analog,Flow transmitter 7 process value (m3/h),%MD4254
+FT_107_SP,REAL,Flow transmitter 7 setpoint,%MD4256
+FT_107_HI,Bool,Flow transmitter 7 high alarm,%MX532.2
+FT_107_LO,Bool,Flow transmitter 7 low alarm,%MX532.4
+FT_107_FAIL,Bool,Flow transmitter 7 signal fault,%MX532.6
+FT_108_PV,analog,Flow transmitter 8 process value (m3/h),%MD4264
+FT_108_SP,REAL,Flow transmitter 8 setpoint,%MD4266
+FT_108_HI,Bool,Flow transmitter 8 high alarm,%MX533.4
+FT_108_LO,Bool,Flow transmitter 8 low alarm,%MX533.6
+FT_108_FAIL,Bool,Flow transmitter 8 signal fault,%MX534.0
+FT_109_PV,analog,Flow transmitter 9 process value (m3/h),%MD4274
+FT_109_SP,REAL,Flow transmitter 9 setpoint,%MD4276
+FT_109_HI,Bool,Flow transmitter 9 high alarm,%MX534.6
+FT_109_LO,Bool,Flow transmitter 9 low alarm,%MX535.0
+FT_109_FAIL,Bool,Flow transmitter 9 signal fault,%MX535.2
+FT_110_PV,analog,Flow transmitter 10 process value (m3/h),%MD4284
+FT_110_SP,REAL,Flow transmitter 10 setpoint,%MD4286
+FT_110_HI,Bool,Flow transmitter 10 high alarm,%MX536.0
+FT_110_LO,Bool,Flow transmitter 10 low alarm,%MX536.2
+FT_110_FAIL,Bool,Flow transmitter 10 signal fault,%MX536.4
+FT_111_PV,analog,Flow transmitter 11 process value (m3/h),%MD4294
+FT_111_SP,REAL,Flow transmitter 11 setpoint,%MD4296
+FT_111_HI,Bool,Flow transmitter 11 high alarm,%MX537.2
+FT_111_LO,Bool,Flow transmitter 11 low alarm,%MX537.4
+FT_111_FAIL,Bool,Flow transmitter 11 signal fault,%MX537.6
+FT_112_PV,analog,Flow transmitter 12 process value (m3/h),%MD4304
+FT_112_SP,REAL,Flow transmitter 12 setpoint,%MD4306
+FT_112_HI,Bool,Flow transmitter 12 high alarm,%MX538.4
+FT_112_LO,Bool,Flow transmitter 12 low alarm,%MX538.6
+FT_112_FAIL,Bool,Flow transmitter 12 signal fault,%MX539.0
+FT_113_PV,analog,Flow transmitter 13 process value (m3/h),%MD4314
+FT_113_SP,REAL,Flow transmitter 13 setpoint,%MD4316
+FT_113_HI,Bool,Flow transmitter 13 high alarm,%MX539.6
+FT_113_LO,Bool,Flow transmitter 13 low alarm,%MX540.0
+FT_113_FAIL,Bool,Flow transmitter 13 signal fault,%MX540.2
+FT_114_PV,analog,Flow transmitter 14 process value (m3/h),%MD4324
+FT_114_SP,REAL,Flow transmitter 14 setpoint,%MD4326
+FT_114_HI,Bool,Flow transmitter 14 high alarm,%MX541.0
+FT_114_LO,Bool,Flow transmitter 14 low alarm,%MX541.2
+FT_114_FAIL,Bool,Flow transmitter 14 signal fault,%MX541.4
+FT_115_PV,analog,Flow transmitter 15 process value (m3/h),%MD4334
+FT_115_SP,REAL,Flow transmitter 15 setpoint,%MD4336
+FT_115_HI,Bool,Flow transmitter 15 high alarm,%MX542.2
+FT_115_LO,Bool,Flow transmitter 15 low alarm,%MX542.4
+FT_115_FAIL,Bool,Flow transmitter 15 signal fault,%MX542.6
+FT_116_PV,analog,Flow transmitter 16 process value (m3/h),%MD4344
+FT_116_SP,REAL,Flow transmitter 16 setpoint,%MD4346
+FT_116_HI,Bool,Flow transmitter 16 high alarm,%MX543.4
+FT_116_LO,Bool,Flow transmitter 16 low alarm,%MX543.6
+FT_116_FAIL,Bool,Flow transmitter 16 signal fault,%MX544.0
+FT_117_PV,analog,Flow transmitter 17 process value (m3/h),%MD4354
+FT_117_SP,REAL,Flow transmitter 17 setpoint,%MD4356
+FT_117_HI,Bool,Flow transmitter 17 high alarm,%MX544.6
+FT_117_LO,Bool,Flow transmitter 17 low alarm,%MX545.0
+FT_117_FAIL,Bool,Flow transmitter 17 signal fault,%MX545.2
+FT_118_PV,analog,Flow transmitter 18 process value (m3/h),%MD4364
+FT_118_SP,REAL,Flow transmitter 18 setpoint,%MD4366
+FT_118_HI,Bool,Flow transmitter 18 high alarm,%MX546.0
+FT_118_LO,Bool,Flow transmitter 18 low alarm,%MX546.2
+FT_118_FAIL,Bool,Flow transmitter 18 signal fault,%MX546.4
+FT_119_PV,analog,Flow transmitter 19 process value (m3/h),%MD4374
+FT_119_SP,REAL,Flow transmitter 19 setpoint,%MD4376
+FT_119_HI,Bool,Flow transmitter 19 high alarm,%MX547.2
+FT_119_LO,Bool,Flow transmitter 19 low alarm,%MX547.4
+FT_119_FAIL,Bool,Flow transmitter 19 signal fault,%MX547.6
+FT_120_PV,analog,Flow transmitter 20 process value (m3/h),%MD4384
+FT_120_SP,REAL,Flow transmitter 20 setpoint,%MD4386
+FT_120_HI,Bool,Flow transmitter 20 high alarm,%MX548.4
+FT_120_LO,Bool,Flow transmitter 20 low alarm,%MX548.6
+FT_120_FAIL,Bool,Flow transmitter 20 signal fault,%MX549.0
+LT_101_PV,analog,Level transmitter 1 process value (%),%MD4394
+LT_101_SP,REAL,Level transmitter 1 setpoint,%MD4396
+LT_101_HI,Bool,Level transmitter 1 high alarm,%MX549.6
+LT_101_LO,Bool,Level transmitter 1 low alarm,%MX550.0
+LT_101_FAIL,Bool,Level transmitter 1 signal fault,%MX550.2
+LT_102_PV,analog,Level transmitter 2 process value (%),%MD4404
+LT_102_SP,REAL,Level transmitter 2 setpoint,%MD4406
+LT_102_HI,Bool,Level transmitter 2 high alarm,%MX551.0
+LT_102_LO,Bool,Level transmitter 2 low alarm,%MX551.2
+LT_102_FAIL,Bool,Level transmitter 2 signal fault,%MX551.4
+LT_103_PV,analog,Level transmitter 3 process value (%),%MD4414
+LT_103_SP,REAL,Level transmitter 3 setpoint,%MD4416
+LT_103_HI,Bool,Level transmitter 3 high alarm,%MX552.2
+LT_103_LO,Bool,Level transmitter 3 low alarm,%MX552.4
+LT_103_FAIL,Bool,Level transmitter 3 signal fault,%MX552.6
+LT_104_PV,analog,Level transmitter 4 process value (%),%MD4424
+LT_104_SP,REAL,Level transmitter 4 setpoint,%MD4426
+LT_104_HI,Bool,Level transmitter 4 high alarm,%MX553.4
+LT_104_LO,Bool,Level transmitter 4 low alarm,%MX553.6
+LT_104_FAIL,Bool,Level transmitter 4 signal fault,%MX554.0
+LT_105_PV,analog,Level transmitter 5 process value (%),%MD4434
+LT_105_SP,REAL,Level transmitter 5 setpoint,%MD4436
+LT_105_HI,Bool,Level transmitter 5 high alarm,%MX554.6
+LT_105_LO,Bool,Level transmitter 5 low alarm,%MX555.0
+LT_105_FAIL,Bool,Level transmitter 5 signal fault,%MX555.2
+LT_106_PV,analog,Level transmitter 6 process value (%),%MD4444
+LT_106_SP,REAL,Level transmitter 6 setpoint,%MD4446
+LT_106_HI,Bool,Level transmitter 6 high alarm,%MX556.0
+LT_106_LO,Bool,Level transmitter 6 low alarm,%MX556.2
+LT_106_FAIL,Bool,Level transmitter 6 signal fault,%MX556.4
+LT_107_PV,analog,Level transmitter 7 process value (%),%MD4454
+LT_107_SP,REAL,Level transmitter 7 setpoint,%MD4456
+LT_107_HI,Bool,Level transmitter 7 high alarm,%MX557.2
+LT_107_LO,Bool,Level transmitter 7 low alarm,%MX557.4
+LT_107_FAIL,Bool,Level transmitter 7 signal fault,%MX557.6
+LT_108_PV,analog,Level transmitter 8 process value (%),%MD4464
+LT_108_SP,REAL,Level transmitter 8 setpoint,%MD4466
+LT_108_HI,Bool,Level transmitter 8 high alarm,%MX558.4
+LT_108_LO,Bool,Level transmitter 8 low alarm,%MX558.6
+LT_108_FAIL,Bool,Level transmitter 8 signal fault,%MX559.0
+LT_109_PV,analog,Level transmitter 9 process value (%),%MD4474
+LT_109_SP,REAL,Level transmitter 9 setpoint,%MD4476
+LT_109_HI,Bool,Level transmitter 9 high alarm,%MX559.6
+LT_109_LO,Bool,Level transmitter 9 low alarm,%MX560.0
+LT_109_FAIL,Bool,Level transmitter 9 signal fault,%MX560.2
+LT_110_PV,analog,Level transmitter 10 process value (%),%MD4484
+LT_110_SP,REAL,Level transmitter 10 setpoint,%MD4486
+LT_110_HI,Bool,Level transmitter 10 high alarm,%MX561.0
+LT_110_LO,Bool,Level transmitter 10 low alarm,%MX561.2
+LT_110_FAIL,Bool,Level transmitter 10 signal fault,%MX561.4
+LT_111_PV,analog,Level transmitter 11 process value (%),%MD4494
+LT_111_SP,REAL,Level transmitter 11 setpoint,%MD4496
+LT_111_HI,Bool,Level transmitter 11 high alarm,%MX562.2
+LT_111_LO,Bool,Level transmitter 11 low alarm,%MX562.4
+LT_111_FAIL,Bool,Level transmitter 11 signal fault,%MX562.6
+LT_112_PV,analog,Level transmitter 12 process value (%),%MD4504
+LT_112_SP,REAL,Level transmitter 12 setpoint,%MD4506
+LT_112_HI,Bool,Level transmitter 12 high alarm,%MX563.4
+LT_112_LO,Bool,Level transmitter 12 low alarm,%MX563.6
+LT_112_FAIL,Bool,Level transmitter 12 signal fault,%MX564.0
+LT_113_PV,analog,Level transmitter 13 process value (%),%MD4514
+LT_113_SP,REAL,Level transmitter 13 setpoint,%MD4516
+LT_113_HI,Bool,Level transmitter 13 high alarm,%MX564.6
+LT_113_LO,Bool,Level transmitter 13 low alarm,%MX565.0
+LT_113_FAIL,Bool,Level transmitter 13 signal fault,%MX565.2
+LT_114_PV,analog,Level transmitter 14 process value (%),%MD4524
+LT_114_SP,REAL,Level transmitter 14 setpoint,%MD4526
+LT_114_HI,Bool,Level transmitter 14 high alarm,%MX566.0
+LT_114_LO,Bool,Level transmitter 14 low alarm,%MX566.2
+LT_114_FAIL,Bool,Level transmitter 14 signal fault,%MX566.4
+LT_115_PV,analog,Level transmitter 15 process value (%),%MD4534
+LT_115_SP,REAL,Level transmitter 15 setpoint,%MD4536
+LT_115_HI,Bool,Level transmitter 15 high alarm,%MX567.2
+LT_115_LO,Bool,Level transmitter 15 low alarm,%MX567.4
+LT_115_FAIL,Bool,Level transmitter 15 signal fault,%MX567.6
+LT_116_PV,analog,Level transmitter 16 process value (%),%MD4544
+LT_116_SP,REAL,Level transmitter 16 setpoint,%MD4546
+LT_116_HI,Bool,Level transmitter 16 high alarm,%MX568.4
+LT_116_LO,Bool,Level transmitter 16 low alarm,%MX568.6
+LT_116_FAIL,Bool,Level transmitter 16 signal fault,%MX569.0
+LT_117_PV,analog,Level transmitter 17 process value (%),%MD4554
+LT_117_SP,REAL,Level transmitter 17 setpoint,%MD4556
+LT_117_HI,Bool,Level transmitter 17 high alarm,%MX569.6
+LT_117_LO,Bool,Level transmitter 17 low alarm,%MX570.0
+LT_117_FAIL,Bool,Level transmitter 17 signal fault,%MX570.2
+LT_118_PV,analog,Level transmitter 18 process value (%),%MD4564
+LT_118_SP,REAL,Level transmitter 18 setpoint,%MD4566
+LT_118_HI,Bool,Level transmitter 18 high alarm,%MX571.0
+LT_118_LO,Bool,Level transmitter 18 low alarm,%MX571.2
+LT_118_FAIL,Bool,Level transmitter 18 signal fault,%MX571.4
+LT_119_PV,analog,Level transmitter 19 process value (%),%MD4574
+LT_119_SP,REAL,Level transmitter 19 setpoint,%MD4576
+LT_119_HI,Bool,Level transmitter 19 high alarm,%MX572.2
+LT_119_LO,Bool,Level transmitter 19 low alarm,%MX572.4
+LT_119_FAIL,Bool,Level transmitter 19 signal fault,%MX572.6
+LT_120_PV,analog,Level transmitter 20 process value (%),%MD4584
+LT_120_SP,REAL,Level transmitter 20 setpoint,%MD4586
+LT_120_HI,Bool,Level transmitter 20 high alarm,%MX573.4
+LT_120_LO,Bool,Level transmitter 20 low alarm,%MX573.6
+LT_120_FAIL,Bool,Level transmitter 20 signal fault,%MX574.0
+PT_101_PV,analog,Pressure transmitter 1 process value (bar),%MD4594
+PT_101_SP,REAL,Pressure transmitter 1 setpoint,%MD4596
+PT_101_HI,Bool,Pressure transmitter 1 high alarm,%MX574.6
+PT_101_LO,Bool,Pressure transmitter 1 low alarm,%MX575.0
+PT_101_FAIL,Bool,Pressure transmitter 1 signal fault,%MX575.2
+PT_102_PV,analog,Pressure transmitter 2 process value (bar),%MD4604
+PT_102_SP,REAL,Pressure transmitter 2 setpoint,%MD4606
+PT_102_HI,Bool,Pressure transmitter 2 high alarm,%MX576.0
+PT_102_LO,Bool,Pressure transmitter 2 low alarm,%MX576.2
+PT_102_FAIL,Bool,Pressure transmitter 2 signal fault,%MX576.4
+PT_103_PV,analog,Pressure transmitter 3 process value (bar),%MD4614
+PT_103_SP,REAL,Pressure transmitter 3 setpoint,%MD4616
+PT_103_HI,Bool,Pressure transmitter 3 high alarm,%MX577.2
+PT_103_LO,Bool,Pressure transmitter 3 low alarm,%MX577.4
+PT_103_FAIL,Bool,Pressure transmitter 3 signal fault,%MX577.6
+PT_104_PV,analog,Pressure transmitter 4 process value (bar),%MD4624
+PT_104_SP,REAL,Pressure transmitter 4 setpoint,%MD4626
+PT_104_HI,Bool,Pressure transmitter 4 high alarm,%MX578.4
+PT_104_LO,Bool,Pressure transmitter 4 low alarm,%MX578.6
+PT_104_FAIL,Bool,Pressure transmitter 4 signal fault,%MX579.0
+PT_105_PV,analog,Pressure transmitter 5 process value (bar),%MD4634
+PT_105_SP,REAL,Pressure transmitter 5 setpoint,%MD4636
+PT_105_HI,Bool,Pressure transmitter 5 high alarm,%MX579.6
+PT_105_LO,Bool,Pressure transmitter 5 low alarm,%MX580.0
+PT_105_FAIL,Bool,Pressure transmitter 5 signal fault,%MX580.2
+PT_106_PV,analog,Pressure transmitter 6 process value (bar),%MD4644
+PT_106_SP,REAL,Pressure transmitter 6 setpoint,%MD4646
+PT_106_HI,Bool,Pressure transmitter 6 high alarm,%MX581.0
+PT_106_LO,Bool,Pressure transmitter 6 low alarm,%MX581.2
+PT_106_FAIL,Bool,Pressure transmitter 6 signal fault,%MX581.4
+PT_107_PV,analog,Pressure transmitter 7 process value (bar),%MD4654
+PT_107_SP,REAL,Pressure transmitter 7 setpoint,%MD4656
+PT_107_HI,Bool,Pressure transmitter 7 high alarm,%MX582.2
+PT_107_LO,Bool,Pressure transmitter 7 low alarm,%MX582.4
+PT_107_FAIL,Bool,Pressure transmitter 7 signal fault,%MX582.6
+PT_108_PV,analog,Pressure transmitter 8 process value (bar),%MD4664
+PT_108_SP,REAL,Pressure transmitter 8 setpoint,%MD4666
+PT_108_HI,Bool,Pressure transmitter 8 high alarm,%MX583.4
+PT_108_LO,Bool,Pressure transmitter 8 low alarm,%MX583.6
+PT_108_FAIL,Bool,Pressure transmitter 8 signal fault,%MX584.0
+PT_109_PV,analog,Pressure transmitter 9 process value (bar),%MD4674
+PT_109_SP,REAL,Pressure transmitter 9 setpoint,%MD4676
+PT_109_HI,Bool,Pressure transmitter 9 high alarm,%MX584.6
+PT_109_LO,Bool,Pressure transmitter 9 low alarm,%MX585.0
+PT_109_FAIL,Bool,Pressure transmitter 9 signal fault,%MX585.2
+PT_110_PV,analog,Pressure transmitter 10 process value (bar),%MD4684
+PT_110_SP,REAL,Pressure transmitter 10 setpoint,%MD4686
+PT_110_HI,Bool,Pressure transmitter 10 high alarm,%MX586.0
+PT_110_LO,Bool,Pressure transmitter 10 low alarm,%MX586.2
+PT_110_FAIL,Bool,Pressure transmitter 10 signal fault,%MX586.4
+PT_111_PV,analog,Pressure transmitter 11 process value (bar),%MD4694
+PT_111_SP,REAL,Pressure transmitter 11 setpoint,%MD4696
+PT_111_HI,Bool,Pressure transmitter 11 high alarm,%MX587.2
+PT_111_LO,Bool,Pressure transmitter 11 low alarm,%MX587.4
+PT_111_FAIL,Bool,Pressure transmitter 11 signal fault,%MX587.6
+PT_112_PV,analog,Pressure transmitter 12 process value (bar),%MD4704
+PT_112_SP,REAL,Pressure transmitter 12 setpoint,%MD4706
+PT_112_HI,Bool,Pressure transmitter 12 high alarm,%MX588.4
+PT_112_LO,Bool,Pressure transmitter 12 low alarm,%MX588.6
+PT_112_FAIL,Bool,Pressure transmitter 12 signal fault,%MX589.0
+PT_113_PV,analog,Pressure transmitter 13 process value (bar),%MD4714
+PT_113_SP,REAL,Pressure transmitter 13 setpoint,%MD4716
+PT_113_HI,Bool,Pressure transmitter 13 high alarm,%MX589.6
+PT_113_LO,Bool,Pressure transmitter 13 low alarm,%MX590.0
+PT_113_FAIL,Bool,Pressure transmitter 13 signal fault,%MX590.2
+PT_114_PV,analog,Pressure transmitter 14 process value (bar),%MD4724
+PT_114_SP,REAL,Pressure transmitter 14 setpoint,%MD4726
+PT_114_HI,Bool,Pressure transmitter 14 high alarm,%MX591.0
+PT_114_LO,Bool,Pressure transmitter 14 low alarm,%MX591.2
+PT_114_FAIL,Bool,Pressure transmitter 14 signal fault,%MX591.4
+PT_115_PV,analog,Pressure transmitter 15 process value (bar),%MD4734
+PT_115_SP,REAL,Pressure transmitter 15 setpoint,%MD4736
+PT_115_HI,Bool,Pressure transmitter 15 high alarm,%MX592.2
+PT_115_LO,Bool,Pressure transmitter 15 low alarm,%MX592.4
+PT_115_FAIL,Bool,Pressure transmitter 15 signal fault,%MX592.6
+PT_116_PV,analog,Pressure transmitter 16 process value (bar),%MD4744
+PT_116_SP,REAL,Pressure transmitter 16 setpoint,%MD4746
+PT_116_HI,Bool,Pressure transmitter 16 high alarm,%MX593.4
+PT_116_LO,Bool,Pressure transmitter 16 low alarm,%MX593.6
+PT_116_FAIL,Bool,Pressure transmitter 16 signal fault,%MX594.0
+PT_117_PV,analog,Pressure transmitter 17 process value (bar),%MD4754
+PT_117_SP,REAL,Pressure transmitter 17 setpoint,%MD4756
+PT_117_HI,Bool,Pressure transmitter 17 high alarm,%MX594.6
+PT_117_LO,Bool,Pressure transmitter 17 low alarm,%MX595.0
+PT_117_FAIL,Bool,Pressure transmitter 17 signal fault,%MX595.2
+PT_118_PV,analog,Pressure transmitter 18 process value (bar),%MD4764
+PT_118_SP,REAL,Pressure transmitter 18 setpoint,%MD4766
+PT_118_HI,Bool,Pressure transmitter 18 high alarm,%MX596.0
+PT_118_LO,Bool,Pressure transmitter 18 low alarm,%MX596.2
+PT_118_FAIL,Bool,Pressure transmitter 18 signal fault,%MX596.4
+PT_119_PV,analog,Pressure transmitter 19 process value (bar),%MD4774
+PT_119_SP,REAL,Pressure transmitter 19 setpoint,%MD4776
+PT_119_HI,Bool,Pressure transmitter 19 high alarm,%MX597.2
+PT_119_LO,Bool,Pressure transmitter 19 low alarm,%MX597.4
+PT_119_FAIL,Bool,Pressure transmitter 19 signal fault,%MX597.6
+PT_120_PV,analog,Pressure transmitter 20 process value (bar),%MD4784
+PT_120_SP,REAL,Pressure transmitter 20 setpoint,%MD4786
+PT_120_HI,Bool,Pressure transmitter 20 high alarm,%MX598.4
+PT_120_LO,Bool,Pressure transmitter 20 low alarm,%MX598.6
+PT_120_FAIL,Bool,Pressure transmitter 20 signal fault,%MX599.0
+TT_101_PV,analog,Temperature transmitter 1 process value (degC),%MD4794
+TT_101_SP,REAL,Temperature transmitter 1 setpoint,%MD4796
+TT_101_HI,Bool,Temperature transmitter 1 high alarm,%MX599.6
+TT_101_LO,Bool,Temperature transmitter 1 low alarm,%MX600.0
+TT_101_FAIL,Bool,Temperature transmitter 1 signal fault,%MX600.2
+TT_102_PV,analog,Temperature transmitter 2 process value (degC),%MD4804
+TT_102_SP,REAL,Temperature transmitter 2 setpoint,%MD4806
+TT_102_HI,Bool,Temperature transmitter 2 high alarm,%MX601.0
+TT_102_LO,Bool,Temperature transmitter 2 low alarm,%MX601.2
+TT_102_FAIL,Bool,Temperature transmitter 2 signal fault,%MX601.4
+TT_103_PV,analog,Temperature transmitter 3 process value (degC),%MD4814
+TT_103_SP,REAL,Temperature transmitter 3 setpoint,%MD4816
+TT_103_HI,Bool,Temperature transmitter 3 high alarm,%MX602.2
+TT_103_LO,Bool,Temperature transmitter 3 low alarm,%MX602.4
+TT_103_FAIL,Bool,Temperature transmitter 3 signal fault,%MX602.6
+TT_104_PV,analog,Temperature transmitter 4 process value (degC),%MD4824
+TT_104_SP,REAL,Temperature transmitter 4 setpoint,%MD4826
+TT_104_HI,Bool,Temperature transmitter 4 high alarm,%MX603.4
+TT_104_LO,Bool,Temperature transmitter 4 low alarm,%MX603.6
+TT_104_FAIL,Bool,Temperature transmitter 4 signal fault,%MX604.0
+TT_105_PV,analog,Temperature transmitter 5 process value (degC),%MD4834
+TT_105_SP,REAL,Temperature transmitter 5 setpoint,%MD4836
+TT_105_HI,Bool,Temperature transmitter 5 high alarm,%MX604.6
+TT_105_LO,Bool,Temperature transmitter 5 low alarm,%MX605.0
+TT_105_FAIL,Bool,Temperature transmitter 5 signal fault,%MX605.2
+TT_106_PV,analog,Temperature transmitter 6 process value (degC),%MD4844
+TT_106_SP,REAL,Temperature transmitter 6 setpoint,%MD4846
+TT_106_HI,Bool,Temperature transmitter 6 high alarm,%MX606.0
+TT_106_LO,Bool,Temperature transmitter 6 low alarm,%MX606.2
+TT_106_FAIL,Bool,Temperature transmitter 6 signal fault,%MX606.4
+TT_107_PV,analog,Temperature transmitter 7 process value (degC),%MD4854
+TT_107_SP,REAL,Temperature transmitter 7 setpoint,%MD4856
+TT_107_HI,Bool,Temperature transmitter 7 high alarm,%MX607.2
+TT_107_LO,Bool,Temperature transmitter 7 low alarm,%MX607.4
+TT_107_FAIL,Bool,Temperature transmitter 7 signal fault,%MX607.6
+TT_108_PV,analog,Temperature transmitter 8 process value (degC),%MD4864
+TT_108_SP,REAL,Temperature transmitter 8 setpoint,%MD4866
+TT_108_HI,Bool,Temperature transmitter 8 high alarm,%MX608.4
+TT_108_LO,Bool,Temperature transmitter 8 low alarm,%MX608.6
+TT_108_FAIL,Bool,Temperature transmitter 8 signal fault,%MX609.0
+TT_109_PV,analog,Temperature transmitter 9 process value (degC),%MD4874
+TT_109_SP,REAL,Temperature transmitter 9 setpoint,%MD4876
+TT_109_HI,Bool,Temperature transmitter 9 high alarm,%MX609.6
+TT_109_LO,Bool,Temperature transmitter 9 low alarm,%MX610.0
+TT_109_FAIL,Bool,Temperature transmitter 9 signal fault,%MX610.2
+TT_110_PV,analog,Temperature transmitter 10 process value (degC),%MD4884
+TT_110_SP,REAL,Temperature transmitter 10 setpoint,%MD4886
+TT_110_HI,Bool,Temperature transmitter 10 high alarm,%MX611.0
+TT_110_LO,Bool,Temperature transmitter 10 low alarm,%MX611.2
+TT_110_FAIL,Bool,Temperature transmitter 10 signal fault,%MX611.4
+TT_111_PV,analog,Temperature transmitter 11 process value (degC),%MD4894
+TT_111_SP,REAL,Temperature transmitter 11 setpoint,%MD4896
+TT_111_HI,Bool,Temperature transmitter 11 high alarm,%MX612.2
+TT_111_LO,Bool,Temperature transmitter 11 low alarm,%MX612.4
+TT_111_FAIL,Bool,Temperature transmitter 11 signal fault,%MX612.6
+TT_112_PV,analog,Temperature transmitter 12 process value (degC),%MD4904
+TT_112_SP,REAL,Temperature transmitter 12 setpoint,%MD4906
+TT_112_HI,Bool,Temperature transmitter 12 high alarm,%MX613.4
+TT_112_LO,Bool,Temperature transmitter 12 low alarm,%MX613.6
+TT_112_FAIL,Bool,Temperature transmitter 12 signal fault,%MX614.0
+TT_113_PV,analog,Temperature transmitter 13 process value (degC),%MD4914
+TT_113_SP,REAL,Temperature transmitter 13 setpoint,%MD4916
+TT_113_HI,Bool,Temperature transmitter 13 high alarm,%MX614.6
+TT_113_LO,Bool,Temperature transmitter 13 low alarm,%MX615.0
+TT_113_FAIL,Bool,Temperature transmitter 13 signal fault,%MX615.2
+TT_114_PV,analog,Temperature transmitter 14 process value (degC),%MD4924
+TT_114_SP,REAL,Temperature transmitter 14 setpoint,%MD4926
+TT_114_HI,Bool,Temperature transmitter 14 high alarm,%MX616.0
+TT_114_LO,Bool,Temperature transmitter 14 low alarm,%MX616.2
+TT_114_FAIL,Bool,Temperature transmitter 14 signal fault,%MX616.4
+TT_115_PV,analog,Temperature transmitter 15 process value (degC),%MD4934
+TT_115_SP,REAL,Temperature transmitter 15 setpoint,%MD4936
+TT_115_HI,Bool,Temperature transmitter 15 high alarm,%MX617.2
+TT_115_LO,Bool,Temperature transmitter 15 low alarm,%MX617.4
+TT_115_FAIL,Bool,Temperature transmitter 15 signal fault,%MX617.6
+TT_116_PV,analog,Temperature transmitter 16 process value (degC),%MD4944
+TT_116_SP,REAL,Temperature transmitter 16 setpoint,%MD4946
+TT_116_HI,Bool,Temperature transmitter 16 high alarm,%MX618.4
+TT_116_LO,Bool,Temperature transmitter 16 low alarm,%MX618.6
+TT_116_FAIL,Bool,Temperature transmitter 16 signal fault,%MX619.0
+TT_117_PV,analog,Temperature transmitter 17 process value (degC),%MD4954
+TT_117_SP,REAL,Temperature transmitter 17 setpoint,%MD4956
+TT_117_HI,Bool,Temperature transmitter 17 high alarm,%MX619.6
+TT_117_LO,Bool,Temperature transmitter 17 low alarm,%MX620.0
+TT_117_FAIL,Bool,Temperature transmitter 17 signal fault,%MX620.2
+TT_118_PV,analog,Temperature transmitter 18 process value (degC),%MD4964
+TT_118_SP,REAL,Temperature transmitter 18 setpoint,%MD4966
+TT_118_HI,Bool,Temperature transmitter 18 high alarm,%MX621.0
+TT_118_LO,Bool,Temperature transmitter 18 low alarm,%MX621.2
+TT_118_FAIL,Bool,Temperature transmitter 18 signal fault,%MX621.4
+TT_119_PV,analog,Temperature transmitter 19 process value (degC),%MD4974
+TT_119_SP,REAL,Temperature transmitter 19 setpoint,%MD4976
+TT_119_HI,Bool,Temperature transmitter 19 high alarm,%MX622.2
+TT_119_LO,Bool,Temperature transmitter 19 low alarm,%MX622.4
+TT_119_FAIL,Bool,Temperature transmitter 19 signal fault,%MX622.6
+TT_120_PV,analog,Temperature transmitter 20 process value (degC),%MD4984
+TT_120_SP,REAL,Temperature transmitter 20 setpoint,%MD4986
+TT_120_HI,Bool,Temperature transmitter 20 high alarm,%MX623.4
+TT_120_LO,Bool,Temperature transmitter 20 low alarm,%MX623.6
+TT_120_FAIL,Bool,Temperature transmitter 20 signal fault,%MX624.0
+AT_101_PV,analog,Analyser 1 process value (pH),%MD4994
+AT_101_SP,REAL,Analyser 1 setpoint,%MD4996
+AT_101_HI,Bool,Analyser 1 high alarm,%MX624.6
+AT_101_LO,Bool,Analyser 1 low alarm,%MX625.0
+AT_101_FAIL,Bool,Analyser 1 signal fault,%MX625.2
+AT_102_PV,analog,Analyser 2 process value (pH),%MD5004
+AT_102_SP,REAL,Analyser 2 setpoint,%MD5006
+AT_102_HI,Bool,Analyser 2 high alarm,%MX626.0
+AT_102_LO,Bool,Analyser 2 low alarm,%MX626.2
+AT_102_FAIL,Bool,Analyser 2 signal fault,%MX626.4
+AT_103_PV,analog,Analyser 3 process value (pH),%MD5014
+AT_103_SP,REAL,Analyser 3 setpoint,%MD5016
+AT_103_HI,Bool,Analyser 3 high alarm,%MX627.2
+AT_103_LO,Bool,Analyser 3 low alarm,%MX627.4
+AT_103_FAIL,Bool,Analyser 3 signal fault,%MX627.6
+AT_104_PV,analog,Analyser 4 process value (pH),%MD5024
+AT_104_SP,REAL,Analyser 4 setpoint,%MD5026
+AT_104_HI,Bool,Analyser 4 high alarm,%MX628.4
+AT_104_LO,Bool,Analyser 4 low alarm,%MX628.6
+AT_104_FAIL,Bool,Analyser 4 signal fault,%MX629.0
+AT_105_PV,analog,Analyser 5 process value (pH),%MD5034
+AT_105_SP,REAL,Analyser 5 setpoint,%MD5036
+AT_105_HI,Bool,Analyser 5 high alarm,%MX629.6
+AT_105_LO,Bool,Analyser 5 low alarm,%MX630.0
+AT_105_FAIL,Bool,Analyser 5 signal fault,%MX630.2
+AT_106_PV,analog,Analyser 6 process value (pH),%MD5044
+AT_106_SP,REAL,Analyser 6 setpoint,%MD5046
+AT_106_HI,Bool,Analyser 6 high alarm,%MX631.0
+AT_106_LO,Bool,Analyser 6 low alarm,%MX631.2
+AT_106_FAIL,Bool,Analyser 6 signal fault,%MX631.4
+AT_107_PV,analog,Analyser 7 process value (pH),%MD5054
+AT_107_SP,REAL,Analyser 7 setpoint,%MD5056
+AT_107_HI,Bool,Analyser 7 high alarm,%MX632.2
+AT_107_LO,Bool,Analyser 7 low alarm,%MX632.4
+AT_107_FAIL,Bool,Analyser 7 signal fault,%MX632.6
+AT_108_PV,analog,Analyser 8 process value (pH),%MD5064
+AT_108_SP,REAL,Analyser 8 setpoint,%MD5066
+AT_108_HI,Bool,Analyser 8 high alarm,%MX633.4
+AT_108_LO,Bool,Analyser 8 low alarm,%MX633.6
+AT_108_FAIL,Bool,Analyser 8 signal fault,%MX634.0
+AT_109_PV,analog,Analyser 9 process value (pH),%MD5074
+AT_109_SP,REAL,Analyser 9 setpoint,%MD5076
+AT_109_HI,Bool,Analyser 9 high alarm,%MX634.6
+AT_109_LO,Bool,Analyser 9 low alarm,%MX635.0
+AT_109_FAIL,Bool,Analyser 9 signal fault,%MX635.2
+AT_110_PV,analog,Analyser 10 process value (pH),%MD5084
+AT_110_SP,REAL,Analyser 10 setpoint,%MD5086
+AT_110_HI,Bool,Analyser 10 high alarm,%MX636.0
+AT_110_LO,Bool,Analyser 10 low alarm,%MX636.2
+AT_110_FAIL,Bool,Analyser 10 signal fault,%MX636.4
+AT_111_PV,analog,Analyser 11 process value (pH),%MD5094
+AT_111_SP,REAL,Analyser 11 setpoint,%MD5096
+AT_111_HI,Bool,Analyser 11 high alarm,%MX637.2
+AT_111_LO,Bool,Analyser 11 low alarm,%MX637.4
+AT_111_FAIL,Bool,Analyser 11 signal fault,%MX637.6
+AT_112_PV,analog,Analyser 12 process value (pH),%MD5104
+AT_112_SP,REAL,Analyser 12 setpoint,%MD5106
+AT_112_HI,Bool,Analyser 12 high alarm,%MX638.4
+AT_112_LO,Bool,Analyser 12 low alarm,%MX638.6
+AT_112_FAIL,Bool,Analyser 12 signal fault,%MX639.0
+AT_113_PV,analog,Analyser 13 process value (pH),%MD5114
+AT_113_SP,REAL,Analyser 13 setpoint,%MD5116
+AT_113_HI,Bool,Analyser 13 high alarm,%MX639.6
+AT_113_LO,Bool,Analyser 13 low alarm,%MX640.0
+AT_113_FAIL,Bool,Analyser 13 signal fault,%MX640.2
+AT_114_PV,analog,Analyser 14 process value (pH),%MD5124
+AT_114_SP,REAL,Analyser 14 setpoint,%MD5126
+AT_114_HI,Bool,Analyser 14 high alarm,%MX641.0
+AT_114_LO,Bool,Analyser 14 low alarm,%MX641.2
+AT_114_FAIL,Bool,Analyser 14 signal fault,%MX641.4
+AT_115_PV,analog,Analyser 15 process value (pH),%MD5134
+AT_115_SP,REAL,Analyser 15 setpoint,%MD5136
+AT_115_HI,Bool,Analyser 15 high alarm,%MX642.2
+AT_115_LO,Bool,Analyser 15 low alarm,%MX642.4
+AT_115_FAIL,Bool,Analyser 15 signal fault,%MX642.6
+AT_116_PV,analog,Analyser 16 process value (pH),%MD5144
+AT_116_SP,REAL,Analyser 16 setpoint,%MD5146
+AT_116_HI,Bool,Analyser 16 high alarm,%MX643.4
+AT_116_LO,Bool,Analyser 16 low alarm,%MX643.6
+AT_116_FAIL,Bool,Analyser 16 signal fault,%MX644.0
+AT_117_PV,analog,Analyser 17 process value (pH),%MD5154
+AT_117_SP,REAL,Analyser 17 setpoint,%MD5156
+AT_117_HI,Bool,Analyser 17 high alarm,%MX644.6
+AT_117_LO,Bool,Analyser 17 low alarm,%MX645.0
+AT_117_FAIL,Bool,Analyser 17 signal fault,%MX645.2
+AT_118_PV,analog,Analyser 18 process value (pH),%MD5164
+AT_118_SP,REAL,Analyser 18 setpoint,%MD5166
+AT_118_HI,Bool,Analyser 18 high alarm,%MX646.0
+AT_118_LO,Bool,Analyser 18 low alarm,%MX646.2
+AT_118_FAIL,Bool,Analyser 18 signal fault,%MX646.4
+AT_119_PV,analog,Analyser 19 process value (pH),%MD5174
+AT_119_SP,REAL,Analyser 19 setpoint,%MD5176
+AT_119_HI,Bool,Analyser 19 high alarm,%MX647.2
+AT_119_LO,Bool,Analyser 19 low alarm,%MX647.4
+AT_119_FAIL,Bool,Analyser 19 signal fault,%MX647.6
+AT_120_PV,analog,Analyser 20 process value (pH),%MD5184
+AT_120_SP,REAL,Analyser 20 setpoint,%MD5186
+AT_120_HI,Bool,Analyser 20 high alarm,%MX648.4
+AT_120_LO,Bool,Analyser 20 low alarm,%MX648.6
+AT_120_FAIL,Bool,Analyser 20 signal fault,%MX649.0
+DT_101_PV,analog,Density transmitter 1 process value (kg/m3),%MD5194
+DT_101_SP,REAL,Density transmitter 1 setpoint,%MD5196
+DT_101_HI,Bool,Density transmitter 1 high alarm,%MX649.6
+DT_101_LO,Bool,Density transmitter 1 low alarm,%MX650.0
+DT_101_FAIL,Bool,Density transmitter 1 signal fault,%MX650.2
+DT_102_PV,analog,Density transmitter 2 process value (kg/m3),%MD5204
+DT_102_SP,REAL,Density transmitter 2 setpoint,%MD5206
+DT_102_HI,Bool,Density transmitter 2 high alarm,%MX651.0
+DT_102_LO,Bool,Density transmitter 2 low alarm,%MX651.2
+DT_102_FAIL,Bool,Density transmitter 2 signal fault,%MX651.4
+DT_103_PV,analog,Density transmitter 3 process value (kg/m3),%MD5214
+DT_103_SP,REAL,Density transmitter 3 setpoint,%MD5216
+DT_103_HI,Bool,Density transmitter 3 high alarm,%MX652.2
+DT_103_LO,Bool,Density transmitter 3 low alarm,%MX652.4
+DT_103_FAIL,Bool,Density transmitter 3 signal fault,%MX652.6
+DT_104_PV,analog,Density transmitter 4 process value (kg/m3),%MD5224
+DT_104_SP,REAL,Density transmitter 4 setpoint,%MD5226
+DT_104_HI,Bool,Density transmitter 4 high alarm,%MX653.4
+DT_104_LO,Bool,Density transmitter 4 low alarm,%MX653.6
+DT_104_FAIL,Bool,Density transmitter 4 signal fault,%MX654.0
+DT_105_PV,analog,Density transmitter 5 process value (kg/m3),%MD5234
+DT_105_SP,REAL,Density transmitter 5 setpoint,%MD5236
+DT_105_HI,Bool,Density transmitter 5 high alarm,%MX654.6
+DT_105_LO,Bool,Density transmitter 5 low alarm,%MX655.0
+DT_105_FAIL,Bool,Density transmitter 5 signal fault,%MX655.2
+DT_106_PV,analog,Density transmitter 6 process value (kg/m3),%MD5244
+DT_106_SP,REAL,Density transmitter 6 setpoint,%MD5246
+DT_106_HI,Bool,Density transmitter 6 high alarm,%MX656.0
+DT_106_LO,Bool,Density transmitter 6 low alarm,%MX656.2
+DT_106_FAIL,Bool,Density transmitter 6 signal fault,%MX656.4
+DT_107_PV,analog,Density transmitter 7 process value (kg/m3),%MD5254
+DT_107_SP,REAL,Density transmitter 7 setpoint,%MD5256
+DT_107_HI,Bool,Density transmitter 7 high alarm,%MX657.2
+DT_107_LO,Bool,Density transmitter 7 low alarm,%MX657.4
+DT_107_FAIL,Bool,Density transmitter 7 signal fault,%MX657.6
+DT_108_PV,analog,Density transmitter 8 process value (kg/m3),%MD5264
+DT_108_SP,REAL,Density transmitter 8 setpoint,%MD5266
+DT_108_HI,Bool,Density transmitter 8 high alarm,%MX658.4
+DT_108_LO,Bool,Density transmitter 8 low alarm,%MX658.6
+DT_108_FAIL,Bool,Density transmitter 8 signal fault,%MX659.0
+DT_109_PV,analog,Density transmitter 9 process value (kg/m3),%MD5274
+DT_109_SP,REAL,Density transmitter 9 setpoint,%MD5276
+DT_109_HI,Bool,Density transmitter 9 high alarm,%MX659.6
+DT_109_LO,Bool,Density transmitter 9 low alarm,%MX660.0
+DT_109_FAIL,Bool,Density transmitter 9 signal fault,%MX660.2
+DT_110_PV,analog,Density transmitter 10 process value (kg/m3),%MD5284
+DT_110_SP,REAL,Density transmitter 10 setpoint,%MD5286
+DT_110_HI,Bool,Density transmitter 10 high alarm,%MX661.0
+DT_110_LO,Bool,Density transmitter 10 low alarm,%MX661.2
+DT_110_FAIL,Bool,Density transmitter 10 signal fault,%MX661.4
+DT_111_PV,analog,Density transmitter 11 process value (kg/m3),%MD5294
+DT_111_SP,REAL,Density transmitter 11 setpoint,%MD5296
+DT_111_HI,Bool,Density transmitter 11 high alarm,%MX662.2
+DT_111_LO,Bool,Density transmitter 11 low alarm,%MX662.4
+DT_111_FAIL,Bool,Density transmitter 11 signal fault,%MX662.6
+DT_112_PV,analog,Density transmitter 12 process value (kg/m3),%MD5304
+DT_112_SP,REAL,Density transmitter 12 setpoint,%MD5306
+DT_112_HI,Bool,Density transmitter 12 high alarm,%MX663.4
+DT_112_LO,Bool,Density transmitter 12 low alarm,%MX663.6
+DT_112_FAIL,Bool,Density transmitter 12 signal fault,%MX664.0
+DT_113_PV,analog,Density transmitter 13 process value (kg/m3),%MD5314
+DT_113_SP,REAL,Density transmitter 13 setpoint,%MD5316
+DT_113_HI,Bool,Density transmitter 13 high alarm,%MX664.6
+DT_113_LO,Bool,Density transmitter 13 low alarm,%MX665.0
+DT_113_FAIL,Bool,Density transmitter 13 signal fault,%MX665.2
+DT_114_PV,analog,Density transmitter 14 process value (kg/m3),%MD5324
+DT_114_SP,REAL,Density transmitter 14 setpoint,%MD5326
+DT_114_HI,Bool,Density transmitter 14 high alarm,%MX666.0
+DT_114_LO,Bool,Density transmitter 14 low alarm,%MX666.2
+DT_114_FAIL,Bool,Density transmitter 14 signal fault,%MX666.4
+DT_115_PV,analog,Density transmitter 15 process value (kg/m3),%MD5334
+DT_115_SP,REAL,Density transmitter 15 setpoint,%MD5336
+DT_115_HI,Bool,Density transmitter 15 high alarm,%MX667.2
+DT_115_LO,Bool,Density transmitter 15 low alarm,%MX667.4
+DT_115_FAIL,Bool,Density transmitter 15 signal fault,%MX667.6
+DT_116_PV,analog,Density transmitter 16 process value (kg/m3),%MD5344
+DT_116_SP,REAL,Density transmitter 16 setpoint,%MD5346
+DT_116_HI,Bool,Density transmitter 16 high alarm,%MX668.4
+DT_116_LO,Bool,Density transmitter 16 low alarm,%MX668.6
+DT_116_FAIL,Bool,Density transmitter 16 signal fault,%MX669.0
+DT_117_PV,analog,Density transmitter 17 process value (kg/m3),%MD5354
+DT_117_SP,REAL,Density transmitter 17 setpoint,%MD5356
+DT_117_HI,Bool,Density transmitter 17 high alarm,%MX669.6
+DT_117_LO,Bool,Density transmitter 17 low alarm,%MX670.0
+DT_117_FAIL,Bool,Density transmitter 17 signal fault,%MX670.2
+DT_118_PV,analog,Density transmitter 18 process value (kg/m3),%MD5364
+DT_118_SP,REAL,Density transmitter 18 setpoint,%MD5366
+DT_118_HI,Bool,Density transmitter 18 high alarm,%MX671.0
+DT_118_LO,Bool,Density transmitter 18 low alarm,%MX671.2
+DT_118_FAIL,Bool,Density transmitter 18 signal fault,%MX671.4
+DT_119_PV,analog,Density transmitter 19 process value (kg/m3),%MD5374
+DT_119_SP,REAL,Density transmitter 19 setpoint,%MD5376
+DT_119_HI,Bool,Density transmitter 19 high alarm,%MX672.2
+DT_119_LO,Bool,Density transmitter 19 low alarm,%MX672.4
+DT_119_FAIL,Bool,Density transmitter 19 signal fault,%MX672.6
+DT_120_PV,analog,Density transmitter 20 process value (kg/m3),%MD5384
+DT_120_SP,REAL,Density transmitter 20 setpoint,%MD5386
+DT_120_HI,Bool,Density transmitter 20 high alarm,%MX673.4
+DT_120_LO,Bool,Density transmitter 20 low alarm,%MX673.6
+DT_120_FAIL,Bool,Density transmitter 20 signal fault,%MX674.0
+XV_201_OPEN,Bool,Valve 1 open limit,%MX674.2
+XV_201_CLOSED,Bool,Valve 1 closed limit,%MX674.4
+XV_201_CMD,Bool,Valve 1 open command,%MX674.6
+XV_201_FLT,Bool,Valve 1 travel fault,%MX675.0
+XV_202_OPEN,Bool,Valve 2 open limit,%MX675.2
+XV_202_CLOSED,Bool,Valve 2 closed limit,%MX675.4
+XV_202_CMD,Bool,Valve 2 open command,%MX675.6
+XV_202_FLT,Bool,Valve 2 travel fault,%MX676.0
+XV_203_OPEN,Bool,Valve 3 open limit,%MX676.2
+XV_203_CLOSED,Bool,Valve 3 closed limit,%MX676.4
+XV_203_CMD,Bool,Valve 3 open command,%MX676.6
+XV_203_FLT,Bool,Valve 3 travel fault,%MX677.0
+XV_204_OPEN,Bool,Valve 4 open limit,%MX677.2
+XV_204_CLOSED,Bool,Valve 4 closed limit,%MX677.4
+XV_204_CMD,Bool,Valve 4 open command,%MX677.6
+XV_204_FLT,Bool,Valve 4 travel fault,%MX678.0
+XV_205_OPEN,Bool,Valve 5 open limit,%MX678.2
+XV_205_CLOSED,Bool,Valve 5 closed limit,%MX678.4
+XV_205_CMD,Bool,Valve 5 open command,%MX678.6
+XV_205_FLT,Bool,Valve 5 travel fault,%MX679.0
+XV_206_OPEN,Bool,Valve 6 open limit,%MX679.2
+XV_206_CLOSED,Bool,Valve 6 closed limit,%MX679.4
+XV_206_CMD,Bool,Valve 6 open command,%MX679.6
+XV_206_FLT,Bool,Valve 6 travel fault,%MX680.0
+XV_207_OPEN,Bool,Valve 7 open limit,%MX680.2
+XV_207_CLOSED,Bool,Valve 7 closed limit,%MX680.4
+XV_207_CMD,Bool,Valve 7 open command,%MX680.6
+XV_207_FLT,Bool,Valve 7 travel fault,%MX681.0
+XV_208_OPEN,Bool,Valve 8 open limit,%MX681.2
+XV_208_CLOSED,Bool,Valve 8 closed limit,%MX681.4
+XV_208_CMD,Bool,Valve 8 open command,%MX681.6
+XV_208_FLT,Bool,Valve 8 travel fault,%MX682.0
+XV_209_OPEN,Bool,Valve 9 open limit,%MX682.2
+XV_209_CLOSED,Bool,Valve 9 closed limit,%MX682.4
+XV_209_CMD,Bool,Valve 9 open command,%MX682.6
+XV_209_FLT,Bool,Valve 9 travel fault,%MX683.0
+XV_210_OPEN,Bool,Valve 10 open limit,%MX683.2
+XV_210_CLOSED,Bool,Valve 10 closed limit,%MX683.4
+XV_210_CMD,Bool,Valve 10 open command,%MX683.6
+XV_210_FLT,Bool,Valve 10 travel fault,%MX684.0
+XV_211_OPEN,Bool,Valve 11 open limit,%MX684.2
+XV_211_CLOSED,Bool,Valve 11 closed limit,%MX684.4
+XV_211_CMD,Bool,Valve 11 open command,%MX684.6
+XV_211_FLT,Bool,Valve 11 travel fault,%MX685.0
+XV_212_OPEN,Bool,Valve 12 open limit,%MX685.2
+XV_212_CLOSED,Bool,Valve 12 closed limit,%MX685.4
+XV_212_CMD,Bool,Valve 12 open command,%MX685.6
+XV_212_FLT,Bool,Valve 12 travel fault,%MX686.0
+XV_213_OPEN,Bool,Valve 13 open limit,%MX686.2
+XV_213_CLOSED,Bool,Valve 13 closed limit,%MX686.4
+XV_213_CMD,Bool,Valve 13 open command,%MX686.6
+XV_213_FLT,Bool,Valve 13 travel fault,%MX687.0
+XV_214_OPEN,Bool,Valve 14 open limit,%MX687.2
+XV_214_CLOSED,Bool,Valve 14 closed limit,%MX687.4
+XV_214_CMD,Bool,Valve 14 open command,%MX687.6
+XV_214_FLT,Bool,Valve 14 travel fault,%MX688.0
+XV_215_OPEN,Bool,Valve 15 open limit,%MX688.2
+XV_215_CLOSED,Bool,Valve 15 closed limit,%MX688.4
+XV_215_CMD,Bool,Valve 15 open command,%MX688.6
+XV_215_FLT,Bool,Valve 15 travel fault,%MX689.0
+XV_216_OPEN,Bool,Valve 16 open limit,%MX689.2
+XV_216_CLOSED,Bool,Valve 16 closed limit,%MX689.4
+XV_216_CMD,Bool,Valve 16 open command,%MX689.6
+XV_216_FLT,Bool,Valve 16 travel fault,%MX690.0
+XV_217_OPEN,Bool,Valve 17 open limit,%MX690.2
+XV_217_CLOSED,Bool,Valve 17 closed limit,%MX690.4
+XV_217_CMD,Bool,Valve 17 open command,%MX690.6
+XV_217_FLT,Bool,Valve 17 travel fault,%MX691.0
+XV_218_OPEN,Bool,Valve 18 open limit,%MX691.2
+XV_218_CLOSED,Bool,Valve 18 closed limit,%MX691.4
+XV_218_CMD,Bool,Valve 18 open command,%MX691.6
+XV_218_FLT,Bool,Valve 18 travel fault,%MX692.0
+XV_219_OPEN,Bool,Valve 19 open limit,%MX692.2
+XV_219_CLOSED,Bool,Valve 19 closed limit,%MX692.4
+XV_219_CMD,Bool,Valve 19 open command,%MX692.6
+XV_219_FLT,Bool,Valve 19 travel fault,%MX693.0
+XV_220_OPEN,Bool,Valve 20 open limit,%MX693.2
+XV_220_CLOSED,Bool,Valve 20 closed limit,%MX693.4
+XV_220_CMD,Bool,Valve 20 open command,%MX693.6
+XV_220_FLT,Bool,Valve 20 travel fault,%MX694.0
+XV_221_OPEN,Bool,Valve 21 open limit,%MX694.2
+XV_221_CLOSED,Bool,Valve 21 closed limit,%MX694.4
+XV_221_CMD,Bool,Valve 21 open command,%MX694.6
+XV_221_FLT,Bool,Valve 21 travel fault,%MX695.0
+XV_222_OPEN,Bool,Valve 22 open limit,%MX695.2
+XV_222_CLOSED,Bool,Valve 22 closed limit,%MX695.4
+XV_222_CMD,Bool,Valve 22 open command,%MX695.6
+XV_222_FLT,Bool,Valve 22 travel fault,%MX696.0
+XV_223_OPEN,Bool,Valve 23 open limit,%MX696.2
+XV_223_CLOSED,Bool,Valve 23 closed limit,%MX696.4
+XV_223_CMD,Bool,Valve 23 open command,%MX696.6
+XV_223_FLT,Bool,Valve 23 travel fault,%MX697.0
+XV_224_OPEN,Bool,Valve 24 open limit,%MX697.2
+XV_224_CLOSED,Bool,Valve 24 closed limit,%MX697.4
+XV_224_CMD,Bool,Valve 24 open command,%MX697.6
+XV_224_FLT,Bool,Valve 24 travel fault,%MX698.0
+XV_225_OPEN,Bool,Valve 25 open limit,%MX698.2
+XV_225_CLOSED,Bool,Valve 25 closed limit,%MX698.4
+XV_225_CMD,Bool,Valve 25 open command,%MX698.6
+XV_225_FLT,Bool,Valve 25 travel fault,%MX699.0
+XV_226_OPEN,Bool,Valve 26 open limit,%MX699.2
+XV_226_CLOSED,Bool,Valve 26 closed limit,%MX699.4
+XV_226_CMD,Bool,Valve 26 open command,%MX699.6
+XV_226_FLT,Bool,Valve 26 travel fault,%MX700.0
+XV_227_OPEN,Bool,Valve 27 open limit,%MX700.2
+XV_227_CLOSED,Bool,Valve 27 closed limit,%MX700.4
+XV_227_CMD,Bool,Valve 27 open command,%MX700.6
+XV_227_FLT,Bool,Valve 27 travel fault,%MX701.0
+XV_228_OPEN,Bool,Valve 28 open limit,%MX701.2
+XV_228_CLOSED,Bool,Valve 28 closed limit,%MX701.4
+XV_228_CMD,Bool,Valve 28 open command,%MX701.6
+XV_228_FLT,Bool,Valve 28 travel fault,%MX702.0
+XV_229_OPEN,Bool,Valve 29 open limit,%MX702.2
+XV_229_CLOSED,Bool,Valve 29 closed limit,%MX702.4
+XV_229_CMD,Bool,Valve 29 open command,%MX702.6
+XV_229_FLT,Bool,Valve 29 travel fault,%MX703.0
+XV_230_OPEN,Bool,Valve 30 open limit,%MX703.2
+XV_230_CLOSED,Bool,Valve 30 closed limit,%MX703.4
+XV_230_CMD,Bool,Valve 30 open command,%MX703.6
+XV_230_FLT,Bool,Valve 30 travel fault,%MX704.0
+XV_231_OPEN,Bool,Valve 31 open limit,%MX704.2
+XV_231_CLOSED,Bool,Valve 31 closed limit,%MX704.4
+XV_231_CMD,Bool,Valve 31 open command,%MX704.6
+XV_231_FLT,Bool,Valve 31 travel fault,%MX705.0
+XV_232_OPEN,Bool,Valve 32 open limit,%MX705.2
+XV_232_CLOSED,Bool,Valve 32 closed limit,%MX705.4
+XV_232_CMD,Bool,Valve 32 open command,%MX705.6
+XV_232_FLT,Bool,Valve 32 travel fault,%MX706.0
+XV_233_OPEN,Bool,Valve 33 open limit,%MX706.2
+XV_233_CLOSED,Bool,Valve 33 closed limit,%MX706.4
+XV_233_CMD,Bool,Valve 33 open command,%MX706.6
+XV_233_FLT,Bool,Valve 33 travel fault,%MX707.0
+XV_234_OPEN,Bool,Valve 34 open limit,%MX707.2
+XV_234_CLOSED,Bool,Valve 34 closed limit,%MX707.4
+XV_234_CMD,Bool,Valve 34 open command,%MX707.6
+XV_234_FLT,Bool,Valve 34 travel fault,%MX708.0
+XV_235_OPEN,Bool,Valve 35 open limit,%MX708.2
+XV_235_CLOSED,Bool,Valve 35 closed limit,%MX708.4
+XV_235_CMD,Bool,Valve 35 open command,%MX708.6
+XV_235_FLT,Bool,Valve 35 travel fault,%MX709.0
+XV_236_OPEN,Bool,Valve 36 open limit,%MX709.2
+XV_236_CLOSED,Bool,Valve 36 closed limit,%MX709.4
+XV_236_CMD,Bool,Valve 36 open command,%MX709.6
+XV_236_FLT,Bool,Valve 36 travel fault,%MX710.0
+XV_237_OPEN,Bool,Valve 37 open limit,%MX710.2
+XV_237_CLOSED,Bool,Valve 37 closed limit,%MX710.4
+XV_237_CMD,Bool,Valve 37 open command,%MX710.6
+XV_237_FLT,Bool,Valve 37 travel fault,%MX711.0
+XV_238_OPEN,Bool,Valve 38 open limit,%MX711.2
+XV_238_CLOSED,Bool,Valve 38 closed limit,%MX711.4
+XV_238_CMD,Bool,Valve 38 open command,%MX711.6
+XV_238_FLT,Bool,Valve 38 travel fault,%MX712.0
+XV_239_OPEN,Bool,Valve 39 open limit,%MX712.2
+XV_239_CLOSED,Bool,Valve 39 closed limit,%MX712.4
+XV_239_CMD,Bool,Valve 39 open command,%MX712.6
+XV_239_FLT,Bool,Valve 39 travel fault,%MX713.0
+XV_240_OPEN,Bool,Valve 40 open limit,%MX713.2
+XV_240_CLOSED,Bool,Valve 40 closed limit,%MX713.4
+XV_240_CMD,Bool,Valve 40 open command,%MX713.6
+XV_240_FLT,Bool,Valve 40 travel fault,%MX714.0
+MTR_301_RUN,Bool,Motor 1 running,%MX714.2
+MTR_301_FLT,Bool,Motor 1 trip,%MX714.4
+MTR_301_SPD,Int,Motor 1 speed ref,%MW5718
+MTR_301_AMPS,Float,Motor 1 current,%MD5720
+MTR_302_RUN,Bool,Motor 2 running,%MX715.2
+MTR_302_FLT,Bool,Motor 2 trip,%MX715.4
+MTR_302_SPD,Int,Motor 2 speed ref,%MW5726
+MTR_302_AMPS,Float,Motor 2 current,%MD5728
+MTR_303_RUN,Bool,Motor 3 running,%MX716.2
+MTR_303_FLT,Bool,Motor 3 trip,%MX716.4
+MTR_303_SPD,Int,Motor 3 speed ref,%MW5734
+MTR_303_AMPS,Float,Motor 3 current,%MD5736
+MTR_304_RUN,Bool,Motor 4 running,%MX717.2
+MTR_304_FLT,Bool,Motor 4 trip,%MX717.4
+MTR_304_SPD,Int,Motor 4 speed ref,%MW5742
+MTR_304_AMPS,Float,Motor 4 current,%MD5744
+MTR_305_RUN,Bool,Motor 5 running,%MX718.2
+MTR_305_FLT,Bool,Motor 5 trip,%MX718.4
+MTR_305_SPD,Int,Motor 5 speed ref,%MW5750
+MTR_305_AMPS,Float,Motor 5 current,%MD5752
+MTR_306_RUN,Bool,Motor 6 running,%MX719.2
+MTR_306_FLT,Bool,Motor 6 trip,%MX719.4
+MTR_306_SPD,Int,Motor 6 speed ref,%MW5758
+MTR_306_AMPS,Float,Motor 6 current,%MD5760
+MTR_307_RUN,Bool,Motor 7 running,%MX720.2
+MTR_307_FLT,Bool,Motor 7 trip,%MX720.4
+MTR_307_SPD,Int,Motor 7 speed ref,%MW5766
+MTR_307_AMPS,Float,Motor 7 current,%MD5768
+MTR_308_RUN,Bool,Motor 8 running,%MX721.2
+MTR_308_FLT,Bool,Motor 8 trip,%MX721.4
+MTR_308_SPD,Int,Motor 8 speed ref,%MW5774
+MTR_308_AMPS,Float,Motor 8 current,%MD5776
+MTR_309_RUN,Bool,Motor 9 running,%MX722.2
+MTR_309_FLT,Bool,Motor 9 trip,%MX722.4
+MTR_309_SPD,Int,Motor 9 speed ref,%MW5782
+MTR_309_AMPS,Float,Motor 9 current,%MD5784
+MTR_310_RUN,Bool,Motor 10 running,%MX723.2
+MTR_310_FLT,Bool,Motor 10 trip,%MX723.4
+MTR_310_SPD,Int,Motor 10 speed ref,%MW5790
+MTR_310_AMPS,Float,Motor 10 current,%MD5792
+MTR_311_RUN,Bool,Motor 11 running,%MX724.2
+MTR_311_FLT,Bool,Motor 11 trip,%MX724.4
+MTR_311_SPD,Int,Motor 11 speed ref,%MW5798
+MTR_311_AMPS,Float,Motor 11 current,%MD5800
+MTR_312_RUN,Bool,Motor 12 running,%MX725.2
+MTR_312_FLT,Bool,Motor 12 trip,%MX725.4
+MTR_312_SPD,Int,Motor 12 speed ref,%MW5806
+MTR_312_AMPS,Float,Motor 12 current,%MD5808
+MTR_313_RUN,Bool,Motor 13 running,%MX726.2
+MTR_313_FLT,Bool,Motor 13 trip,%MX726.4
+MTR_313_SPD,Int,Motor 13 speed ref,%MW5814
+MTR_313_AMPS,Float,Motor 13 current,%MD5816
+MTR_314_RUN,Bool,Motor 14 running,%MX727.2
+MTR_314_FLT,Bool,Motor 14 trip,%MX727.4
+MTR_314_SPD,Int,Motor 14 speed ref,%MW5822
+MTR_314_AMPS,Float,Motor 14 current,%MD5824
+INT_MODE,Int,"Intake area mode (0 off, 1 auto, 2 manual)",%MW5826
+INT_RUNNING,Bool,Intake area running,%MX728.4
+INT_ALARM,Bool,Intake area common alarm,%MX728.6
+INT_ESTOP,Bool,Intake emergency stop,%MX729.0
+INT_TOTAL,LREAL,Intake totalised flow,%MD5834
+INT_BATCH,String,Intake current batch id,%MW5836
+TRF_MODE,Int,"Transfer area mode (0 off, 1 auto, 2 manual)",%MW5838
+TRF_RUNNING,Bool,Transfer area running,%MX730.0
+TRF_ALARM,Bool,Transfer area common alarm,%MX730.2
+TRF_ESTOP,Bool,Transfer emergency stop,%MX730.4
+TRF_TOTAL,LREAL,Transfer totalised flow,%MD5846
+TRF_BATCH,String,Transfer current batch id,%MW5848
+FLT_MODE,Int,"Filtration area mode (0 off, 1 auto, 2 manual)",%MW5850
+FLT_RUNNING,Bool,Filtration area running,%MX731.4
+FLT_ALARM,Bool,Filtration area common alarm,%MX731.6
+FLT_ESTOP,Bool,Filtration emergency stop,%MX732.0
+FLT_TOTAL,LREAL,Filtration totalised flow,%MD5858
+FLT_BATCH,String,Filtration current batch id,%MW5860
+CHM_MODE,Int,"Chemical area mode (0 off, 1 auto, 2 manual)",%MW5862
+CHM_RUNNING,Bool,Chemical area running,%MX733.0
+CHM_ALARM,Bool,Chemical area common alarm,%MX733.2
+CHM_ESTOP,Bool,Chemical emergency stop,%MX733.4
+CHM_TOTAL,LREAL,Chemical totalised flow,%MD5870
+CHM_BATCH,String,Chemical current batch id,%MW5872
+DST_MODE,Int,"Distribution area mode (0 off, 1 auto, 2 manual)",%MW5874
+DST_RUNNING,Bool,Distribution area running,%MX734.4
+DST_ALARM,Bool,Distribution area common alarm,%MX734.6
+DST_ESTOP,Bool,Distribution emergency stop,%MX735.0
+DST_TOTAL,LREAL,Distribution totalised flow,%MD5882
+DST_BATCH,String,Distribution current batch id,%MW5884
+BWS_MODE,Int,"Backwash area mode (0 off, 1 auto, 2 manual)",%MW5886
+BWS_RUNNING,Bool,Backwash area running,%MX736.0
+BWS_ALARM,Bool,Backwash area common alarm,%MX736.2
+BWS_ESTOP,Bool,Backwash emergency stop,%MX736.4
+BWS_TOTAL,LREAL,Backwash totalised flow,%MD5894
+BWS_BATCH,String,Backwash current batch id,%MW5896
+2ND PUMP RUN,Bool,Legacy tag from the old panel,%MX737.2
+MOTOR-SPEED-REF,Int,Hyphenated legacy tag,%MW5900
+Chlorine Dose PV,Float,Space-separated legacy tag,%MD5902
+PLANT.TOTAL.FLOW,REAL,Dotted OPC-style tag,%MD5904
+Order,DINT,"Reserved word, quoted in SQL",%MD5906
+3PHASE_VOLTS,REAL,Leading digit,%MD5908
+UTL_401_STS,Bool,Utility point 1 status,%MX738.6
+UTL_402_STS,Bool,Utility point 2 status,%MX739.0
+UTL_403_STS,Bool,Utility point 3 status,%MX739.2
+UTL_404_STS,Bool,Utility point 4 status,%MX739.4
+UTL_405_STS,Bool,Utility point 5 status,%MX739.6
+UTL_406_STS,Bool,Utility point 6 status,%MX740.0
+UTL_407_STS,Bool,Utility point 7 status,%MX740.2
+UTL_408_STS,Bool,Utility point 8 status,%MX740.4
+UTL_409_STS,Bool,Utility point 9 status,%MX740.6
+UTL_410_STS,Bool,Utility point 10 status,%MX741.0
+UTL_411_STS,Bool,Utility point 11 status,%MX741.2
+UTL_412_STS,Bool,Utility point 12 status,%MX741.4
+UTL_413_STS,Bool,Utility point 13 status,%MX741.6
+UTL_414_STS,Bool,Utility point 14 status,%MX742.0
+UTL_415_STS,Bool,Utility point 15 status,%MX742.2
+UTL_416_STS,Bool,Utility point 16 status,%MX742.4
+UTL_417_STS,Bool,Utility point 17 status,%MX742.6
+UTL_418_STS,Bool,Utility point 18 status,%MX743.0
+UTL_419_STS,Bool,Utility point 19 status,%MX743.2
+UTL_420_STS,Bool,Utility point 20 status,%MX743.4
+UTL_421_STS,Bool,Utility point 21 status,%MX743.6
+UTL_422_STS,Bool,Utility point 22 status,%MX744.0
+UTL_423_STS,Bool,Utility point 23 status,%MX744.2
+UTL_424_STS,Bool,Utility point 24 status,%MX744.4
+UTL_425_STS,Bool,Utility point 25 status,%MX744.6
+UTL_426_STS,Bool,Utility point 26 status,%MX745.0
+UTL_427_STS,Bool,Utility point 27 status,%MX745.2
+UTL_428_STS,Bool,Utility point 28 status,%MX745.4
+UTL_429_STS,Bool,Utility point 29 status,%MX745.6
+UTL_430_STS,Bool,Utility point 30 status,%MX746.0
+UTL_431_STS,Bool,Utility point 31 status,%MX746.2
+UTL_432_STS,Bool,Utility point 32 status,%MX746.4
+UTL_433_STS,Bool,Utility point 33 status,%MX746.6
+UTL_434_STS,Bool,Utility point 34 status,%MX747.0
+UTL_435_STS,Bool,Utility point 35 status,%MX747.2
+UTL_436_STS,Bool,Utility point 36 status,%MX747.4
+UTL_437_STS,Bool,Utility point 37 status,%MX747.6
+UTL_438_STS,Bool,Utility point 38 status,%MX748.0
+UTL_439_STS,Bool,Utility point 39 status,%MX748.2
+UTL_440_STS,Bool,Utility point 40 status,%MX748.4
+UTL_441_STS,Bool,Utility point 41 status,%MX748.6
+UTL_442_STS,Bool,Utility point 42 status,%MX749.0
+UTL_443_STS,Bool,Utility point 43 status,%MX749.2
+UTL_444_STS,Bool,Utility point 44 status,%MX749.4
+UTL_445_STS,Bool,Utility point 45 status,%MX749.6
+UTL_446_STS,Bool,Utility point 46 status,%MX750.0
+UTL_447_STS,Bool,Utility point 47 status,%MX750.2
+UTL_448_STS,Bool,Utility point 48 status,%MX750.4
+UTL_449_STS,Bool,Utility point 49 status,%MX750.6
+UTL_450_STS,Bool,Utility point 50 status,%MX751.0
+UTL_451_STS,Bool,Utility point 51 status,%MX751.2
+UTL_452_STS,Bool,Utility point 52 status,%MX751.4
+UTL_453_STS,Bool,Utility point 53 status,%MX751.6
+UTL_454_STS,Bool,Utility point 54 status,%MX752.0
+UTL_455_STS,Bool,Utility point 55 status,%MX752.2
+UTL_456_STS,Bool,Utility point 56 status,%MX752.4
+UTL_457_STS,Bool,Utility point 57 status,%MX752.6
+UTL_458_STS,Bool,Utility point 58 status,%MX753.0
+UTL_459_STS,Bool,Utility point 59 status,%MX753.2
+UTL_460_STS,Bool,Utility point 60 status,%MX753.4
+UTL_461_STS,Bool,Utility point 61 status,%MX753.6
+UTL_462_STS,Bool,Utility point 62 status,%MX754.0
+UTL_463_STS,Bool,Utility point 63 status,%MX754.2
+UTL_464_STS,Bool,Utility point 64 status,%MX754.4
+UTL_465_STS,Bool,Utility point 65 status,%MX754.6
+UTL_466_STS,Bool,Utility point 66 status,%MX755.0
+UTL_467_STS,Bool,Utility point 67 status,%MX755.2
+UTL_468_STS,Bool,Utility point 68 status,%MX755.4
+UTL_469_STS,Bool,Utility point 69 status,%MX755.6
+UTL_470_STS,Bool,Utility point 70 status,%MX756.0
+UTL_471_STS,Bool,Utility point 71 status,%MX756.2
+UTL_472_STS,Bool,Utility point 72 status,%MX756.4
+UTL_473_STS,Bool,Utility point 73 status,%MX756.6
+UTL_474_STS,Bool,Utility point 74 status,%MX757.0
+UTL_475_STS,Bool,Utility point 75 status,%MX757.2
+UTL_476_STS,Bool,Utility point 76 status,%MX757.4
+UTL_477_STS,Bool,Utility point 77 status,%MX757.6
+UTL_478_STS,Bool,Utility point 78 status,%MX758.0
+UTL_479_STS,Bool,Utility point 79 status,%MX758.2
+UTL_480_STS,Bool,Utility point 80 status,%MX758.4
+UTL_481_STS,Bool,Utility point 81 status,%MX758.6
+UTL_482_STS,Bool,Utility point 82 status,%MX759.0
+UTL_483_STS,Bool,Utility point 83 status,%MX759.2
+UTL_484_STS,Bool,Utility point 84 status,%MX759.4
+UTL_485_STS,Bool,Utility point 85 status,%MX759.6
+UTL_486_STS,Bool,Utility point 86 status,%MX760.0
+UTL_487_STS,Bool,Utility point 87 status,%MX760.2
+UTL_488_STS,Bool,Utility point 88 status,%MX760.4
+UTL_489_STS,Bool,Utility point 89 status,%MX760.6
+UTL_490_STS,Bool,Utility point 90 status,%MX761.0
+UTL_491_STS,Bool,Utility point 91 status,%MX761.2
+UTL_492_STS,Bool,Utility point 92 status,%MX761.4
+UTL_493_STS,Bool,Utility point 93 status,%MX761.6
+UTL_494_STS,Bool,Utility point 94 status,%MX762.0
+UTL_495_STS,Bool,Utility point 95 status,%MX762.2
+UTL_496_STS,Bool,Utility point 96 status,%MX762.4
+UTL_497_STS,Bool,Utility point 97 status,%MX762.6
+UTL_498_STS,Bool,Utility point 98 status,%MX763.0
+UTL_499_STS,Bool,Utility point 99 status,%MX763.2
+UTL_500_STS,Bool,Utility point 100 status,%MX763.4
+UTL_501_STS,Bool,Utility point 101 status,%MX763.6
+UTL_502_STS,Bool,Utility point 102 status,%MX764.0
+UTL_503_STS,Bool,Utility point 103 status,%MX764.2
+UTL_504_STS,Bool,Utility point 104 status,%MX764.4
+UTL_505_STS,Bool,Utility point 105 status,%MX764.6
+UTL_506_STS,Bool,Utility point 106 status,%MX765.0
+UTL_507_STS,Bool,Utility point 107 status,%MX765.2
+UTL_508_STS,Bool,Utility point 108 status,%MX765.4
+UTL_509_STS,Bool,Utility point 109 status,%MX765.6
+UTL_510_STS,Bool,Utility point 110 status,%MX766.0
+UTL_511_STS,Bool,Utility point 111 status,%MX766.2
+UTL_512_STS,Bool,Utility point 112 status,%MX766.4
+UTL_513_STS,Bool,Utility point 113 status,%MX766.6
+UTL_514_STS,Bool,Utility point 114 status,%MX767.0
+UTL_515_STS,Bool,Utility point 115 status,%MX767.2
+UTL_516_STS,Bool,Utility point 116 status,%MX767.4
+UTL_517_STS,Bool,Utility point 117 status,%MX767.6
+UTL_518_STS,Bool,Utility point 118 status,%MX768.0
+UTL_519_STS,Bool,Utility point 119 status,%MX768.2
+UTL_520_STS,Bool,Utility point 120 status,%MX768.4
+UTL_521_STS,Bool,Utility point 121 status,%MX768.6
+UTL_522_STS,Bool,Utility point 122 status,%MX769.0
+UTL_523_STS,Bool,Utility point 123 status,%MX769.2
+UTL_524_STS,Bool,Utility point 124 status,%MX769.4
+UTL_525_STS,Bool,Utility point 125 status,%MX769.6
+UTL_526_STS,Bool,Utility point 126 status,%MX770.0
+UTL_527_STS,Bool,Utility point 127 status,%MX770.2
+UTL_528_STS,Bool,Utility point 128 status,%MX770.4
+UTL_529_STS,Bool,Utility point 129 status,%MX770.6
+UTL_530_STS,Bool,Utility point 130 status,%MX771.0
+UTL_531_STS,Bool,Utility point 131 status,%MX771.2
+UTL_532_STS,Bool,Utility point 132 status,%MX771.4
+UTL_533_STS,Bool,Utility point 133 status,%MX771.6
+UTL_534_STS,Bool,Utility point 134 status,%MX772.0
+UTL_535_STS,Bool,Utility point 135 status,%MX772.2
+UTL_536_STS,Bool,Utility point 136 status,%MX772.4
+UTL_537_STS,Bool,Utility point 137 status,%MX772.6
+UTL_538_STS,Bool,Utility point 138 status,%MX773.0
+UTL_539_STS,Bool,Utility point 139 status,%MX773.2
+UTL_540_STS,Bool,Utility point 140 status,%MX773.4
+UTL_541_STS,Bool,Utility point 141 status,%MX773.6
+UTL_542_STS,Bool,Utility point 142 status,%MX774.0
+UTL_543_STS,Bool,Utility point 143 status,%MX774.2
+UTL_544_STS,Bool,Utility point 144 status,%MX774.4
+UTL_545_STS,Bool,Utility point 145 status,%MX774.6
+UTL_546_STS,Bool,Utility point 146 status,%MX775.0
+UTL_547_STS,Bool,Utility point 147 status,%MX775.2
+UTL_548_STS,Bool,Utility point 148 status,%MX775.4
+UTL_549_STS,Bool,Utility point 149 status,%MX775.6
+UTL_550_STS,Bool,Utility point 150 status,%MX776.0
+UTL_551_STS,Bool,Utility point 151 status,%MX776.2
+UTL_552_STS,Bool,Utility point 152 status,%MX776.4
+UTL_553_STS,Bool,Utility point 153 status,%MX776.6
+UTL_554_STS,Bool,Utility point 154 status,%MX777.0
+UTL_555_STS,Bool,Utility point 155 status,%MX777.2
+UTL_556_STS,Bool,Utility point 156 status,%MX777.4
+UTL_557_STS,Bool,Utility point 157 status,%MX777.6
+UTL_558_STS,Bool,Utility point 158 status,%MX778.0
+UTL_559_STS,Bool,Utility point 159 status,%MX778.2
+UTL_560_STS,Bool,Utility point 160 status,%MX778.4
+UTL_561_STS,Bool,Utility point 161 status,%MX778.6
+UTL_562_STS,Bool,Utility point 162 status,%MX779.0
+UTL_563_STS,Bool,Utility point 163 status,%MX779.2
+UTL_564_STS,Bool,Utility point 164 status,%MX779.4
+UTL_565_STS,Bool,Utility point 165 status,%MX779.6
+UTL_566_STS,Bool,Utility point 166 status,%MX780.0
+UTL_567_STS,Bool,Utility point 167 status,%MX780.2
+UTL_568_STS,Bool,Utility point 168 status,%MX780.4
+UTL_569_STS,Bool,Utility point 169 status,%MX780.6
+UTL_570_STS,Bool,Utility point 170 status,%MX781.0
+UTL_571_STS,Bool,Utility point 171 status,%MX781.2
+UTL_572_STS,Bool,Utility point 172 status,%MX781.4
+UTL_573_STS,Bool,Utility point 173 status,%MX781.6
+UTL_574_STS,Bool,Utility point 174 status,%MX782.0
+UTL_575_STS,Bool,Utility point 175 status,%MX782.2
+UTL_576_STS,Bool,Utility point 176 status,%MX782.4
+UTL_577_STS,Bool,Utility point 177 status,%MX782.6
+UTL_578_STS,Bool,Utility point 178 status,%MX783.0
+UTL_579_STS,Bool,Utility point 179 status,%MX783.2
+UTL_580_STS,Bool,Utility point 180 status,%MX783.4
+UTL_581_STS,Bool,Utility point 181 status,%MX783.6
+UTL_582_STS,Bool,Utility point 182 status,%MX784.0
+UTL_583_STS,Bool,Utility point 183 status,%MX784.2
+UTL_584_STS,Bool,Utility point 184 status,%MX784.4
+UTL_585_STS,Bool,Utility point 185 status,%MX784.6
+UTL_586_STS,Bool,Utility point 186 status,%MX785.0
+UTL_587_STS,Bool,Utility point 187 status,%MX785.2
+UTL_588_STS,Bool,Utility point 188 status,%MX785.4
+UTL_589_STS,Bool,Utility point 189 status,%MX785.6
+UTL_590_STS,Bool,Utility point 190 status,%MX786.0
+UTL_591_STS,Bool,Utility point 191 status,%MX786.2
+UTL_592_STS,Bool,Utility point 192 status,%MX786.4
+UTL_593_STS,Bool,Utility point 193 status,%MX786.6
+UTL_594_STS,Bool,Utility point 194 status,%MX787.0
+UTL_595_STS,Bool,Utility point 195 status,%MX787.2
+UTL_596_STS,Bool,Utility point 196 status,%MX787.4
+UTL_597_STS,Bool,Utility point 197 status,%MX787.6
+UTL_598_STS,Bool,Utility point 198 status,%MX788.0
+UTL_599_STS,Bool,Utility point 199 status,%MX788.2
+UTL_600_STS,Bool,Utility point 200 status,%MX788.4
+UTL_601_STS,Bool,Utility point 201 status,%MX788.6
+UTL_602_STS,Bool,Utility point 202 status,%MX789.0
+UTL_603_STS,Bool,Utility point 203 status,%MX789.2
+UTL_604_STS,Bool,Utility point 204 status,%MX789.4
+UTL_605_STS,Bool,Utility point 205 status,%MX789.6
+UTL_606_STS,Bool,Utility point 206 status,%MX790.0
+UTL_607_STS,Bool,Utility point 207 status,%MX790.2
+UTL_608_STS,Bool,Utility point 208 status,%MX790.4
+UTL_609_STS,Bool,Utility point 209 status,%MX790.6
+UTL_610_STS,Bool,Utility point 210 status,%MX791.0
+UTL_611_STS,Bool,Utility point 211 status,%MX791.2
+UTL_612_STS,Bool,Utility point 212 status,%MX791.4
+UTL_613_STS,Bool,Utility point 213 status,%MX791.6
+UTL_614_STS,Bool,Utility point 214 status,%MX792.0
+UTL_615_STS,Bool,Utility point 215 status,%MX792.2
+UTL_616_STS,Bool,Utility point 216 status,%MX792.4
+UTL_617_STS,Bool,Utility point 217 status,%MX792.6
+UTL_618_STS,Bool,Utility point 218 status,%MX793.0
+UTL_619_STS,Bool,Utility point 219 status,%MX793.2
+UTL_620_STS,Bool,Utility point 220 status,%MX793.4
+UTL_621_STS,Bool,Utility point 221 status,%MX793.6
+UTL_622_STS,Bool,Utility point 222 status,%MX794.0
+UTL_623_STS,Bool,Utility point 223 status,%MX794.2
+UTL_624_STS,Bool,Utility point 224 status,%MX794.4
+UTL_625_STS,Bool,Utility point 225 status,%MX794.6
+UTL_626_STS,Bool,Utility point 226 status,%MX795.0
+UTL_627_STS,Bool,Utility point 227 status,%MX795.2
+UTL_628_STS,Bool,Utility point 228 status,%MX795.4
+UTL_629_STS,Bool,Utility point 229 status,%MX795.6
+UTL_630_STS,Bool,Utility point 230 status,%MX796.0
+UTL_631_STS,Bool,Utility point 231 status,%MX796.2
+UTL_632_STS,Bool,Utility point 232 status,%MX796.4
+UTL_633_STS,Bool,Utility point 233 status,%MX796.6
+UTL_634_STS,Bool,Utility point 234 status,%MX797.0
+UTL_635_STS,Bool,Utility point 235 status,%MX797.2
+UTL_636_STS,Bool,Utility point 236 status,%MX797.4
+UTL_637_STS,Bool,Utility point 237 status,%MX797.6
+UTL_638_STS,Bool,Utility point 238 status,%MX798.0
+UTL_639_STS,Bool,Utility point 239 status,%MX798.2
+UTL_640_STS,Bool,Utility point 240 status,%MX798.4
+UTL_641_STS,Bool,Utility point 241 status,%MX798.6
+UTL_642_STS,Bool,Utility point 242 status,%MX799.0
+UTL_643_STS,Bool,Utility point 243 status,%MX799.2
+UTL_644_STS,Bool,Utility point 244 status,%MX799.4
+UTL_645_STS,Bool,Utility point 245 status,%MX799.6
+UTL_646_STS,Bool,Utility point 246 status,%MX800.0
+UTL_647_STS,Bool,Utility point 247 status,%MX800.2
+UTL_648_STS,Bool,Utility point 248 status,%MX800.4
+UTL_649_STS,Bool,Utility point 249 status,%MX800.6
+UTL_650_STS,Bool,Utility point 250 status,%MX801.0
+UTL_651_STS,Bool,Utility point 251 status,%MX801.2
+UTL_652_STS,Bool,Utility point 252 status,%MX801.4
+UTL_653_STS,Bool,Utility point 253 status,%MX801.6
+UTL_654_STS,Bool,Utility point 254 status,%MX802.0
+UTL_655_STS,Bool,Utility point 255 status,%MX802.2
+UTL_656_STS,Bool,Utility point 256 status,%MX802.4
+UTL_657_STS,Bool,Utility point 257 status,%MX802.6
+UTL_658_STS,Bool,Utility point 258 status,%MX803.0
+UTL_659_STS,Bool,Utility point 259 status,%MX803.2
+UTL_660_STS,Bool,Utility point 260 status,%MX803.4
+UTL_661_STS,Bool,Utility point 261 status,%MX803.6
+UTL_662_STS,Bool,Utility point 262 status,%MX804.0
+UTL_663_STS,Bool,Utility point 263 status,%MX804.2
+UTL_664_STS,Bool,Utility point 264 status,%MX804.4
+UTL_665_STS,Bool,Utility point 265 status,%MX804.6
+UTL_666_STS,Bool,Utility point 266 status,%MX805.0
+UTL_667_STS,Bool,Utility point 267 status,%MX805.2
+UTL_668_STS,Bool,Utility point 268 status,%MX805.4
+UTL_669_STS,Bool,Utility point 269 status,%MX805.6
+UTL_670_STS,Bool,Utility point 270 status,%MX806.0
+UTL_671_STS,Bool,Utility point 271 status,%MX806.2
+UTL_672_STS,Bool,Utility point 272 status,%MX806.4
+UTL_673_STS,Bool,Utility point 273 status,%MX806.6
+UTL_674_STS,Bool,Utility point 274 status,%MX807.0
+UTL_675_STS,Bool,Utility point 275 status,%MX807.2
+UTL_676_STS,Bool,Utility point 276 status,%MX807.4
+UTL_677_STS,Bool,Utility point 277 status,%MX807.6
+UTL_678_STS,Bool,Utility point 278 status,%MX808.0
+UTL_679_STS,Bool,Utility point 279 status,%MX808.2
+UTL_680_STS,Bool,Utility point 280 status,%MX808.4
+UTL_681_STS,Bool,Utility point 281 status,%MX808.6
+UTL_682_STS,Bool,Utility point 282 status,%MX809.0
+UTL_683_STS,Bool,Utility point 283 status,%MX809.2
+UTL_684_STS,Bool,Utility point 284 status,%MX809.4
+UTL_685_STS,Bool,Utility point 285 status,%MX809.6
+UTL_686_STS,Bool,Utility point 286 status,%MX810.0
+UTL_687_STS,Bool,Utility point 287 status,%MX810.2
+UTL_688_STS,Bool,Utility point 288 status,%MX810.4
+UTL_689_STS,Bool,Utility point 289 status,%MX810.6
+UTL_690_STS,Bool,Utility point 290 status,%MX811.0
+UTL_691_STS,Bool,Utility point 291 status,%MX811.2
+UTL_692_STS,Bool,Utility point 292 status,%MX811.4
+UTL_693_STS,Bool,Utility point 293 status,%MX811.6
+UTL_694_STS,Bool,Utility point 294 status,%MX812.0
