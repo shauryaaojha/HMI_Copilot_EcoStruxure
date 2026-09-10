@@ -113,6 +113,15 @@ export function useGeneration() {
       try {
         let used: Source = "local";
 
+        /**
+         * Only a failure to *reach* the route falls back. A failure while
+         * applying what it sent is our bug, not the route's, and running the
+         * local emitter on top of a successful run would build the screen a
+         * second time - which is exactly what a structuredClone throw in
+         * snapshot() used to do, silently, leaving two screens in the store.
+         */
+        let applyFailure: unknown;
+
         try {
           const response = await fetch("/api/generate", {
             method: "POST",
@@ -133,7 +142,12 @@ export function useGeneration() {
                 break;
               }
               events.push(event);
-              apply(event);
+              try {
+                apply(event);
+              } catch (caught) {
+                applyFailure = caught;
+                break;
+              }
               if (event.type === "done") break;
             }
 
@@ -143,6 +157,9 @@ export function useGeneration() {
         } catch {
           // Network or route failure falls through to the local emitter.
         }
+
+        // Surface it as itself rather than as a route that did not answer.
+        if (applyFailure) throw applyFailure;
 
         setSource(used);
 

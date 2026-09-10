@@ -6,6 +6,7 @@
  */
 
 import { create } from "zustand";
+import { current } from "immer";
 import { immer } from "zustand/middleware/immer";
 import type { Alarm, Part, Screen, Variable } from "@/lib/ote/schema";
 import type { Equipment, PipelineStep, StepState } from "@/types/events";
@@ -371,16 +372,19 @@ export const useProject = create<ProjectState>()(
 
     snapshot: (description) =>
       set((s) => {
-        // Structured clone rather than a reference: the store is mutable under
-        // immer, so a shallow copy would follow every later edit.
+        // `current()` before copying, because `s` is an immer draft and a draft
+        // is a Proxy - structuredClone throws "could not be cloned" on one, and
+        // it throws from inside whatever applied the event, which is a long way
+        // from where it reads. current() returns a detached plain snapshot, so
+        // the version cannot follow later edits either.
         s.versions.unshift({
           at: Date.now(),
           description,
           author: "You",
-          screens: structuredClone(s.screens),
-          variables: structuredClone(s.variables),
-          alarms: structuredClone(s.alarms),
-          bindings: structuredClone(s.bindings),
+          screens: current(s.screens),
+          variables: current(s.variables),
+          alarms: current(s.alarms),
+          bindings: current(s.bindings),
         });
         // Twenty is enough to demo with and cheap enough to keep in memory.
         if (s.versions.length > 20) s.versions.length = 20;
@@ -390,10 +394,12 @@ export const useProject = create<ProjectState>()(
       set((s) => {
         const version = s.versions.find((v) => v.at === at);
         if (!version) return;
-        s.screens = structuredClone(version.screens);
-        s.variables = structuredClone(version.variables);
-        s.alarms = structuredClone(version.alarms);
-        s.bindings = structuredClone(version.bindings);
+        // Same reason: `version` is read out of the draft, so its arrays are
+        // drafts too. current() detaches them before they become live state.
+        s.screens = current(version.screens);
+        s.variables = current(version.variables);
+        s.alarms = current(version.alarms);
+        s.bindings = current(version.bindings);
         s.activeScreenId = s.screens[0]?.UniqueId;
         s.selectedIds = [];
         s.findings = [];
