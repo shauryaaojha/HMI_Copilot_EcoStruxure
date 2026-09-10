@@ -111,6 +111,10 @@ async function main() {
         d: toPathData(raw),
         width,
         height,
+        // A Path part is written from Commands and Points, not from the derived
+        // `d`. Dropping them makes every symbol browsable but unplaceable.
+        Commands: raw.Commands,
+        Points: raw.Points,
       });
     } catch (err) {
       skipped.push([path.basename(file), err.message]);

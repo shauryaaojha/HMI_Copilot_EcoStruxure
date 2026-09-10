@@ -91,6 +91,47 @@ def font_of(node, default=12):
     return face(f.get("Size", default), f.get("Bold", False))
 
 
+ARITY = {"M": 1, "L": 1, "Q": 2, "C": 3, "z": 0, "Z": 0}
+
+
+def draw_path(d, node):
+    """One of the shipped graphic objects, scaled into its box.
+
+    Curves are flattened to their end points - close enough to confirm the
+    geometry survived, and this renderer exists to check the file, not to
+    reproduce the product's anti-aliasing."""
+    x0, y0, x1, y1 = box_of(node)
+    nums = [float(v) for v in node["Points"].split(",") if v.strip()]
+    pts = list(zip(nums[0::2], nums[1::2]))
+    if not pts:
+        return
+    mx = max(px for px, _ in pts) or 1
+    my = max(py for _, py in pts) or 1
+    scale = min((x1 - x0) / mx, (y1 - y0) / my)
+    fill = colour_of(node, "Fill", 0xD9D9D9)
+    line = colour_of(node, "Border", 0x515151)
+
+    i, sub = 0, []
+
+    def flush(sub):
+        if len(sub) > 2:
+            d.polygon([(x0 + px * scale, y0 + py * scale) for px, py in sub],
+                      fill=fill, outline=line)
+
+    for command in node["Commands"]:
+        arity = ARITY.get(command, 0)
+        if arity == 0:
+            flush(sub)
+            sub = []
+            continue
+        if command == "M":
+            flush(sub)
+            sub = []
+        sub.extend(pts[i:i + arity])
+        i += arity
+    flush(sub)
+
+
 def draw_alarm_summary(d, node, live):
     x0, y0, x1, y1 = box_of(node)
     d.rectangle([x0, y0, x1, y1], fill=rgb(21), outline=rgb(22), width=SCALE)
@@ -147,6 +188,9 @@ def draw(d, node, live):
         place(d, text, font_of(node, 20), box,
               layout.get("HorizontalAlignment", 4), 64, colour_of(node, "TextColor"))
 
+    elif t == "Path":
+        draw_path(d, node)
+
     elif t == "AlarmSummary":
         draw_alarm_summary(d, node, live)
 
@@ -173,11 +217,19 @@ def render(screen, live, path):
 
 
 def main():
+    """render_screen.py [project.eote] [outdir] [prefix]
+
+    The prefix defaults to "screen", giving screen_design.png and
+    screen_live.png - the pump-station renders the deck and the canvas test both
+    depend on. Pass a third argument when rendering any other project, or you
+    will quietly overwrite them."""
     eote = sys.argv[1] if len(sys.argv) > 1 else "demo_project/HMICopilot_PumpStation.eote"
     outdir = sys.argv[2] if len(sys.argv) > 2 else "assets"
+    prefix = sys.argv[3] if len(sys.argv) > 3 else "screen"
     os.makedirs(outdir, exist_ok=True)
     screen = load_screen(eote)
-    for live, name in ((False, "screen_design.png"), (True, "screen_live.png")):
+    for live, suffix in ((False, "design"), (True, "live")):
+        name = f"{prefix}_{suffix}.png"
         print("wrote", render(screen, live, os.path.join(outdir, name)))
 
 
