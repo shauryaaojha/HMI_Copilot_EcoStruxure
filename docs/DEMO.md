@@ -56,10 +56,14 @@ Then, in the browser:
 
 ### If the model is slow or unreachable
 
-Nothing breaks. Equipment inference is a parse of the tag names and runs
-offline, so the screen still builds; the timeline says `No model key set` or
-names the failure, and never implies a model was involved when it was not. The
-ten seconds are the only thing you lose.
+**Generation survives; conversation does not.** Equipment inference is a parse
+of the tag names and runs offline, so beats 4 and 5 still build a screen and the
+timeline says `No model key set` rather than implying a model was involved.
+
+But beat 6 — the follow-up edit — reads a sentence, and `/api/chat` answers
+"No model key is configured, so I cannot read a request in words." **Check
+`web/.env.local` has a key before you present.** Without one, cut beat 6 and do
+not mention conversation; the rest of the path is unaffected.
 
 ---
 
@@ -70,14 +74,15 @@ ten seconds are the only thing you lose.
 | 1 | 0:00 | Landing page. Click **Open the workspace**. | "An HMI engineer's week starts with a tag list and ends with a screen. We compressed that." |
 | 2 | 0:08 | Nav rail → **Tags** → *Use the sample plant export*. | "This is a real plant export. Twelve hundred tags." |
 | 3 | 0:15 | Point at the Tag Summary and expand the corrections panel. | "1,248 tags. Five names it had to correct — and it tells you, rather than silently fixing them. That's the difference between a tool you trust and one you check." |
-| 4 | 0:25 | **Generate a screen** (top right) → back on the workspace, click the **Pump station** quick prompt, press **Generate Screen**. | "Now one sentence of plain English." |
+| 4 | 0:25 | **Generate a screen** (top right) → back on the workspace. Type the sentence into the **Copilot** pane and press **Enter**. | "Now one sentence of plain English." |
 | 5 | 0:32 | Say nothing for a beat. Let objects land on the canvas one at a time and the timeline fill. | "It's not thinking. It's parsing tags, inferring equipment, choosing parts, laying out, configuring alarms, resolving bindings, validating, packaging — and telling you which, in engineering language." |
-| 6 | 0:50 | Click a **NumericDisplay** on the canvas. Point at the inspector. | "Every object is real. These property editors are generated from the same schemas the file format defines — so the inspector can't offer you a property EcoStruxure doesn't have." |
-| 7 | 0:58 | **Toggle the theme in the top bar.** Point at the canvas. | "Watch the screen. The app changes; the HMI doesn't. Its colours are palette indices out of the project's own colour set. The preview can't lie about the output." |
-| 8 | 1:05 | Canvas tab → **Binding Map**. | "Every tag, every property it drives, generated. Green is a display binding, amber is an alarm trigger." |
-| 9 | 1:12 | Nav rail → **Validation** → **Run validation**. Click a finding. | "Type mismatches, unbound objects, naming, standards — caught at the desk. Today these surface at commissioning, with the panel already on the wall." |
-| 10 | 1:22 | Back to the workspace. Press **Simulate**. Wait. | "And before anyone drives to site: the level crosses its setpoint, the alarm fires, the lamp goes red. No hardware." |
-| 11 | 1:32 | Nav rail → **Export** → **Generate files**. | "And out the other end, a `.eote` that opens in Operator Terminal Expert 4.4. Not an export format we invented — the product's own." |
+| 6 | 0:48 | Type a follow-up: **"make the pump 2 fault lamp red"**. Press Enter. Watch it apply. | "And it isn't one shot. An engineer never describes a screen right the first time — so this is a conversation with the project, and every turn is undoable as a unit." |
+| 7 | 1:00 | Click a **NumericDisplay** on the canvas. Point at the inspector. | "Every object is real. These property editors are generated from the same schemas the file format defines — so the inspector can't offer you a property EcoStruxure doesn't have." |
+| 8 | 1:08 | **Toggle the theme in the top bar.** Point at the canvas. | "Watch the screen. The app changes; the HMI doesn't. Its colours are palette indices out of the project's own colour set. The preview can't lie about the output." |
+| 9 | 1:15 | Canvas tab → **Bindings**. | "Every tag, every property it drives, generated. Green is a display binding, amber is an alarm trigger." |
+| 10 | 1:22 | Nav rail → **Validation** → **Run validation**. Click a finding. | "Type mismatches, unbound objects, naming, standards — caught at the desk. Today these surface at commissioning, with the panel already on the wall." |
+| 11 | 1:32 | Back to the workspace. Press **Simulate**. Wait. | "And before anyone drives to site: the level crosses its setpoint, the alarm fires, the lamp goes red. No hardware." |
+| 12 | 1:42 | Nav rail → **Export** → **Generate files**. | "And out the other end, a `.eote` that opens in Operator Terminal Expert 4.4. Not an export format we invented — the product's own." |
 
 Land on the export screen. **Stop there.**
 
@@ -162,8 +167,13 @@ Extra beats, in the order they most often get asked for:
 
 ## Timing notes
 
-Beats 5 and 10 are the only ones where waiting is the point. Everything else
-should feel fast. If you are over ninety seconds, cut beats 8 and 9 — the
-binding map and validation are the easiest to describe in one sentence and come
-back to in questions. Never cut 7 or 11: the theme toggle is the proof that the
-preview is honest, and the export is the proof that any of it is real.
+Beats 5, 6 and 11 are the only ones where waiting is the point — a warm
+generation lands in about ten seconds, a follow-up edit rather less. Everything
+else should feel fast.
+
+If you are over ninety seconds, cut beats 9 and 10 — bindings and validation are
+the easiest to describe in one sentence and to come back to in questions.
+
+Never cut 6, 8 or 12. Beat 6 is the difference between a generator and a tool
+you can work with; beat 8 is the proof the preview is honest; beat 12 is the
+proof any of it is real.

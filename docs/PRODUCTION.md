@@ -38,9 +38,20 @@ exists; what changes is the shell around it, not the format layer.
 
 A is also the honest fit for the customer. Plant engineering happens on
 restricted and frequently air-gapped networks, and a cloud tool that phones a
-model API is a procurement fight at every site. The pipeline already runs with
-no model key at all — inference falls back to parsing tag names and the timeline
-says so. **That fallback is not a degraded mode; it is the air-gapped product.**
+model API is a procurement fight at every site.
+
+**How far the offline story actually goes has narrowed, and it is worth being
+exact about it.** Generation still runs with no model key — inference falls back
+to parsing tag names, and the timeline says so rather than implying a model was
+involved. But the primary interaction is now a conversation, and `/api/chat`
+answers *"No model key is configured, so I cannot read a request in words."*
+So without a model an engineer gets a one-shot generator, not the product.
+
+That makes a **local or self-hosted model a requirement for air-gapped sites,
+not a nice-to-have** — and it should be designed for now, while the provider
+seam is still one module (`lib/ai/converse.ts`, `lib/ai/pipeline.ts`) with
+Gemini and Claude already behind it. Adding a third path that points at an
+on-prem endpoint is cheap today and expensive once the call sites spread.
 
 ---
 
