@@ -30,6 +30,8 @@ export const OP_NAMES = [
   "deleteObject",
   "duplicateObject",
   "alignObjects",
+  "groupObjects",
+  "ungroupObjects",
   "bindTag",
   "addAlarm",
 ] as const;

@@ -179,6 +179,12 @@ size, and where the free space is. Use them:
   than a guess. Never invent 0,0 or 20,20 to fill the field in.
 - Adding several objects at once: give each a different position, and lay them
   out as a row or a column rather than scattering them.
+- Object names and tag names are different things, and ops take object names.
+  A lamp called Lamp_FAN101_RUN is driven by a tag called FAN_101_RUN; the tag
+  is in the variable list, the lamp is in the screen's object list. Use the one
+  from the object list.
+- To put objects in a group, use groupObjects with their names. Do not use
+  alignObjects for it - aligning moves things, grouping does not.
 - Give every addObject a name, and use that exact name in any op that follows -
   a bindTag naming something that does not exist binds nothing. If you leave
   the name out it is generated as the type and a number, Lamp_1, Lamp_2,
@@ -201,7 +207,7 @@ const D = {
   op: `One of: ${OP_NAMES.join(", ")}`,
   screen: "Screen name the op applies to. Omit for the active screen",
   target: "Object name the op acts on",
-  targets: "Object names, for alignObjects",
+  targets: "Object names, for alignObjects, groupObjects and ungroupObjects",
   name: "New name, for addScreen / renameScreen / addObject",
   equipment:
     "For addEquipment: which unit to place, by the id or label from the " +

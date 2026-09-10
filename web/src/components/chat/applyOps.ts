@@ -202,13 +202,48 @@ export function applyOps(ops: Op[]): OpOutcome {
   /** The type a made-up name implies: Lamp_1 -> Lamp, NumericDisplay_2 -> NumericDisplay. */
   const impliedType = (name: string) => name.replace(/_\d+$/, "").toLowerCase();
 
+  /** Letters and digits only, so FAN_111_RUN and Lamp_FAN111_RUN can be compared. */
+  const squash = (name: string) => name.replace(/[^a-z0-9]/gi, "").toLowerCase();
+
+  /**
+   * Finds the object an op is talking about.
+   *
+   * By name first, which is what the model is given and what the packager binds
+   * by. Then three fallbacks, in order of how sure they are:
+   *
+   *   - something this batch just created, when the name it invented could only
+   *     mean that;
+   *   - the object a tag drives. Asked to group the fan lamps, the model
+   *     answered with FAN_111_RUN - a tag, not an object - because the digest
+   *     lists both and the tag is the name an engineer would say. The lamp
+   *     showing that tag is unambiguously what was meant;
+   *   - a name that matches once punctuation is ignored, which is how
+   *     FAN_111_RUN reaches Lamp_FAN111_RUN when nothing is bound yet.
+   */
   const resolve = (s: Store, name: string) => {
     const direct = findPart(s, name);
     if (direct) return direct;
+
     // Only when it is unambiguous: one object of that type in this batch.
     const wanted = impliedType(name);
     const candidates = created.filter((c) => c.type.toLowerCase() === wanted);
-    return candidates.length === 1 ? findPart(s, candidates[0].name) : undefined;
+    if (candidates.length === 1) return findPart(s, candidates[0].name);
+
+    const asTag = s.bindings.find(
+      (b) => b.tag.toLowerCase() === name.trim().toLowerCase(),
+    );
+    if (asTag) {
+      const owner = s.screens
+        .flatMap((screen) => viewOf(screen).Children.map((part) => ({ part, screen })))
+        .find(({ part }) => part.UniqueId === asTag.targetId);
+      if (owner) return owner;
+    }
+
+    const needle = squash(name);
+    const loose = s.screens
+      .flatMap((screen) => viewOf(screen).Children.map((part) => ({ part, screen })))
+      .filter(({ part }) => squash(part.Name).includes(needle));
+    return loose.length === 1 ? loose[0] : undefined;
   };
 
   for (const op of ops) {
@@ -440,6 +475,36 @@ export function applyOps(ops: Op[]): OpOutcome {
         }
         s.duplicateObjects([found.part.UniqueId]);
         changes.push(note || `Duplicated ${found.part.Name}`);
+        break;
+      }
+
+      case "groupObjects": {
+        const ids = (op.targets ?? [])
+          .map((name) => resolve(s, name)?.part.UniqueId)
+          .filter((id): id is string => !!id);
+        const gone = (op.targets ?? []).filter((name) => !resolve(s, name));
+        for (const name of gone) problems.push(`No object called ${name}`);
+
+        if (ids.length < 2) {
+          problems.push("Grouping needs at least two objects that exist.");
+          break;
+        }
+        s.group(ids);
+        s.select(ids);
+        changes.push(note || `Grouped ${ids.length} objects`);
+        break;
+      }
+
+      case "ungroupObjects": {
+        const ids = (op.targets ?? [])
+          .map((name) => resolve(s, name)?.part.UniqueId)
+          .filter((id): id is string => !!id);
+        if (ids.length === 0) {
+          problems.push("None of those objects exist, so there was nothing to ungroup.");
+          break;
+        }
+        s.ungroup(ids);
+        changes.push(note || `Ungrouped ${ids.length} objects`);
         break;
       }
 
