@@ -4,10 +4,11 @@
  * Running a generation and applying what it streams back.
  *
  * The event contract in src/types/events.ts is frozen, so this consumer does
- * not care where the events came from. It asks /api/generate first; if the
- * route is still the Phase 4 stub - which answers with an `error` event saying
- * so - it falls back to the local emitter and says which one ran. When FORMAT
- * lands the real pipeline the fallback simply stops being reached.
+ * not care where the events came from. It asks /api/generate, which is live;
+ * the local emitter remains as the fallback for a route that is unreachable or
+ * refuses, so a network failure degrades the demo instead of ending it. Which
+ * one ran is always stated - a demo that cannot tell you whether the model was
+ * involved is not worth much.
  *
  * Events are applied one at a time and in order, so the canvas fills in object
  * by object rather than appearing at the end. That is the demo.
@@ -121,13 +122,14 @@ export function useGeneration() {
 
           if (response.ok && response.body) {
             const events: GenerationEvent[] = [];
-            let stubbed = false;
+            let refused = false;
 
             for await (const event of readEvents(response.body)) {
-              // The Phase 4 stub answers with exactly this, which is the signal
-              // to run locally instead of showing the engineer a dead timeline.
-              if (event.type === "error" && /not implemented/i.test(event.message)) {
-                stubbed = true;
+              // A route that cannot run at all answers with an error event
+              // before producing anything. Fall back rather than leave the
+              // engineer looking at a dead timeline.
+              if (event.type === "error" && events.length === 0) {
+                refused = true;
                 break;
               }
               events.push(event);
@@ -135,8 +137,8 @@ export function useGeneration() {
               if (event.type === "done") break;
             }
 
-            if (!stubbed && events.length > 0) used = "api";
-            else if (stubbed) store.getState().resetRun();
+            if (!refused && events.length > 0) used = "api";
+            else if (refused) store.getState().resetRun();
           }
         } catch {
           // Network or route failure falls through to the local emitter.
@@ -147,7 +149,7 @@ export function useGeneration() {
         if (used === "local") {
           store
             .getState()
-            .log("Running the local pipeline — /api/generate is not live yet.");
+            .log("/api/generate did not answer — running the local pipeline.");
           for await (const event of mockGeneration({
             intent,
             variables: store.getState().variables,
