@@ -21,13 +21,17 @@ export function Inspector() {
   const screens = useProject((s) => s.screens);
   const variables = useProject((s) => s.variables);
   const bindings = useProject((s) => s.bindings);
-  const selectedObjectId = useProject((s) => s.selectedObjectId);
+  const selectedIds = useProject((s) => s.selectedIds);
 
+  // The inspector edits one object; a marquee selection of several reports the
+  // count instead, because a property panel over a heterogeneous selection is a
+  // way to change something you cannot see.
+  const only = selectedIds.length === 1 ? selectedIds[0] : undefined;
   const part = screens
     .flatMap((s) => s.Children[0].Children)
-    .find((p) => p.UniqueId === selectedObjectId);
+    .find((p) => p.UniqueId === only);
 
-  const bound = bindings.filter((b) => b.targetId === selectedObjectId);
+  const bound = bindings.filter((b) => b.targetId === only);
 
   const tabs: TabItem<InspectorTab>[] = [
     { id: "properties", label: "Properties" },
@@ -47,6 +51,11 @@ export function Inspector() {
             {tab === "tags"
               ? "The tag table arrives with Phase 3."
               : "The graphic object library arrives with Phase 2b."}
+          </p>
+        ) : selectedIds.length > 1 ? (
+          <p className="p-4 text-sm text-text-muted">
+            {selectedIds.length} objects selected. Arrow keys nudge them; shift-arrow
+            moves by the grid.
           </p>
         ) : !part ? (
           <p className="p-4 text-sm text-text-muted">

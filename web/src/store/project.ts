@@ -47,7 +47,10 @@ interface ProjectState {
   equipment: Equipment[];
   findings: Finding[];
 
-  selectedObjectId?: string;
+  /** UniqueIds of the selected objects. Marquee select makes this plural. */
+  selectedIds: string[];
+  /** UniqueId under the pointer, for the canvas hover highlight. */
+  hoveredId?: string;
   /** Live values by object name; empty means the design state. */
   values: Record<string, number | boolean>;
   simulating: boolean;
@@ -60,9 +63,21 @@ interface ProjectState {
   rename: (name: string) => void;
   setTarget: (target: ProjectState["target"]) => void;
   markSaved: () => void;
-  select: (id?: string) => void;
+  /** Replace the selection. `add` extends it instead, for shift-click. */
+  select: (ids: string[], add?: boolean) => void;
+  hover: (id?: string) => void;
+  /** Live drives values from the simulator; design shows the authored state. */
+  setSimulating: (on: boolean) => void;
   appendObject: (screenId: string, part: Part) => void;
   updateObject: (id: string, patch: Partial<Part>) => void;
+  /** Move objects by a delta, which is what dragging on the canvas produces. */
+  nudge: (ids: string[], dx: number, dy: number) => void;
+  /** Set an object's box outright, which is what a resize handle produces. */
+  setBox: (
+    id: string,
+    box: { left: number; top: number; width: number; height: number },
+  ) => void;
+  removeObjects: (ids: string[]) => void;
   setStep: (step: PipelineStep, state: StepState) => void;
   log: (message: string) => void;
   reset: () => void;
@@ -78,8 +93,13 @@ type ProjectActions = Pick<
   | "setTarget"
   | "markSaved"
   | "select"
+  | "hover"
+  | "setSimulating"
   | "appendObject"
   | "updateObject"
+  | "nudge"
+  | "setBox"
+  | "removeObjects"
   | "setStep"
   | "log"
   | "reset"
@@ -96,6 +116,7 @@ export const useProject = create<ProjectState>()(
     bindings: [],
     equipment: [],
     findings: [],
+    selectedIds: [],
     values: {},
     simulating: false,
     steps: NO_STEPS,
@@ -122,9 +143,29 @@ export const useProject = create<ProjectState>()(
         s.savedAt = Date.now();
       }),
 
-    select: (id) =>
+    select: (ids, add = false) =>
       set((s) => {
-        s.selectedObjectId = id;
+        if (!add) {
+          s.selectedIds = ids;
+          return;
+        }
+        // Shift-click toggles, so a second click on a selected object drops it.
+        for (const id of ids) {
+          const at = s.selectedIds.indexOf(id);
+          if (at === -1) s.selectedIds.push(id);
+          else s.selectedIds.splice(at, 1);
+        }
+      }),
+
+    hover: (id) =>
+      set((s) => {
+        s.hoveredId = id;
+      }),
+
+    setSimulating: (on) =>
+      set((s) => {
+        s.simulating = on;
+        if (!on) s.values = {};
       }),
 
     appendObject: (screenId, part) =>
@@ -142,6 +183,42 @@ export const useProject = create<ProjectState>()(
             return;
           }
         }
+      }),
+
+    nudge: (ids, dx, dy) =>
+      set((s) => {
+        const wanted = new Set(ids);
+        for (const screen of s.screens) {
+          for (const part of screen.Children[0].Children) {
+            if (!wanted.has(part.UniqueId)) continue;
+            part.Location.Left += dx;
+            part.Location.Top += dy;
+          }
+        }
+      }),
+
+    setBox: (id, box) =>
+      set((s) => {
+        for (const screen of s.screens) {
+          const part = screen.Children[0].Children.find((p) => p.UniqueId === id);
+          if (!part) continue;
+          part.Location.Left = box.left;
+          part.Location.Top = box.top;
+          part.Width = box.width;
+          part.Height = box.height;
+          return;
+        }
+      }),
+
+    removeObjects: (ids) =>
+      set((s) => {
+        const wanted = new Set(ids);
+        for (const screen of s.screens) {
+          screen.Children[0].Children = screen.Children[0].Children.filter(
+            (p) => !wanted.has(p.UniqueId),
+          );
+        }
+        s.selectedIds = s.selectedIds.filter((id) => !wanted.has(id));
       }),
 
     setStep: (step, state) =>
@@ -165,6 +242,8 @@ export const useProject = create<ProjectState>()(
         s.bindings = [];
         s.equipment = [];
         s.findings = [];
+        s.selectedIds = [];
+        s.hoveredId = undefined;
         s.values = {};
         s.steps = {} as Record<PipelineStep, StepState>;
         s.logs = [];
