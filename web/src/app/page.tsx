@@ -9,7 +9,7 @@ export default function Landing() {
           ECOSTRUXURE OPERATOR TERMINAL EXPERT 4.4
         </p>
         <h1 className="text-6xl font-semibold">HMI Copilot</h1>
-        <p className="max-w-2xl text-xl text-ink-300">
+        <p className="max-w-2xl text-xl text-text-secondary">
           Turn engineering intent into industrial HMI screens. A tag export and one
           sentence of plain English become a complete, validated project.
         </p>
@@ -30,8 +30,8 @@ export default function Landing() {
           ["Catch errors early", "at the desk, not on site"],
         ].map(([title, note]) => (
           <div key={title}>
-            <dt className="font-semibold text-ink-100">{title}</dt>
-            <dd className="text-ink-500">{note}</dd>
+            <dt className="font-semibold text-text-primary">{title}</dt>
+            <dd className="text-text-muted">{note}</dd>
           </div>
         ))}
       </dl>

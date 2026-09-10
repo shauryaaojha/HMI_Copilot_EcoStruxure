@@ -4,22 +4,32 @@
  * Design tokens read off docs/ui-reference/. Two surfaces are at work here and
  * they must not be confused:
  *
- *   - the APPLICATION chrome, which is ours and is dark by default
+ *   - the APPLICATION chrome, which is ours, and which the theme toggle themes
  *   - the HMI SCREEN on the canvas, whose colours come from the project's own
  *     palette (lib/ote/palette.ts) and are never themed by us
  *
- * Theming the canvas would break the "preview cannot lie about the output" claim.
+ * ScreenRenderer does not read a single token from this file. That is the whole
+ * point: flip the theme and the HMI screen does not move, because its colours
+ * are palette indices resolved out of the project. Theming the canvas would
+ * break the "preview cannot lie about the output" claim.
+ *
+ * Phase 0 of docs/BUILD_PLAN.md.
  */
 
 @theme {
+  /* ------------------------------------------------------------------ */
+  /* Fixed ramps. These never change meaning - chrome-950 is always the   */
+  /* darkest chrome. The semantic tokens below choose between them.       */
+  /* ------------------------------------------------------------------ */
+
   /* Schneider Life Green */
   --color-brand-50: #eafaef;
+  --color-brand-100: #c9f2d5;
   --color-brand-400: #3dcd58;
   --color-brand-500: #00b050;
   --color-brand-600: #008a3e;
   --color-brand-700: #006c30;
 
-  /* application chrome */
   --color-chrome-950: #0b0f14;
   --color-chrome-900: #0f1419;
   --color-chrome-850: #151b23;
@@ -38,6 +48,29 @@
   --color-status-ok: #3dcd58;
   --color-status-info: #3b9eff;
 
+  /* ------------------------------------------------------------------ */
+  /* Semantic chrome tokens. Components use only these, so a theme is a   */
+  /* remap of eighteen variables rather than a rewrite of every class.    */
+  /* Values here are the dark theme; [data-theme="light"] overrides them. */
+  /* ------------------------------------------------------------------ */
+
+  --color-surface-base: #0b0f14; /* app background, behind everything */
+  --color-surface-panel: #0f1419; /* the three panes */
+  --color-surface-raised: #151b23; /* cards, inputs, inert controls */
+  --color-surface-hover: #1c2430; /* hover and pressed states */
+  --color-surface-active: #263141; /* selected rows, active chips */
+  --color-surface-canvas: #0b0f14; /* the backdrop the HMI screen floats on */
+
+  --color-line-subtle: #1c2430; /* pane dividers */
+  --color-line: #263141; /* control borders */
+  --color-line-strong: #33415a; /* focus-adjacent, emphasised borders */
+
+  --color-text-primary: #e6edf3;
+  --color-text-secondary: #b3c0cc;
+  --color-text-muted: #7d8b99;
+  --color-text-faint: #4a5764;
+  --color-text-onbrand: #ffffff;
+
   --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: "Cascadia Code", Consolas, ui-monospace, monospace;
 
@@ -46,6 +79,37 @@
 
 :root {
   color-scheme: dark;
+  --canvas-grid-line: rgba(255, 255, 255, 0.035);
+  --canvas-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+
+/*
+ * The light theme. Only the semantic tokens move - the brand and status ramps
+ * are identical in both themes because they are Schneider's colours, not ours,
+ * and because an alarm must be the same red whatever the engineer's preference.
+ */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --color-surface-base: #e9edf2;
+  --color-surface-panel: #ffffff;
+  --color-surface-raised: #f4f6f9;
+  --color-surface-hover: #e8ecf2;
+  --color-surface-active: #dde4ed;
+  --color-surface-canvas: #dfe4eb;
+
+  --color-line-subtle: #e4e9ef;
+  --color-line: #d3dae3;
+  --color-line-strong: #b6c1ce;
+
+  --color-text-primary: #0d141b;
+  --color-text-secondary: #3a4854;
+  --color-text-muted: #66747f;
+  --color-text-faint: #97a3ad;
+  --color-text-onbrand: #ffffff;
+
+  --canvas-grid-line: rgba(13, 20, 27, 0.06);
+  --canvas-shadow: 0 18px 40px rgba(13, 20, 27, 0.18);
 }
 
 html,
@@ -54,19 +118,24 @@ body {
 }
 
 body {
-  background: var(--color-chrome-900);
-  color: var(--color-ink-100);
+  background: var(--color-surface-base);
+  color: var(--color-text-primary);
   font-family: var(--font-sans);
   overflow: hidden; /* the workspace manages its own scrolling regions */
 }
 
-/* The canvas grid, as in the reference renders. */
+/* The canvas backdrop grid, as in the reference renders. */
 .canvas-grid {
-  background-color: var(--color-chrome-950);
+  background-color: var(--color-surface-canvas);
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    linear-gradient(to right, var(--canvas-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--canvas-grid-line) 1px, transparent 1px);
   background-size: 16px 16px;
+}
+
+/* The HMI screen sits on the backdrop as a physical panel would. */
+.canvas-screen {
+  box-shadow: var(--canvas-shadow);
 }
 
 /* Selection handles on a selected screen object. */
@@ -76,14 +145,33 @@ body {
   stroke-width: 1;
 }
 
+/* One focus treatment for every interactive control. */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-brand-400);
+  outline-offset: 1px;
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-chrome-700);
+  background: var(--color-line-strong);
   border-radius: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* react-resizable-panels puts no chrome on its separators; the renders show a
+ * hairline that turns brand green while it is being dragged. */
+[data-separator] {
+  background: var(--color-line-subtle);
+  transition: background 120ms ease;
+}
+[data-separator]:hover,
+[data-separator][data-state="dragging"],
+[data-separator]:focus-visible {
+  background: var(--color-brand-500);
+  outline: none;
 }

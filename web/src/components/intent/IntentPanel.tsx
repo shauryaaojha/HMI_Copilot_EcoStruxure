@@ -3,10 +3,18 @@
 /**
  * The left pane: describe what you need, import tags, pick standards.
  * Reference screens 1, 3, 5, 6. Phases 3 and 4 of docs/BUILD_PLAN.md.
+ *
+ * Phase 0 built the structure out of the primitives; the tag table, the file
+ * parse and the SSE run belong to Phases 3 and 4.
  */
 
 import { useState } from "react";
+import { FileSpreadsheet, ShieldCheck, Sparkles, Upload } from "lucide-react";
+import { Button, Panel, Textarea } from "@/components/ui";
 
+const MAX_INTENT = 500;
+
+/** Reference screen 5 shows these six, two to a row. */
 const QUICK = [
   "Pump station",
   "Motor control",
@@ -20,58 +28,80 @@ export function IntentPanel() {
   const [intent, setIntent] = useState("");
 
   return (
-    <aside className="flex w-[22rem] shrink-0 flex-col gap-5 overflow-y-auto bg-chrome-900 p-4">
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold">1. Describe what you need</h2>
-        <textarea
-          value={intent}
-          onChange={(e) => setIntent(e.target.value.slice(0, 500))}
-          rows={5}
-          placeholder="Create a pump station screen with 2 pumps. Show running status, start/stop buttons, flow, pressure, temperature and a high-level alarm. Use our company style."
-          className="w-full resize-none rounded-md border border-chrome-700 bg-chrome-850 p-3 text-sm placeholder:text-ink-700 focus:border-brand-500 focus:outline-none"
-        />
-        <div className="flex flex-wrap gap-1.5">
-          {QUICK.map((q) => (
-            <button
-              key={q}
-              type="button"
-              onClick={() => setIntent(q)}
-              className="rounded-full border border-chrome-700 px-2.5 py-1 text-xs text-ink-300 transition hover:border-brand-500 hover:text-brand-400"
-            >
-              {q}
-            </button>
-          ))}
+    <aside className="flex h-full w-full flex-col overflow-y-auto">
+      <Panel title="1. Describe what you need" collapsible>
+        <div className="space-y-3">
+          <Textarea
+            value={intent}
+            onChange={(e) => setIntent(e.target.value)}
+            maxLength={MAX_INTENT}
+            showCount
+            rows={5}
+            aria-label="Describe what you need"
+            placeholder="Create a pump station screen with 2 pumps. Show running status, start/stop buttons, flow, pressure, temperature and a high-level alarm. Use our company style."
+            className="pb-7"
+          />
+
+          <div>
+            <p className="mb-1.5 text-xs font-medium text-text-muted">Quick prompts</p>
+            <div className="flex flex-wrap gap-1.5">
+              {QUICK.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => setIntent(q)}
+                  className="focus-ring rounded-full border border-line px-2.5 py-1 text-xs text-text-secondary transition hover:border-brand-500 hover:text-brand-400"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Button
+            variant="primary"
+            size="lg"
+            block
+            disabled={intent.trim().length === 0}
+            icon={<Sparkles size={16} />}
+          >
+            Generate Screen
+          </Button>
         </div>
-        <button
-          type="button"
-          disabled={intent.trim().length === 0}
-          className="w-full rounded-md bg-brand-500 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Generate Screen
-        </button>
-      </section>
+      </Panel>
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold">2. Import PLC tags</h2>
-        <label className="flex cursor-pointer flex-col items-center gap-1 rounded-md border border-dashed border-chrome-700 p-5 text-center text-xs text-ink-500 transition hover:border-brand-500">
-          <input type="file" accept=".csv,.txt,.xlsx" className="hidden" />
+      <Panel title="2. Import PLC tags" collapsible>
+        <label className="focus-ring flex cursor-pointer flex-col items-center gap-1.5 rounded-md border border-dashed border-line p-5 text-center text-xs text-text-muted transition hover:border-brand-500 hover:text-text-secondary">
+          <input type="file" accept=".csv,.txt,.xlsx" className="sr-only" />
+          <Upload size={18} aria-hidden />
           Drag and drop your tag export
-          <span className="text-ink-700">.csv · .txt · .xlsx</span>
+          <span className="text-text-faint">.csv · .txt · .xlsx</span>
         </label>
-      </section>
+      </Panel>
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold">3. Engineering standards</h2>
+      <Panel title="3. Engineering standards" collapsible>
         <button
           type="button"
-          className="w-full rounded-md border border-chrome-700 p-3 text-left text-sm transition hover:border-chrome-600"
+          className="focus-ring flex w-full items-center gap-3 rounded-md border border-line p-3 text-left transition hover:border-line-strong"
         >
-          Schneider Standard
-          <span className="block text-xs text-ink-500">
-            Colours, fonts, layout, naming
+          <ShieldCheck size={18} aria-hidden className="shrink-0 text-status-info" />
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-medium">
+              Schneider Standard
+            </span>
+            <span className="block truncate text-xs text-text-muted">
+              Colours, fonts, layout, naming
+            </span>
           </span>
         </button>
-      </section>
+      </Panel>
+
+      <Panel title="4. Recent requests" collapsible defaultOpen={false}>
+        <p className="flex items-center gap-2 text-xs text-text-faint">
+          <FileSpreadsheet size={14} aria-hidden />
+          Nothing generated yet in this project.
+        </p>
+      </Panel>
     </aside>
   );
 }

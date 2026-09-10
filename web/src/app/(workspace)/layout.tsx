@@ -1,7 +1,10 @@
 /**
- * Chrome shared by every workspace route: top bar and nav rail, with the route's
- * own content filling the rest. Phase 0 of docs/BUILD_PLAN.md.
+ * Every workspace route fills the viewport and manages its own scrolling; the
+ * chrome (top bar, nav rail, status bar) is supplied by WorkspaceShell rather
+ * than here, because the shell also owns the resizable regions between them.
+ *
+ * Phase 0 of docs/BUILD_PLAN.md.
  */
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
-  return <div className="flex h-screen flex-col">{children}</div>;
+  return <div className="h-screen">{children}</div>;
 }
