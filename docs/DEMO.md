@@ -39,18 +39,25 @@ Then, in the browser:
    but it will quietly remove beat 6 if the projector forces a narrow window.
    Click the rail to bring a collapsed pane back.
 4. Decide dark or light and set it once. Do not toggle mid-demo except at beat 7.
-4. **Run one generation and throw it away.** Measured on this machine against a
-   production build:
+4. **Run one generation and throw it away**, and time it, because the pacing of
+   beat 5 depends entirely on what you measure.
 
-   | | first event | complete |
+   Two configurations have been measured and they are an order of magnitude
+   apart:
+
+   | Configuration | first event | complete |
    |---|---|---|
-   | cold | 352 ms | **29 s** |
-   | warm | 32 ms | **~10 s** |
+   | Production build, as measured by FORMAT | 352 ms cold / 32 ms warm | **29 s cold, ~10 s warm** |
+   | Dev build, `gemini-flash-lite-latest`, 1,248 tags, this Mac | 119 ms cold / ~20 ms warm | **~2 s, over three runs** |
 
-   The stream itself starts immediately either way, so the timeline is never
-   dead air — but the objects do not land until the model answers, and the first
-   call of a session takes three times as long as the rest. Spend that thirty
-   seconds before anyone is watching.
+   The stream starts immediately either way, so the timeline is never dead air.
+   What changes is whether beat 5 is something you wait through or something you
+   talk over. **Time your own setup before you write your patter** — at two
+   seconds, "say nothing for a beat" leaves you standing in silence, and at
+   thirty you need a full sentence of narration to fill it.
+
+   The model matters more than the machine here. `gemini-flash-lite-latest` is
+   the fast end; a heavier model or Claude will sit closer to the first row.
 
 **On the presenting machine, do this the night before, not in the room.**
 
@@ -75,7 +82,7 @@ not mention conversation; the rest of the path is unaffected.
 | 2 | 0:08 | Nav rail → **Tags** → *Use the sample plant export*. | "This is a real plant export. Twelve hundred tags." |
 | 3 | 0:15 | Point at the Tag Summary and expand the corrections panel. | "1,248 tags. Five names it had to correct — and it tells you, rather than silently fixing them. That's the difference between a tool you trust and one you check." |
 | 4 | 0:25 | **Generate a screen** (top right) → back on the workspace. Type the sentence into the **Copilot** pane and press **Enter**. | "Now one sentence of plain English." |
-| 5 | 0:32 | Say nothing for a beat. Let objects land on the canvas one at a time and the timeline fill. | "It's not thinking. It's parsing tags, inferring equipment, choosing parts, laying out, configuring alarms, resolving bindings, validating, packaging — and telling you which, in engineering language." |
+| 5 | 0:32 | Let the objects land and the timeline fill. Narrate over it, or pause — whichever your measured time calls for. | "It's not thinking. It's parsing tags, inferring equipment, choosing parts, laying out, configuring alarms, resolving bindings, validating, packaging — and telling you which, in engineering language." |
 | 6 | 0:48 | Type a follow-up: **"make the pump 2 fault lamp red"**. Press Enter. Watch it apply. | "And it isn't one shot. An engineer never describes a screen right the first time — so this is a conversation with the project, and every turn is undoable as a unit." |
 | 7 | 1:00 | Click a **NumericDisplay** on the canvas. Point at the inspector. | "Every object is real. These property editors are generated from the same schemas the file format defines — so the inspector can't offer you a property EcoStruxure doesn't have." |
 | 8 | 1:08 | **Toggle the theme in the top bar.** Point at the canvas. | "Watch the screen. The app changes; the HMI doesn't. Its colours are palette indices out of the project's own colour set. The preview can't lie about the output." |
