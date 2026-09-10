@@ -1,7 +1,13 @@
 # web — the HMI Copilot product
 
-Next.js full stack. See [`../docs/BUILD_PLAN.md`](../docs/BUILD_PLAN.md) for the phases
-and [`../docs/ui-reference/`](../docs/ui-reference/) for the agreed design.
+Next.js full stack. See [`../docs/BUILD_PLAN.md`](../docs/BUILD_PLAN.md) for the phases,
+[`../docs/ui-reference/`](../docs/ui-reference/) for the agreed design, and
+[`../README.md`](../README.md#status) for what is done and what is not — that table is
+kept in one place so it cannot go stale in two.
+
+```bash
+npm test        # 148 pass with the app running; the 9 skipped are the Phase 1 gate
+```
 
 ## Setup
 
@@ -26,14 +32,26 @@ src/lib/ote/        the format layer - a port of ../tools/make_project.py
   graphics.ts       .path Commands + Points -> SVG path data
   bindings.ts       Sources -> Bindings -> Targets graph
   packager.ts       jszip + sql.js -> .eote
+src/lib/sim/        the simulation engine and alarm evaluation - no format knowledge
 src/components/
+  ui/               the eight primitives everything else is built from
+  shell/            top bar, nav rail, the resizable workspace, theme
   canvas/           Screen.dat -> inline SVG, one node per object
+    parts/          one component per part type, chosen by an exhaustive switch
   intent/           describe, import tags, pick standards
-  inspector/        properties and bindings
+  inspector/        property groups generated from the zod schemas
+  generation/       the SSE consumer, and the local emitter it falls back to
+  tags/             import, table, summary
+  bindings/         the binding map, ported from tools/make_binding_map.py
+  validation/       findings, grouped and clickable back to the object
+  export/           the export screen and the Variables.csv writer
+  templates/        equipment templates, built from lib/ote/parts.ts factories
   timeline/         the build timeline
 src/store/          zustand + immer, the project tree
 src/app/api/        generate (SSE), export (nodejs), tags/parse, validate
-tests/              packager.test.ts is the Phase 1 gate
+public/demo/        Plant_Tags.csv - the 1,248-tag sample export
+tests/              packager.test.ts is the Phase 1 gate;
+                    demo-path.test.ts is the Phase 10 rehearsal
 ```
 
 ## The one rule
