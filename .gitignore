@@ -36,3 +36,9 @@ web/src/lib/ote/graphics-index.json
 
 # Office lock files
 ~$*
+
+# scratch scripts from a debugging session
+web/try-*.mts
+web/check-*.mts
+web/verify.mts
+web/t.mts
