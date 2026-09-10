@@ -46,17 +46,17 @@ engineer sees.
 | **0** | Foundation — tokens, primitives, shell | — | ✅ done |
 | **1** | The OTE model layer *(the moat)* | ✅ **verified in OTE 4.4** | — |
 | **2** | The canvas *(the hero)* | — | ✅ done |
-| **2b** | Graphic object library | ✅ done | 🟡 place button pending |
+| **2b** | Graphic object library | ✅ done | ✅ done |
 | **3** | Tags and project state | ✅ done | ✅ done |
 | **4** | Generation pipeline and streaming | ✅ done | ✅ done |
 | **5** | Inspector and editing | — | ✅ done |
 | **6** | Binding map and validation | ✅ done | ✅ done |
-| **7** | Export *(the climax)* | ✅ done | 🟡 report toggle pending |
+| **7** | Export *(the climax)* | ✅ done | ✅ done |
 | **8** | Simulation | — | ✅ done |
 | **9** | Supporting screens | — | ✅ done |
 | **10** | Rehearsal | — | 🟡 script done, live run-through pending |
 
-**167 tests pass** with the app running; 9 more are the Phase 1 packager gate, which
+**182 tests pass** with the app running; 9 more are the Phase 1 packager gate, which
 skips on a machine without an EcoStruxure installation to extract a skeleton from.
 
 ```bash
@@ -65,22 +65,20 @@ cd web && npm test
 
 ### What the partials mean
 
-- **2b — the index now carries the geometry; the Place button is not built.**
-  Every symbol keeps `Commands` and `Points` beside the derived `d`, a test asserts
-  the two can never drift, and a `Path` part round-trips through the packager with
-  its geometry byte-identical. `npm run build:symbols` writes a project with
-  Pump01, Tank01, Valve01 and Fan01 in it. The Library's placeable badge reads
-  *yes*; wiring the button to `pathPart()` is the remaining half.
+- **2b — done.** Every symbol keeps `Commands` and `Points` beside the derived
+  `d`, a test asserts the two can never drift, and a `Path` part round-trips
+  through the packager with its geometry byte-identical. The Library places one
+  via `pathPart()`, so what lands on the canvas is what an export contains.
+  `npm run build:symbols` writes a project with Pump01, Tank01, Valve01 and
+  Fan01 in it — **still to be opened in OTE.**
 - **4 — the route answers with real events; the model half needs a key.**
   Equipment inference is a parse of the tag names and runs offline, so the screen
   builds with no `ANTHROPIC_API_KEY` set — a log line says so in those words rather
   than passing the fallback off as the model. With a key in `web/.env.local`,
   Claude reads the engineer's sentence and decides what the screen shows.
-- **7 — the report is written; the export screen has no toggle for it yet.**
-  `POST /api/export/report` renders a standalone HTML sign-off document — no
-  stylesheet, no font host, no script, because a commissioning laptop has no
-  internet. The export screen offers `.eote` and `.csv`; adding the third toggle
-  is the remaining half.
+- **7 — done.** `POST /api/export/report` renders a standalone HTML sign-off
+  document — no stylesheet, no font host, no script, because a commissioning
+  laptop has no internet. The export screen offers all three files.
 - **10 — nobody has walked the script on the presenting machine.**
   `web/tests/demo-path.test.ts` checks the data, the routes and the engine behind
   every beat, but it cannot check that a button is where the script says it is.
