@@ -3,12 +3,14 @@
  *
  *   npm run setup:skeleton
  *
- * The packager starts from Blank.eote and writes only Variables.db and Alarm.db;
- * every other database (Recipe, Security, Language, DriverConfig, ...) is copied
- * verbatim. Those files are Schneider's, so they are extracted on each
- * developer's machine and never committed - src/lib/ote/skeleton/ is gitignored.
+ * The packager starts from Blank.eote and writes only Variables.db, Alarm.db and
+ * the screens; every other database (Recipe, Security, Language, DriverConfig...)
+ * is copied through verbatim. It also needs one LocalVariables.db, which Blank
+ * has no screen to supply, so that comes from a shipped sample.
  *
- * Set OTE_INSTALL_DIR if the product is not at the default path.
+ * These are Schneider's files. They are extracted on each developer's machine and
+ * never committed - skeleton/ is gitignored. Set OTE_INSTALL_DIR if the product
+ * is not at the default path.
  */
 
 import fs from "node:fs/promises";
@@ -23,26 +25,34 @@ const INSTALL =
   process.env.OTE_INSTALL_DIR ??
   "C:\\Program Files\\Schneider Electric\\EcoStruxure Operator Terminal Expert 4.4";
 
-const TEMPLATES = path.join(
-  INSTALL,
-  "Buildtime",
-  "BuildtimeData",
-  "ProjectTemplates",
-);
+const TEMPLATES = path.join(INSTALL, "Buildtime", "BuildtimeData", "ProjectTemplates");
+const BLANK = path.join(TEMPLATES, "Blank.eote");
+const DONOR = path.join(TEMPLATES, "Sample - Alarm 1.eote");
 
-const OUT = path.join(HERE, "..", "src", "lib", "ote", "skeleton");
+/** Project root, not src/ - the export route reads these with fs at runtime. */
+const OUT = path.join(HERE, "..", "skeleton");
+
+async function entriesOf(JSZip, file) {
+  const zip = await JSZip.loadAsync(await fs.readFile(file));
+  const out = [];
+  for (const [name, entry] of Object.entries(zip.files)) {
+    if (entry.dir) continue;
+    out.push({ name, data: await entry.async("nodebuffer") });
+  }
+  return out;
+}
 
 async function main() {
-  const source = path.join(TEMPLATES, "Blank.eote");
-
-  try {
-    await fs.access(source);
-  } catch {
-    console.error(
-      `Blank.eote not found at:\n  ${source}\n\n` +
-        "Set OTE_INSTALL_DIR to your EcoStruxure Operator Terminal Expert 4.4 install.",
-    );
-    process.exit(1);
+  for (const file of [BLANK, DONOR]) {
+    try {
+      await fs.access(file);
+    } catch {
+      console.error(
+        `Not found:\n  ${file}\n\n` +
+          "Set OTE_INSTALL_DIR to your EcoStruxure Operator Terminal Expert 4.4 install.",
+      );
+      process.exit(1);
+    }
   }
 
   let JSZip;
@@ -53,32 +63,52 @@ async function main() {
     process.exit(1);
   }
 
-  await fs.mkdir(OUT, { recursive: true });
+  await fs.rm(OUT, { recursive: true, force: true });
+  await fs.mkdir(path.join(OUT, "entries"), { recursive: true });
 
-  const zip = await JSZip.loadAsync(await fs.readFile(source));
-  let count = 0;
-
-  for (const [name, entry] of Object.entries(zip.files)) {
-    if (entry.dir) continue;
-    // Entry names use backslashes; flatten them to a safe on-disk name and keep
-    // the original in the manifest so the packager can restore it exactly.
-    const flat = name.replace(/[\\/]/g, "__");
-    await fs.writeFile(path.join(OUT, flat), await entry.async("nodebuffer"));
-    count += 1;
+  // Blank.eote supplies every entry the generated project starts from. Entry
+  // names use backslashes, so they are flattened on disk and the original is
+  // kept in the manifest for the packager to restore exactly.
+  const blank = await entriesOf(JSZip, BLANK);
+  const manifest = [];
+  for (const { name, data } of blank) {
+    const file = name.replace(/[\\/]/g, "__");
+    await fs.writeFile(path.join(OUT, "entries", file), data);
+    manifest.push({ entry: name, file });
   }
 
-  const manifest = Object.keys(zip.files)
-    .filter((name) => !zip.files[name].dir)
-    .map((name) => ({ entry: name, file: name.replace(/[\\/]/g, "__") }));
+  // Blank has no screen, so it carries no LocalVariables.db. Take one from a
+  // sample that does.
+  const donor = await entriesOf(JSZip, DONOR);
+  const local = donor.find(
+    (e) =>
+      e.name.replace(/\\/g, "/").startsWith("Screens/") &&
+      e.name.endsWith("LocalVariables.db"),
+  );
+  if (!local) {
+    console.error(`No LocalVariables.db found in ${path.basename(DONOR)}`);
+    process.exit(1);
+  }
+  await fs.writeFile(path.join(OUT, "LocalVariables.db"), local.data);
 
   await fs.writeFile(
     path.join(OUT, "manifest.json"),
-    JSON.stringify({ source: "Blank.eote", entries: manifest }, null, 1) + "\n",
+    JSON.stringify(
+      {
+        source: path.basename(BLANK),
+        localVariablesFrom: path.basename(DONOR),
+        extractedAt: new Date().toISOString(),
+        entries: manifest,
+      },
+      null,
+      1,
+    ) + "\n",
     "utf8",
   );
 
   console.log(
-    `extracted ${count} entries -> ${path.relative(process.cwd(), OUT)}\n` +
+    `extracted ${manifest.length} entries + LocalVariables.db -> ` +
+      `${path.relative(process.cwd(), OUT)}\n` +
       "This directory is gitignored: it holds Schneider's own files.",
   );
 }

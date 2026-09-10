@@ -91,7 +91,7 @@ Scaffold, design tokens, application shell.
 **Done when:** the workspace shell renders empty at 1920 and at 1440, panes resize,
 nothing is hardcoded that a project would supply.
 
-### Phase 1 — The OTE model layer  ← the moat
+### Phase 1 — The OTE model layer  ← the moat  ·  **DONE, pending an open in OTE**
 
 A straight port of `tools/make_project.py` to TypeScript. No new format work.
 
@@ -113,9 +113,14 @@ Two traps carried over from the Python:
   unknown double-quoted identifier as a *string literal* rather than erroring — that is
   how the deck once printed the word "SetPoint" in every setpoint cell.
 
-**Done when:** a Vitest test packs a project from the same `TAGS`/`ALARMS` as the Python
-version, and the resulting file **opens in OTE 4.4**. Nothing downstream is worth
-building until this passes.
+**Status.** `tests/packager.test.ts` passes: the TypeScript packager produces a project
+structurally identical to the Python one — same 29 entries, same screen tree modulo
+ids, same binding graph, same `Variables.db` and `Alarm.db` rows, the nine copied-through
+databases byte-identical. `npm run build:demo` writes
+`demo_project/HMICopilot_TS.eote`.
+
+The remaining half of the gate is manual and nobody else can do it: **open that file in
+OTE 4.4.** Until someone has, the browser path is structurally proven but not accepted.
 
 ### Phase 2 — The canvas  ← the hero
 
@@ -183,15 +188,21 @@ object, with the timeline reading in engineering language, not "Thinking…".
 **Done when:** deleting a binding turns a row amber in the map and raises an error in
 validation, both linking to the same object.
 
-### Phase 7 — Export  ← the demo's climax
+### Phase 7 — Export  ← the demo's climax  ·  **route works, pending the same open**
 
 - `POST /api/export` with `export const runtime = 'nodejs'` — sql.js is WASM, so no
   native module, but Edge cannot serve it
 - returns the `.eote` plus the HTML validation report
 - the export dialog from reference screen 9
 
-**Done when:** a project generated in the browser downloads and opens in OTE. This is
-the moment the whole pitch rests on — schedule it early, not last.
+**Status.** `POST /api/export` returns a 25 KB `.eote` from a production build — verified
+end to end against `next start`, not just in dev. `outputFileTracingIncludes` carries the
+skeleton into the standalone output. The export dialog (reference screen 9) is SURFACE's.
+
+One trap found here and worth remembering: `locateFile` + `require.resolve` for the sql.js
+WASM **passes every test and fails in production**, because vitest runs the source
+unbundled while webpack replaces `require`. The packager now reads the `.wasm` itself and
+passes `wasmBinary`. Test the built app, not just the dev server.
 
 ### Phase 8 — Simulation
 

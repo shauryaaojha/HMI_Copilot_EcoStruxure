@@ -25,7 +25,7 @@ image-*.jpg
 
 # Schneider's own shipped database files, extracted locally by scripts/extract-skeleton.mjs.
 # Not redistributed - every developer pulls them from their own OTE installation.
-web/src/lib/ote/skeleton/
+web/skeleton/
 
 # Symbol geometry derived from the same installation, rebuilt with
 # `npm run index:graphics`. Same reason: it is Schneider's, not ours.

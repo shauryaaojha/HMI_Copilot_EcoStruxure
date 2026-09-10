@@ -104,17 +104,14 @@ goes wrong. Do not add Claude as a co-author.
 
 Order matters. Phase 1 gates everything.
 
-### 1. Port the packager  ← nothing else ships until this passes
+### 1. Port the packager  —  **DONE** (branch `format/packager`)
 
-Port `tools/make_project.py` to `web/src/lib/ote/`:
+`packager.ts`, `databases.ts`, `bindings.ts`, `parts.ts`, `skeleton.ts` and
+`demo-project.ts` are in place. Nine tests pass, including a structural diff against the
+project `tools/make_project.py` produces.
 
-- `packager.ts` — jszip + sql.js → `.eote`
-- `bindings.ts` — the `Sources` → `Bindings` → `Targets` graph (`buildGraph` currently throws)
-- `alarms.ts` — `AlarmGroup` / `Alarm` rows, bit and level
-- `parts.ts` — factory functions per part, shapes from `reference/part_examples.json`
-
-Un-skip `web/tests/packager.test.ts` and make it pass. Then **open the result in OTE**.
-Until that happens, the browser path is unproven.
+**Still open:** somebody has to open `demo_project/HMICopilot_TS.eote` in OTE 4.4. That
+is the half of the gate a test cannot cover.
 
 Two traps, both already paid for once:
 
@@ -123,11 +120,10 @@ Two traps, both already paid for once:
 - Quote every SQL column. `Order` and `Value` are keywords, and SQLite returns an
   unknown double-quoted identifier as a **string literal** rather than erroring.
 
-### 2. Export route (Phase 7)
+### 2. Export route (Phase 7)  —  **DONE bar the report**
 
-`POST /api/export` → the `.eote` plus the HTML validation report. `runtime = "nodejs"`
-— sql.js is WASM and Edge cannot serve it. Schedule this early: a project generated in
-the browser and opened in OTE is the moment the whole pitch rests on.
+`POST /api/export` returns a real `.eote`, verified against a production build. The HTML
+validation report is still to add, once Phase 6's rules exist.
 
 ### 3. Symbol library (Phase 2b)
 
