@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "setup:skeleton": "node scripts/extract-skeleton.mjs",
     "index:graphics": "node scripts/index-graphics.mjs",
-    "build:demo": "tsx scripts/build-demo.mts"
+    "build:demo": "tsx scripts/build-demo.mts",
+    "build:symbols": "tsx scripts/build-symbol-demo.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",

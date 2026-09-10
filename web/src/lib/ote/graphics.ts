@@ -29,11 +29,21 @@ export interface GraphicObject {
   name: string;
   /** e.g. "03-Icons/Pumps" */
   category: string;
-  /** SVG path data */
+  /** SVG path data, derived - what the canvas draws */
   d: string;
   /** natural bounds of the geometry, for the SVG viewBox */
   width: number;
   height: number;
+  /**
+   * The two fields exactly as the .path file carries them.
+   *
+   * `d` is derived from these and is not a substitute: a Path part stores
+   * Commands and Points, so an index that keeps only the derived form can be
+   * browsed but never placed. Keep both - the canvas draws from `d`, the
+   * packager writes from these.
+   */
+  Commands: string;
+  Points: string;
 }
 
 export interface RawPathFile {
@@ -43,21 +53,32 @@ export interface RawPathFile {
 }
 
 /**
+ * What the converters actually need. `Name` only ever appears in an error
+ * message, so requiring it would stop an indexed GraphicObject - which has a
+ * lowercase `name` - being passed straight back in to check it still converts.
+ */
+export type PathGeometry = {
+  Commands: string;
+  Points: string;
+  Name?: string;
+};
+
+/**
  * Turns a .path file's Commands + Points into an SVG `d` attribute.
  * Throws rather than guessing if the two disagree - a silently truncated symbol
  * would be worse than a loud failure.
  */
-export function toPathData(raw: RawPathFile): string {
+export function toPathData(raw: PathGeometry): string {
   const nums = raw.Points.split(",")
     .map((s) => s.trim())
     .filter((s) => s.length > 0)
     .map(Number);
 
   if (nums.some(Number.isNaN)) {
-    throw new Error(`${raw.Name}: non-numeric value in Points`);
+    throw new Error(`${raw.Name ?? "path"}: non-numeric value in Points`);
   }
   if (nums.length % 2 !== 0) {
-    throw new Error(`${raw.Name}: odd number of coordinates`);
+    throw new Error(`${raw.Name ?? "path"}: odd number of coordinates`);
   }
 
   const out: string[] = [];
@@ -66,7 +87,7 @@ export function toPathData(raw: RawPathFile): string {
   for (const command of raw.Commands) {
     const arity = ARITY[command];
     if (arity === undefined) {
-      throw new Error(`${raw.Name}: unsupported path command "${command}"`);
+      throw new Error(`${raw.Name ?? "path"}: unsupported path command "${command}"`);
     }
     if (arity === 0) {
       out.push("Z");
@@ -75,7 +96,7 @@ export function toPathData(raw: RawPathFile): string {
     const needed = arity * 2;
     if (i + needed > nums.length) {
       throw new Error(
-        `${raw.Name}: "${command}" needs ${arity} point(s) but Points is exhausted`,
+        `${raw.Name ?? "path"}: "${command}" needs ${arity} point(s) but Points is exhausted`,
       );
     }
     const coords: string[] = [];
@@ -88,7 +109,7 @@ export function toPathData(raw: RawPathFile): string {
 
   if (i !== nums.length) {
     throw new Error(
-      `${raw.Name}: ${(nums.length - i) / 2} unused point(s) after the last command`,
+      `${raw.Name ?? "path"}: ${(nums.length - i) / 2} unused point(s) after the last command`,
     );
   }
 
@@ -96,7 +117,7 @@ export function toPathData(raw: RawPathFile): string {
 }
 
 /** Natural bounds of the geometry, so the symbol can be scaled into any box. */
-export function boundsOf(raw: RawPathFile): { width: number; height: number } {
+export function boundsOf(raw: PathGeometry): { width: number; height: number } {
   const nums = raw.Points.split(",").map(Number);
   let maxX = 0;
   let maxY = 0;
@@ -112,5 +133,13 @@ export function toGraphicObject(
   category: string,
 ): GraphicObject {
   const { width, height } = boundsOf(raw);
-  return { name: raw.Name, category, d: toPathData(raw), width, height };
+  return {
+    name: raw.Name,
+    category,
+    d: toPathData(raw),
+    width,
+    height,
+    Commands: raw.Commands,
+    Points: raw.Points,
+  };
 }

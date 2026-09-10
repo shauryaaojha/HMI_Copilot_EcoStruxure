@@ -13,6 +13,7 @@
  */
 
 import { Screen, type Alarm, type Variable } from "@/lib/ote/schema";
+import type { GraphicObject } from "@/lib/ote/graphics";
 import screenJson from "./pump-station.screen.json";
 import bindingsJson from "./pump-station.bindings.json";
 import projectJson from "./pump-station.project.json";
@@ -50,12 +51,14 @@ export const demoLiveValues: Record<string, number | boolean> = {
  * Same shape as a real entry, so the component contract is identical - run
  * `npm run index:graphics` on a machine with OTE to get the real 474.
  */
-export const placeholderSymbols = [
+export const placeholderSymbols: GraphicObject[] = [
   {
     name: "PlaceholderPump",
     category: "fixtures",
     width: 240,
     height: 160,
+    Commands: "MLLLLLLzMLLLz",
+    Points: "20,60,90,60,90,40,130,80,90,120,90,100,20,100,150,30,220,30,220,130,150,130",
     d: "M 20,60 L 90,60 L 90,40 L 130,80 L 90,120 L 90,100 L 20,100 Z M 150,30 L 220,30 L 220,130 L 150,130 Z",
   },
   {
@@ -63,6 +66,8 @@ export const placeholderSymbols = [
     category: "fixtures",
     width: 160,
     height: 200,
+    Commands: "MLLLLz",
+    Points: "20,20,140,20,140,140,80,190,20,140",
     d: "M 20,20 L 140,20 L 140,140 L 80,190 L 20,140 Z",
   },
 ];
