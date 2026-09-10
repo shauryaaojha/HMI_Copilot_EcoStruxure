@@ -91,7 +91,7 @@ Scaffold, design tokens, application shell.
 **Done when:** the workspace shell renders empty at 1920 and at 1440, panes resize,
 nothing is hardcoded that a project would supply.
 
-### Phase 1 — The OTE model layer  ← the moat  ·  **DONE, pending an open in OTE**
+### Phase 1 — The OTE model layer  ← the moat  ·  **DONE, verified in OTE 4.4**
 
 A straight port of `tools/make_project.py` to TypeScript. No new format work.
 
@@ -119,8 +119,11 @@ ids, same binding graph, same `Variables.db` and `Alarm.db` rows, the nine copie
 databases byte-identical. `npm run build:demo` writes
 `demo_project/HMICopilot_TS.eote`.
 
-The remaining half of the gate is manual and nobody else can do it: **open that file in
-OTE 4.4.** Until someone has, the browser path is structurally proven but not accepted.
+**The gate is closed.** `HMICopilot_TS.eote` opens in EcoStruxure Operator Terminal
+Expert 4.4: Screens (1) → `S00001 : PumpStation1 [View Box]`, All Variables (7), All
+Alarms (5), and the screen renders with both pump lamps, both fault lamps, both numeric
+displays and the product's own alarm summary grid. Nothing in that file was written by
+Schneider's software.
 
 ### Phase 2 — The canvas  ← the hero
 
@@ -188,7 +191,7 @@ object, with the timeline reading in engineering language, not "Thinking…".
 **Done when:** deleting a binding turns a row amber in the map and raises an error in
 validation, both linking to the same object.
 
-### Phase 7 — Export  ← the demo's climax  ·  **route works, pending the same open**
+### Phase 7 — Export  ← the demo's climax  ·  **DONE, verified in OTE 4.4**
 
 - `POST /api/export` with `export const runtime = 'nodejs'` — sql.js is WASM, so no
   native module, but Edge cannot serve it

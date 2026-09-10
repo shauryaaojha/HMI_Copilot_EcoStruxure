@@ -104,14 +104,14 @@ goes wrong. Do not add Claude as a co-author.
 
 Order matters. Phase 1 gates everything.
 
-### 1. Port the packager  —  **DONE** (branch `format/packager`)
+### 1. Port the packager  —  **DONE and verified in OTE 4.4**
 
 `packager.ts`, `databases.ts`, `bindings.ts`, `parts.ts`, `skeleton.ts` and
 `demo-project.ts` are in place. Nine tests pass, including a structural diff against the
 project `tools/make_project.py` produces.
 
-**Still open:** somebody has to open `demo_project/HMICopilot_TS.eote` in OTE 4.4. That
-is the half of the gate a test cannot cover.
+`demo_project/HMICopilot_TS.eote` opens in the product — screen, 7 variables, 5 alarms,
+alarm summary grid. The browser path is proven end to end.
 
 Two traps, both already paid for once:
 
