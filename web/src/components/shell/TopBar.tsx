@@ -17,13 +17,50 @@ import { Button, Input, Select, cn } from "@/components/ui";
 import { SchneiderMark } from "./SchneiderMark";
 import { ThemeToggle } from "./theme";
 
-/** The panels the generator has geometry for. Reference screens 1-6 show the 6310. */
+/**
+ * Panels the layout can target.
+ *
+ * The exported file's panel is not one of these - it comes from Target.dat
+ * inside the extracted skeleton, which the app cannot change. Choosing one here
+ * sets what the layout is designed for; useActualPanel() below asks the server
+ * what the file will actually say, and the header flags a disagreement rather
+ * than showing a label the .eote contradicts.
+ */
 const TARGETS = [
   { value: "HMIGTO6310|1024|768", label: "HMIGTO6310 · 1024 × 768" },
   { value: "HMIGTO5310|800|480", label: "HMIGTO5310 · 800 × 480" },
   { value: "HMIGTO4310|640|480", label: "HMIGTO4310 · 640 × 480" },
   { value: "HMISTU855|320|240", label: "HMISTU855 · 320 × 240" },
 ];
+
+interface Panel {
+  model: string;
+  width: number;
+  height: number;
+}
+
+/** What the skeleton's Target.dat says. Null until known, or if unconfigured. */
+function useActualPanel(): Panel | null {
+  const [panel, setPanel] = useState<Panel | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    fetch("/api/panel")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => {
+        if (live && body?.panel) setPanel(body.panel as Panel);
+      })
+      .catch(() => {
+        // No skeleton, or the route is unreachable. The header simply does not
+        // claim a panel it cannot confirm.
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  return panel;
+}
 
 /** "2 min ago". Client-only, so the server and the client cannot disagree. */
 function useSavedLabel(savedAt: number | undefined) {
@@ -117,11 +154,24 @@ export interface TopBarProps {
 export function TopBar({ onExport, className }: TopBarProps) {
   const projectId = useProject((s) => s.id);
   const target = useProject((s) => s.target);
+  const actual = useActualPanel();
   const savedAt = useProject((s) => s.savedAt);
   const setTarget = useProject((s) => s.setTarget);
   const saved = useSavedLabel(savedAt);
 
   const value = `${target.model}|${target.width}|${target.height}`;
+
+  // The label has to be the file's, not the dropdown's. Saying HMIGTO6310
+  // over a project whose Target.dat reads HMIST6500AWADI is exactly the kind
+  // of small untruth "the preview cannot lie" cannot afford.
+  const actualLabel = actual
+    ? `${actual.model} · ${actual.width} × ${actual.height}`
+    : null;
+  const mismatch =
+    actual !== null &&
+    (actual.width !== target.width ||
+      actual.height !== target.height ||
+      actual.model !== target.model);
   const known = TARGETS.some((t) => t.value === value);
 
   return (
@@ -150,8 +200,24 @@ export function TopBar({ onExport, className }: TopBarProps) {
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-2">
-        <div className="hidden items-center gap-2 rounded-md border border-line bg-surface-raised pl-2.5 md:flex">
-          <Monitor size={15} aria-hidden className="text-text-muted" />
+        <div
+          className={cn(
+            "hidden items-center gap-2 rounded-md border bg-surface-raised pl-2.5 md:flex",
+            mismatch ? "border-status-warn" : "border-line",
+          )}
+          title={
+            mismatch
+              ? `The exported file targets ${actualLabel} — its Target.dat, which the app cannot change.`
+              : actual
+                ? `Matches the file's Target.dat (${actualLabel}).`
+                : undefined
+          }
+        >
+          <Monitor
+            size={15}
+            aria-hidden
+            className={mismatch ? "text-status-warn" : "text-text-muted"}
+          />
           <Select
             aria-label="Target panel"
             size="sm"
@@ -164,6 +230,12 @@ export function TopBar({ onExport, className }: TopBarProps) {
             }}
           />
         </div>
+
+        {mismatch && (
+          <span className="hidden text-xs text-status-warn lg:inline" role="status">
+            file targets {actualLabel}
+          </span>
+        )}
 
         <ThemeToggle />
 

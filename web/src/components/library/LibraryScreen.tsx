@@ -20,9 +20,12 @@
  */
 
 import { useMemo, useState } from "react";
-import { Info, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Info, Plus, Search } from "lucide-react";
 import { placeholderSymbols } from "@/fixtures";
-import { Badge, Input, Panel, Tabs, cn, type TabItem } from "@/components/ui";
+import { Badge, Button, Input, Panel, Tabs, cn, type TabItem } from "@/components/ui";
+import { useProject } from "@/store/project";
+import { pathPart } from "@/lib/ote/parts";
 
 /** The shape `scripts/index-graphics.mjs` writes, plus the geometry it drops. */
 interface Symbol {
@@ -58,6 +61,48 @@ export function LibraryScreen() {
   }, [category, query]);
 
   const placeable = picked?.Commands !== undefined && picked?.Points !== undefined;
+
+  const router = useRouter();
+  const projectId = useProject((s) => s.id);
+  const screens = useProject((s) => s.screens);
+  const activeScreenId = useProject((s) => s.activeScreenId);
+  const appendObject = useProject((s) => s.appendObject);
+  const select = useProject((s) => s.select);
+  const logLine = useProject((s) => s.log);
+
+  const screen = screens.find((x) => x.UniqueId === activeScreenId) ?? screens[0];
+  const screenName = screen?.Name;
+
+  /**
+   * Builds a real Path part and puts it in the store.
+   *
+   * pathPart() is the same factory the packager writes from, so what lands on
+   * the canvas is exactly what an export would contain - the symbol is not
+   * redrawn here from the SVG the panel previews.
+   */
+  function place(symbol: (typeof symbols)[number]) {
+    if (!screen || symbol.Commands === undefined || symbol.Points === undefined) return;
+
+    const view = screen.Children[0];
+    const size = Math.min(160, view.Width / 6);
+    // Nudge each placement so a second symbol does not land under the first.
+    const placed = view.Children.filter((p) => p.Type === "Path").length;
+    const part = pathPart(
+      `Sym_${symbol.name.replace(/[^A-Za-z0-9_]/g, "")}`,
+      { Commands: symbol.Commands, Points: symbol.Points },
+      {
+        left: Math.round(40 + (placed % 4) * (size + 20)),
+        top: Math.round(96 + Math.floor(placed / 4) * (size + 20)),
+        width: Math.round(size),
+        height: Math.round(size),
+      },
+    );
+
+    appendObject(screen.UniqueId, part);
+    select([part.UniqueId]);
+    logLine(`Placed ${symbol.name} on ${screen.Name}`);
+    router.push(`/project/${projectId}`);
+  }
 
   return (
     <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[1fr_20rem]">
@@ -161,32 +206,43 @@ export function LibraryScreen() {
           )}
         </Panel>
 
-        <Panel
-          title="Why placing is unavailable"
-          leading={<Info size={14} aria-hidden className="text-status-info" />}
-          bordered
-        >
-          <div className="space-y-2 text-xs text-text-muted">
-            <p>
-              A <code className="font-mono text-text-secondary">Path</code> part is
-              written into the .eote from the{" "}
-              <code className="font-mono text-text-secondary">Commands</code> and{" "}
-              <code className="font-mono text-text-secondary">Points</code> the
-              product&apos;s own .path file carries.
-            </p>
-            <p>
-              The index that feeds this panel stores the SVG{" "}
-              <code className="font-mono text-text-secondary">d</code> it derived from
-              those two and drops the originals, so a symbol browsed here cannot yet
-              be turned into a part the packager can emit.
-            </p>
-            <p>
-              Placing it anyway would put an object on the canvas that no export could
-              contain — the one thing docs/BUILD_PLAN.md forbids. The button appears on
-              its own once the index carries the geometry.
-            </p>
-          </div>
-        </Panel>
+        {placeable ? (
+          <Button
+            variant="primary"
+            block
+            icon={<Plus size={15} />}
+            onClick={() => place(picked!)}
+          >
+            Place on {screenName ?? "the screen"}
+          </Button>
+        ) : (
+          <Panel
+            title="Why placing is unavailable"
+            leading={<Info size={14} aria-hidden className="text-status-info" />}
+            bordered
+          >
+            <div className="space-y-2 text-xs text-text-muted">
+              <p>
+                A <code className="font-mono text-text-secondary">Path</code> part is
+                written into the .eote from the{" "}
+                <code className="font-mono text-text-secondary">Commands</code> and{" "}
+                <code className="font-mono text-text-secondary">Points</code> the
+                product&apos;s own .path file carries.
+              </p>
+              <p>
+                This symbol carries only the SVG{" "}
+                <code className="font-mono text-text-secondary">d</code> derived from
+                those two, so it cannot become a part the packager can emit. Placing
+                it anyway would put an object on the canvas no export could contain —
+                the one thing docs/BUILD_PLAN.md forbids.
+              </p>
+              <p>
+                Run <code className="font-mono">npm run index:graphics</code> on a
+                machine with EcoStruxure installed; the button appears on its own.
+              </p>
+            </div>
+          </Panel>
+        )}
 
         <p className="text-xs text-text-faint">
           Showing {symbols.length} placeholder symbols. Run{" "}

@@ -24,7 +24,7 @@ export interface Artifact {
   name: string;
   bytes: number;
   url: string;
-  kind: "eote" | "csv";
+  kind: "eote" | "csv" | "report";
 }
 
 export type ExportState =
@@ -67,7 +67,7 @@ export function useExport() {
   const store = useProject;
 
   const build = useCallback(
-    async (options: { eote: boolean; csv: boolean }) => {
+    async (options: { eote: boolean; csv: boolean; report: boolean }) => {
       setState({ status: "building" });
       // Revoking first keeps a long session from leaking every previous build.
       for (const artifact of artifacts) URL.revokeObjectURL(artifact.url);
@@ -117,6 +117,32 @@ export function useExport() {
           setArtifacts(made);
           setState({ status: "failed", message, setup: false });
           return;
+        }
+      }
+
+      if (options.report) {
+        try {
+          const response = await fetch("/api/export/report", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(packageInput(s)),
+          });
+
+          if (response.ok) {
+            const blob = await response.blob();
+            made.push({
+              name: `${s.name.replace(/[^A-Za-z0-9._-]+/g, "_")}_validation.html`,
+              bytes: blob.size,
+              url: URL.createObjectURL(blob),
+              kind: "report",
+            });
+          } else {
+            // The report is supporting evidence, not the deliverable. Losing it
+            // is worth a line in the log, not a failed export.
+            s.log("Validation report could not be generated.");
+          }
+        } catch {
+          s.log("Validation report could not be generated.");
         }
       }
 
