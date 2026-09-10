@@ -10,6 +10,11 @@ const config: NextConfig = {
    * production build without taking the dev server down:
    *
    *     NEXT_DIST_DIR=.next-build npx next build
+   *
+   * Next rewrites next-env.d.ts to point at whichever dist dir it built into,
+   * so that one file comes back dirty afterwards. Put it back:
+   *
+   *     git checkout -- next-env.d.ts tsconfig.json
    */
   distDir: process.env.NEXT_DIST_DIR || ".next",
 
