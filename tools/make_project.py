@@ -441,7 +441,13 @@ def build(out_path, screen_name="PumpStation1", full=True):
     entries[f"Screens\\{sid}\\LocalVariables.db"] = local_vars
 
     entries["Bindings.dat"] = jdump(build_bindings(sid, wiring, var_ids, alarms))
+
+    # Blank.eote carries neither of these, but every shipped sample project does,
+    # and OTE creates Contents\Hierarchy.dat itself on first save when it is
+    # absent - so write what a real project looks like instead of leaving the
+    # product to repair ours.
     entries.setdefault("GlobalScripts.dat", b"[]")
+    entries.setdefault("Contents\\Hierarchy.dat", b"[]")
 
     project = json.loads(entries["Project.dat"])
     project["UniqueId"] = gid()

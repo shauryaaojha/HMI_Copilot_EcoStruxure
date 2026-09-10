@@ -46,6 +46,18 @@ function jsonEntry(value: unknown): Uint8Array {
   return new TextEncoder().encode(JSON.stringify(value, null, 2));
 }
 
+/**
+ * Written out as an escape rather than inline, because "Contents\Hierarchy.dat"
+ * in a TS string is \H - not an escape, so the backslash is simply dropped and
+ * the entry silently becomes "ContentsHierarchy.dat". Every nested entry name in
+ * this file goes through a named constant or a template with \\ for that reason.
+ */
+const CONTENTS_HIERARCHY = "Contents\\Hierarchy.dat";
+const SCREENS_HIERARCHY = "Screens\\Hierarchy.dat";
+
+/** `Screens\<guid>\<file>` - the only place a screen entry name is built. */
+const screenEntry = (id: string, file: string) => `Screens\\${id}\\${file}`;
+
 let sqlPromise: Promise<SqlJsStatic> | null = null;
 
 /**
@@ -131,6 +143,37 @@ export function assertBackslashEntries(bytes: Uint8Array): void {
   }
 }
 
+/**
+ * Catches a separator that was eaten rather than mistyped.
+ *
+ * "Contents\Hierarchy.dat" in a TS string literal is \H, which is not an escape,
+ * so the backslash is dropped and the entry becomes "ContentsHierarchy.dat" - a
+ * name the product does not know, written without any error. A forward slash
+ * would at least be visible; this one is silent.
+ *
+ * Checked by exact name rather than by pattern: the skeleton legitimately
+ * contains flat entries like "ScreensFolder.dat" that a prefix rule would
+ * accuse.
+ */
+function assertEntriesPresent(
+  entries: Map<string, Uint8Array>,
+  expected: string[],
+): void {
+  for (const name of expected) {
+    if (!entries.has(name)) {
+      throw new Error(
+        `expected entry "${name}" is missing from the package. ` +
+          "A dropped backslash is the usual cause - check the string literal.",
+      );
+    }
+  }
+  for (const name of entries.keys()) {
+    if (name.includes("/")) {
+      throw new Error(`entry "${name}" uses a forward slash separator`);
+    }
+  }
+}
+
 export async function packageProject(
   input: PackageInput,
   skeleton?: Skeleton,
@@ -165,9 +208,9 @@ export async function packageProject(
   input.screens.forEach((screen, index) => {
     const id = screen.UniqueId;
     hierarchy.push({ ObjectId: id, Children: [] });
-    entries.set(`Screens\\${id}\\Screen.dat`, jsonEntry(screen));
+    entries.set(screenEntry(id, "Screen.dat"), jsonEntry(screen));
     entries.set(
-      `Screens\\${id}\\Metadata.dat`,
+      screenEntry(id, "Metadata.dat"),
       jsonEntry({
         LayoutType: 8,
         Id: index + 1,
@@ -176,10 +219,10 @@ export async function packageProject(
         Order: index,
       }),
     );
-    entries.set(`Screens\\${id}\\LocalVariables.db`, base.localVariables);
+    entries.set(screenEntry(id, "LocalVariables.db"), base.localVariables);
   });
 
-  entries.set("Screens\\Hierarchy.dat", jsonEntry(hierarchy));
+  entries.set(SCREENS_HIERARCHY, jsonEntry(hierarchy));
 
   // --- bindings -----------------------------------------------------------
   const firstScreen = input.screens[0];
@@ -189,9 +232,13 @@ export async function packageProject(
     jsonEntry(buildGraph(firstScreen.UniqueId, input.wires, variableIds, alarmTargets)),
   );
 
-  if (!entries.has("GlobalScripts.dat")) {
-    entries.set("GlobalScripts.dat", new TextEncoder().encode("[]"));
-  }
+  // Blank.eote carries neither of these, but every shipped sample project does,
+  // and OTE creates Contents\Hierarchy.dat itself on first save when it is
+  // absent - so write what a real project looks like rather than making the
+  // product repair ours.
+  const empty = new TextEncoder().encode("[]");
+  if (!entries.has("GlobalScripts.dat")) entries.set("GlobalScripts.dat", empty);
+  if (!entries.has(CONTENTS_HIERARCHY)) entries.set(CONTENTS_HIERARCHY, empty);
 
   // --- project identity ---------------------------------------------------
   const projectEntry = entries.get("Project.dat");
@@ -204,6 +251,16 @@ export async function packageProject(
   entries.set("Project.dat", jsonEntry(project));
 
   // --- pack ---------------------------------------------------------------
+  assertEntriesPresent(entries, [
+    SCREENS_HIERARCHY,
+    CONTENTS_HIERARCHY,
+    ...input.screens.flatMap((screen) => [
+      screenEntry(screen.UniqueId, "Screen.dat"),
+      screenEntry(screen.UniqueId, "Metadata.dat"),
+      screenEntry(screen.UniqueId, "LocalVariables.db"),
+    ]),
+  ]);
+
   const zip = new JSZip();
   for (const [name, data] of entries) {
     // createFolders would insert forward-slash directory entries of its own.
