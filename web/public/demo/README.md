@@ -44,6 +44,29 @@ Every one was run through `POST /api/generate` against its own parsed tags:
 All eight pipeline steps complete on all six, in one and a half to three and a
 half seconds.
 
+### Asking for the whole application
+
+`lib/ai/plan.ts` plans a screen hierarchy — overview first, then areas, capped at
+six units a screen because that is what ISA-101 warns against — but only when
+the request asks for one. Five of the samples carry a second prompt that does,
+and these are the screens they actually produced:
+
+| Sample | Screens | Objects | What it built |
+|---|---|---|---|
+| Water treatment | **7** | 245 | `PlantOverview` + intake, transfer, filtration, chemical dosing, distribution, backwash |
+| Bottling line | **5** | 214 | `LineOverview` + fillers, cappers, labellers, CIP |
+| Boiler house | **3** | 112 | `BoilerHouseOverview` + boiler detail, feedwater and deaerator |
+| Batch reactors | **3** | 85 | `PlantOverview` + reactor detail, dosing pumps |
+| Conveyor system | **3** | 81 | `PlantOverview` + conveyors, sort and weigh |
+
+The legacy retrofit has no such prompt on purpose. It is a two-motor panel; a
+hierarchy over it would be padding, and `tests/samples.test.ts` asserts it stays
+absent.
+
+Note that the reactor prompt asks for a screen per reactor and gets one
+`ReactorDetail` for all four. That is the units-per-screen rule working, not
+failing.
+
 `tests/samples.test.ts` checks each intent names equipment the file actually
 contains, and — for the retrofit, which loses its tank and valve tags to
 unusable types — that it does not promise equipment the import dropped. A prompt

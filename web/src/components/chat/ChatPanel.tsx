@@ -77,7 +77,10 @@ export function ChatPanel() {
   const sample = SAMPLES.find((s) => s.name === tagImport?.fileName);
   const openers =
     sample && screens.length === 0
-      ? [sample.intent, ...OPENERS]
+      ? // One screen first, then the whole application - in that order, because
+        // the second is a much larger ask and seeing the first land is what
+        // makes it credible.
+        [sample.intent, ...(sample.intentFull ? [sample.intentFull] : []), ...OPENERS]
       : sample
         ? [...sample.followUps, ...OPENERS]
         : OPENERS;

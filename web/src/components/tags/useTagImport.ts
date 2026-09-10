@@ -36,6 +36,16 @@ export interface Sample {
    * tests/samples.test.ts checks that it still does.
    */
   intent: string;
+  /**
+   * The same tags asked for a whole application rather than one screen.
+   *
+   * lib/ai/plan.ts already plans a screen hierarchy - overview first, then
+   * areas, capped at six units a screen because that is what ISA-101 warns
+   * against - but only when the request asks for one. Absent where a single
+   * screen is the honest answer: a two-motor retrofit panel does not need a
+   * hierarchy, and generating one would be padding.
+   */
+  intentFull?: string;
   /** Follow-ups that show the conversation is not one shot. */
   followUps: string[];
 }
@@ -65,6 +75,10 @@ export const SAMPLES: Sample[] = [
     intent:
       "Create a pump station screen with 2 pumps. Show running status, flow, " +
       "pressure, temperature and a high-level alarm.",
+    intentFull:
+      "Create a screen for each plant area \u2014 intake, transfer, filtration, " +
+      "chemical dosing, distribution and backwash \u2014 with an overview screen " +
+      "above them.",
     followUps: [
       "make the pump 2 fault lamp red",
       "add a high alarm on the tank level",
@@ -81,6 +95,9 @@ export const SAMPLES: Sample[] = [
       "Create a bottling line overview showing the fillers, cappers and " +
       "labellers with running status and fault lamps, plus the line rate and " +
       "efficiency.",
+    intentFull:
+      "Build the full application: a line overview, then a screen each for the " +
+      "fillers, the cappers, the labellers and the CIP skid.",
     followUps: [
       "add the reject count beside each capper",
       "add a high alarm on the capper torque",
@@ -96,6 +113,9 @@ export const SAMPLES: Sample[] = [
     intent:
       "Create a conveyor overview showing running status and jam detection for " +
       "the conveyors, with the checkweigher weight and the line throughput.",
+    intentFull:
+      "Build the full application: a line overview, a screen for the conveyors " +
+      "and a screen for the diverters and checkweigher.",
     followUps: [
       "make the jam lamps red",
       "add an alarm for any conveyor jam",
@@ -112,6 +132,9 @@ export const SAMPLES: Sample[] = [
       "Create a reactor screen for the four reactors showing temperature, " +
       "pressure, level and agitator status, with high temperature and high " +
       "pressure alarms.",
+    intentFull:
+      "Build the full application: a plant overview, a screen per reactor, and " +
+      "a screen for the dosing pumps.",
     followUps: [
       "add the batch identifier and recipe step for each reactor",
       "add the dosing pump setpoints and actuals",
@@ -128,6 +151,9 @@ export const SAMPLES: Sample[] = [
       "Create a boiler house screen for the three boilers showing firing " +
       "status, flame proven, drum pressure and drum level, plus the steam " +
       "header pressure and flow.",
+    intentFull:
+      "Build the full application: a boiler house overview, a screen per boiler, " +
+      "and a screen for the feedwater and deaerator.",
     followUps: [
       "add low water alarms for each boiler",
       "add the two feedwater pumps",

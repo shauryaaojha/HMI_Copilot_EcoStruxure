@@ -123,6 +123,22 @@ describe("every sample carries a prompt that fits its own tags", () => {
       const parsed = read(sample.name);
       const names = parsed.variables.map((v) => v.Name);
 
+      it("asks for a whole application only where the tags justify one", () => {
+        // A hierarchy generated over a two-motor panel is padding, so the
+        // retrofit deliberately has no full-application prompt.
+        if (sample.name === "Legacy_Retrofit.csv") {
+          expect(sample.intentFull).toBeUndefined();
+          return;
+        }
+        expect(sample.intentFull, `${sample.name} should offer one`).toBeDefined();
+        expect(sample.intentFull!.length).toBeGreaterThan(60);
+        // It has to actually ask for more than one screen, or it is just the
+        // single-screen prompt worded differently.
+        expect(sample.intentFull!.toLowerCase()).toMatch(
+          /screen for each|screen per|screen each|a screen for the/,
+        );
+      });
+
       it("has an intent and at least two follow-ups", () => {
         expect(sample.intent.length).toBeGreaterThan(40);
         expect(sample.followUps.length).toBeGreaterThanOrEqual(2);
