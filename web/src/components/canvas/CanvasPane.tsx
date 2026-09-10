@@ -41,13 +41,10 @@ const TABS: TabItem<CanvasTab>[] = [
 
 const ZOOMS = [25, 50, 75, 100, 125, 150, 200, 300, 400];
 const FIT_PADDING = 48;
-const GRID_SIZE = 8;
 
 export function CanvasPane() {
   const [tab, setTab] = useState<CanvasTab>("design");
   const [zoom, setZoom] = useState(100);
-  const [showGrid, setShowGrid] = useState(false);
-  const [snap, setSnap] = useState(true);
   const [panMode, setPanMode] = useState(false);
 
   const viewport = useRef<HTMLDivElement>(null);
@@ -67,6 +64,10 @@ export function CanvasPane() {
   const setBox = useProject((s) => s.setBox);
   const removeObjects = useProject((s) => s.removeObjects);
   const simulating = useProject((s) => s.simulating);
+  // The grid and the snap increment are company standards, not canvas state -
+  // reference screen 5 sets them and every screen in the project follows.
+  const standards = useProject((s) => s.standards);
+  const setStandards = useProject((s) => s.setStandards);
   const setSimulating = useProject((s) => s.setSimulating);
 
   // Until the generation pipeline lands, fall back to the fixture lifted out of
@@ -150,7 +151,7 @@ export function CanvasPane() {
       if (target?.matches("input, textarea, select, [contenteditable]")) return;
       if (selectedIds.length === 0) return;
 
-      const stride = event.shiftKey ? GRID_SIZE : 1;
+      const stride = event.shiftKey ? standards.gridSize : 1;
       const deltas: Record<string, [number, number]> = {
         ArrowLeft: [-stride, 0],
         ArrowRight: [stride, 0],
@@ -170,7 +171,7 @@ export function CanvasPane() {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedIds, nudge, removeObjects, select]);
+  }, [selectedIds, nudge, removeObjects, select, standards.gridSize]);
 
   const scale = zoom / 100;
 
@@ -206,21 +207,21 @@ export function CanvasPane() {
           <span aria-hidden className="mx-1 h-5 w-px bg-line" />
 
           <Button
-            variant={showGrid ? "secondary" : "ghost"}
+            variant={standards.showGrid ? "secondary" : "ghost"}
             size="sm"
             iconOnly
-            onClick={() => setShowGrid((g) => !g)}
-            aria-pressed={showGrid}
-            title={`${showGrid ? "Hide" : "Show"} the ${GRID_SIZE}px grid`}
+            onClick={() => setStandards({ showGrid: !standards.showGrid })}
+            aria-pressed={standards.showGrid}
+            title={`${standards.showGrid ? "Hide" : "Show"} the ${standards.gridSize}px grid`}
             aria-label="Toggle grid"
             icon={<Grid3x3 size={15} />}
           />
           <Button
-            variant={snap ? "secondary" : "ghost"}
+            variant={standards.snap ? "secondary" : "ghost"}
             size="sm"
-            onClick={() => setSnap((s) => !s)}
-            aria-pressed={snap}
-            title={`Snap to the ${GRID_SIZE}px grid`}
+            onClick={() => setStandards({ snap: !standards.snap })}
+            aria-pressed={standards.snap}
+            title={`Snap to the ${standards.gridSize}px grid`}
             icon={<Square size={13} />}
           >
             Snap
@@ -328,9 +329,9 @@ export function CanvasPane() {
                 values={live}
                 alarms={rows}
                 scale={scale}
-                showGrid={showGrid}
-                gridSize={GRID_SIZE}
-                snap={snap}
+                showGrid={standards.showGrid}
+                gridSize={standards.gridSize}
+                snap={standards.snap}
                 interactive={!panMode}
                 onSelect={select}
                 onHover={hover}

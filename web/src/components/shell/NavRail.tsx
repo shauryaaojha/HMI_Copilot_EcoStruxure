@@ -12,12 +12,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  CircleHelp,
   FolderOpen,
   History,
   LayoutGrid,
   LayoutTemplate,
   Library,
+  Ruler,
   Settings,
   ShieldCheck,
   Tag,
@@ -39,15 +39,13 @@ const MAIN: NavItem[] = [
   { label: "Templates", slug: "templates", icon: LayoutTemplate },
   { label: "Library", slug: "library", icon: Library },
   { label: "Tags", slug: "tags", icon: Tag },
+  { label: "Standards", slug: "standards", icon: Ruler },
   { label: "Validation", slug: "validation", icon: ShieldCheck },
   { label: "Export", slug: "export", icon: Upload },
   { label: "History", slug: "history", icon: History },
 ];
 
-const FOOT: NavItem[] = [
-  { label: "Help", slug: "help", icon: CircleHelp },
-  { label: "Settings", slug: "settings", icon: Settings },
-];
+const FOOT: NavItem[] = [{ label: "Settings", slug: "settings", icon: Settings }];
 
 function RailLink({
   item,
@@ -93,7 +91,7 @@ export function NavRail({ projectId }: { projectId: string }) {
   return (
     <nav
       aria-label="Sections"
-      className="flex w-[4.5rem] shrink-0 flex-col items-center gap-1 border-r border-line-subtle bg-surface-panel py-3"
+      className="flex w-[4.5rem] shrink-0 flex-col items-center gap-1 overflow-y-auto border-r border-line-subtle bg-surface-panel py-3"
     >
       {MAIN.map((item) => (
         <RailLink
@@ -104,7 +102,7 @@ export function NavRail({ projectId }: { projectId: string }) {
         />
       ))}
 
-      <div className="flex-1" />
+      <div className="min-h-4 flex-1" />
 
       {FOOT.map((item) => (
         <RailLink

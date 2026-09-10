@@ -26,6 +26,47 @@ export interface ProjectIdentity {
 }
 
 /** Mirrors lib/validation/rules.ts, which is what /api/validate returns. */
+/**
+ * Company standards. These are not decoration: the grid the canvas draws and
+ * snaps to comes from here, and so does the colour set every part resolves its
+ * palette indices through. Changing a standard changes the screens.
+ */
+export interface Standards {
+  /** Canvas grid pitch in screen units, and the snap increment. */
+  gridSize: number;
+  showGrid: boolean;
+  snap: boolean;
+  /** Index into lib/ote/palette.ts COLOR_SETS. */
+  colorSet: number;
+  /** Enforced by lib/validation/naming.ts at import and at validation. */
+  enforceNaming: boolean;
+}
+
+export const DEFAULT_STANDARDS: Standards = {
+  gridSize: 8,
+  showGrid: false,
+  snap: true,
+  colorSet: 4,
+  enforceNaming: true,
+};
+
+/**
+ * One point in the project's history - reference screen 10.
+ *
+ * A snapshot of everything a generation or an edit can change, so restoring one
+ * puts the project back exactly, bindings and all. Not undo/redo: these are
+ * versions the engineer can name and return to.
+ */
+export interface Version {
+  at: number;
+  description: string;
+  author: string;
+  screens: Screen[];
+  variables: Variable[];
+  alarms: Alarm[];
+  bindings: Binding[];
+}
+
 export interface Finding {
   severity: "error" | "warning" | "info";
   /** Which rule fired, for grouping in the UI. */
@@ -80,6 +121,8 @@ interface ProjectState {
   simulating: boolean;
 
   tagImport?: TagImport;
+  standards: Standards;
+  versions: Version[];
 
   steps: Record<PipelineStep, StepState>;
   /** The engineering-language note under each step, e.g. "2 pumps detected". */
@@ -117,6 +160,10 @@ interface ProjectState {
   ) => void;
   removeObjects: (ids: string[]) => void;
   importTags: (variables: Variable[], meta: TagImport) => void;
+  setStandards: (patch: Partial<Standards>) => void;
+  /** Record the current project as a version, for reference screen 10. */
+  snapshot: (description: string) => void;
+  restore: (at: number) => void;
   /**
    * Make sure a screen exists whose ViewBox has this id, so the first `object`
    * event of a run has somewhere to land. The event contract carries a
@@ -159,6 +206,9 @@ type ProjectActions = Pick<
   | "setBox"
   | "removeObjects"
   | "importTags"
+  | "setStandards"
+  | "snapshot"
+  | "restore"
   | "ensureScreen"
   | "appendToView"
   | "setStep"
@@ -186,6 +236,8 @@ export const useProject = create<ProjectState>()(
     findings: [],
     selectedIds: [],
     simulating: false,
+    standards: DEFAULT_STANDARDS,
+    versions: [],
     steps: NO_STEPS,
     stepDetail: {},
     produced: {},
@@ -312,6 +364,41 @@ export const useProject = create<ProjectState>()(
         s.tagImport = meta;
       }),
 
+    setStandards: (patch) =>
+      set((s) => {
+        Object.assign(s.standards, patch);
+      }),
+
+    snapshot: (description) =>
+      set((s) => {
+        // Structured clone rather than a reference: the store is mutable under
+        // immer, so a shallow copy would follow every later edit.
+        s.versions.unshift({
+          at: Date.now(),
+          description,
+          author: "You",
+          screens: structuredClone(s.screens),
+          variables: structuredClone(s.variables),
+          alarms: structuredClone(s.alarms),
+          bindings: structuredClone(s.bindings),
+        });
+        // Twenty is enough to demo with and cheap enough to keep in memory.
+        if (s.versions.length > 20) s.versions.length = 20;
+      }),
+
+    restore: (at) =>
+      set((s) => {
+        const version = s.versions.find((v) => v.at === at);
+        if (!version) return;
+        s.screens = structuredClone(version.screens);
+        s.variables = structuredClone(version.variables);
+        s.alarms = structuredClone(version.alarms);
+        s.bindings = structuredClone(version.bindings);
+        s.activeScreenId = s.screens[0]?.UniqueId;
+        s.selectedIds = [];
+        s.findings = [];
+      }),
+
     ensureScreen: (viewBoxId, name) =>
       set((s) => {
         if (s.screens.some((screen) => screen.Children[0].UniqueId === viewBoxId)) return;
@@ -419,6 +506,7 @@ export const useProject = create<ProjectState>()(
         s.produced = {};
         s.generating = false;
         s.tagImport = undefined;
+        s.versions = [];
         s.logs = [];
       }),
   })),

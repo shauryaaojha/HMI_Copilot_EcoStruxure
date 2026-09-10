@@ -88,6 +88,8 @@ export function useGeneration() {
 
       case "done":
         s.log("Generation complete.");
+        // A finished generation is a version worth being able to return to.
+        s.snapshot("Screen generated");
         break;
 
       case "error":

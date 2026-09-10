@@ -35,6 +35,7 @@ export type ImportState =
 export function useTagImport() {
   const [state, setState] = useState<ImportState>({ status: "idle" });
   const importTags = useProject((s) => s.importTags);
+  const snapshot = useProject((s) => s.snapshot);
   const log = useProject((s) => s.log);
 
   const upload = useCallback(
@@ -64,6 +65,7 @@ export function useTagImport() {
         });
 
         setState({ status: "done", fileName: file.name, count: data.variables.length });
+        snapshot(`Imported ${data.variables.length} tags from ${file.name}`);
         log(
           `Parsed ${data.variables.length} tags from ${file.name}` +
             (data.corrections?.length
@@ -78,7 +80,7 @@ export function useTagImport() {
         return null;
       }
     },
-    [importTags, log],
+    [importTags, log, snapshot],
   );
 
   const reset = useCallback(() => setState({ status: "idle" }), []);

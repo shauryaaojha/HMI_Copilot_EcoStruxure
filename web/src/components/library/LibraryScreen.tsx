@@ -1,0 +1,199 @@
+"use client";
+
+/**
+ * The graphic object library - reference screen 4's second half.
+ *
+ * The product ships 475 objects under
+ * Buildtime/PropertyDefinitions/ScreenDesign/GraphicObjects/. `npm run
+ * index:graphics` converts them on a machine that has the installation; the
+ * output is gitignored, because they are Schneider's files. Until then this
+ * browses `placeholderSymbols`, which has the same shape.
+ *
+ * Placing one is deliberately unavailable, and the panel says why. A Path part
+ * needs the Commands and Points the .path file carries, and the current index
+ * stores only the SVG `d` it derived from them - see the note in the panel. A
+ * "place" button that produced an object the packager cannot emit would break
+ * the one rule in docs/BUILD_PLAN.md, which is exactly the failure this product
+ * is meant to make impossible.
+ *
+ * Phase 2b / Phase 9 of docs/BUILD_PLAN.md.
+ */
+
+import { useMemo, useState } from "react";
+import { Info, Search } from "lucide-react";
+import { placeholderSymbols } from "@/fixtures";
+import { Badge, Input, Panel, Tabs, cn, type TabItem } from "@/components/ui";
+
+/** The shape `scripts/index-graphics.mjs` writes, plus the geometry it drops. */
+interface Symbol {
+  name: string;
+  category: string;
+  d: string;
+  width: number;
+  height: number;
+  /** Present only once the index carries them; placement needs both. */
+  Commands?: string;
+  Points?: string;
+}
+
+const symbols: Symbol[] = placeholderSymbols;
+
+export function LibraryScreen() {
+  const [category, setCategory] = useState("All");
+  const [query, setQuery] = useState("");
+  const [picked, setPicked] = useState<Symbol | null>(symbols[0] ?? null);
+
+  const categories = useMemo(
+    () => ["All", ...new Set(symbols.map((s) => s.category))],
+    [],
+  );
+  const tabs: TabItem<string>[] = categories.map((c) => ({ id: c, label: c }));
+
+  const shown = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return symbols.filter((symbol) => {
+      if (category !== "All" && symbol.category !== category) return false;
+      return !needle || symbol.name.toLowerCase().includes(needle);
+    });
+  }, [category, query]);
+
+  const placeable = picked?.Commands !== undefined && picked?.Points !== undefined;
+
+  return (
+    <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[1fr_20rem]">
+      <div className="flex min-h-0 flex-col gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <Tabs
+            items={tabs}
+            value={category}
+            onChange={setCategory}
+            variant="pill"
+            aria-label="Symbol category"
+          />
+          <div className="relative ml-auto w-56">
+            <Search
+              size={14}
+              aria-hidden
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-text-faint"
+            />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search symbols"
+              aria-label="Search symbols"
+              className="pl-8"
+            />
+          </div>
+        </div>
+
+        <ul className="grid min-h-0 flex-1 auto-rows-min gap-3 overflow-y-auto sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+          {shown.map((symbol) => (
+            <li key={`${symbol.category}/${symbol.name}`}>
+              <button
+                type="button"
+                onClick={() => setPicked(symbol)}
+                aria-pressed={picked?.name === symbol.name}
+                className={cn(
+                  "focus-ring flex w-full flex-col items-center gap-2 rounded-panel border p-3 transition",
+                  picked?.name === symbol.name
+                    ? "border-brand-400 bg-brand-500/5"
+                    : "border-line-subtle bg-surface-raised hover:border-line-strong",
+                )}
+              >
+                <svg
+                  viewBox={`0 0 ${symbol.width || 1} ${symbol.height || 1}`}
+                  className="h-16 w-full"
+                  role="img"
+                  aria-label={symbol.name}
+                  preserveAspectRatio="xMidYMid meet"
+                >
+                  <path
+                    d={symbol.d}
+                    fill="var(--color-text-muted)"
+                    stroke="var(--color-text-faint)"
+                    strokeWidth={2}
+                  />
+                </svg>
+                <span className="w-full truncate text-center text-[11px] text-text-secondary">
+                  {symbol.name}
+                </span>
+              </button>
+            </li>
+          ))}
+
+          {shown.length === 0 && (
+            <li className="col-span-full rounded-panel border border-dashed border-line p-10 text-center text-sm text-text-muted">
+              No symbol matches that search.
+            </li>
+          )}
+        </ul>
+      </div>
+
+      <div className="space-y-4">
+        <Panel title="Symbol" bordered>
+          {!picked ? (
+            <p className="text-sm text-text-muted">Pick a symbol to see its details.</p>
+          ) : (
+            <dl className="space-y-2 text-sm">
+              <div className="flex justify-between gap-3">
+                <dt className="text-text-muted">Name</dt>
+                <dd className="font-mono text-xs">{picked.name}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-text-muted">Category</dt>
+                <dd className="font-mono text-xs">{picked.category}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-text-muted">Natural size</dt>
+                <dd className="font-mono text-xs">
+                  {picked.width} × {picked.height}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-text-muted">Placeable</dt>
+                <dd>
+                  <Badge tone={placeable ? "ok" : "warn"}>
+                    {placeable ? "yes" : "not yet"}
+                  </Badge>
+                </dd>
+              </div>
+            </dl>
+          )}
+        </Panel>
+
+        <Panel
+          title="Why placing is unavailable"
+          leading={<Info size={14} aria-hidden className="text-status-info" />}
+          bordered
+        >
+          <div className="space-y-2 text-xs text-text-muted">
+            <p>
+              A <code className="font-mono text-text-secondary">Path</code> part is
+              written into the .eote from the{" "}
+              <code className="font-mono text-text-secondary">Commands</code> and{" "}
+              <code className="font-mono text-text-secondary">Points</code> the
+              product&apos;s own .path file carries.
+            </p>
+            <p>
+              The index that feeds this panel stores the SVG{" "}
+              <code className="font-mono text-text-secondary">d</code> it derived from
+              those two and drops the originals, so a symbol browsed here cannot yet
+              be turned into a part the packager can emit.
+            </p>
+            <p>
+              Placing it anyway would put an object on the canvas that no export could
+              contain — the one thing docs/BUILD_PLAN.md forbids. The button appears on
+              its own once the index carries the geometry.
+            </p>
+          </div>
+        </Panel>
+
+        <p className="text-xs text-text-faint">
+          Showing {symbols.length} placeholder symbols. Run{" "}
+          <code className="font-mono">npm run index:graphics</code> on a machine with
+          EcoStruxure installed for the 474 the product ships.
+        </p>
+      </div>
+    </div>
+  );
+}
