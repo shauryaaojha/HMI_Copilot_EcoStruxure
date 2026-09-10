@@ -26,7 +26,13 @@ import type { Alarm, Part, Variable } from "@/lib/ote/schema";
 import { validateProject } from "@/lib/validation/rules";
 import type { GenerationEvent, PipelineStep } from "@/types/events";
 import { inferEquipment, proposeAlarms, type InferredEquipment } from "./infer";
-import { hasApiKey, planScreen, type ScreenPlan } from "./plan";
+import {
+  activeProvider,
+  hasApiKey,
+  planScreen,
+  type Provider,
+  type ScreenPlan,
+} from "./plan";
 
 const SCREEN = { width: 1024, height: 600 };
 
@@ -188,10 +194,21 @@ export async function* runPipeline(
   // --- 3 select -----------------------------------------------------------
   yield step("select", "running");
   let plan: ScreenPlan | null = null;
-  const usedModel = hasApiKey();
-  if (usedModel) {
+  let provider: Provider | null = null;
+  const configured = hasApiKey();
+  const waitingOn = activeProvider();
+  if (configured) {
+    // The model call is the only slow step - seconds, against milliseconds for
+    // everything else. Saying which provider is being asked keeps that gap
+    // legible instead of looking like a stall. It states what is happening, not
+    // what anything is thinking.
+    yield log(`Asking ${waitingOn === "gemini" ? "Gemini" : "Claude"} to read the request`);
     try {
-      plan = await planScreen(intent, equipment);
+      const planned = await planScreen(intent, equipment);
+      if (planned) {
+        plan = planned.plan;
+        provider = planned.provider;
+      }
     } catch (error) {
       // A model failure must not take the screen down. Say so and carry on.
       yield log(
@@ -199,15 +216,19 @@ export async function* runPipeline(
       );
     }
   }
-  const fromModel = plan !== null;
   plan ??= fallbackPlan(intent, equipment);
 
+  const PROVIDER_NAME: Record<Provider, string> = {
+    gemini: "Gemini",
+    claude: "Claude",
+  };
+
   yield log(
-    fromModel
-      ? `Claude read the request: ${plan.rationale}`
-      : usedModel
+    provider
+      ? `${PROVIDER_NAME[provider]} read the request: ${plan.rationale}`
+      : configured
         ? `Laid out from the tag names: ${plan.rationale}`
-        : `No ANTHROPIC_API_KEY set — laid out from the tag names: ${plan.rationale}`,
+        : `No model key set — laid out from the tag names: ${plan.rationale}`,
   );
   yield step("select", "done", `${plan.include.length} of ${equipment.length} units`);
 

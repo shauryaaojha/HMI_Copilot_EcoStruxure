@@ -56,7 +56,7 @@ engineer sees.
 | **9** | Supporting screens | — | ✅ done |
 | **10** | Rehearsal | — | 🟡 script done, live run-through pending |
 
-**182 tests pass** with the app running; 9 more are the Phase 1 packager gate, which
+**187 tests pass** with the app running; 9 more are the Phase 1 packager gate, which
 skips on a machine without an EcoStruxure installation to extract a skeleton from.
 
 ```bash
@@ -71,11 +71,12 @@ cd web && npm test
   via `pathPart()`, so what lands on the canvas is what an export contains.
   `npm run build:symbols` writes a project with Pump01, Tank01, Valve01 and
   Fan01 in it — **still to be opened in OTE.**
-- **4 — the route answers with real events; the model half needs a key.**
-  Equipment inference is a parse of the tag names and runs offline, so the screen
-  builds with no `ANTHROPIC_API_KEY` set — a log line says so in those words rather
+- **4 — done.** Equipment inference is a parse of the tag names and runs
+  offline, so the screen builds with no key at all — the timeline says so rather
   than passing the fallback off as the model. With a key in `web/.env.local`,
-  Claude reads the engineer's sentence and decides what the screen shows.
+  **Gemini** (checked first, the free tier) or **Claude** reads the engineer's
+  sentence and decides what the screen shows. One model call per generation:
+  ~650 input tokens for the demo tag list, ~14K for a 1,248-tag export.
 - **7 — done.** `POST /api/export/report` renders a standalone HTML sign-off
   document — no stylesheet, no font host, no script, because a commissioning
   laptop has no internet. The export screen offers all three files.
