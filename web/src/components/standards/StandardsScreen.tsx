@@ -19,6 +19,7 @@ import { useState } from "react";
 import { COLOR_SETS, resolveColor } from "@/lib/ote/palette";
 import { useProject } from "@/store/project";
 import { Badge, Field, Panel, Select, Toggle, Tabs, type TabItem } from "@/components/ui";
+import { StandardsInForce } from "./StandardsInForce";
 
 type Tab = "general" | "colours" | "naming" | "layout";
 
@@ -57,8 +58,15 @@ export function StandardsScreen() {
   const set = COLOR_SETS[standards.colorSet as keyof typeof COLOR_SETS] ?? COLOR_SETS[4];
 
   return (
-    <div className="space-y-5">
-      <Tabs items={TABS} value={tab} onChange={setTab} aria-label="Standards" />
+    <div className="space-y-6">
+      {/* What the project is held to, always visible. The tabs below are the
+          settings that can be changed; this is the part that cannot. */}
+      <StandardsInForce />
+
+      <div className="border-t border-line-subtle pt-5">
+        <p className="label-eyebrow pb-3">Project settings</p>
+        <Tabs items={TABS} value={tab} onChange={setTab} aria-label="Standards" />
+      </div>
 
       {tab === "general" && (
         <div className="grid gap-5 lg:grid-cols-2">

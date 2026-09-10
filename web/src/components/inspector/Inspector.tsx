@@ -19,7 +19,7 @@ import { Lock, Trash2, Unlock } from "lucide-react";
 import { useProject } from "@/store/project";
 import { TagTable } from "@/components/tags";
 import { LibraryPanel } from "@/components/library/LibraryPanel";
-import { Badge, Button, Field, Input, Panel, Tabs, type TabItem } from "@/components/ui";
+import { Badge, Button, Field, Panel, Tabs, type TabItem } from "@/components/ui";
 import { FieldEditor } from "./editors";
 import { LayersPanel } from "./LayersPanel";
 import { groupsOf, valueAt, type SchemaField } from "./schemaFields";
@@ -114,7 +114,7 @@ export function Inspector() {
 
   return (
     <aside className="flex h-full w-full flex-col overflow-hidden">
-      <div className="flex h-12 shrink-0 items-end border-b border-line-subtle px-2">
+      <div className="flex h-10 shrink-0 items-center border-b border-line-subtle px-2">
         <Tabs items={tabs} value={tab} onChange={setTab} size="sm" aria-label="Inspector" />
       </div>
 
@@ -141,8 +141,8 @@ export function Inspector() {
           </p>
         ) : (
           <>
-            <div className="flex items-center gap-2 px-4 py-3">
-              <div className="min-w-0">
+            <div className="flex items-center gap-1 px-3 py-2.5">
+              <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{part.Type}</p>
                 <p className="truncate font-mono text-[11px] text-text-muted">
                   #{part.Name}
@@ -152,7 +152,6 @@ export function Inspector() {
                 variant="ghost"
                 size="sm"
                 iconOnly
-                className="ml-auto"
                 aria-pressed={locked}
                 aria-label={locked ? "Unlock object" : "Lock object"}
                 title={locked ? "Unlock object" : "Lock object"}
@@ -171,9 +170,15 @@ export function Inspector() {
             </div>
 
             {/* Geometry first: it is what an engineer reaches for most, and
-                typing 320 is more precise than dragging to it. */}
+                typing 320 is more precise than dragging to it.
+
+                The axis letter lives inside the box rather than in a label
+                column beside it. Field's row layout reserves 4.5rem for a
+                label, and two of those side by side in a 271px rail left about
+                thirty pixels for the number - which is why X and Y read as
+                empty and W and H were cut off at the edge. */}
             <Panel title="Geometry">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-1.5">
                 {(
                   [
                     ["X", part.Location.Left, "left"],
@@ -182,11 +187,23 @@ export function Inspector() {
                     ["H", part.Height, "height"],
                   ] as const
                 ).map(([axis, value, key]) => (
-                  <Field key={key} label={axis}>
-                    <Input
+                  <label
+                    key={key}
+                    title={
+                      { left: "X position", top: "Y position", width: "Width", height: "Height" }[key]
+                    }
+                    className="flex h-8 min-w-0 items-center gap-1.5 rounded-md border border-line bg-surface-raised px-2 transition focus-within:border-brand-500/60"
+                  >
+                    <span aria-hidden className="shrink-0 text-[11px] font-medium text-text-faint">
+                      {axis}
+                    </span>
+                    <input
                       type="number"
                       value={value}
                       disabled={locked}
+                      aria-label={
+                        { left: "X position", top: "Y position", width: "Width", height: "Height" }[key]
+                      }
                       onChange={(e) => {
                         const next = Number(e.target.value);
                         if (!Number.isFinite(next)) return;
@@ -200,8 +217,9 @@ export function Inspector() {
                             : next,
                         });
                       }}
+                      className="text-figure w-full min-w-0 bg-transparent text-sm text-text-primary outline-none disabled:opacity-50"
                     />
-                  </Field>
+                  </label>
                 ))}
               </div>
             </Panel>

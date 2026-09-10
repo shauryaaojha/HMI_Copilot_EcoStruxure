@@ -89,6 +89,9 @@ export function ProjectsScreen() {
           variant="pill"
           aria-label="Project filter"
         />
+        <span className="text-figure text-xs text-text-faint">
+          {all.length} project{all.length === 1 ? "" : "s"}
+        </span>
         <Button
           variant="primary"
           className="ml-auto"
@@ -122,31 +125,35 @@ export function ProjectsScreen() {
         </div>
       )}
 
-      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
         {shown.map((project) => (
           <li key={project.id} className="group relative">
             <Link
               href={`/project/${project.id}`}
               className={cn(
-                "focus-ring flex min-h-44 flex-col rounded-panel border border-line-subtle bg-surface-raised p-4 transition",
-                "hover:border-brand-400",
+                "focus-ring flex min-h-40 flex-col rounded-panel border border-line-subtle bg-surface-raised p-4 transition",
+                "hover:-translate-y-0.5 hover:border-brand-500/50",
               )}
+              style={{ boxShadow: "var(--elev-1)" }}
             >
-              <FolderOpen size={22} aria-hidden className="shrink-0 text-brand-400" />
-
-              <span className="mt-3 block truncate text-sm font-semibold">
-                {project.name}
-              </span>
+              <div className="flex items-start gap-2.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500/12 text-brand-400">
+                  <FolderOpen size={16} aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1 truncate pt-1 text-sm font-semibold">
+                  {project.name}
+                </span>
+              </div>
 
               {/* What it was asked for, which is what the project is. Named
                   projects get their own sentence back rather than a count. */}
               {project.intent && (
-                <span className="mt-1 line-clamp-2 block text-xs leading-snug text-text-muted">
+                <span className="mt-2.5 line-clamp-2 block text-xs leading-relaxed text-text-muted">
                   {project.intent}
                 </span>
               )}
 
-              <span className="mt-auto block pt-3 text-[11px] text-text-faint">
+              <span className="mt-auto block truncate pt-3 text-[11px] text-text-faint">
                 {project.openedAt === 0
                   ? "The built-in demo"
                   : `Opened ${when(project.openedAt)}`}
@@ -155,27 +162,33 @@ export function ProjectsScreen() {
 
               {/* Only counts that are non-zero: a wall of zeroes on a project
                   nobody has built yet says less than nothing. */}
-              <span className="mt-2 flex flex-wrap gap-1">
-                {(
-                  [
-                    ["screen", project.screens],
-                    ["object", project.objects],
-                    ["tag", project.tags],
-                    ["alarm", project.alarms],
-                    ["binding", project.bindings],
-                  ] as const
-                )
-                  .filter(([, n]) => (n ?? 0) > 0)
-                  .map(([noun, n]) => (
-                    <Badge key={noun} tone="neutral">
-                      {n!.toLocaleString()} {noun}
-                      {n === 1 ? "" : "s"}
-                    </Badge>
-                  ))}
-                {!project.screens && (
+              {/* Figures, not badges. Five pills wrapped to three lines and
+                  read as tags rather than as a measurement of the project. */}
+              {project.screens ? (
+                <span className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-line-subtle pt-2.5">
+                  {(
+                    [
+                      ["screens", project.screens],
+                      ["objects", project.objects],
+                      ["tags", project.tags],
+                      ["alarms", project.alarms],
+                    ] as const
+                  )
+                    .filter(([, n]) => (n ?? 0) > 0)
+                    .map(([noun, n]) => (
+                      <span key={noun} className="flex flex-col">
+                        <span className="text-figure text-sm font-semibold leading-none text-text-secondary">
+                          {n!.toLocaleString()}
+                        </span>
+                        <span className="label-eyebrow pt-0.5">{noun}</span>
+                      </span>
+                    ))}
+                </span>
+              ) : (
+                <span className="mt-3 border-t border-line-subtle pt-2.5">
                   <Badge tone="warn">empty — nothing built yet</Badge>
-                )}
-              </span>
+                </span>
+              )}
             </Link>
 
             {project.id !== DEMO_ID && (

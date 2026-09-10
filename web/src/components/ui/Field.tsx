@@ -37,7 +37,9 @@ export function Field({
   return (
     <div
       className={cn(
-        layout === "row" ? "grid grid-cols-[5.5rem_1fr] items-center gap-3" : "space-y-1.5",
+        layout === "row"
+          ? "grid grid-cols-[minmax(0,4.5rem)_minmax(0,1fr)] items-center gap-2"
+          : "space-y-1.5",
         className,
       )}
     >
@@ -45,7 +47,7 @@ export function Field({
         htmlFor={id}
         className={cn(
           "text-text-muted",
-          layout === "row" ? "truncate text-xs" : "block text-sm font-medium",
+          layout === "row" ? "min-w-0 truncate text-xs" : "block text-sm font-medium",
         )}
       >
         {label}

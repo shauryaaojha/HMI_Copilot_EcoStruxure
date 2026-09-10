@@ -42,6 +42,19 @@ const SCRIPT_KEYWORDS = new Set([
   "return", "super", "switch", "throw", "try", "var", "while", "with",
 ]);
 
+/**
+ * How many words each list holds, for anywhere that wants to state the size of
+ * what is being enforced rather than assert it.
+ *
+ * Derived from the sets themselves, so the Standards screen cannot claim a
+ * number the checker does not actually apply.
+ */
+export const RESERVED_COUNTS = {
+  caseInsensitive: CASE_INSENSITIVE.size,
+  caseSensitive: CASE_SENSITIVE.size,
+  scriptKeywords: SCRIPT_KEYWORDS.size,
+} as const;
+
 export type NameProblem =
   | "empty"
   | "leading-digit"

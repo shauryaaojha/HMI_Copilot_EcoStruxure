@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import {
   CircleAlert,
   Download,
+  FileArchive,
   FileSpreadsheet,
   Package,
   ShieldCheck,
@@ -220,9 +221,16 @@ export function ExportScreen() {
             {artifacts.map((artifact) => (
               <li
                 key={artifact.name}
-                className="flex items-center gap-3 rounded-md border border-line bg-surface-raised p-3"
+                className={cn(
+                  "flex items-center gap-3 rounded-md border p-3",
+                  artifact.kind === "zip"
+                    ? "border-brand-500/40 bg-brand-500/[0.06]"
+                    : "border-line bg-surface-raised",
+                )}
               >
-                {artifact.kind === "eote" ? (
+                {artifact.kind === "zip" ? (
+                  <FileArchive size={18} aria-hidden className="shrink-0 text-brand-400" />
+                ) : artifact.kind === "eote" ? (
                   <Package size={18} aria-hidden className="shrink-0 text-brand-400" />
                 ) : artifact.kind === "report" ? (
                   <ClipboardCheck
@@ -241,17 +249,24 @@ export function ExportScreen() {
                   <span className="block truncate text-sm font-medium">
                     {artifact.name}
                   </span>
-                  <span className="block text-xs tabular-nums text-text-muted">
+                  <span className="text-figure block text-xs text-text-muted">
                     {kb(artifact.bytes)}
+                    {artifact.kind === "zip" &&
+                      ` · everything below, plus README.txt`}
                   </span>
                 </span>
                 <a
                   href={artifact.url}
                   download={artifact.name}
-                  className="focus-ring inline-flex h-7 items-center gap-1.5 rounded-md border border-line px-2.5 text-xs text-text-secondary transition hover:border-line-strong hover:text-text-primary"
+                  className={cn(
+                    "focus-ring inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition",
+                    artifact.kind === "zip"
+                      ? "bg-brand-500 text-text-onbrand hover:bg-brand-600"
+                      : "border border-line text-text-secondary hover:border-line-strong hover:text-text-primary",
+                  )}
                 >
                   <Download size={13} aria-hidden />
-                  Save
+                  {artifact.kind === "zip" ? "Download" : "Save"}
                 </a>
               </li>
             ))}
@@ -267,6 +282,50 @@ export function ExportScreen() {
               Expert 4.4.
             </span>
           </p>
+        )}
+
+        {artifacts.length > 0 && (
+          <div className="mt-5 rounded-panel border border-line-subtle p-4">
+            <p className="label-eyebrow pb-3">After you download</p>
+            <ol className="space-y-2.5">
+              {[
+                [
+                  "Unzip it somewhere local",
+                  "Not a network share, and not inside the zip viewer - Operator Terminal Expert writes to the project folder as it opens it.",
+                ],
+                [
+                  "Open the .eote in OTE 4.4",
+                  "File › Open Project. The screens, variables and alarms are already in it; nothing needs importing.",
+                ],
+                [
+                  "Check the target panel",
+                  "The file targets the panel in its own Target.dat. If that is not what you are commissioning, change it under Project Settings - the layout is in screen units and follows.",
+                ],
+                [
+                  "Keep the validation report with it",
+                  "A standalone HTML file listing every check that ran and what it found. It can be attached to a handover as-is.",
+                ],
+              ].map(([title, detail], i) => (
+                <li key={title} className="flex gap-3">
+                  <span className="text-figure flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-500/12 text-[10px] font-semibold text-brand-400">
+                    {i + 1}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-xs font-medium text-text-secondary">
+                      {title}
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-relaxed text-text-muted">
+                      {detail}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-3 border-t border-line-subtle pt-3 text-[11px] text-text-faint">
+              The same steps are in README.txt inside the archive, because a zip
+              often arrives by email with no context attached.
+            </p>
+          </div>
         )}
       </Panel>
     </div>
