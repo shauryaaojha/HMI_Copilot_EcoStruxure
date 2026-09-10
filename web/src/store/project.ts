@@ -1,8 +1,10 @@
 /**
- * The project the workspace is editing. One JSON tree, cheap undo/redo.
+ * The project the workspace is editing. One JSON tree, real undo, real history.
  *
- * The store holds exactly what the packager needs and nothing else - if a field
- * is not in here, it does not reach the .eote. Phase 3 of docs/BUILD_PLAN.md.
+ * The store holds exactly what the packager needs, plus the editing state the
+ * .eote has no room for (selection, lock, hide, group) kept deliberately beside
+ * the parts rather than inside them - see ObjectMeta in ./types. Phase 3 of
+ * docs/BUILD_PLAN.md, extended for the editor phases.
  */
 
 import { create } from "zustand";
@@ -10,96 +12,60 @@ import { current } from "immer";
 import { immer } from "zustand/middleware/immer";
 import type { Alarm, Part, Screen, Variable } from "@/lib/ote/schema";
 import type { Equipment, PipelineStep, StepState } from "@/types/events";
+import {
+  alignTo,
+  clonePartsInto,
+  distribute,
+  restack,
+  uniqueName,
+  type AlignMode,
+  type ZMove,
+} from "./edits";
+import { DEFAULT_STANDARDS } from "./types";
+import type {
+  Binding,
+  ChatMessage,
+  Finding,
+  ObjectMeta,
+  Standards,
+  TagImport,
+  Version,
+} from "./types";
 
-export interface Binding {
-  tag: string;
-  targetId: string;
-  targetName: string;
-  property: string;
-}
+export { DEFAULT_STANDARDS } from "./types";
+export type {
+  Binding,
+  ChatMessage,
+  Finding,
+  ObjectMeta,
+  Requirement,
+  Standards,
+  TagImport,
+  Version,
+} from "./types";
 
-/** Everything a project supplies to the chrome. Nothing here is hardcoded in a
- *  component - the top bar reads it, so an empty store shows an empty top bar. */
 export interface ProjectIdentity {
   id: string;
   name: string;
   target: { model: string; width: number; height: number };
 }
 
-/** Mirrors lib/validation/rules.ts, which is what /api/validate returns. */
-/**
- * Company standards. These are not decoration: the grid the canvas draws and
- * snaps to comes from here, and so does the colour set every part resolves its
- * palette indices through. Changing a standard changes the screens.
- */
-export interface Standards {
-  /** Canvas grid pitch in screen units, and the snap increment. */
-  gridSize: number;
-  showGrid: boolean;
-  snap: boolean;
-  /** Index into lib/ote/palette.ts COLOR_SETS. */
-  colorSet: number;
-  /** Enforced by lib/validation/naming.ts at import and at validation. */
-  enforceNaming: boolean;
-}
-
-export const DEFAULT_STANDARDS: Standards = {
-  gridSize: 8,
-  showGrid: false,
-  snap: true,
-  colorSet: 4,
-  enforceNaming: true,
-};
-
-/**
- * One point in the project's history - reference screen 10.
- *
- * A snapshot of everything a generation or an edit can change, so restoring one
- * puts the project back exactly, bindings and all. Not undo/redo: these are
- * versions the engineer can name and return to.
- */
-export interface Version {
-  at: number;
-  description: string;
-  author: string;
+/** What undo restores. Only the parts of the project an edit can change. */
+interface EditSnapshot {
+  label: string;
   screens: Screen[];
-  variables: Variable[];
-  alarms: Alarm[];
-  bindings: Binding[];
+  objectMeta: Record<string, ObjectMeta>;
+  activeScreenId?: string;
+  selectedIds: string[];
 }
 
-export interface Finding {
-  severity: "error" | "warning" | "info";
-  /** Which rule fired, for grouping in the UI. */
-  rule?: string;
-  message: string;
-  /** UniqueId of the offending screen object, when there is one. */
-  objectId?: string;
-  /** Tag name, when the finding is about a variable. */
-  tag?: string;
-  suggestion?: string;
-}
-
-/**
- * What an import of a tag export left behind, beyond the variables themselves.
- *
- * Corrections and skipped rows are kept rather than discarded because
- * lib/tags/parse.ts reports them instead of applying them silently, and an
- * import that quietly drops a bad row is the behaviour this product replaces.
- */
-export interface TagImport {
-  fileName: string;
-  at: number;
-  corrections: { from: string; to: string; reason: string }[];
-  skipped: { row: number; value: string; reason: string }[];
-  summary: { total: number } & Partial<Record<string, number>>;
-}
+/** Deep enough to cover a session's editing, shallow enough to stay in memory. */
+const HISTORY_DEPTH = 60;
 
 interface ProjectState {
   id: string;
   name: string;
   target: { model: string; width: number; height: number };
-  /** Epoch ms of the last autosave, or undefined when never saved. */
   savedAt?: number;
 
   screens: Screen[];
@@ -109,73 +75,78 @@ interface ProjectState {
   bindings: Binding[];
   equipment: Equipment[];
   findings: Finding[];
+  /** Editing state the .eote has no field for, keyed by object UniqueId. */
+  objectMeta: Record<string, ObjectMeta>;
 
-  /** UniqueIds of the selected objects. Marquee select makes this plural. */
   selectedIds: string[];
-  /** UniqueId under the pointer, for the canvas hover highlight. */
   hoveredId?: string;
-  /**
-   * Live is a mode, not a value: the values themselves come from the engine in
-   * lib/sim, keyed by tag, and are projected onto objects through the project's
-   * own bindings. Keeping a copy here would be a second source of truth.
-   */
   simulating: boolean;
+
+  /** Cut or copied parts, waiting for a paste. Survives a screen change. */
+  clipboard: Part[];
+  past: EditSnapshot[];
+  future: EditSnapshot[];
 
   tagImport?: TagImport;
   standards: Standards;
   versions: Version[];
+  chat: ChatMessage[];
 
   steps: Record<PipelineStep, StepState>;
-  /** The engineering-language note under each step, e.g. "2 pumps detected". */
   stepDetail: Partial<Record<PipelineStep, string>>;
-  /** UniqueIds each step produced, so a step can highlight its own output. */
   produced: Partial<Record<PipelineStep, string[]>>;
-  /** Non-empty while a generation run is in flight. */
   generating: boolean;
   logs: { at: string; message: string }[];
 
-  /** Replace the whole project. The workspace calls this once on mount. */
   hydrate: (project: Partial<Omit<ProjectState, keyof ProjectActions>>) => void;
   rename: (name: string) => void;
   setTarget: (target: ProjectState["target"]) => void;
-  markSaved: () => void;
-  /** Replace the selection. `add` extends it instead, for shift-click. */
+  markSaved: (at?: number) => void;
   select: (ids: string[], add?: boolean) => void;
+  selectAll: () => void;
   hover: (id?: string) => void;
-  /** Live drives values from the simulator; design shows the authored state. */
   setSimulating: (on: boolean) => void;
+
+  /* --- screens, as pages -------------------------------------------- */
+  addScreen: (name?: string) => string;
+  duplicateScreen: (id: string) => string | undefined;
+  renameScreen: (id: string, name: string) => void;
+  removeScreen: (id: string) => void;
+  setActiveScreen: (id: string) => void;
+  reorderScreens: (from: number, to: number) => void;
+
+  /* --- objects ------------------------------------------------------- */
   appendObject: (screenId: string, part: Part) => void;
   updateObject: (id: string, patch: Partial<Part>) => void;
-  /**
-   * Write one property, addressed the way the inspector's schema-derived
-   * fields address them: ["Off", "Fill", "Color", "Value"]. Intermediate
-   * objects are created, so setting an optional property that is absent works.
-   */
   setProperty: (id: string, path: string[], value: unknown) => void;
-  /** Move objects by a delta, which is what dragging on the canvas produces. */
   nudge: (ids: string[], dx: number, dy: number) => void;
-  /** Set an object's box outright, which is what a resize handle produces. */
   setBox: (
     id: string,
     box: { left: number; top: number; width: number; height: number },
   ) => void;
   removeObjects: (ids: string[]) => void;
+  duplicateObjects: (ids: string[]) => void;
+  copyObjects: (ids: string[]) => void;
+  cutObjects: (ids: string[]) => void;
+  pasteObjects: () => void;
+  align: (ids: string[], mode: AlignMode) => void;
+  spread: (ids: string[], axis: "horizontal" | "vertical") => void;
+  restackObjects: (ids: string[], move: ZMove) => void;
+  setMeta: (ids: string[], patch: ObjectMeta) => void;
+  group: (ids: string[]) => void;
+  ungroup: (ids: string[]) => void;
+
+  /* --- history ------------------------------------------------------- */
+  undo: () => void;
+  redo: () => void;
+
   importTags: (variables: Variable[], meta: TagImport) => void;
   setStandards: (patch: Partial<Standards>) => void;
-  /** Record the current project as a version, for reference screen 10. */
-  snapshot: (description: string) => void;
+  snapshot: (description: string) => number;
   restore: (at: number) => void;
-  /**
-   * Make sure a screen exists whose ViewBox has this id, so the first `object`
-   * event of a run has somewhere to land. The event contract carries a
-   * parentId but no "screen created" event, so the screen is implied by the
-   * first object that names it.
-   */
   ensureScreen: (viewBoxId: string, name: string) => void;
-  /** Append into the ViewBox with this id, which is what `object` events name. */
   appendToView: (viewBoxId: string, part: Part) => void;
   setStep: (step: PipelineStep, state: StepState, detail?: string) => void;
-  /** Record that a step produced an object, for click-to-highlight. */
   attribute: (step: PipelineStep, id: string) => void;
   setGenerating: (on: boolean) => void;
   addBinding: (binding: Binding) => void;
@@ -183,49 +154,102 @@ interface ProjectState {
   addFinding: (finding: Finding) => void;
   setEquipment: (equipment: Equipment[]) => void;
   log: (message: string) => void;
-  /** Clear only what a generation run produces, leaving tags and settings. */
+
+  /* --- the conversation ---------------------------------------------- */
+  addMessage: (message: ChatMessage) => void;
+  patchMessage: (id: string, patch: Partial<ChatMessage>) => void;
+  clearChat: () => void;
+
   resetRun: () => void;
   reset: () => void;
 }
 
 const NO_STEPS = {} as Record<PipelineStep, StepState>;
 
-/** The action half of the store, so `hydrate` can exclude it by type. */
 type ProjectActions = Pick<
   ProjectState,
-  | "hydrate"
-  | "rename"
-  | "setTarget"
-  | "markSaved"
-  | "select"
-  | "hover"
-  | "setSimulating"
-  | "appendObject"
-  | "updateObject"
-  | "setProperty"
-  | "nudge"
-  | "setBox"
-  | "removeObjects"
-  | "importTags"
-  | "setStandards"
-  | "snapshot"
-  | "restore"
-  | "ensureScreen"
-  | "appendToView"
-  | "setStep"
-  | "attribute"
-  | "setGenerating"
-  | "addBinding"
-  | "addAlarm"
-  | "addFinding"
-  | "setEquipment"
-  | "log"
-  | "reset"
-  | "resetRun"
+  | "hydrate" | "rename" | "setTarget" | "markSaved" | "select" | "selectAll"
+  | "hover" | "setSimulating" | "addScreen" | "duplicateScreen" | "renameScreen"
+  | "removeScreen" | "setActiveScreen" | "reorderScreens" | "appendObject"
+  | "updateObject" | "setProperty" | "nudge" | "setBox" | "removeObjects"
+  | "duplicateObjects" | "copyObjects" | "cutObjects" | "pasteObjects" | "align"
+  | "spread" | "restackObjects" | "setMeta" | "group" | "ungroup" | "undo"
+  | "redo" | "importTags" | "setStandards" | "snapshot" | "restore"
+  | "ensureScreen" | "appendToView" | "setStep" | "attribute" | "setGenerating"
+  | "addBinding" | "addAlarm" | "addFinding" | "setEquipment" | "log"
+  | "addMessage" | "patchMessage" | "clearChat" | "reset" | "resetRun"
 >;
 
+/* ---------------------------------------------------------------------- */
+/* Draft helpers. `s` is always an immer draft, so anything that leaves the  */
+/* draft has to go through current() first - a draft is a Proxy, and neither  */
+/* structuredClone nor a second set() survives one.                          */
+/* ---------------------------------------------------------------------- */
+
+type Draft = ProjectState;
+
+/** Record the pre-edit state so undo has somewhere to go. Clears redo. */
+function remember(s: Draft, label: string) {
+  s.past.push({
+    label,
+    screens: current(s.screens),
+    objectMeta: current(s.objectMeta),
+    activeScreenId: s.activeScreenId,
+    selectedIds: current(s.selectedIds),
+  });
+  if (s.past.length > HISTORY_DEPTH) s.past.shift();
+  s.future.length = 0;
+}
+
+const viewOf = (screen: Screen) => screen.Children[0];
+
+const activeScreen = (s: Draft) =>
+  s.screens.find((x) => x.UniqueId === s.activeScreenId) ?? s.screens[0];
+
+/** Every object name in use anywhere, because bindings resolve by name. */
+function takenNames(s: Draft): Set<string> {
+  const names = new Set<string>();
+  for (const screen of s.screens) {
+    for (const part of viewOf(screen).Children) names.add(part.Name);
+  }
+  return names;
+}
+
+/** The screen an object lives on, since ids are unique across the project. */
+function screenHolding(s: Draft, id: string): Screen | undefined {
+  return s.screens.find((screen) =>
+    viewOf(screen).Children.some((p) => p.UniqueId === id),
+  );
+}
+
+function partsByIds(s: Draft, ids: string[]): Part[] {
+  const wanted = new Set(ids);
+  return s.screens.flatMap((screen) =>
+    viewOf(screen).Children.filter((p) => wanted.has(p.UniqueId)),
+  );
+}
+
+/**
+ * The same parts, detached from the draft.
+ *
+ * current() takes a draft, and `filter` over a draft array returns a plain
+ * array of drafts - which is not one. So the whole tree is detached first and
+ * the selection taken from the result. Getting this wrong throws
+ * "'current' expects a draft", from inside whatever called the action.
+ */
+function detachedPartsByIds(s: Draft, ids: string[]): Part[] {
+  const wanted = new Set(ids);
+  return current(s.screens).flatMap((screen) =>
+    screen.Children[0].Children.filter((p) => wanted.has(p.UniqueId)),
+  );
+}
+
+/** Locked objects ignore edits; that is the whole point of the lock. */
+const editable = (s: Draft, ids: string[]) =>
+  ids.filter((id) => !s.objectMeta[id]?.locked);
+
 export const useProject = create<ProjectState>()(
-  immer((set) => ({
+  immer((set, get) => ({
     id: "",
     name: "Untitled",
     target: { model: "HMIGTO6310", width: 1024, height: 768 },
@@ -235,10 +259,15 @@ export const useProject = create<ProjectState>()(
     bindings: [],
     equipment: [],
     findings: [],
+    objectMeta: {},
     selectedIds: [],
     simulating: false,
+    clipboard: [],
+    past: [],
+    future: [],
     standards: DEFAULT_STANDARDS,
     versions: [],
+    chat: [],
     steps: NO_STEPS,
     stepDetail: {},
     produced: {},
@@ -261,9 +290,9 @@ export const useProject = create<ProjectState>()(
         s.target = target;
       }),
 
-    markSaved: () =>
+    markSaved: (at) =>
       set((s) => {
-        s.savedAt = Date.now();
+        s.savedAt = at ?? Date.now();
       }),
 
     select: (ids, add = false) =>
@@ -272,12 +301,20 @@ export const useProject = create<ProjectState>()(
           s.selectedIds = ids;
           return;
         }
-        // Shift-click toggles, so a second click on a selected object drops it.
         for (const id of ids) {
           const at = s.selectedIds.indexOf(id);
           if (at === -1) s.selectedIds.push(id);
           else s.selectedIds.splice(at, 1);
         }
+      }),
+
+    selectAll: () =>
+      set((s) => {
+        const screen = activeScreen(s);
+        if (!screen) return;
+        s.selectedIds = viewOf(screen)
+          .Children.filter((p) => !s.objectMeta[p.UniqueId]?.hidden)
+          .map((p) => p.UniqueId);
       }),
 
     hover: (id) =>
@@ -290,44 +327,147 @@ export const useProject = create<ProjectState>()(
         s.simulating = on;
       }),
 
+    /* --- screens ------------------------------------------------------ */
+
+    addScreen: (name) => {
+      const id = crypto.randomUUID();
+      set((s) => {
+        remember(s, "Add screen");
+        const taken = new Set(s.screens.map((x) => x.Name));
+        s.screens.push({
+          Type: "Screen",
+          UniqueId: id,
+          Name: uniqueName(taken, name?.trim() || `Screen${s.screens.length + 1}`),
+          Children: [
+            {
+              Type: "ViewBox",
+              UniqueId: crypto.randomUUID(),
+              Name: "ViewBox",
+              Options: 108,
+              Width: s.target.width,
+              Height: s.target.height,
+              Children: [],
+            },
+          ],
+        });
+        s.activeScreenId = id;
+        s.selectedIds = [];
+      });
+      return id;
+    },
+
+    duplicateScreen: (id) => {
+      const source = get().screens.find((x) => x.UniqueId === id);
+      if (!source) return undefined;
+      const newId = crypto.randomUUID();
+      set((s) => {
+        remember(s, "Duplicate screen");
+        const original = s.screens.find((x) => x.UniqueId === id)!;
+        const view = current(viewOf(original));
+        const copy: Screen = {
+          Type: "Screen",
+          UniqueId: newId,
+          Name: uniqueName(new Set(s.screens.map((x) => x.Name)), original.Name),
+          Children: [
+            {
+              ...view,
+              UniqueId: crypto.randomUUID(),
+              Children: clonePartsInto(view.Children, takenNames(s), { dx: 0, dy: 0 }),
+            },
+          ],
+        };
+        s.screens.splice(s.screens.indexOf(original) + 1, 0, copy);
+        s.activeScreenId = newId;
+        s.selectedIds = [];
+      });
+      return newId;
+    },
+
+    renameScreen: (id, name) =>
+      set((s) => {
+        const screen = s.screens.find((x) => x.UniqueId === id);
+        if (!screen) return;
+        remember(s, "Rename screen");
+        screen.Name = uniqueName(
+          new Set(s.screens.filter((x) => x.UniqueId !== id).map((x) => x.Name)),
+          name.trim() || screen.Name,
+        );
+      }),
+
+    removeScreen: (id) =>
+      set((s) => {
+        // A project with no screen cannot be packaged, so the last one stays.
+        if (s.screens.length <= 1) return;
+        const at = s.screens.findIndex((x) => x.UniqueId === id);
+        if (at === -1) return;
+        remember(s, "Delete screen");
+        const [gone] = s.screens.splice(at, 1);
+        for (const part of viewOf(gone).Children) delete s.objectMeta[part.UniqueId];
+        if (s.activeScreenId === id) {
+          s.activeScreenId = s.screens[Math.min(at, s.screens.length - 1)].UniqueId;
+        }
+        s.selectedIds = [];
+      }),
+
+    setActiveScreen: (id) =>
+      set((s) => {
+        if (!s.screens.some((x) => x.UniqueId === id)) return;
+        s.activeScreenId = id;
+        s.selectedIds = [];
+        s.hoveredId = undefined;
+      }),
+
+    reorderScreens: (from, to) =>
+      set((s) => {
+        if (from === to || from < 0 || to < 0) return;
+        if (from >= s.screens.length || to >= s.screens.length) return;
+        remember(s, "Reorder screens");
+        const [moved] = s.screens.splice(from, 1);
+        s.screens.splice(to, 0, moved);
+      }),
+
+    /* --- objects ------------------------------------------------------ */
+
     appendObject: (screenId, part) =>
       set((s) => {
         const screen = s.screens.find((x) => x.UniqueId === screenId);
-        screen?.Children[0].Children.push(part);
+        if (!screen) return;
+        remember(s, `Add ${part.Type}`);
+        part.Name = uniqueName(takenNames(s), part.Name);
+        viewOf(screen).Children.push(part);
       }),
 
     updateObject: (id, patch) =>
       set((s) => {
-        for (const screen of s.screens) {
-          const i = screen.Children[0].Children.findIndex((p) => p.UniqueId === id);
-          if (i !== -1) {
-            Object.assign(screen.Children[0].Children[i], patch);
-            return;
-          }
-        }
+        const screen = screenHolding(s, id);
+        if (!screen || s.objectMeta[id]?.locked) return;
+        remember(s, "Edit object");
+        const parts = viewOf(screen).Children;
+        Object.assign(parts[parts.findIndex((p) => p.UniqueId === id)], patch);
       }),
 
     setProperty: (id, path, value) =>
       set((s) => {
         if (path.length === 0) return;
-        for (const screen of s.screens) {
-          const part = screen.Children[0].Children.find((p) => p.UniqueId === id);
-          if (!part) continue;
-          let node = part as unknown as Record<string, unknown>;
-          for (const step of path.slice(0, -1)) {
-            if (typeof node[step] !== "object" || node[step] === null) node[step] = {};
-            node = node[step] as Record<string, unknown>;
-          }
-          node[path[path.length - 1]] = value;
-          return;
+        const screen = screenHolding(s, id);
+        if (!screen || s.objectMeta[id]?.locked) return;
+        remember(s, `Set ${path.join(".")}`);
+        const part = viewOf(screen).Children.find((p) => p.UniqueId === id)!;
+        let node = part as unknown as Record<string, unknown>;
+        for (const step of path.slice(0, -1)) {
+          if (typeof node[step] !== "object" || node[step] === null) node[step] = {};
+          node = node[step] as Record<string, unknown>;
         }
+        node[path[path.length - 1]] = value;
       }),
 
     nudge: (ids, dx, dy) =>
       set((s) => {
-        const wanted = new Set(ids);
+        const wanted = new Set(editable(s, ids));
+        if (wanted.size === 0) return;
+        remember(s, "Move");
         for (const screen of s.screens) {
-          for (const part of screen.Children[0].Children) {
+          for (const part of viewOf(screen).Children) {
             if (!wanted.has(part.UniqueId)) continue;
             part.Location.Left += dx;
             part.Location.Top += dy;
@@ -337,26 +477,184 @@ export const useProject = create<ProjectState>()(
 
     setBox: (id, box) =>
       set((s) => {
-        for (const screen of s.screens) {
-          const part = screen.Children[0].Children.find((p) => p.UniqueId === id);
-          if (!part) continue;
-          part.Location.Left = box.left;
-          part.Location.Top = box.top;
-          part.Width = box.width;
-          part.Height = box.height;
-          return;
-        }
+        const screen = screenHolding(s, id);
+        if (!screen || s.objectMeta[id]?.locked) return;
+        remember(s, "Resize");
+        const part = viewOf(screen).Children.find((p) => p.UniqueId === id)!;
+        part.Location.Left = box.left;
+        part.Location.Top = box.top;
+        part.Width = box.width;
+        part.Height = box.height;
       }),
 
     removeObjects: (ids) =>
       set((s) => {
-        const wanted = new Set(ids);
+        const wanted = new Set(editable(s, ids));
+        if (wanted.size === 0) return;
+        remember(s, "Delete");
         for (const screen of s.screens) {
-          screen.Children[0].Children = screen.Children[0].Children.filter(
+          viewOf(screen).Children = viewOf(screen).Children.filter(
             (p) => !wanted.has(p.UniqueId),
           );
         }
+        for (const id of wanted) delete s.objectMeta[id];
         s.selectedIds = s.selectedIds.filter((id) => !wanted.has(id));
+        // A binding whose target is gone would export as a dangling reference.
+        s.bindings = s.bindings.filter((b) => !wanted.has(b.targetId));
+      }),
+
+    duplicateObjects: (ids) =>
+      set((s) => {
+        const screen = activeScreen(s);
+        if (!screen) return;
+        const wanted = new Set(ids);
+        const source = current(viewOf(screen)).Children.filter((p) =>
+          wanted.has(p.UniqueId),
+        );
+        if (source.length === 0) return;
+        remember(s, "Duplicate");
+        const copies = clonePartsInto(source, takenNames(s), {
+          dx: s.standards.gridSize * 2,
+          dy: s.standards.gridSize * 2,
+        });
+        viewOf(screen).Children.push(...copies);
+        s.selectedIds = copies.map((p) => p.UniqueId);
+      }),
+
+    copyObjects: (ids) =>
+      set((s) => {
+        const parts = detachedPartsByIds(s, ids);
+        if (parts.length > 0) s.clipboard = parts;
+      }),
+
+    cutObjects: (ids) => {
+      get().copyObjects(ids);
+      get().removeObjects(ids);
+    },
+
+    pasteObjects: () =>
+      set((s) => {
+        const screen = activeScreen(s);
+        if (!screen || s.clipboard.length === 0) return;
+        remember(s, "Paste");
+        const copies = clonePartsInto(current(s.clipboard), takenNames(s), {
+          dx: s.standards.gridSize * 2,
+          dy: s.standards.gridSize * 2,
+        });
+        viewOf(screen).Children.push(...copies);
+        s.selectedIds = copies.map((p) => p.UniqueId);
+      }),
+
+    align: (ids, mode) =>
+      set((s) => {
+        const wanted = editable(s, ids);
+        const parts = partsByIds(s, wanted);
+        const screen = activeScreen(s);
+        if (parts.length === 0 || !screen) return;
+        remember(s, `Align ${mode}`);
+        const moves = alignTo(detachedPartsByIds(s, wanted), mode, {
+          width: viewOf(screen).Width,
+          height: viewOf(screen).Height,
+        });
+        for (const part of parts) {
+          const to = moves.get(part.UniqueId);
+          if (!to) continue;
+          part.Location.Left = to.left;
+          part.Location.Top = to.top;
+        }
+      }),
+
+    spread: (ids, axis) =>
+      set((s) => {
+        const wanted = editable(s, ids);
+        const parts = partsByIds(s, wanted);
+        if (parts.length < 3) return;
+        remember(s, `Distribute ${axis}`);
+        const moves = distribute(detachedPartsByIds(s, wanted), axis);
+        for (const part of parts) {
+          const to = moves.get(part.UniqueId);
+          if (!to) continue;
+          part.Location.Left = to.left;
+          part.Location.Top = to.top;
+        }
+      }),
+
+    restackObjects: (ids, move) =>
+      set((s) => {
+        const screen = activeScreen(s);
+        if (!screen || ids.length === 0) return;
+        remember(s, `Send ${move}`);
+        viewOf(screen).Children = restack(current(viewOf(screen)).Children, ids, move);
+      }),
+
+    setMeta: (ids, patch) =>
+      set((s) => {
+        if (ids.length === 0) return;
+        remember(s, "Object state");
+        for (const id of ids) {
+          const meta = (s.objectMeta[id] ??= {});
+          Object.assign(meta, patch);
+          // An empty record is noise in the save file.
+          if (!meta.locked && !meta.hidden && !meta.groupId) delete s.objectMeta[id];
+        }
+      }),
+
+    group: (ids) =>
+      set((s) => {
+        if (ids.length < 2) return;
+        remember(s, "Group");
+        const groupId = crypto.randomUUID();
+        for (const id of ids) (s.objectMeta[id] ??= {}).groupId = groupId;
+      }),
+
+    ungroup: (ids) =>
+      set((s) => {
+        const groups = new Set(
+          ids.map((id) => s.objectMeta[id]?.groupId).filter(Boolean) as string[],
+        );
+        if (groups.size === 0) return;
+        remember(s, "Ungroup");
+        for (const [id, meta] of Object.entries(s.objectMeta)) {
+          if (!meta.groupId || !groups.has(meta.groupId)) continue;
+          delete meta.groupId;
+          if (!meta.locked && !meta.hidden) delete s.objectMeta[id];
+        }
+      }),
+
+    /* --- history ------------------------------------------------------ */
+
+    undo: () =>
+      set((s) => {
+        const previous = s.past.pop();
+        if (!previous) return;
+        s.future.push({
+          label: previous.label,
+          screens: current(s.screens),
+          objectMeta: current(s.objectMeta),
+          activeScreenId: s.activeScreenId,
+          selectedIds: current(s.selectedIds),
+        });
+        s.screens = previous.screens;
+        s.objectMeta = previous.objectMeta;
+        s.activeScreenId = previous.activeScreenId;
+        s.selectedIds = previous.selectedIds;
+      }),
+
+    redo: () =>
+      set((s) => {
+        const next = s.future.pop();
+        if (!next) return;
+        s.past.push({
+          label: next.label,
+          screens: current(s.screens),
+          objectMeta: current(s.objectMeta),
+          activeScreenId: s.activeScreenId,
+          selectedIds: current(s.selectedIds),
+        });
+        s.screens = next.screens;
+        s.objectMeta = next.objectMeta;
+        s.activeScreenId = next.activeScreenId;
+        s.selectedIds = next.selectedIds;
       }),
 
     importTags: (variables, meta) =>
@@ -370,15 +668,16 @@ export const useProject = create<ProjectState>()(
         Object.assign(s.standards, patch);
       }),
 
-    snapshot: (description) =>
+    snapshot: (description) => {
+      const at = Date.now();
       set((s) => {
-        // `current()` before copying, because `s` is an immer draft and a draft
+        // current() before copying, because `s` is an immer draft and a draft
         // is a Proxy - structuredClone throws "could not be cloned" on one, and
         // it throws from inside whatever applied the event, which is a long way
         // from where it reads. current() returns a detached plain snapshot, so
         // the version cannot follow later edits either.
         s.versions.unshift({
-          at: Date.now(),
+          at,
           description,
           author: "You",
           screens: current(s.screens),
@@ -386,14 +685,16 @@ export const useProject = create<ProjectState>()(
           alarms: current(s.alarms),
           bindings: current(s.bindings),
         });
-        // Twenty is enough to demo with and cheap enough to keep in memory.
         if (s.versions.length > 20) s.versions.length = 20;
-      }),
+      });
+      return at;
+    },
 
     restore: (at) =>
       set((s) => {
         const version = s.versions.find((v) => v.at === at);
         if (!version) return;
+        remember(s, "Restore version");
         // Same reason: `version` is read out of the draft, so its arrays are
         // drafts too. current() detaches them before they become live state.
         s.screens = current(version.screens);
@@ -407,11 +708,11 @@ export const useProject = create<ProjectState>()(
 
     ensureScreen: (viewBoxId, name) =>
       set((s) => {
-        if (s.screens.some((screen) => screen.Children[0].UniqueId === viewBoxId)) return;
+        if (s.screens.some((screen) => viewOf(screen).UniqueId === viewBoxId)) return;
         const screen: Screen = {
           Type: "Screen",
           UniqueId: crypto.randomUUID(),
-          Name: name,
+          Name: uniqueName(new Set(s.screens.map((x) => x.Name)), name),
           Children: [
             {
               Type: "ViewBox",
@@ -430,8 +731,8 @@ export const useProject = create<ProjectState>()(
     appendToView: (viewBoxId, part) =>
       set((s) => {
         for (const screen of s.screens) {
-          if (screen.Children[0].UniqueId !== viewBoxId) continue;
-          screen.Children[0].Children.push(part);
+          if (viewOf(screen).UniqueId !== viewBoxId) continue;
+          viewOf(screen).Children.push(part);
           return;
         }
       }),
@@ -480,7 +781,28 @@ export const useProject = create<ProjectState>()(
         });
       }),
 
-    /** A new run replaces the generated project but keeps the imported tags. */
+    /* --- the conversation --------------------------------------------- */
+
+    addMessage: (message) =>
+      set((s) => {
+        s.chat.push(message);
+      }),
+
+    patchMessage: (id, patch) =>
+      set((s) => {
+        const message = s.chat.find((m) => m.id === id);
+        if (message) Object.assign(message, patch);
+      }),
+
+    clearChat: () =>
+      set((s) => {
+        s.chat = [];
+      }),
+
+    /**
+     * A new build replaces the generated project but keeps the tags, the
+     * conversation and the versions - those are the engineer's, not the run's.
+     */
     resetRun: () =>
       set((s) => {
         s.screens = [];
@@ -489,12 +811,15 @@ export const useProject = create<ProjectState>()(
         s.bindings = [];
         s.equipment = [];
         s.findings = [];
+        s.objectMeta = {};
         s.selectedIds = [];
         s.hoveredId = undefined;
         s.steps = {} as Record<PipelineStep, StepState>;
         s.stepDetail = {};
         s.produced = {};
         s.logs = [];
+        s.past = [];
+        s.future = [];
       }),
 
     reset: () =>
@@ -505,14 +830,19 @@ export const useProject = create<ProjectState>()(
         s.bindings = [];
         s.equipment = [];
         s.findings = [];
+        s.objectMeta = {};
         s.selectedIds = [];
         s.hoveredId = undefined;
+        s.clipboard = [];
+        s.past = [];
+        s.future = [];
         s.steps = {} as Record<PipelineStep, StepState>;
         s.stepDetail = {};
         s.produced = {};
         s.generating = false;
         s.tagImport = undefined;
         s.versions = [];
+        s.chat = [];
         s.logs = [];
       }),
   })),

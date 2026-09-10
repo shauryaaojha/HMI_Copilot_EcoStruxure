@@ -8,7 +8,7 @@
 import { useProjectHydration } from "./useProjectHydration";
 import { CanvasPane } from "@/components/canvas/CanvasPane";
 import { Inspector } from "@/components/inspector/Inspector";
-import { IntentPanel } from "@/components/intent/IntentPanel";
+import { ChatPanel } from "@/components/chat/ChatPanel";
 import { BuildTimeline } from "@/components/timeline/BuildTimeline";
 import { WorkspaceShell } from "./WorkspaceShell";
 
@@ -18,7 +18,7 @@ export function Workspace({ projectId }: { projectId: string }) {
   return (
     <WorkspaceShell
       projectId={projectId}
-      intent={<IntentPanel />}
+      intent={<ChatPanel />}
       canvas={<CanvasPane />}
       inspector={<Inspector />}
       timeline={<BuildTimeline />}

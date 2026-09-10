@@ -1,24 +1,40 @@
 "use client";
 
 /**
- * Loading the project into the store, once, for whichever route was opened
- * first.
+ * Loading the project once, and keeping it.
  *
- * Until the generation pipeline and autosave land, the project *is*
- * src/fixtures - our own output, lifted out of
- * demo_project/HMICopilot_PumpStation.eote, which is a file that opens in the
- * product. Building against that rather than against invented data is what
- * keeps the UI honest before there is a backend to call.
+ * Two things used to lose work. The first was that "is a project loaded?" was
+ * answered by `screens.length > 0`, and a generation run empties the screens
+ * before it fills them - so mid-run this hook decided nothing was loaded and
+ * seeded the demo fixture *underneath* the run. The second was that nothing
+ * persisted, so leaving the workspace for /project/x/tags survived only because
+ * zustand is module state, and a reload or a Fast Refresh did not survive at
+ * all. Both are fixed here: a project is loaded when this hook says it loaded
+ * one, and what it loads is written back to localStorage as it changes.
  *
  * It lives here rather than in the workspace because a hard load of
  * /project/x/validation has to find a project too, and two copies of this would
  * be two things to keep in step.
  */
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { demoAlarms, demoBindings, demoScreen, demoVariables } from "@/fixtures";
 import type { Screen } from "@/lib/ote/schema";
-import { useProject, type Binding } from "@/store/project";
+import { useProject } from "@/store/project";
+import type { Binding } from "@/store/types";
+import { loadProject, saveProject } from "@/store/persist";
+
+/**
+ * Which project id this module has already hydrated. Module scope, not state:
+ * every route mounts its own copy of this hook, and the question "has the store
+ * been filled?" has one answer per page load, not one per component.
+ */
+let hydratedFor: string | null = null;
+
+/** Exported for tests, which need each case to start from nothing. */
+export function forgetHydration() {
+  hydratedFor = null;
+}
 
 /**
  * Flatten the project's Sources -> Bindings -> Targets graph into the flat list
@@ -54,16 +70,40 @@ export function flattenBindings(graph: typeof demoBindings, screen: Screen): Bin
   });
 }
 
+/** Long enough that a drag writes once, short enough to survive a fast reload. */
+const AUTOSAVE_MS = 600;
+
 export function useProjectHydration(projectId: string) {
-  const loaded = useProject((s) => s.screens.length > 0);
   const hydrate = useProject((s) => s.hydrate);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (loaded) {
-      // Already in the store from an earlier route; only the id can differ.
-      hydrate({ id: projectId });
+    if (hydratedFor === projectId) return;
+    hydratedFor = projectId;
+
+    const saved = loadProject(projectId);
+    if (saved) {
+      hydrate({
+        id: saved.id,
+        name: saved.name,
+        target: saved.target,
+        screens: saved.screens,
+        activeScreenId: saved.activeScreenId ?? saved.screens[0]?.UniqueId,
+        variables: saved.variables,
+        alarms: saved.alarms,
+        bindings: saved.bindings,
+        objectMeta: saved.objectMeta ?? {},
+        standards: saved.standards,
+        versions: saved.versions ?? [],
+        chat: saved.chat ?? [],
+        tagImport: saved.tagImport,
+      });
       return;
     }
+
+    // Nothing saved: open on our own output, lifted out of
+    // demo_project/HMICopilot_PumpStation.eote, which is a file the product
+    // opens. A blank canvas is a worse first screen than a real one.
     hydrate({
       id: projectId,
       name: "Pump_Station_Demo",
@@ -74,5 +114,50 @@ export function useProjectHydration(projectId: string) {
       alarms: demoAlarms,
       bindings: flattenBindings(demoBindings, demoScreen),
     });
-  }, [loaded, projectId, hydrate]);
+  }, [projectId, hydrate]);
+
+  /**
+   * Autosave. Subscribing to the whole store and debouncing is deliberate:
+   * every action is a candidate save, and picking which ones matter is the kind
+   * of list that goes stale the moment someone adds an action.
+   */
+  useEffect(() => {
+    // markSaved() is itself a store change, so without this the subscription
+    // would feed itself a save every AUTOSAVE_MS forever. Comparing the payload
+    // rather than tracking a dirty flag also means a change that cancels itself
+    // out - drag away and back - costs nothing.
+    let lastWritten = "";
+
+    const unsubscribe = useProject.subscribe((state) => {
+      if (state.id !== projectId || state.screens.length === 0) return;
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => {
+        const s = useProject.getState();
+        const payload = {
+          id: s.id,
+          name: s.name,
+          target: s.target,
+          screens: s.screens,
+          activeScreenId: s.activeScreenId,
+          variables: s.variables,
+          alarms: s.alarms,
+          bindings: s.bindings,
+          objectMeta: s.objectMeta,
+          standards: s.standards,
+          versions: s.versions,
+          chat: s.chat,
+          tagImport: s.tagImport,
+        };
+        const serialised = JSON.stringify(payload);
+        if (serialised === lastWritten) return;
+        lastWritten = serialised;
+        s.markSaved(saveProject(payload));
+      }, AUTOSAVE_MS);
+    });
+
+    return () => {
+      unsubscribe();
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [projectId]);
 }

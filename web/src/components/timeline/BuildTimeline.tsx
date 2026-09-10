@@ -11,9 +11,10 @@
  * Clicking a step selects the objects it produced, so the timeline is a way
  * back into the screen rather than a read-only log.
  *
- * The run's narrative output lives in the intent pane, beneath the prompt that
- * started it - see components/generation/RunOutput. This dock is the step
- * strip: where the run is, not what it said.
+ * The step strip is where the run is; the log beside it is what it said. They
+ * were split across two panes while the left pane was a prompt box, and came
+ * back together when that pane became the conversation - a turn's own summary
+ * belongs in the thread, the pipeline's line-by-line output belongs here.
  *
  * The header is h-10, matching the dock's collapsed size in WorkspaceShell, so
  * collapsing the pane leaves the title bar rather than an empty strip.
@@ -23,6 +24,7 @@ import { Check, Loader, Radio, X } from "lucide-react";
 import { PIPELINE_STEPS, STEP_LABELS, type PipelineStep, type StepState } from "@/types/events";
 import { useProject } from "@/store/project";
 import { Badge, cn } from "@/components/ui";
+import { RunOutput } from "@/components/generation/RunOutput";
 
 const MARK: Record<StepState, string> = {
   done: "bg-brand-500 text-white border-brand-500",
@@ -122,6 +124,15 @@ export function BuildTimeline() {
           })}
         </ol>
 
+        {/* The narrative, beside the strip rather than under it: at this dock
+            height a stacked log would show two lines. Hidden on narrow panes,
+            where the strip alone is the more useful half. */}
+        <div className="hidden min-h-0 w-80 shrink-0 flex-col border-l border-line-subtle xl:flex">
+          <h3 className="shrink-0 px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-text-faint">
+            Output
+          </h3>
+          <RunOutput />
+        </div>
       </div>
     </section>
   );

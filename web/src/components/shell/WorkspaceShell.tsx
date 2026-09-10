@@ -257,14 +257,14 @@ export function WorkspaceShell({
               >
                 {collapsed.intent ? (
                   <CollapsedRail
-                    label="Intent"
+                    label="Copilot"
                     side="left"
                     onExpand={() => toggle("intent", intentRef)}
                   />
                 ) : (
                   <>
                     <CollapseButton
-                      label="the intent pane"
+                      label="the copilot pane"
                       side="left"
                       onCollapse={() => toggle("intent", intentRef)}
                     />

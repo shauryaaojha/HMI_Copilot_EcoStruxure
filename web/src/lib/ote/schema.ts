@@ -142,6 +142,20 @@ export const Screen = z.object({
 export type ColorRef = z.infer<typeof ColorRef>;
 export type Part = z.infer<typeof Part>;
 export type PartType = Part["Type"];
+
+/**
+ * The part types by name, for anywhere a list is needed rather than a type -
+ * a toolbar, an enum in a model's response schema. Kept beside the union so
+ * adding a part to one without the other is a compile error, not a silent gap.
+ */
+export const PART_TYPES = [
+  "Rectangle",
+  "TextBox",
+  "Lamp",
+  "NumericDisplay",
+  "AlarmSummary",
+  "Path",
+] as const satisfies readonly PartType[];
 export type ViewBox = z.infer<typeof ViewBox>;
 export type Screen = z.infer<typeof Screen>;
 

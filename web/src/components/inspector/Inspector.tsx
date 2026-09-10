@@ -15,14 +15,16 @@
  */
 
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Lock, Trash2, Unlock } from "lucide-react";
 import { useProject } from "@/store/project";
 import { TagTable } from "@/components/tags";
-import { Badge, Button, Field, Panel, Tabs, type TabItem } from "@/components/ui";
+import { LibraryPanel } from "@/components/library/LibraryPanel";
+import { Badge, Button, Field, Input, Panel, Tabs, type TabItem } from "@/components/ui";
 import { FieldEditor } from "./editors";
+import { LayersPanel } from "./LayersPanel";
 import { groupsOf, valueAt, type SchemaField } from "./schemaFields";
 
-type InspectorTab = "properties" | "tags" | "library";
+type InspectorTab = "properties" | "layers" | "library" | "tags";
 
 /** "TextColor" -> "Text colour" is a step too far; "DecimalDigits" -> "Decimal digits". */
 function label(key: string) {
@@ -79,8 +81,11 @@ export function Inspector() {
   const bindings = useProject((s) => s.bindings);
   const findings = useProject((s) => s.findings);
   const selectedIds = useProject((s) => s.selectedIds);
+  const objectMeta = useProject((s) => s.objectMeta);
   const setProperty = useProject((s) => s.setProperty);
   const removeObjects = useProject((s) => s.removeObjects);
+  const setBox = useProject((s) => s.setBox);
+  const setMeta = useProject((s) => s.setMeta);
 
   // The inspector edits one object; a marquee selection of several reports the
   // count instead, because a property panel over a heterogeneous selection is a
@@ -93,11 +98,19 @@ export function Inspector() {
   const bound = bindings.filter((b) => b.targetId === only);
   const flagged = findings.filter((f) => f.objectId === only);
 
+  const objectCount = screens.reduce(
+    (n, screen) => n + screen.Children[0].Children.length,
+    0,
+  );
+
   const tabs: TabItem<InspectorTab>[] = [
     { id: "properties", label: "Properties" },
-    { id: "tags", label: "Tags", count: variables.length },
+    { id: "layers", label: "Layers", count: objectCount },
     { id: "library", label: "Library" },
+    { id: "tags", label: "Tags", count: variables.length },
   ];
+
+  const locked = only ? !!objectMeta[only]?.locked : false;
 
   return (
     <aside className="flex h-full w-full flex-col overflow-hidden">
@@ -114,14 +127,13 @@ export function Inspector() {
             className="h-full p-3"
           />
         ) : tab === "library" ? (
-          <p className="p-4 text-sm text-text-muted">
-            The graphic object library arrives with Phase 2b — it is indexed from
-            the 474 objects the product ships, on a machine that has it installed.
-          </p>
+          <LibraryPanel />
+        ) : tab === "layers" ? (
+          <LayersPanel />
         ) : selectedIds.length > 1 ? (
           <p className="p-4 text-sm text-text-muted">
-            {selectedIds.length} objects selected. Arrow keys nudge them;
-            shift-arrow moves by the grid.
+            {selectedIds.length} objects selected. The toolbar aligns and
+            distributes them; arrow keys nudge, shift-arrow moves by the grid.
           </p>
         ) : !part ? (
           <p className="p-4 text-sm text-text-muted">
@@ -141,12 +153,58 @@ export function Inspector() {
                 size="sm"
                 iconOnly
                 className="ml-auto"
+                aria-pressed={locked}
+                aria-label={locked ? "Unlock object" : "Lock object"}
+                title={locked ? "Unlock object" : "Lock object"}
+                onClick={() => setMeta([part.UniqueId], { locked: !locked })}
+                icon={locked ? <Lock size={15} /> : <Unlock size={15} />}
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                iconOnly
                 aria-label="Delete object"
                 title="Delete object"
                 onClick={() => removeObjects([part.UniqueId])}
                 icon={<Trash2 size={15} />}
               />
             </div>
+
+            {/* Geometry first: it is what an engineer reaches for most, and
+                typing 320 is more precise than dragging to it. */}
+            <Panel title="Geometry">
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    ["X", part.Location.Left, "left"],
+                    ["Y", part.Location.Top, "top"],
+                    ["W", part.Width, "width"],
+                    ["H", part.Height, "height"],
+                  ] as const
+                ).map(([axis, value, key]) => (
+                  <Field key={key} label={axis}>
+                    <Input
+                      type="number"
+                      value={value}
+                      disabled={locked}
+                      onChange={(e) => {
+                        const next = Number(e.target.value);
+                        if (!Number.isFinite(next)) return;
+                        setBox(part.UniqueId, {
+                          left: part.Location.Left,
+                          top: part.Location.Top,
+                          width: part.Width,
+                          height: part.Height,
+                          [key]: key === "width" || key === "height"
+                            ? Math.max(1, next)
+                            : next,
+                        });
+                      }}
+                    />
+                  </Field>
+                ))}
+              </div>
+            </Panel>
 
             {flagged.length > 0 && (
               <ul className="mx-3 mb-2 space-y-1">

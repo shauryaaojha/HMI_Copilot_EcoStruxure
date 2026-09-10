@@ -1,41 +1,42 @@
 "use client";
 
 /**
- * The centre pane: view tabs, the design toolbar, and the screen itself.
+ * The centre pane: screen tabs, view tabs, the design toolbar, and the screen.
  * Reference screens 1, 2, 5, 6. Phase 2 of docs/BUILD_PLAN.md.
  *
- * This owns the viewport - zoom, pan and fit - and ScreenRenderer owns the
- * screen's own coordinate space. The split matters: the renderer converts
- * pointer positions through its own bounding box, so it stays correct at any
- * zoom without either side knowing the other's transform.
+ * This owns the viewport - zoom, pan, fit, the armed tool and the context menu
+ * - and ScreenRenderer owns the screen's own coordinate space. The split
+ * matters: the renderer converts pointer positions through its own bounding
+ * box, so it stays correct at any zoom without either side knowing the other's
+ * transform.
+ *
+ * Everything that edits goes through the store, never through local state, so
+ * the toolbar, the keyboard, the context menu, the layers panel and the chat
+ * are all editing the same project by the same route.
  */
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import {
-  Grid3x3,
-  Hand,
-  Maximize2,
-  Minus,
-  MousePointer2,
-  Play,
-  Plus,
-  Square,
-} from "lucide-react";
 import { useProject } from "@/store/project";
 import { demoScreen } from "@/fixtures";
 import { activeAlarms } from "@/lib/sim/alarms";
+import type { PartType } from "@/lib/ote/schema";
 import { useSimulation } from "./useSimulation";
-import { Badge, Button, Tabs, cn, type TabItem } from "@/components/ui";
+import { Tabs, cn, type TabItem } from "@/components/ui";
 import { BindingMap } from "@/components/bindings/BindingMap";
-import { ScreenRenderer } from "./ScreenRenderer";
+import { ScreenRenderer, type Box } from "./ScreenRenderer";
+import { ScreenTabs } from "./ScreenTabs";
+import { CanvasToolbar } from "./CanvasToolbar";
+import { CanvasContextMenu, type ContextTarget } from "./CanvasContextMenu";
+import { Rulers, RULER } from "./Rulers";
+import { ScreenJson } from "./ScreenJson";
+import { partFromTool } from "./newPart";
+import { useCanvasShortcuts } from "./useCanvasShortcuts";
 
-type CanvasTab = "design" | "bindings" | "script" | "preview" | "json";
+type CanvasTab = "design" | "bindings" | "json";
 
 const TABS: TabItem<CanvasTab>[] = [
   { id: "design", label: "Design" },
-  { id: "bindings", label: "Binding Map" },
-  { id: "script", label: "Script" },
-  { id: "preview", label: "Preview (SVG)" },
+  { id: "bindings", label: "Bindings" },
   { id: "json", label: "JSON" },
 ];
 
@@ -46,6 +47,8 @@ export function CanvasPane() {
   const [tab, setTab] = useState<CanvasTab>("design");
   const [zoom, setZoom] = useState(100);
   const [panMode, setPanMode] = useState(false);
+  const [tool, setTool] = useState<PartType | null>(null);
+  const [menu, setMenu] = useState<ContextTarget | null>(null);
 
   const viewport = useRef<HTMLDivElement>(null);
   const panning = useRef<{ x: number; y: number; left: number; top: number } | null>(
@@ -56,21 +59,21 @@ export function CanvasPane() {
   const activeScreenId = useProject((s) => s.activeScreenId);
   const selectedIds = useProject((s) => s.selectedIds);
   const hoveredId = useProject((s) => s.hoveredId);
+  const objectMeta = useProject((s) => s.objectMeta);
   const alarms = useProject((s) => s.alarms);
   const bindings = useProject((s) => s.bindings);
   const select = useProject((s) => s.select);
   const hover = useProject((s) => s.hover);
   const nudge = useProject((s) => s.nudge);
   const setBox = useProject((s) => s.setBox);
-  const removeObjects = useProject((s) => s.removeObjects);
+  const appendObject = useProject((s) => s.appendObject);
   const simulating = useProject((s) => s.simulating);
   // The grid and the snap increment are company standards, not canvas state -
   // reference screen 5 sets them and every screen in the project follows.
   const standards = useProject((s) => s.standards);
-  const setStandards = useProject((s) => s.setStandards);
   const setSimulating = useProject((s) => s.setSimulating);
 
-  // Until the generation pipeline lands, fall back to the fixture lifted out of
+  // Until a project is hydrated, fall back to the fixture lifted out of
   // demo_project/HMICopilot_PumpStation.eote, so the canvas can be built and
   // judged against a real project on a machine with no EcoStruxure install.
   const screen =
@@ -103,11 +106,21 @@ export function CanvasPane() {
     fit();
   }, [screen.UniqueId, fit]);
 
-  const step = (direction: 1 | -1) =>
+  const zoomStep = useCallback((direction: 1 | -1) => {
     setZoom((current) => {
       const options = ZOOMS.filter((z) => (direction === 1 ? z > current : z < current));
       return direction === 1 ? (options[0] ?? current) : (options.at(-1) ?? current);
     });
+  }, []);
+
+  useCanvasShortcuts({
+    onTool: setTool,
+    onPanMode: setPanMode,
+    onZoomStep: zoomStep,
+    onZoom: setZoom,
+    onFit: fit,
+    enabled: tab === "design",
+  });
 
   /** Ctrl/Cmd + wheel zooms, as every design tool does; plain wheel scrolls. */
   function onWheel(event: React.WheelEvent) {
@@ -143,156 +156,48 @@ export function CanvasPane() {
     panning.current = null;
   };
 
-  // Arrow keys nudge, shift-arrow nudges by the grid, Delete removes, Escape
-  // deselects. The object under the keyboard is the same one under the pointer.
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      const target = event.target as HTMLElement | null;
-      if (target?.matches("input, textarea, select, [contenteditable]")) return;
-      if (selectedIds.length === 0) return;
+  /** A completed draw gesture becomes a real part on the active screen. */
+  const onDraw = useCallback(
+    (type: PartType, box: Box) => {
+      appendObject(screen.UniqueId, partFromTool(type, box));
+      // One shape per arming, the way every design tool behaves: the tool
+      // disarms so the next drag selects rather than drawing a second panel.
+      setTool(null);
+    },
+    [appendObject, screen.UniqueId],
+  );
 
-      const stride = event.shiftKey ? standards.gridSize : 1;
-      const deltas: Record<string, [number, number]> = {
-        ArrowLeft: [-stride, 0],
-        ArrowRight: [stride, 0],
-        ArrowUp: [0, -stride],
-        ArrowDown: [0, stride],
-      };
-
-      if (deltas[event.key]) {
-        event.preventDefault();
-        nudge(selectedIds, ...deltas[event.key]);
-      } else if (event.key === "Delete" || event.key === "Backspace") {
-        event.preventDefault();
-        removeObjects(selectedIds);
-      } else if (event.key === "Escape") {
-        select([]);
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedIds, nudge, removeObjects, select, standards.gridSize]);
+  // A screen change while a tool is armed would place the next shape somewhere
+  // the engineer was not looking.
+  useEffect(() => setTool(null), [activeScreenId]);
 
   const scale = zoom / 100;
+  const rulers = standards.showRulers && tab === "design";
 
   return (
     <section className="flex h-full w-full min-w-0 flex-col">
-      <div className="flex h-12 shrink-0 items-end gap-2 border-b border-line-subtle px-2">
-        <Tabs items={TABS} value={tab} onChange={setTab} aria-label="Canvas view" />
+      <div className="flex h-10 shrink-0 items-center gap-3 border-b border-line-subtle px-2">
+        <ScreenTabs />
+        <div className="ml-auto shrink-0">
+          <Tabs items={TABS} value={tab} onChange={setTab} variant="pill" aria-label="Canvas view" />
+        </div>
       </div>
 
       {tab === "design" && (
-        <div className="flex h-11 shrink-0 items-center gap-1 border-b border-line-subtle px-2">
-          <Button
-            variant={panMode ? "ghost" : "secondary"}
-            size="sm"
-            iconOnly
-            onClick={() => setPanMode(false)}
-            aria-pressed={!panMode}
-            title="Select (V)"
-            aria-label="Select"
-            icon={<MousePointer2 size={15} />}
-          />
-          <Button
-            variant={panMode ? "secondary" : "ghost"}
-            size="sm"
-            iconOnly
-            onClick={() => setPanMode(true)}
-            aria-pressed={panMode}
-            title="Pan — or hold the middle mouse button"
-            aria-label="Pan"
-            icon={<Hand size={15} />}
-          />
-
-          <span aria-hidden className="mx-1 h-5 w-px bg-line" />
-
-          <Button
-            variant={standards.showGrid ? "secondary" : "ghost"}
-            size="sm"
-            iconOnly
-            onClick={() => setStandards({ showGrid: !standards.showGrid })}
-            aria-pressed={standards.showGrid}
-            title={`${standards.showGrid ? "Hide" : "Show"} the ${standards.gridSize}px grid`}
-            aria-label="Toggle grid"
-            icon={<Grid3x3 size={15} />}
-          />
-          <Button
-            variant={standards.snap ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setStandards({ snap: !standards.snap })}
-            aria-pressed={standards.snap}
-            title={`Snap to the ${standards.gridSize}px grid`}
-            icon={<Square size={13} />}
-          >
-            Snap
-          </Button>
-
-          <span aria-hidden className="mx-1 h-5 w-px bg-line" />
-
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            onClick={() => step(-1)}
-            aria-label="Zoom out"
-            icon={<Minus size={15} />}
-          />
-          <span className="w-12 text-center text-xs tabular-nums text-text-secondary">
-            {zoom}%
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            onClick={() => step(1)}
-            aria-label="Zoom in"
-            icon={<Plus size={15} />}
-          />
-          <Button variant="ghost" size="sm" onClick={fit} title="Fit the screen to the pane">
-            Fit
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            onClick={() => setZoom(100)}
-            title="Actual size"
-            aria-label="Actual size"
-            icon={<Maximize2 size={14} />}
-          />
-
-          <div className="ml-auto flex items-center gap-2">
-            {selectedIds.length > 0 && (
-              <Badge tone="brand">
-                {selectedIds.length === 1
-                  ? "1 object selected"
-                  : `${selectedIds.length} objects selected`}
-              </Badge>
-            )}
-            <Badge tone={simulating ? "ok" : "neutral"} dot={simulating}>
-              {simulating ? `Live · ${sim.elapsed.toFixed(0)}s` : "Design"}
-            </Badge>
-            {simulating && rows.length > 0 && (
-              <Badge tone="alarm" dot>
-                {rows.length} active
-              </Badge>
-            )}
-            <Button
-              variant={simulating ? "secondary" : "ghost"}
-              size="sm"
-              aria-pressed={simulating}
-              onClick={() => setSimulating(!simulating)}
-              icon={simulating ? <Square size={13} /> : <Play size={14} />}
-              title={
-                simulating
-                  ? "Return the screen to its design state"
-                  : "Drive the screen from tag values"
-              }
-            >
-              {simulating ? "Stop" : "Simulate"}
-            </Button>
-          </div>
-        </div>
+        <CanvasToolbar
+          tool={tool}
+          onTool={setTool}
+          panMode={panMode}
+          onPanMode={setPanMode}
+          zoom={zoom}
+          onZoom={setZoom}
+          onZoomStep={zoomStep}
+          onFit={fit}
+          simulating={simulating}
+          onSimulate={setSimulating}
+          activeAlarms={rows.length}
+          elapsed={sim.elapsed}
+        />
       )}
 
       <div
@@ -305,43 +210,58 @@ export function CanvasPane() {
         className={cn(
           "min-h-0 flex-1",
           tab === "design"
-            ? cn("canvas-grid overflow-auto p-6", panMode && "cursor-grab active:cursor-grabbing")
+            ? cn(
+                "canvas-grid overflow-auto p-6",
+                panMode && "cursor-grab active:cursor-grabbing",
+              )
             : "overflow-hidden",
         )}
       >
         {tab === "bindings" ? (
           <BindingMap />
-        ) : tab !== "design" ? (
-          <p className="flex h-full items-center justify-center text-center text-sm text-text-muted">
-            {TABS.find((t) => t.id === tab)?.label} arrives with a later phase — see
-            docs/BUILD_PLAN.md.
-          </p>
+        ) : tab === "json" ? (
+          <ScreenJson screen={screen} />
         ) : (
           <div className="flex min-h-full min-w-full items-center justify-center">
             <div
-              className="canvas-screen shrink-0"
-              style={{ width: view.Width * scale, height: view.Height * scale }}
+              className="relative shrink-0"
+              style={{ marginLeft: rulers ? RULER : 0, marginTop: rulers ? RULER : 0 }}
             >
-              <ScreenRenderer
-                screen={screen}
-                selectedIds={selectedIds}
-                hoveredId={hoveredId}
-                values={live}
-                alarms={rows}
-                scale={scale}
-                showGrid={standards.showGrid}
-                gridSize={standards.gridSize}
-                snap={standards.snap}
-                interactive={!panMode}
-                onSelect={select}
-                onHover={hover}
-                onMove={nudge}
-                onResize={setBox}
-              />
+              {rulers && (
+                <Rulers width={view.Width} height={view.Height} scale={scale} />
+              )}
+              <div
+                className="canvas-screen"
+                style={{ width: view.Width * scale, height: view.Height * scale }}
+              >
+                <ScreenRenderer
+                  screen={screen}
+                  selectedIds={selectedIds}
+                  hoveredId={hoveredId}
+                  objectMeta={objectMeta}
+                  values={live}
+                  alarms={rows}
+                  scale={scale}
+                  showGrid={standards.showGrid}
+                  gridSize={standards.gridSize}
+                  snap={standards.snap}
+                  smartGuides={standards.smartGuides}
+                  interactive={!panMode}
+                  tool={tool}
+                  onSelect={select}
+                  onHover={hover}
+                  onMove={nudge}
+                  onResize={setBox}
+                  onDraw={onDraw}
+                  onContextMenu={(at, objectId) => setMenu({ ...at, objectId })}
+                />
+              </div>
             </div>
           </div>
         )}
       </div>
+
+      {menu && <CanvasContextMenu at={menu} onClose={() => setMenu(null)} />}
     </section>
   );
 }

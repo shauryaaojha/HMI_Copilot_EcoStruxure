@@ -56,8 +56,16 @@ export type GenerationEvent =
   | { type: "tags"; variables: Variable[] }
   /** Equipment inference produced a proposal for the engineer to confirm. */
   | { type: "equipment"; equipment: Equipment[] }
-  /** One finished screen object. The canvas appends it immediately. */
-  | { type: "object"; part: Part; parentId: string }
+  /**
+   * One finished screen object. The canvas appends it immediately.
+   *
+   * `screenName` names the screen the parent ViewBox belongs to. The contract
+   * has no "screen created" event - a screen is implied by the first object
+   * that names its ViewBox - so without this the consumer had to invent a name,
+   * and every generated screen came out called after the project. Optional, so
+   * an older producer still parses.
+   */
+  | { type: "object"; part: Part; parentId: string; screenName?: string }
   /** One resolved binding. */
   | { type: "binding"; tag: string; target: string; property: string }
   /** One configured alarm. */

@@ -24,6 +24,15 @@ import { readEvents } from "./sse";
 
 export type Source = "api" | "local";
 
+export interface GenerateOptions {
+  /**
+   * Clear the project first. True for "generate a screen from scratch"; false
+   * when a conversational turn asks for another screen, because an HMI
+   * application is several screens and the second must not erase the first.
+   */
+  fresh?: boolean;
+}
+
 export function useGeneration() {
   const [source, setSource] = useState<Source>();
   const [error, setError] = useState<string>();
@@ -54,7 +63,10 @@ export function useGeneration() {
         break;
 
       case "object": {
-        s.ensureScreen(event.parentId, store.getState().name || "Screen1");
+        s.ensureScreen(
+          event.parentId,
+          event.screenName || store.getState().name || "Screen1",
+        );
         s.appendToView(event.parentId, event.part);
         s.attribute("layout", event.part.UniqueId);
         break;
@@ -100,12 +112,12 @@ export function useGeneration() {
   }, [store]);
 
   const generate = useCallback(
-    async (intent: string) => {
+    async (intent: string, options: GenerateOptions = {}) => {
       if (running.current) return;
       running.current = true;
 
       const s = store.getState();
-      s.resetRun();
+      if (options.fresh ?? true) s.resetRun();
       s.setGenerating(true);
       setError(undefined);
       setSource(undefined);
@@ -152,7 +164,7 @@ export function useGeneration() {
             }
 
             if (!refused && events.length > 0) used = "api";
-            else if (refused) store.getState().resetRun();
+            else if (refused && (options.fresh ?? true)) store.getState().resetRun();
           }
         } catch {
           // Network or route failure falls through to the local emitter.

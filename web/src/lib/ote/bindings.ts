@@ -61,9 +61,18 @@ export interface Wire {
   part: Part;
   tag: string;
   property: string;
+  /**
+   * The screen the part is on. A Target carries ScreenId and ParentIds, so a
+   * project with more than one screen cannot anchor every wire to the first
+   * one - an object on screen 3 bound as though it were on screen 1 is a
+   * binding the product resolves to nothing. Optional, and the caller's
+   * default is used when it is absent, so a single-screen project is unchanged.
+   */
+  screenId?: string;
 }
 
 export function buildGraph(
+  /** The screen a wire is anchored to when it does not name one itself. */
   screenId: string,
   wires: Wire[],
   variableIds: VariableIds,
@@ -96,16 +105,17 @@ export function buildGraph(
     return referenceId;
   };
 
-  for (const { part, tag, property } of wires) {
+  for (const { part, tag, property, screenId: on } of wires) {
     const source = sourceFor(tag);
     const target = Targets.length;
+    const owner = on ?? screenId;
     Targets.push({
       ObjectType: OBJECT_TYPE.PART,
       SubType: part.Type,
       ReferenceId: target,
       ObjectId: part.UniqueId,
-      ParentIds: screenId.toUpperCase(),
-      ScreenId: screenId,
+      ParentIds: owner.toUpperCase(),
+      ScreenId: owner,
       ObjectFullName: part.Name,
     });
     Bindings.push({

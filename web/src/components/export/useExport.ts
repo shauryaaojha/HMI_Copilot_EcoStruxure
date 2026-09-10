@@ -35,12 +35,28 @@ export type ExportState =
 
 /** Everything /api/export and /api/validate need, from what the store holds. */
 export function packageInput(state: ReturnType<typeof useProject.getState>) {
-  const parts = state.screens.flatMap((screen) => screen.Children[0].Children);
-  const byId = new Map(parts.map((part) => [part.UniqueId, part]));
+  // Keyed with the screen, not just the part: a Target carries ScreenId, so a
+  // multi-screen project has to bind each object to the screen it is on.
+  const byId = new Map(
+    state.screens.flatMap((screen) =>
+      screen.Children[0].Children.map(
+        (part) => [part.UniqueId, { part, screenId: screen.UniqueId }] as const,
+      ),
+    ),
+  );
 
   const wires: Wire[] = state.bindings.flatMap((binding) => {
-    const part = byId.get(binding.targetId);
-    return part ? [{ part, tag: binding.tag, property: binding.property }] : [];
+    const found = byId.get(binding.targetId);
+    return found
+      ? [
+          {
+            part: found.part,
+            tag: binding.tag,
+            property: binding.property,
+            screenId: found.screenId,
+          },
+        ]
+      : [];
   });
 
   // The product stores an alarm's trigger as a binding, not a column, so it is

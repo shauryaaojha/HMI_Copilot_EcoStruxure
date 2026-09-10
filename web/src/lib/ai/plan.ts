@@ -6,6 +6,13 @@
  * flow and level, and a high-level alarm" is a sentence, and reading it is the
  * job a model is here for.
  *
+ * What comes back is a plan for an *application*, not a screen. An HMI is a set
+ * of displays: ISA-101 puts a plant overview above unit overviews above unit
+ * detail, and a plant with twenty units on one screen is the thing that
+ * standard exists to prevent. So the model decides how many screens there are
+ * and what goes on each, and the layout in lib/ote/layout.ts gives them all the
+ * same header, navigation and alarm banner.
+ *
  * The model chooses from what already exists. It never invents a part type, a
  * tag or a colour: the schema below only lets it pick equipment ids that
  * inference already found and sections the packager can emit. An invented value
@@ -19,55 +26,65 @@
  * Phase 4 of docs/BUILD_PLAN.md.
  */
 
+import type { ScreenSpec } from "@/lib/ote/layout";
 import type { InferredEquipment } from "./infer";
 
+export type { ScreenSpec } from "@/lib/ote/layout";
+
 export interface ScreenPlan {
-  title: string;
-  screenName: string;
-  /** Equipment ids, in the order they should appear. */
-  include: string[];
-  sections: ("status" | "process" | "alarms")[];
-  wantsAlarmBanner: boolean;
+  screens: ScreenSpec[];
   /** One sentence for the build timeline, in engineering language. */
   rationale: string;
 }
 
 export type Provider = "gemini" | "claude";
 
-const FIELDS = [
-  "title",
+/** More units than this on one display is what ISA-101 warns against. */
+const UNITS_PER_SCREEN = 6;
+/** Beyond this many units, a plant overview earns its place above the rest. */
+const OVERVIEW_THRESHOLD = 4;
+
+const SCREEN_FIELDS = [
   "screenName",
+  "title",
+  "level",
   "include",
   "sections",
-  "wantsAlarmBanner",
-  "rationale",
 ] as const;
 
 const DESCRIPTIONS = {
-  title: "Screen banner title, from the engineer's words",
   screenName:
-    "A valid OTE screen name: letters, digits and underscore, no leading digit",
-  include: "Equipment ids to show, most important first",
-  sections: "Which panels the screen needs",
-  wantsAlarmBanner: "Whether the screen carries an alarm summary",
+    "A valid OTE screen name: letters, digits and underscore, no leading digit. Describe the equipment, not the request - PumpStation1, not MyNewScreen",
+  title: "Screen banner title, in the engineer's words",
+  level:
+    "1 plant overview, 2 unit overview, 3 unit detail. ISA-101's display hierarchy",
+  include: "Equipment ids on this screen, most operationally important first",
+  sections: "Which panels this screen needs",
+  screens: "The screens this application needs, overview first",
   rationale:
     "One sentence naming what was decided and why, in engineering language",
 } as const;
 
-const SYSTEM = `You lay out industrial HMI screens for EcoStruxure Operator Terminal Expert.
+const SYSTEM = `You lay out industrial HMI applications for EcoStruxure Operator Terminal Expert.
 
 You are given equipment already inferred from a PLC tag list, and one sentence
-of intent from an engineer. Decide what the screen shows.
+of intent from an engineer. Decide what screens the application needs and what
+goes on each.
 
 Rules:
 - Only use equipment ids from the list you are given. Never invent one.
-- Include equipment the engineer asked for. If they were not specific, include
-  everything, most operationally important first.
+- Follow ISA-101's display hierarchy. Level 1 is a plant overview: every unit,
+  status only, no readings. Level 2 is a unit overview: a faceplate per unit
+  with running state, faults and up to two readings. Level 3 is unit detail.
+- At most ${UNITS_PER_SCREEN} units on a level 2 or 3 screen, and at most 12 on
+  a level 1 overview. Split into more screens rather than crowding one.
+- Produce a level 1 overview only when there are more than ${OVERVIEW_THRESHOLD}
+  units, or when the engineer asked for an overview or for a whole plant. One
+  station with two pumps is one screen, not three.
+- If the engineer named specific equipment, build for that and nothing else.
 - "status" shows running and fault lamps. "process" shows numeric readings.
-  "alarms" is the active alarm summary along the bottom.
-- Prefer an alarm banner whenever any equipment has a fault or a level reading.
-- screenName must be a valid OTE name and should describe the equipment, not
-  the request. PumpStation1, not MyNewScreen.
+  "alarms" is the active alarm summary along the bottom. Give the alarm section
+  to every screen where any unit has a fault or a level reading.
 - rationale is one sentence naming what you decided and why, in the register an
   engineer would use. Never describe your own reasoning process.`;
 
@@ -79,22 +96,33 @@ Rules:
 const JSON_SCHEMA = {
   type: "object",
   properties: {
-    title: { type: "string", description: DESCRIPTIONS.title },
-    screenName: { type: "string", description: DESCRIPTIONS.screenName },
-    include: {
+    screens: {
       type: "array",
-      items: { type: "string" },
-      description: DESCRIPTIONS.include,
+      description: DESCRIPTIONS.screens,
+      items: {
+        type: "object",
+        properties: {
+          screenName: { type: "string", description: DESCRIPTIONS.screenName },
+          title: { type: "string", description: DESCRIPTIONS.title },
+          level: { type: "integer", enum: [1, 2, 3], description: DESCRIPTIONS.level },
+          include: {
+            type: "array",
+            items: { type: "string" },
+            description: DESCRIPTIONS.include,
+          },
+          sections: {
+            type: "array",
+            items: { type: "string", enum: ["status", "process", "alarms"] },
+            description: DESCRIPTIONS.sections,
+          },
+        },
+        required: [...SCREEN_FIELDS],
+        additionalProperties: false,
+      },
     },
-    sections: {
-      type: "array",
-      items: { type: "string", enum: ["status", "process", "alarms"] },
-      description: DESCRIPTIONS.sections,
-    },
-    wantsAlarmBanner: { type: "boolean", description: DESCRIPTIONS.wantsAlarmBanner },
     rationale: { type: "string", description: DESCRIPTIONS.rationale },
   },
-  required: [...FIELDS],
+  required: ["screens", "rationale"],
   additionalProperties: false,
 } as const;
 
@@ -109,23 +137,34 @@ function geminiSchema() {
   return {
     type: "OBJECT",
     properties: {
-      title: { type: "STRING", description: DESCRIPTIONS.title },
-      screenName: { type: "STRING", description: DESCRIPTIONS.screenName },
-      include: {
+      screens: {
         type: "ARRAY",
-        items: { type: "STRING" },
-        description: DESCRIPTIONS.include,
+        description: DESCRIPTIONS.screens,
+        items: {
+          type: "OBJECT",
+          properties: {
+            screenName: { type: "STRING", description: DESCRIPTIONS.screenName },
+            title: { type: "STRING", description: DESCRIPTIONS.title },
+            level: { type: "INTEGER", enum: ["1", "2", "3"], description: DESCRIPTIONS.level },
+            include: {
+              type: "ARRAY",
+              items: { type: "STRING" },
+              description: DESCRIPTIONS.include,
+            },
+            sections: {
+              type: "ARRAY",
+              items: { type: "STRING", enum: ["status", "process", "alarms"] },
+              description: DESCRIPTIONS.sections,
+            },
+          },
+          required: [...SCREEN_FIELDS],
+          propertyOrdering: [...SCREEN_FIELDS],
+        },
       },
-      sections: {
-        type: "ARRAY",
-        items: { type: "STRING", enum: ["status", "process", "alarms"] },
-        description: DESCRIPTIONS.sections,
-      },
-      wantsAlarmBanner: { type: "BOOLEAN", description: DESCRIPTIONS.wantsAlarmBanner },
       rationale: { type: "STRING", description: DESCRIPTIONS.rationale },
     },
-    required: [...FIELDS],
-    propertyOrdering: [...FIELDS],
+    required: ["screens", "rationale"],
+    propertyOrdering: ["screens", "rationale"],
   };
 }
 
@@ -150,27 +189,45 @@ function prompt(intent: string, equipment: InferredEquipment[]): string {
         unit.roles.map((r) => `${r.tag} (${r.role}, ${r.dataType})`).join(", "),
     )
     .join("\n");
-  return `Equipment found in the tag list:\n${inventory}\n\nEngineer's request:\n"${intent}"`;
+  return `Equipment found in the tag list (${equipment.length} units):\n${inventory}\n\nEngineer's request:\n"${intent}"`;
 }
+
+const SECTIONS = ["status", "process", "alarms"] as const;
 
 /** Anything the model returned that is not a plan is treated as no plan. */
 function coerce(value: unknown): ScreenPlan | null {
   if (typeof value !== "object" || value === null) return null;
   const raw = value as Record<string, unknown>;
-  const sections = Array.isArray(raw.sections) ? raw.sections : [];
-  const include = Array.isArray(raw.include) ? raw.include : [];
+  if (!Array.isArray(raw.screens)) return null;
 
-  if (typeof raw.title !== "string" || typeof raw.screenName !== "string") return null;
+  const screens = raw.screens.flatMap((entry): ScreenSpec[] => {
+    if (typeof entry !== "object" || entry === null) return [];
+    const spec = entry as Record<string, unknown>;
+    if (typeof spec.screenName !== "string" || spec.screenName.trim() === "") return [];
+
+    // Gemini's INTEGER enums arrive as strings often enough to be worth
+    // handling rather than discarding an otherwise good screen over.
+    const level = Number(spec.level);
+    const sections = Array.isArray(spec.sections) ? spec.sections : [];
+    const include = Array.isArray(spec.include) ? spec.include : [];
+
+    return [
+      {
+        screenName: spec.screenName.replace(/[^A-Za-z0-9_]/g, "").replace(/^(\d)/, "S$1"),
+        title: typeof spec.title === "string" ? spec.title : spec.screenName,
+        level: level === 1 || level === 3 ? level : 2,
+        include: include.filter((i): i is string => typeof i === "string"),
+        sections: sections.filter((s): s is (typeof SECTIONS)[number] =>
+          SECTIONS.includes(s as (typeof SECTIONS)[number]),
+        ),
+      },
+    ];
+  });
+
+  if (screens.length === 0) return null;
 
   return {
-    title: raw.title,
-    screenName: raw.screenName,
-    include: include.filter((i): i is string => typeof i === "string"),
-    sections: sections.filter(
-      (s): s is ScreenPlan["sections"][number] =>
-        s === "status" || s === "process" || s === "alarms",
-    ),
-    wantsAlarmBanner: raw.wantsAlarmBanner === true,
+    screens,
     rationale: typeof raw.rationale === "string" ? raw.rationale : "",
   };
 }
@@ -216,7 +273,7 @@ async function planWithClaude(
   const client = new Anthropic();
   const response = await client.messages.parse({
     model: "claude-opus-5",
-    max_tokens: 4096,
+    max_tokens: 8192,
     thinking: { type: "adaptive" },
     system: SYSTEM,
     messages: [{ role: "user", content: prompt(intent, equipment) }],
@@ -224,6 +281,75 @@ async function planWithClaude(
   });
 
   return coerce(response.parsed_output);
+}
+
+/**
+ * A plan good enough to build from when no key is configured, or when the model
+ * could not be reached.
+ *
+ * It applies the same hierarchy rule the prompt states, because the offline
+ * path has to produce something an engineer would recognise as the product's
+ * output rather than a degraded version of it.
+ */
+export function fallbackPlan(
+  intent: string,
+  equipment: InferredEquipment[],
+): ScreenPlan {
+  const hasFaults = equipment.some((e) => e.roles.some((r) => r.role === "fault"));
+  const hasReadings = equipment.some((e) =>
+    e.roles.some((r) => r.dataType !== "BOOL" && r.dataType !== "STRING"),
+  );
+  const sections: ScreenSpec["sections"] = ["status"];
+  if (hasReadings) sections.push("process");
+  if (hasFaults || hasReadings) sections.push("alarms");
+
+  const kind = equipment[0]?.kind;
+  const stem =
+    kind && kind !== "instrument"
+      ? `${kind.charAt(0).toUpperCase()}${kind.slice(1)}Station`
+      : "Unit";
+
+  const screens: ScreenSpec[] = [];
+  if (equipment.length > OVERVIEW_THRESHOLD) {
+    screens.push({
+      screenName: "PlantOverview",
+      title: intent.trim().slice(0, 60) || "Plant Overview",
+      level: 1,
+      include: equipment.slice(0, 12).map((e) => e.id),
+      sections: ["status", "alarms"],
+    });
+  }
+
+  for (let i = 0; i < equipment.length; i += UNITS_PER_SCREEN) {
+    const group = equipment.slice(i, i + UNITS_PER_SCREEN);
+    const index = Math.floor(i / UNITS_PER_SCREEN) + 1;
+    screens.push({
+      screenName: screens.length === 0 ? `${stem}${index}` : `${stem}${index}`,
+      title:
+        screens.length === 0
+          ? intent.trim().slice(0, 60) || `${stem} ${index}`
+          : `${stem} ${index}`,
+      level: 2,
+      include: group.map((e) => e.id),
+      sections,
+    });
+  }
+
+  if (screens.length === 0) {
+    screens.push({
+      screenName: "Overview",
+      title: intent.trim().slice(0, 60) || "Overview",
+      level: 2,
+      include: [],
+      sections: ["status"],
+    });
+  }
+
+  const count = screens.length;
+  return {
+    screens,
+    rationale: `Laid out ${equipment.length} unit${equipment.length === 1 ? "" : "s"} across ${count} screen${count === 1 ? "" : "s"} from the tag names.`,
+  };
 }
 
 /**
@@ -245,17 +371,25 @@ export async function planScreen(
   if (!plan) return null;
 
   // No schema can express "must be one of these ids", so it is checked here
-  // rather than trusted. A hallucinated id would place an empty panel.
+  // rather than trusted. A hallucinated id would place an empty card.
   const known = new Set(equipment.map((e) => e.id));
-  const include = plan.include.filter((id) => known.has(id));
-  const sections = plan.sections.length > 0 ? plan.sections : (["status"] as const);
+  const seen = new Set<string>();
 
-  return {
-    provider,
-    plan: {
-      ...plan,
-      include: include.length > 0 ? include : [...known],
-      sections: [...sections],
-    },
-  };
+  const screens = plan.screens.map((spec, i) => {
+    const include = spec.include.filter((id) => known.has(id));
+    // Screen names have to be unique: they name the entry in the project's own
+    // hierarchy, and two screens called Overview is a project that does not open.
+    let name = spec.screenName || `Screen${i + 1}`;
+    for (let n = 2; seen.has(name.toLowerCase()); n++) name = `${spec.screenName}${n}`;
+    seen.add(name.toLowerCase());
+
+    return {
+      ...spec,
+      screenName: name,
+      include: include.length > 0 || spec.level === 1 ? include : [...known],
+      sections: spec.sections.length > 0 ? spec.sections : (["status"] as const).slice(),
+    };
+  });
+
+  return { provider, plan: { ...plan, screens } };
 }
