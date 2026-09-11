@@ -1,0 +1,613 @@
+<title>HMI Copilot Business Model</title>
+<style>
+  /* ---- tokens: complete light palette on bare :root ---- */
+  :root {
+    --ground: #f2f4f3;
+    --panel: #ffffff;
+    --panel-2: #eceff0;
+    --ink: #14201c;
+    --ink-2: #47574f;
+    --ink-3: #77857d;
+    --rule: #d5ddd8;
+    --rule-strong: #b9c4bd;
+    --accent: #1f7a44;
+    --accent-soft: #e2efe7;
+    --caution: #8a5d0f;
+    --caution-soft: #f6eddb;
+    --critical: #9c2f2f;
+    --critical-soft: #f7e6e4;
+    --shadow: 0 1px 2px rgba(20, 32, 28, .05);
+
+    --sans: "Helvetica Neue", Helvetica, "Segoe UI", Arial, sans-serif;
+    --serif: Charter, "Bitstream Charter", "Iowan Old Style", Georgia, serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0f1513;
+      --panel: #161e1b;
+      --panel-2: #1c2521;
+      --ink: #e3eae6;
+      --ink-2: #a7b5ad;
+      --ink-3: #7c8a83;
+      --rule: #2a3733;
+      --rule-strong: #3d4d47;
+      --accent: #56b97d;
+      --accent-soft: #17301f;
+      --caution: #d2a052;
+      --caution-soft: #2e2617;
+      --critical: #dd8074;
+      --critical-soft: #33201e;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0f1513;
+    --panel: #161e1b;
+    --panel-2: #1c2521;
+    --ink: #e3eae6;
+    --ink-2: #a7b5ad;
+    --ink-3: #7c8a83;
+    --rule: #2a3733;
+    --rule-strong: #3d4d47;
+    --accent: #56b97d;
+    --accent-soft: #17301f;
+    --caution: #d2a052;
+    --caution-soft: #2e2617;
+    --critical: #dd8074;
+    --critical-soft: #33201e;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.62;
+    margin: 0;
+    padding: 0 1.5rem 6rem;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 60rem; margin: 0 auto; }
+
+  /* ---- masthead ---- */
+  .masthead { padding: 4.5rem 0 2.25rem; border-bottom: 2px solid var(--ink); }
+  .eyebrow {
+    font-family: var(--mono); font-size: .7rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 1.4rem;
+  }
+  h1 {
+    font-family: var(--sans); font-weight: 700; font-size: clamp(2.1rem, 5.2vw, 3.3rem);
+    letter-spacing: -.028em; line-height: 1.04; margin: 0; text-wrap: balance;
+  }
+  .standfirst {
+    font-size: clamp(1.05rem, 2.1vw, 1.24rem); color: var(--ink-2);
+    margin: 1.15rem 0 0; max-width: 46ch; text-wrap: pretty;
+  }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 0 2.25rem; margin: 2.1rem 0 0;
+    font-family: var(--mono); font-size: .73rem; color: var(--ink-3);
+    letter-spacing: .03em;
+  }
+  .meta b { color: var(--ink-2); font-weight: 500; }
+
+  .preamble {
+    margin: 2.25rem 0 0; padding: 1.1rem 1.3rem;
+    border-left: 3px solid var(--accent); background: var(--accent-soft);
+    color: var(--ink-2); font-size: .95rem; max-width: 62ch;
+  }
+
+  /* ---- sections: margin column carries the number, like a drawing ---- */
+  section { display: grid; grid-template-columns: 8.5rem 1fr; gap: 0 2.5rem;
+            padding: 3.1rem 0; border-bottom: 1px solid var(--rule); }
+  .rail { position: sticky; top: 1.5rem; align-self: start; }
+  .rail .num {
+    font-family: var(--mono); font-size: 1.5rem; font-weight: 500;
+    color: var(--accent); letter-spacing: -.03em; display: block; line-height: 1;
+  }
+  .rail .tag {
+    font-family: var(--mono); font-size: .67rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-3); margin-top: .55rem;
+    display: block; line-height: 1.45;
+  }
+  .body { min-width: 0; max-width: 68ch; }
+  h2 {
+    font-family: var(--sans); font-weight: 700; font-size: clamp(1.42rem, 2.7vw, 1.85rem);
+    letter-spacing: -.021em; line-height: 1.14; margin: 0 0 1.15rem; text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--sans); font-weight: 600; font-size: 1.03rem;
+    letter-spacing: -.008em; margin: 2.1rem 0 .7rem;
+  }
+  p { margin: 0 0 1.05rem; }
+  p:last-child { margin-bottom: 0; }
+  strong { font-weight: 700; }
+  em { font-style: italic; }
+  code {
+    font-family: var(--mono); font-size: .85em; background: var(--panel-2);
+    padding: .1em .34em; border-radius: 2px; color: var(--ink);
+  }
+  a { color: var(--accent); }
+  a:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 3px;
+  }
+
+  ul, ol { margin: 0 0 1.05rem; padding-left: 1.25rem; }
+  li { margin-bottom: .55rem; }
+  li::marker { color: var(--ink-3); }
+  ol.reasons { list-style: none; padding-left: 0; counter-reset: r; }
+  ol.reasons > li {
+    counter-increment: r; position: relative; padding-left: 2.4rem; margin-bottom: 1.15rem;
+  }
+  ol.reasons > li::before {
+    content: counter(r); position: absolute; left: 0; top: .06em;
+    font-family: var(--mono); font-size: .82rem; font-weight: 600;
+    color: var(--accent); border: 1px solid var(--rule-strong);
+    width: 1.65rem; height: 1.65rem; display: grid; place-items: center;
+  }
+
+  /* ---- panel-schedule tables ---- */
+  .tablewrap { overflow-x: auto; margin: 0 0 1.15rem; border: 1px solid var(--rule); background: var(--panel); }
+  table { border-collapse: collapse; width: 100%; min-width: 34rem; font-family: var(--sans); font-size: .84rem; }
+  thead th {
+    font-family: var(--mono); font-size: .66rem; letter-spacing: .1em; text-transform: uppercase;
+    text-align: left; color: var(--ink-2); font-weight: 500;
+    padding: .72rem .85rem; background: var(--panel-2);
+    border-bottom: 1px solid var(--rule-strong); white-space: nowrap;
+  }
+  tbody td { padding: .8rem .85rem; border-bottom: 1px solid var(--rule); vertical-align: top; line-height: 1.5; color: var(--ink-2); }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody th {
+    text-align: left; padding: .8rem .85rem; border-bottom: 1px solid var(--rule);
+    vertical-align: top; font-weight: 600; color: var(--ink); line-height: 1.5;
+  }
+  tbody tr:last-child th { border-bottom: 0; }
+  td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .verdict {
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .07em; text-transform: uppercase;
+    padding: .22rem .5rem; display: inline-block; white-space: nowrap; font-weight: 600;
+  }
+  .v-do { background: var(--accent-soft); color: var(--accent); }
+  .v-no { background: var(--panel-2); color: var(--ink-3); }
+  .sev { font-family: var(--mono); font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; }
+  .s-crit { color: var(--critical); }
+  .s-high { color: var(--caution); }
+  .s-med { color: var(--ink-3); }
+
+  /* ---- the calculation sheet ---- */
+  .calc {
+    background: var(--panel); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+    padding: 1.25rem 1.4rem; margin: 0 0 1.15rem; overflow-x: auto;
+  }
+  .calc dl { margin: 0; font-family: var(--mono); font-size: .8rem; }
+  .calc dt {
+    font-size: .66rem; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--accent); margin: 1.35rem 0 .6rem; font-weight: 600;
+  }
+  .calc dt:first-child { margin-top: 0; }
+  .calc dd {
+    margin: 0 0 .35rem; display: flex; justify-content: space-between; gap: 2rem;
+    color: var(--ink-2); border-bottom: 1px dotted var(--rule); padding-bottom: .35rem;
+  }
+  .calc dd span:last-child { color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .calc dd.plain { border-bottom: 0; display: block; color: var(--ink-2); }
+  .calc .q { color: var(--ink); }
+
+  /* ---- pull statement ---- */
+  .pull {
+    font-family: var(--sans); font-weight: 600; font-size: clamp(1.08rem, 2.2vw, 1.3rem);
+    line-height: 1.36; letter-spacing: -.013em; color: var(--ink);
+    border-top: 2px solid var(--ink); border-bottom: 1px solid var(--rule);
+    padding: 1.1rem 0; margin: 1.6rem 0; text-wrap: pretty;
+  }
+  .note { font-size: .9rem; color: var(--ink-3); }
+  .caution-block {
+    border-left: 3px solid var(--caution); background: var(--caution-soft);
+    padding: 1rem 1.25rem; margin: 0 0 1.15rem; color: var(--ink-2); font-size: .95rem;
+  }
+  .cut { background: var(--panel); border: 1px solid var(--rule); padding: 1.1rem 1.3rem; font-size: .93rem; color: var(--ink-2); }
+
+  footer {
+    max-width: 60rem; margin: 0 auto; padding: 2.6rem 0 0;
+    font-family: var(--mono); font-size: .72rem; color: var(--ink-3); letter-spacing: .03em;
+  }
+
+  @media (max-width: 44rem) {
+    body { font-size: 16px; padding: 0 1.15rem 4rem; }
+    section { grid-template-columns: 1fr; gap: 0; padding: 2.4rem 0; }
+    .rail { position: static; display: flex; align-items: baseline; gap: .75rem; margin-bottom: 1rem; }
+    .rail .num { font-size: 1.05rem; }
+    .rail .tag { margin-top: 0; }
+    .masthead { padding-top: 3rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <p class="eyebrow">HMI Copilot &middot; Commercial Case</p>
+    <h1>Business Model</h1>
+    <p class="standfirst">Who pays, why, how much, and what stops someone else doing it.</p>
+    <div class="meta">
+      <span><b>Product</b> HMI Copilot</span>
+      <span><b>Platform</b> EcoStruxure OTE 4.4</span>
+      <span><b>Basis</b> 467 tests, a file that opens</span>
+    </div>
+    <p class="preamble">
+      Every figure here that is not measured from the repository is labelled as an
+      assumption. This is not a market study; it is a model whose inputs you can change.
+    </p>
+  </header>
+
+  <section>
+    <div class="rail"><span class="num">01</span><span class="tag">The&nbsp;constraint</span></div>
+    <div class="body">
+      <h2>The licensing question picks the business model</h2>
+      <p>This comes first, because it decides what can be sold at all.</p>
+      <p>
+        Every <code>.eote</code> this product writes contains <strong>Schneider's own
+        database files, copied through verbatim</strong> &mdash; <code>Recipe.db</code>,
+        <code>Security.db</code>, <code>Language.db</code>, <code>DriverConfig.db</code>.
+        Every developer extracts their own copy from their own licensed installation. The
+        same applies to the 474 indexed graphic objects.
+      </p>
+      <div class="caution-block">
+        That is correct for a hackathon. It is not a posture a product can ship in: a
+        hosted service needs the skeleton on the server, and a server holding those files
+        is redistributing them.
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>Option</th><th>How it works</th><th>Verdict</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th>A &middot; Local generation</th>
+              <td>Runs on a machine that already has a licensed OTE install. The skeleton never moves.</td>
+              <td><span class="verdict v-do">Build this</span></td>
+            </tr>
+            <tr>
+              <th>B &middot; Server plans, browser packages</th>
+              <td>Layout and inference server-side; the <code>.eote</code> assembled in the browser from a skeleton on the engineer's own disk. Chromium-only and fragile.</td>
+              <td><span class="verdict v-no">Don't</span></td>
+            </tr>
+            <tr>
+              <th>C &middot; Schneider blesses it</th>
+              <td>An OEM agreement covering a redistributable skeleton, or better, an official project API.</td>
+              <td><span class="verdict v-do">Pitch this</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="pull">Build for A, pitch for C. They are compatible &mdash; the packager already takes an injectable skeleton source, so the seam exists.</p>
+      <p>
+        A is also the honest fit for the customer. Plant engineering happens on restricted
+        and frequently air-gapped networks, and a cloud tool that phones a model API is a
+        procurement fight at every site.
+      </p>
+      <p>
+        <strong>Consequence:</strong> this is sold as a licensed desktop tool, per engineer
+        seat &mdash; not as SaaS. That sidesteps redistribution entirely, because the
+        skeleton never leaves the machine already licensed to have it.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="rail"><span class="num">02</span><span class="tag">The&nbsp;buyers</span></div>
+    <div class="body">
+      <h2>Who pays</h2>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>Buyer</th><th>What they feel</th><th>Why they buy</th><th>Priority</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th>System integrators and panel builders</th>
+              <td>Fixed-price projects, margin pressure. HMI engineering is a large share of the hours.</td>
+              <td>Time saved converts directly into margin on work they have already quoted. They buy tools with their own money and decide fast.</td>
+              <td><span class="verdict v-do">The wedge</span></td>
+            </tr>
+            <tr>
+              <th>End users &mdash; plants, utilities, OEMs</th>
+              <td>Inconsistency across contractors, standards drift, errors found at commissioning.</td>
+              <td>They own the house style. Standards packs make every contractor produce <em>their</em> HMI, not the contractor's.</td>
+              <td><span class="verdict v-no">Expand</span></td>
+            </tr>
+            <tr>
+              <th>Schneider Electric</th>
+              <td>OTE competes with Siemens WinCC and Rockwell FactoryTalk on engineering productivity.</td>
+              <td>A generative front end that runs on the format they already ship, with no change to the product.</td>
+              <td><span class="verdict v-no">Scale</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <strong>Start with integrators.</strong> Sharpest pain, shortest sales cycle, and
+        they already have a licensed OTE installation on every engineering laptop &mdash;
+        which is exactly what architecture A requires. The customer and the technical
+        precondition are the same people.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="rail"><span class="num">03</span><span class="tag">The&nbsp;value</span></div>
+    <div class="body">
+      <h2>Where the value is</h2>
+      <p>
+        We will not quote a percentage saving we have not measured. Here is what the tool
+        actually did on one measured run. The arithmetic is the reader's.
+      </p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>What the tool did, measured</th><th>The manual equivalent</th></tr></thead>
+          <tbody>
+            <tr><th class="num">560 objects across 11 screens</th><td>Hand-placing 560 objects: select part, position, size, name, repeat.</td></tr>
+            <tr><th class="num">Every tag binding resolved</th><td>Opening a property sheet once per binding and typing a tag name into it.</td></tr>
+            <tr><th class="num">232 alarms configured with triggers</th><td>Creating 232 alarm rows and wiring each to its trigger tag.</td></tr>
+            <tr><th class="num">1,248 tags ingested, 5 names corrected</th><td>Reading an export and finding the five names OTE will silently drop.</td></tr>
+            <tr><th class="num">0 errors, 0 warnings at design time</th><td>Finding those errors at commissioning instead, on site.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="pull">We compress the first draft and the binding pass. Review, refinement and sign-off stay with the engineer &mdash; deliberately, because that is the product's licence to exist.</p>
+      <h3>On reproducibility</h3>
+      <p class="note">
+        Screens and objects vary with the model. Runs of the same prompt over the same
+        1,248-tag export produced 8&nbsp;/&nbsp;434, 10&nbsp;/&nbsp;486 and
+        11&nbsp;/&nbsp;560. What did <strong>not</strong> vary on any run: 232 alarms,
+        1,248 tags, 5 corrections, 47 units inferred, every binding resolved, zero errors.
+        Quote the second set; label the first as one run.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="rail"><span class="num">04</span><span class="tag">Price</span></div>
+    <div class="body">
+      <h2>Packaging and price</h2>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Tier</th><th>Who</th><th>Includes</th><th>Price</th></tr></thead>
+          <tbody>
+            <tr>
+              <th>Individual</th><td>One engineer, one laptop</td>
+              <td>Local generation, all part types, symbol library, validation, export, sign-off report.</td>
+              <td class="num">&#8377;4,999 / engineer / month</td>
+            </tr>
+            <tr>
+              <th>Team</th><td>5&ndash;25 seats at an integrator</td>
+              <td>Everything above, plus shared standards packs, project templates, priority support.</td>
+              <td class="num">&#8377;3,499 / seat / month</td>
+            </tr>
+            <tr>
+              <th>Site / Enterprise</th><td>A plant or a large integrator</td>
+              <td>On-prem or air-gapped install, bring-your-own or local model, audit trail export, custom standards packs, version-matrix conformance, SLA.</td>
+              <td class="num">from &#8377;25,00,000 / year</td>
+            </tr>
+            <tr>
+              <th>OEM</th><td>Schneider Electric</td>
+              <td>Bundled with or sold alongside OTE; revenue share or per-licence royalty.</td>
+              <td class="num">Negotiated</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">
+        Illustrative pricing, listed for India. The anchor is a fully-loaded automation
+        engineer's cost, and that anchor moves by market &mdash; European list sits nearer
+        &euro;119&ndash;149 per seat per month for the same tool. Price per market rather
+        than converting one list price at the spot rate.
+      </p>
+      <p>
+        <strong>Priced per engineer, not per project or per screen.</strong> Per-screen
+        pricing would punish exactly the customer we want &mdash; the one generating a
+        whole plant.
+      </p>
+
+      <h3>Break-even</h3>
+      <div class="calc">
+        <dl>
+          <dt>Assumptions &mdash; stated, so the customer can change them</dt>
+          <dd><span>Fully-loaded automation engineer, India</span><span>INR 700&ndash;1,200 / hour</span></dd>
+          <dd><span>Seat price, Team tier</span><span>INR 41,988 / year</span></dd>
+          <dt>Break-even</dt>
+          <dd><span>Hours the seat must give back per year</span><span>41,988 / 950 &asymp; 44 h</span></dd>
+          <dd><span>Which is about</span><span>five and a half working days</span></dd>
+          <dt>The question for the customer</dt>
+          <dd class="plain q">
+            Across a year of projects, does generating the first draft of your screens and
+            resolving your tag bindings save you two days?
+          </dd>
+        </dl>
+      </div>
+      <p>
+        Break-even at about five and a half days a year is an easy question to answer
+        honestly, and it does not depend on a savings claim we cannot defend. A single
+        1,248-tag plant generation is several hundred objects and every binding. The
+        argument is not close.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="rail"><span class="num">05</span><span class="tag">Go&nbsp;to&nbsp;market</span></div>
+    <div class="body">
+      <h2>Land, expand, scale</h2>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th></th><th>Land</th><th>Expand</th><th>Scale</th></tr></thead>
+          <tbody>
+            <tr><th>Who</th><td>System integrators, 5&ndash;50 engineers</td><td>Their end customers &mdash; plants and utilities</td><td>Schneider's channel</td></tr>
+            <tr><th>Motion</th><td>Direct, self-serve trial on a laptop that already has OTE</td><td>Standards packs authored to the customer's house style</td><td>OEM agreement, bundled with OTE</td></tr>
+            <tr><th>Proof needed</th><td>A generated project opens. Already true.</td><td>Round-trip safety on brownfield projects, and the audit trail</td><td>Version-matrix conformance across OTE releases</td></tr>
+            <tr><th>Why they move</th><td>Margin on fixed-price work</td><td>Every contractor produces their HMI, not the contractor's</td><td>Engineering productivity as a competitive answer to WinCC and FactoryTalk</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        The sequencing is <strong>forced by the licensing question, not chosen</strong>.
+        Until Schneider blesses a redistributable skeleton, the product runs where a
+        licence already is &mdash; which happens to be exactly where the buyer already is.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="rail"><span class="num">06</span><span class="tag">The&nbsp;moat</span></div>
+    <div class="body">
+      <h2>What stops someone copying it</h2>
+      <ol class="reasons">
+        <li>
+          <strong>Format knowledge that had to be earned.</strong> Fifty real part types
+          extracted from shipped projects, the machine-readable property definitions, the
+          palette resolved out of the product's own <code>Colors.lua</code>, the naming and
+          reserved-word rules, and the backslash entry separator that decides whether a
+          file opens at all. None of this is documented publicly. All of it is verified by
+          a file that opens.
+        </li>
+        <li>
+          <strong>Two implementations that agree.</strong> A Python reference and a
+          TypeScript packager, structurally diffed against each other in the test suite.
+          Anyone can write one packager. Proving it correct is the work.
+        </li>
+        <li>
+          <strong>The compiler-enforced rule.</strong> The canvas cannot render what the
+          packager cannot emit. A competitor who builds a pretty preview separately from
+          the generator will ship drift, and their customers will find it.
+        </li>
+        <li>
+          <strong>Standards packs become switching cost.</strong> Once a customer's naming,
+          colour and layout conventions live in the tool as data, and every contractor
+          generates against them, leaving means renegotiating consistency across a supply
+          chain.
+        </li>
+        <li>
+          <strong>The golden corpus compounds.</strong> Twenty to fifty real tag exports
+          with the screens an experienced engineer would draw is a dataset that gets more
+          valuable every time the model or the prompt changes. It is also the only thing
+          that lets us say &ldquo;we did not regress.&rdquo;
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <div class="rail"><span class="num">07</span><span class="tag">Safety</span></div>
+    <div class="body">
+      <h2>Why the safety position is commercial</h2>
+      <p>
+        An HMI is what an operator looks at during an upset. A binding that points at pump
+        2's flow under pump 1's label is not a rendering bug; it is the sort of thing that
+        appears in an incident report.
+      </p>
+      <p class="pull">Never move to auto-deploy. The engineer watches every object appear and approves before export. That is not a hackathon limitation to grow out of &mdash; it is the product's licence to exist.</p>
+      <p>
+        This is commercially load-bearing, not only ethically. A tool that writes HMI
+        screens unattended is a liability question at every procurement review. A tool that
+        drafts and makes an engineer sign off is a productivity purchase.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="rail"><span class="num">08</span><span class="tag">Risk</span></div>
+    <div class="body">
+      <h2>What could go wrong</h2>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Risk</th><th>Severity</th><th>Mitigation</th></tr></thead>
+          <tbody>
+            <tr>
+              <th>A generated binding is wrong and nobody catches it</th>
+              <td><span class="sev s-crit">Critical</span></td>
+              <td>Never auto-deploy. The engineer approves before export, findings carry object ids, and the golden corpus gates every change to binding accuracy.</td>
+            </tr>
+            <tr>
+              <th>Schneider declines a redistributable skeleton</th>
+              <td><span class="sev s-high">High</span></td>
+              <td>Architecture A needs no redistribution &mdash; the tool runs where a licence already is. The business survives a &ldquo;no&rdquo;.</td>
+            </tr>
+            <tr>
+              <th>Format drift across OTE versions</th>
+              <td><span class="sev s-med">Medium</span></td>
+              <td>Part schemas are read from the installation at run time rather than hardcoded, and <code>Project.dat</code> carries a version we check. The packager should refuse to write a version it has not been proven against.</td>
+            </tr>
+            <tr>
+              <th>Schneider builds this themselves</th>
+              <td><span class="sev s-med">Medium</span></td>
+              <td>The likely outcome is an acquisition or an OEM deal, not a competitor. Being the team that already solved it is the position we want.</td>
+            </tr>
+            <tr>
+              <th>Air-gapped sites cannot reach a model</th>
+              <td><span class="sev s-med">Medium</span></td>
+              <td>A local or self-hosted model is a requirement, not a nice-to-have. The provider seam is one module today &mdash; cheap to extend now, expensive once the call sites spread.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="rail"><span class="num">09</span><span class="tag">Sequence</span></div>
+    <div class="body">
+      <h2>What we would build next, in order</h2>
+      <p>
+        <strong>First &mdash; decide and de-risk.</strong> Take the licensing question to
+        Schneider; the answer changes what gets built. In parallel, start the
+        <code>.eote</code> reader as a preservation problem, and stand up the golden
+        corpus. Nothing else matters as much as these three.
+      </p>
+      <p>
+        <strong>Then &mdash; make it keepable.</strong> Durable local persistence, project
+        lifecycle, and the audit trail made permanent. This is the point at which an
+        engineer can do a real day's work in it.
+      </p>
+      <p>
+        <strong>Then &mdash; make it defensible.</strong> ISA-101 and ISA-18.2 / IEC 62682
+        rules, the version matrix and conformance runs, device driver configuration, and
+        the sign-off report as a genuine record.
+      </p>
+      <p>
+        <strong>Then &mdash; make it fit the environment.</strong> Desktop packaging and an
+        update channel, air-gapped install, bring-your-own or local model, and site-level
+        standards packs.
+      </p>
+      <h3>Deliberately cut</h3>
+      <div class="cut">
+        Multi-tenancy, SSO and an org model &mdash; architecture A does not need them, and
+        building them commits you to a hosted service before the licensing question is
+        answered. A component marketplace or anything social &mdash; nobody adopts an
+        engineering tool for its community. Real-time collaboration &mdash; two engineers
+        do not edit one HMI screen at once.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="rail"><span class="num">10</span><span class="tag">In&nbsp;one&nbsp;line</span></div>
+    <div class="body">
+      <h2>The short version</h2>
+      <p>
+        The loop works and the format layer is genuinely defensible. Sell it as a
+        <strong>per-seat desktop tool to system integrators</strong>, because that is the
+        only shape that survives the licensing question and it is where the pain is
+        sharpest. Break-even is about five and a half days of an engineer&rsquo;s year.
+      </p>
+      <p class="pull">What stands between this and a real customer is not features &mdash; it is the licensing conversation, a reader that never loses what it does not understand, and a way to prove the generation is right.</p>
+    </div>
+  </section>
+</div>
+
+<footer>
+  HMI Copilot &middot; Schneider Electric HMI Hackathon, Problem Statement 3 &middot;
+  Figures measured against the repository unless labelled an assumption.
+</footer>

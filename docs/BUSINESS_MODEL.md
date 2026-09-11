@@ -85,13 +85,15 @@ resolved, 0 errors. Quote the second set; label the first as one run.
 
 | Tier | Who | Includes | Price |
 |---|---|---|---|
-| **Individual** | One engineer, one laptop | Local generation, all part types, symbol library, validation, export, sign-off report | €149 / engineer / month, billed annually |
-| **Team** | 5–25 seats at an integrator | Everything above, plus shared standards packs, project templates, priority support | €119 / seat / month |
-| **Site / Enterprise** | A plant or a large integrator | On-prem or air-gapped install, bring-your-own or local model, audit trail export, custom standards packs authored to house style, version-matrix conformance, SLA | from €40k / year |
+| **Individual** | One engineer, one laptop | Local generation, all part types, symbol library, validation, export, sign-off report | ₹4,999 / engineer / month, billed annually |
+| **Team** | 5–25 seats at an integrator | Everything above, plus shared standards packs, project templates, priority support | ₹3,499 / seat / month |
+| **Site / Enterprise** | A plant or a large integrator | On-prem or air-gapped install, bring-your-own or local model, audit trail export, custom standards packs authored to house style, version-matrix conformance, SLA | from ₹25,00,000 / year |
 | **OEM** | Schneider Electric | Bundled with or sold alongside OTE; revenue share or per-licence royalty | Negotiated |
 
-Illustrative pricing. The anchor is a fully-loaded automation engineer's cost; the tool
-should cost a small fraction of the hours it gives back.
+Illustrative pricing, listed for India. The anchor is a fully-loaded automation
+engineer's cost, and that anchor moves by market — European list sits nearer €119–149
+per seat per month for the same tool. Price per market rather than converting one list
+price at the spot rate.
 
 **Priced per engineer, not per project or per screen.** Per-screen pricing would punish
 exactly the customer we want — the one generating a whole plant.
@@ -101,13 +103,13 @@ exactly the customer we want — the one generating a whole plant.
 ```
 ASSUMPTIONS  (state them, let the customer change them)
 
-  Fully-loaded automation engineer          EUR  70 - 100 / hour
-  Seat price, Team tier                     EUR 119 / month  =  EUR 1,428 / year
+  Fully-loaded automation engineer, India   INR  700 - 1,200 / hour
+  Seat price, Team tier                     INR 3,499 / month  =  INR 41,988 / year
 
 BREAK-EVEN
 
-  Hours the seat must give back per year    1,428 / 85  =  ~17 hours
-  That is about two working days.
+  Hours the seat must give back per year    41,988 / 950  =  ~44 hours
+  That is about five and a half working days.
 
 THE QUESTION FOR THE CUSTOMER
 
@@ -115,8 +117,8 @@ THE QUESTION FOR THE CUSTOMER
   and resolving your tag bindings save you two days?
 ```
 
-Break-even at roughly two days a year is an easy question to answer honestly, and it
-does not depend on a savings claim we cannot defend. A single 1,248-tag plant
+Break-even at about five and a half days a year is an easy question to answer honestly,
+and it does not depend on a savings claim we cannot defend. A single 1,248-tag plant
 generation is several hundred objects and every binding. The argument is not close.
 
 ---
@@ -221,7 +223,7 @@ community. Real-time collaboration — two engineers do not edit one HMI screen 
 
 The loop works and the format layer is genuinely defensible. Sell it as a **per-seat
 desktop tool to system integrators**, because that is the only shape that survives the
-licensing question and it is where the pain is sharpest. Break-even is about two days of
-an engineer's year. What stands between this and a real customer is not features — it is
+licensing question and it is where the pain is sharpest. Break-even is about five and a half days
+of an engineer's year. What stands between this and a real customer is not features — it is
 the licensing conversation, a reader that never loses what it does not understand, and a
 way to prove the generation is right.
