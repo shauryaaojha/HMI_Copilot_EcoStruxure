@@ -395,10 +395,15 @@ para(tf, "The AI does not replace\nthe HMI engineer.", 38, WHITE, True, first=Tr
 rule(s, Inches(1.1), Inches(3.15), Inches(1.4))
 tf = tb(s, Inches(1.1), Inches(3.55), Inches(10.8), Inches(1.6))
 para(tf, "It encodes the senior engineer’s judgement — which part to use, which alarm every pump needs, which naming standard applies — and gives it to everyone on the team, every time.", 18, RGBColor(0xC5,0xCE,0xD8), first=True, line=1.38)
-tf = tb(s, Inches(1.1), Inches(5.35), Inches(11), Inches(1.4))
+tf = tb(s, Inches(1.1), Inches(5.2), Inches(11), Inches(1.0))
 para(tf, "It works today, at the file boundary, with no change to Schneider’s product.", 16, WHITE, True, first=True, space_after=9)
 para(tf, "Ask us to open the generated project on your machine.", 15, GREEN, True)
-tf = tb(s, Inches(1.1), Inches(6.75), Inches(11), Inches(0.4))
+
+# The repo, given the room it deserves - judges do look.
+box(s, Inches(1.1), Inches(6.15), Inches(8.6), Inches(0.62), fill=DARK2)
+tfr = tb(s, Inches(1.35), Inches(6.25), Inches(8.2), Inches(0.45))
+para(tfr, "github.com/shauryaaojha/HMI_Copilot_EcoStruxure", 15, GREEN, True, first=True, mono=True)
+tf = tb(s, Inches(1.1), Inches(6.98), Inches(11), Inches(0.4))
 para(tf, "HMI Copilot  ·  From Intent to HMI — Faster. Smarter. Safer.", 12, FAINT, True, first=True)
 note(s, "4:45–5:00 · Close on the invitation. Stop talking.")
 
