@@ -1,0 +1,229 @@
+Name,DataType,Comment,Address
+PMP_101_RUN,Bool,Intake pump 1 running,%MX500.0
+PMP_101_FLT,Bool,Intake pump 1 fault,%MX500.1
+PMP_101_AVAIL,Bool,Intake pump 1 available,%MX500.2
+PMP_101_START,Bool,Intake pump 1 start command,%MX500.3
+PMP_101_STOP,Bool,Intake pump 1 stop command,%MX500.4
+PMP_101_HRS,Real,Intake pump 1 run hours,%MD4010
+PMP_102_RUN,Bool,Intake pump 2 running,%MX500.6
+PMP_102_FLT,Bool,Intake pump 2 fault,%MX500.7
+PMP_102_AVAIL,Bool,Intake pump 2 available,%MX501.0
+PMP_102_START,Bool,Intake pump 2 start command,%MX501.1
+PMP_102_STOP,Bool,Intake pump 2 stop command,%MX501.2
+PMP_102_HRS,Real,Intake pump 2 run hours,%MD4022
+TNK_101_LEVEL,Real,Raw product silo level percent,%MD4024
+TNK_101_VOL,Real,Raw product silo volume m3,%MD4026
+LT_101_PV,Real,Raw product silo level percent,%MD4028
+LT_101_HI,Bool,Raw product silo level high,%MX501.7
+LT_101_HH,Bool,Raw product silo level high high,%MX502.0
+LT_101_LO,Bool,Raw product silo level low,%MX502.1
+FT_101_PV,Real,Raw intake flow LPM,%MD4036
+FT_101_LO,Bool,Raw intake flow low,%MX502.3
+VLV_101_OPEN,Bool,Silo outlet valve open feedback,%MX502.4
+VLV_101_CLOSED,Bool,Silo outlet valve closed feedback,%MX502.5
+VLV_101_CMD,Bool,Silo outlet valve open command,%MX502.6
+VLV_101_FLT,Bool,Silo outlet valve fault,%MX502.7
+HTR_201_RUN,Bool,Pasteuriser running,%MX503.0
+HTR_201_FLT,Bool,Pasteuriser fault,%MX503.1
+HTR_201_AVAIL,Bool,Pasteuriser available,%MX503.2
+HTR_201_START,Bool,Pasteuriser start command,%MX503.3
+HTR_201_STOP,Bool,Pasteuriser stop command,%MX503.4
+HTR_201_HRS,Real,Pasteuriser run hours,%MD4058
+PMP_201_RUN,Bool,Pasteuriser feed pump running,%MX503.6
+PMP_201_FLT,Bool,Pasteuriser feed pump fault,%MX503.7
+PMP_201_AVAIL,Bool,Pasteuriser feed pump available,%MX504.0
+PMP_201_START,Bool,Pasteuriser feed pump start command,%MX504.1
+PMP_201_STOP,Bool,Pasteuriser feed pump stop command,%MX504.2
+PMP_201_HRS,Real,Pasteuriser feed pump run hours,%MD4070
+PMP_201_SPD,Real,Pasteuriser feed pump speed feedback percent,%MD4072
+PMP_201_SPD_SP,Real,Pasteuriser feed pump speed setpoint percent,%MD4074
+PMP_201_AMPS,Real,Pasteuriser feed pump motor current A,%MD4076
+TT_201_PV,Real,Pasteurise temperature degC,%MD4078
+TT_201_HI,Bool,Pasteurise temperature high,%MX505.0
+TT_201_LO,Bool,Pasteurise temperature low,%MX505.1
+TT_202_PV,Real,Regeneration outlet temperature degC,%MD4084
+FT_201_PV,Real,Pasteurised product flow LPM,%MD4086
+FT_201_LO,Bool,Pasteurised product flow low,%MX505.4
+VLV_201_OPEN,Bool,Divert valve open feedback,%MX505.5
+VLV_201_CLOSED,Bool,Divert valve closed feedback,%MX505.6
+VLV_201_CMD,Bool,Divert valve open command,%MX505.7
+VLV_201_FLT,Bool,Divert valve fault,%MX506.0
+VLV_202_PV,Real,Steam control valve position percent,%MD4098
+VLV_202_SP,Real,Steam control valve position setpoint percent,%MD4100
+VLV_202_FLT,Bool,Steam control valve fault,%MX506.3
+TNK_201_LEVEL,Real,Balance tank level percent,%MD4104
+TNK_201_VOL,Real,Balance tank volume m3,%MD4106
+LT_201_PV,Real,Balance tank level percent,%MD4108
+LT_201_HI,Bool,Balance tank level high,%MX506.7
+LT_201_LO,Bool,Balance tank level low,%MX507.0
+RCT_301_RUN,Bool,Blend vessel 1 running,%MX507.1
+RCT_301_FLT,Bool,Blend vessel 1 fault,%MX507.2
+RCT_301_AVAIL,Bool,Blend vessel 1 available,%MX507.3
+RCT_301_START,Bool,Blend vessel 1 start command,%MX507.4
+RCT_301_STOP,Bool,Blend vessel 1 stop command,%MX507.5
+RCT_301_HRS,Real,Blend vessel 1 run hours,%MD4124
+LT_301_PV,Real,Blend vessel 1 level percent,%MD4126
+LT_301_HI,Bool,Blend vessel 1 level high,%MX508.0
+LT_301_LO,Bool,Blend vessel 1 level low,%MX508.1
+RCT_302_RUN,Bool,Blend vessel 2 running,%MX508.2
+RCT_302_FLT,Bool,Blend vessel 2 fault,%MX508.3
+RCT_302_AVAIL,Bool,Blend vessel 2 available,%MX508.4
+RCT_302_START,Bool,Blend vessel 2 start command,%MX508.5
+RCT_302_STOP,Bool,Blend vessel 2 stop command,%MX508.6
+RCT_302_HRS,Real,Blend vessel 2 run hours,%MD4142
+LT_302_PV,Real,Blend vessel 2 level percent,%MD4144
+LT_302_HI,Bool,Blend vessel 2 level high,%MX509.1
+LT_302_LO,Bool,Blend vessel 2 level low,%MX509.2
+MTR_301_RUN,Bool,Blend vessel 1 agitator running,%MX509.3
+MTR_301_FLT,Bool,Blend vessel 1 agitator fault,%MX509.4
+MTR_301_AVAIL,Bool,Blend vessel 1 agitator available,%MX509.5
+MTR_301_START,Bool,Blend vessel 1 agitator start command,%MX509.6
+MTR_301_STOP,Bool,Blend vessel 1 agitator stop command,%MX509.7
+MTR_301_HRS,Real,Blend vessel 1 agitator run hours,%MD4160
+MTR_301_SPD,Real,Blend vessel 1 agitator speed feedback percent,%MD4162
+MTR_301_SPD_SP,Real,Blend vessel 1 agitator speed setpoint percent,%MD4164
+MTR_301_AMPS,Real,Blend vessel 1 agitator motor current A,%MD4166
+DOS_301_RUN,Bool,Flavour dosing pump running,%MX510.4
+DOS_301_FLT,Bool,Flavour dosing pump fault,%MX510.5
+DOS_301_AVAIL,Bool,Flavour dosing pump available,%MX510.6
+DOS_301_START,Bool,Flavour dosing pump start command,%MX510.7
+DOS_301_STOP,Bool,Flavour dosing pump stop command,%MX511.0
+DOS_301_HRS,Real,Flavour dosing pump run hours,%MD4178
+DOS_301_SPD,Real,Flavour dosing pump speed feedback percent,%MD4180
+DOS_301_SPD_SP,Real,Flavour dosing pump speed setpoint percent,%MD4182
+DOS_301_AMPS,Real,Flavour dosing pump motor current A,%MD4184
+AT_301_PV,Real,Blended product analysis pH,%MD4186
+AT_301_HI,Bool,Blended product analysis high,%MX511.6
+AT_301_LO,Bool,Blended product analysis low,%MX511.7
+VLV_301_OPEN,Bool,Blend transfer valve open feedback,%MX512.0
+VLV_301_CLOSED,Bool,Blend transfer valve closed feedback,%MX512.1
+VLV_301_CMD,Bool,Blend transfer valve open command,%MX512.2
+VLV_301_FLT,Bool,Blend transfer valve fault,%MX512.3
+PMP_401_RUN,Bool,CIP supply pump running,%MX512.4
+PMP_401_FLT,Bool,CIP supply pump fault,%MX512.5
+PMP_401_AVAIL,Bool,CIP supply pump available,%MX512.6
+PMP_401_START,Bool,CIP supply pump start command,%MX512.7
+PMP_401_STOP,Bool,CIP supply pump stop command,%MX513.0
+PMP_401_HRS,Real,CIP supply pump run hours,%MD4210
+PMP_401_SPD,Real,CIP supply pump speed feedback percent,%MD4212
+PMP_401_SPD_SP,Real,CIP supply pump speed setpoint percent,%MD4214
+PMP_401_AMPS,Real,CIP supply pump motor current A,%MD4216
+TNK_401_LEVEL,Real,CIP caustic tank level percent,%MD4218
+TNK_401_VOL,Real,CIP caustic tank volume m3,%MD4220
+LT_401_PV,Real,CIP caustic tank level percent,%MD4222
+LT_401_LO,Bool,CIP caustic tank level low,%MX514.0
+LT_401_LL,Bool,CIP caustic tank level low low,%MX514.1
+TNK_402_LEVEL,Real,CIP acid tank level percent,%MD4228
+TNK_402_VOL,Real,CIP acid tank volume m3,%MD4230
+LT_402_PV,Real,CIP acid tank level percent,%MD4232
+LT_402_LO,Bool,CIP acid tank level low,%MX514.5
+LT_402_LL,Bool,CIP acid tank level low low,%MX514.6
+TT_401_PV,Real,CIP supply temperature degC,%MD4238
+TT_401_LO,Bool,CIP supply temperature low,%MX515.0
+AT_401_PV,Real,CIP return conductivity analysis mS/cm,%MD4242
+AT_401_HI,Bool,CIP return conductivity analysis high,%MX515.2
+AT_401_LO,Bool,CIP return conductivity analysis low,%MX515.3
+VLV_401_OPEN,Bool,CIP circuit valve open feedback,%MX515.4
+VLV_401_CLOSED,Bool,CIP circuit valve closed feedback,%MX515.5
+VLV_401_CMD,Bool,CIP circuit valve open command,%MX515.6
+VLV_401_FLT,Bool,CIP circuit valve fault,%MX515.7
+CIP_RUN,Bool,CIP sequence running,%MX516.0
+CIP_STEP,Int,CIP step number,%MW2129
+CNV_501_RUN,Bool,Infeed conveyor running,%MX516.2
+CNV_501_FLT,Bool,Infeed conveyor fault,%MX516.3
+CNV_501_AVAIL,Bool,Infeed conveyor available,%MX516.4
+CNV_501_START,Bool,Infeed conveyor start command,%MX516.5
+CNV_501_STOP,Bool,Infeed conveyor stop command,%MX516.6
+CNV_501_HRS,Real,Infeed conveyor run hours,%MD4270
+CNV_501_SPD,Real,Infeed conveyor speed feedback percent,%MD4272
+CNV_501_SPD_SP,Real,Infeed conveyor speed setpoint percent,%MD4274
+CNV_501_AMPS,Real,Infeed conveyor motor current A,%MD4276
+CNV_501_JAM,Bool,Infeed conveyor jam detected,%MX517.3
+CNV_502_RUN,Bool,Outfeed conveyor running,%MX517.4
+CNV_502_FLT,Bool,Outfeed conveyor fault,%MX517.5
+CNV_502_AVAIL,Bool,Outfeed conveyor available,%MX517.6
+CNV_502_START,Bool,Outfeed conveyor start command,%MX517.7
+CNV_502_STOP,Bool,Outfeed conveyor stop command,%MX518.0
+CNV_502_HRS,Real,Outfeed conveyor run hours,%MD4290
+CNV_502_SPD,Real,Outfeed conveyor speed feedback percent,%MD4292
+CNV_502_SPD_SP,Real,Outfeed conveyor speed setpoint percent,%MD4294
+CNV_502_AMPS,Real,Outfeed conveyor motor current A,%MD4296
+CNV_502_JAM,Bool,Outfeed conveyor jam detected,%MX518.5
+MTR_501_RUN,Bool,Filler running,%MX518.6
+MTR_501_FLT,Bool,Filler fault,%MX518.7
+MTR_501_AVAIL,Bool,Filler available,%MX519.0
+MTR_501_START,Bool,Filler start command,%MX519.1
+MTR_501_STOP,Bool,Filler stop command,%MX519.2
+MTR_501_HRS,Real,Filler run hours,%MD4310
+MTR_501_SPD,Real,Filler speed feedback percent,%MD4312
+MTR_501_SPD_SP,Real,Filler speed setpoint percent,%MD4314
+MTR_501_AMPS,Real,Filler motor current A,%MD4316
+MTR_501_COUNT,Dint,Filler unit count,%MD4318
+MTR_501_REJECT,Dint,Filler reject count,%MD4320
+MTR_502_RUN,Bool,Capper running,%MX520.1
+MTR_502_FLT,Bool,Capper fault,%MX520.2
+MTR_502_AVAIL,Bool,Capper available,%MX520.3
+MTR_502_START,Bool,Capper start command,%MX520.4
+MTR_502_STOP,Bool,Capper stop command,%MX520.5
+MTR_502_HRS,Real,Capper run hours,%MD4332
+MTR_502_SPD,Real,Capper speed feedback percent,%MD4334
+MTR_502_SPD_SP,Real,Capper speed setpoint percent,%MD4336
+MTR_502_AMPS,Real,Capper motor current A,%MD4338
+MTR_502_COUNT,Dint,Capper unit count,%MD4340
+MTR_502_REJECT,Dint,Capper reject count,%MD4342
+FT_501_PV,Real,Filler flow LPM,%MD4344
+FT_501_LO,Bool,Filler flow low,%MX521.5
+TNK_501_LEVEL,Real,Filler buffer tank level percent,%MD4348
+TNK_501_VOL,Real,Filler buffer tank volume m3,%MD4350
+LT_501_PV,Real,Filler buffer tank level percent,%MD4352
+LT_501_HI,Bool,Filler buffer tank level high,%MX522.1
+LT_501_LO,Bool,Filler buffer tank level low,%MX522.2
+BLR_601_RUN,Bool,Steam boiler firing,%MX522.3
+BLR_601_FLT,Bool,Steam boiler fault,%MX522.4
+BLR_601_AVAIL,Bool,Steam boiler available,%MX522.5
+BLR_601_MOD,Real,Steam boiler modulation percent,%MD4364
+PT_601_PV,Real,Steam header pressure bar,%MD4366
+PT_601_HI,Bool,Steam header pressure high,%MX523.0
+PT_601_LO,Bool,Steam header pressure low,%MX523.1
+LT_601_PV,Real,Boiler drum level percent,%MD4372
+LT_601_LO,Bool,Boiler drum level low,%MX523.3
+LT_601_LL,Bool,Boiler drum level low low,%MX523.4
+FAN_601_RUN,Bool,Combustion air fan running,%MX523.5
+FAN_601_FLT,Bool,Combustion air fan fault,%MX523.6
+FAN_601_AVAIL,Bool,Combustion air fan available,%MX523.7
+FAN_601_START,Bool,Combustion air fan start command,%MX524.0
+FAN_601_STOP,Bool,Combustion air fan stop command,%MX524.1
+FAN_601_HRS,Real,Combustion air fan run hours,%MD4388
+FAN_601_SPD,Real,Combustion air fan speed feedback percent,%MD4390
+FAN_601_SPD_SP,Real,Combustion air fan speed setpoint percent,%MD4392
+FAN_601_AMPS,Real,Combustion air fan motor current A,%MD4394
+CHL_601_RUN,Bool,Chiller running,%MX524.6
+CHL_601_FLT,Bool,Chiller fault,%MX524.7
+CHL_601_AVAIL,Bool,Chiller available,%MX525.0
+CHL_601_START,Bool,Chiller start command,%MX525.1
+CHL_601_STOP,Bool,Chiller stop command,%MX525.2
+CHL_601_HRS,Real,Chiller run hours,%MD4406
+CHL_601_SPD,Real,Chiller speed feedback percent,%MD4408
+CHL_601_SPD_SP,Real,Chiller speed setpoint percent,%MD4410
+CHL_601_AMPS,Real,Chiller motor current A,%MD4412
+TT_601_PV,Real,Chilled water flow temperature degC,%MD4414
+TT_601_HI,Bool,Chilled water flow temperature high,%MX526.0
+CMP_601_RUN,Bool,Air compressor running,%MX526.1
+CMP_601_FLT,Bool,Air compressor fault,%MX526.2
+CMP_601_AVAIL,Bool,Air compressor available,%MX526.3
+CMP_601_START,Bool,Air compressor start command,%MX526.4
+CMP_601_STOP,Bool,Air compressor stop command,%MX526.5
+CMP_601_HRS,Real,Air compressor run hours,%MD4428
+CMP_601_SPD,Real,Air compressor speed feedback percent,%MD4430
+CMP_601_SPD_SP,Real,Air compressor speed setpoint percent,%MD4432
+CMP_601_AMPS,Real,Air compressor motor current A,%MD4434
+PT_602_PV,Real,Compressed air pressure bar,%MD4436
+PT_602_LO,Bool,Compressed air pressure low,%MX527.3
+PLANT_RUNNING,Bool,Plant in auto,%MX527.4
+PLANT_ESTOP,Bool,Emergency stop healthy,%MX527.5
+PLANT_MODE,Int,Plant mode 0 manual 1 auto 2 CIP,%MW2222
+PLANT_BATCH_ID,String,Current batch identifier,%MD4446
+PMP 701 RUN,Bool,Spare pump running,%MX528.0
+VLV-701-OPEN,Bool,Spare valve open,%MX528.1
+2ND_STAGE_TEMP,Real,Second stage temperature degC,%MD4452
+TIME,Real,Batch elapsed time seconds,%MD4454

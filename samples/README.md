@@ -8,6 +8,7 @@ reported.
 
 | Folder | Plant | Tags | Areas | What it is |
 |---|---|---|---|---|
+| [`beverage-plant`](beverage-plant/) | Beverage processing plant | 228 | 6 | Intake and storage, pasteurising, blending, clean-in-place, filling and packaging, and the utilities that serve them. |
 | [`transfer-pump-station`](transfer-pump-station/) | Transfer pump station | 20 | 2 | Two duty transfer pumps, a standby, and the break tank they draw from. |
 | [`boiler-house`](boiler-house/) | Boiler house | 93 | 4 | Two shell boilers with their own combustion air fans, a shared feedwater set and deaerator, and dual-fuel supply. |
 | [`hvac-building`](hvac-building/) | Building HVAC | 148 | 5 | Three air handling units with supply and return fans, coil control valves and dampers, two chillers, and the chilled water set that serves them. |

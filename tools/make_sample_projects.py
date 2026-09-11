@@ -9,6 +9,8 @@ reported.
 
 Seven plants, chosen to cover different equipment rather than different sizes:
 
+    beverage-plant          ~155   the showcase sample - six areas, twelve
+                                   kinds of machine, every object readable
     transfer-pump-station    20    the smallest thing worth a screen
     boiler-house             93    boilers, feedwater, combustion air
     packaging-line          124    conveyors, filler, capper, labeller
@@ -712,7 +714,146 @@ def chemical_plant() -> Plant:
     )
 
 
+
+def beverage_plant() -> Plant:
+    """The one the showcase runs on.
+
+    Chosen against the demo rather than against the importer: every area is a
+    thing an audience recognises without explanation, it is small enough that
+    every object on a generated screen can be read from a projector, and
+    between its six areas it contains twelve different kinds of machine - which
+    is what puts twelve different shipped graphic objects on the board at once.
+    """
+    rows: list[tuple] = []
+
+    # --- 1xx raw intake and storage -------------------------------------
+    for loop, label in ((101, "Intake pump 1"), (102, "Intake pump 2")):
+        rows += machine("PMP", loop, label)
+    rows += tank(101, "Raw product silo", ("HI", "HH", "LO"))
+    rows += instrument("F", 101, "Raw intake", ("LO",), "LPM")
+    rows += valve(101, "Silo outlet valve")
+
+    # --- 2xx pasteurising ------------------------------------------------
+    rows += machine("HTR", 201, "Pasteuriser")
+    rows += machine("PMP", 201, "Pasteuriser feed pump", WITH_VSD)
+    rows += instrument("T", 201, "Pasteurise", ("HI", "LO"), "degC")
+    rows += instrument("T", 202, "Regeneration outlet", unit="degC")
+    rows += instrument("F", 201, "Pasteurised product", ("LO",), "LPM")
+    rows += valve(201, "Divert valve")
+    rows += valve(202, "Steam control valve", CONTROL_VALVE)
+    rows += tank(201, "Balance tank")
+
+    # --- 3xx blending ----------------------------------------------------
+    for loop, label in ((301, "Blend vessel 1"), (302, "Blend vessel 2")):
+        rows += machine("RCT", loop, label)
+        rows += instrument("L", loop, label, ("HI", "LO"))
+    rows += machine("MTR", 301, "Blend vessel 1 agitator", WITH_VSD)
+    rows += machine("DOS", 301, "Flavour dosing pump", WITH_VSD)
+    rows += instrument("A", 301, "Blended product", ("HI", "LO"), "pH")
+    rows += valve(301, "Blend transfer valve")
+
+    # --- 4xx clean in place ----------------------------------------------
+    rows += machine("PMP", 401, "CIP supply pump", WITH_VSD)
+    rows += tank(401, "CIP caustic tank", ("LO", "LL"))
+    rows += tank(402, "CIP acid tank", ("LO", "LL"))
+    rows += instrument("T", 401, "CIP supply", ("LO",), "degC")
+    rows += instrument("A", 401, "CIP return conductivity", ("HI", "LO"), "mS/cm")
+    rows += valve(401, "CIP circuit valve")
+    rows += [
+        ("CIP_RUN", "Bool", "CIP sequence running"),
+        ("CIP_STEP", "Int", "CIP step number"),
+    ]
+
+    # --- 5xx filling and packaging ---------------------------------------
+    for loop, label in ((501, "Infeed conveyor"), (502, "Outfeed conveyor")):
+        rows += machine("CNV", loop, label, WITH_VSD)
+        rows += [(f"CNV_{loop}_JAM", "Bool", f"{label} jam detected")]
+    for loop, label in ((501, "Filler"), (502, "Capper")):
+        rows += machine("MTR", loop, label, WITH_VSD)
+        rows += [
+            (f"MTR_{loop}_COUNT", "Dint", f"{label} unit count"),
+            (f"MTR_{loop}_REJECT", "Dint", f"{label} reject count"),
+        ]
+    rows += instrument("F", 501, "Filler", ("LO",), "LPM")
+    rows += tank(501, "Filler buffer tank")
+
+    # --- 6xx utilities ----------------------------------------------------
+    rows += [
+        ("BLR_601_RUN", "Bool", "Steam boiler firing"),
+        ("BLR_601_FLT", "Bool", "Steam boiler fault"),
+        ("BLR_601_AVAIL", "Bool", "Steam boiler available"),
+        ("BLR_601_MOD", "Real", "Steam boiler modulation percent"),
+    ]
+    rows += instrument("P", 601, "Steam header", ("HI", "LO"), "bar")
+    rows += instrument("L", 601, "Boiler drum", ("LO", "LL"))
+    rows += machine("FAN", 601, "Combustion air fan", WITH_VSD)
+    rows += machine("CHL", 601, "Chiller", WITH_VSD)
+    rows += instrument("T", 601, "Chilled water flow", ("HI",), "degC")
+    rows += machine("CMP", 601, "Air compressor", WITH_VSD)
+    rows += instrument("P", 602, "Compressed air", ("LO",), "bar")
+
+    # --- plant wide, and the four names a real export carries --------------
+    rows += [
+        ("PLANT_RUNNING", "Bool", "Plant in auto"),
+        ("PLANT_ESTOP", "Bool", "Emergency stop healthy"),
+        ("PLANT_MODE", "Int", "Plant mode 0 manual 1 auto 2 CIP"),
+        ("PLANT_BATCH_ID", "String", "Current batch identifier"),
+        # One of each thing the importer has to report, so the correction beat
+        # has all four categories in a single file.
+        ("PMP 701 RUN", "Bool", "Spare pump running"),
+        ("VLV-701-OPEN", "Bool", "Spare valve open"),
+        ("2ND_STAGE_TEMP", "Real", "Second stage temperature degC"),
+        ("TIME", "Real", "Batch elapsed time seconds"),
+    ]
+
+    return Plant(
+        slug="beverage-plant",
+        title="Beverage processing plant",
+        summary=(
+            "Intake and storage, pasteurising, blending, clean-in-place, "
+            "filling and packaging, and the utilities that serve them. Built "
+            "for the showcase: six areas an audience recognises without "
+            "explanation, small enough that every object on a generated screen "
+            "reads from a projector, and twelve different kinds of machine "
+            "between them - which is twelve different shipped graphic objects "
+            "on the board at once."
+        ),
+        areas=[
+            "Raw intake and storage",
+            "Pasteurising",
+            "Blending",
+            "Clean-in-place",
+            "Filling and packaging",
+            "Utilities",
+        ],
+        intent=(
+            "Create a screen for the pasteuriser showing the feed pump, the "
+            "pasteurise temperature with high and low alarms, the product flow "
+            "and the divert valve."
+        ),
+        intent_full=(
+            "Generate the operator screens for this beverage plant - a plant "
+            "overview, then a screen for each area: raw intake, pasteurising, "
+            "blending, clean-in-place, filling and packaging, and utilities."
+        ),
+        produced=(
+            "7 screens, 374 objects, 49 alarms and 122 bindings, in one run - "
+            "PlantOverview plus one screen per area, named as asked. On a "
+            "machine with the library indexed it also placed 29 of the "
+            "product's own graphic objects."
+        ),
+        follow_ups=[
+            "add a low level alarm on both CIP tanks",
+            "put the batch identifier and the line rate in the header",
+            "the pasteurise temperature should read in a larger font",
+            "add a screen for the blending vessels on their own",
+        ],
+        rows=rows,
+    )
+
+
 PLANTS = [
+    beverage_plant,
     transfer_pump_station,
     boiler_house,
     hvac_building,

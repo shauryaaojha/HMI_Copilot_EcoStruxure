@@ -105,7 +105,7 @@ Eleven minutes. Times are the pace to aim for, not a limit.
 ### Before they arrive
 
 - Dev server up, `/project/demo` loaded once so every route is compiled.
-- `samples/` open in a file explorer, `water-treatment/tags.csv` visible.
+- `samples/` open in a file explorer, `beverage-plant/tags.csv` visible.
 - OTE 4.4 open, no project loaded.
 - Dark theme. Copilot and inspector both open.
 
@@ -135,15 +135,16 @@ Eleven minutes. Times are the pace to aim for, not a limit.
 
 ### 2 · A real tag export — 75s
 
-4. **Tags** in the rail → drag `samples/water-treatment/tags.csv` onto the drop
+4. **Tags** in the rail → drag `samples/beverage-plant/tags.csv` onto the drop
    zone.
-5. Let the summary land: **174 tags**, the type breakdown.
-6. **Stop on the corrections.** Four of them:
+5. Let the summary land: **228 tags**, the type breakdown.
+6. **Stop on the corrections.** Four of them, one of each kind the importer has
+   to report:
 
 ```
-PMP 601 RUN     -> PMP_601_RUN         only letters, digits and underscore
-VLV-601-OPEN    -> VLV_601_OPEN        only letters, digits and underscore
-1ST_STAGE_FLOW  -> Tag_1ST_STAGE_FLOW  a name cannot start with a digit
+PMP 701 RUN     -> PMP_701_RUN         only letters, digits and underscore
+VLV-701-OPEN    -> VLV_701_OPEN        only letters, digits and underscore
+2ND_STAGE_TEMP  -> Tag_2ND_STAGE_TEMP  a name cannot start with a digit
 TIME            -> TIME_1              "TIME" is a reserved word
 ```
 
@@ -162,10 +163,15 @@ TIME            -> TIME_1              "TIME" is a reserved word
 8. Back to **Workspace**. Paste the sample's own prompt:
 
 ```
-Generate the whole HMI for this water treatment works - a plant overview,
-then a screen for each area: intake, filtration, chemical dosing and
-distribution.
+Generate the operator screens for this beverage plant - a plant overview,
+then a screen for each area: raw intake, pasteurising, blending,
+clean-in-place, filling and packaging, and utilities.
 ```
+
+Measured, not predicted: **7 screens, 374 objects, 49 alarms, 122 bindings**,
+and Gemini names them `PlantOverview`, `RawIntakeArea`, `PasteurisingArea`,
+`BlendingArea`, `CIPArea`, `FillingAndPackagingArea`, `UtilitiesArea` - the
+areas asked for, in the words asked for.
 
 9. **Do not narrate while it runs.** Let the build timeline do it — it floats
    over the canvas and counts what each step produced. Point at one line:
@@ -203,10 +209,10 @@ distribution.
 18. Three follow-ups, one at a time, reading the change list after each:
 
 ```
-add a low level alarm on both chemical day tanks
+add a low level alarm on both CIP tanks
 ```
 ```
-put the four filters on their own screen
+put the batch identifier in the header
 ```
 ```
 which tags are still unbound?
@@ -217,7 +223,7 @@ which tags are still unbound?
 20. Then a deliberately vague one:
 
 ```
-fix the dosing screen
+fix the blending screen
 ```
 
 > It asks which screen and what is wrong, as buttons. "It asks when guessing
@@ -242,7 +248,14 @@ fix the dosing screen
 > `.path` file — the same object you would drag off the library palette in OTE,
 > not a picture of one."
 
-28. Point at a faceplate that already carries a symbol from generation.
+28. Point at the faceplates that already carry one. **29 of them** were placed
+    during generation, across twelve different kinds of machine - pumps, tanks,
+    valves, a heater, blend vessels, motors, a doser, conveyors, a boiler, a
+    fan, a chiller and a compressor.
+
+> "Inference decided a PMP is a Pumps/Pump01 and a CHL is a chiller. These are
+> the product's own drawings, resolved out of the installation's library, and
+> they only appear on a machine that has it."
 
 ---
 

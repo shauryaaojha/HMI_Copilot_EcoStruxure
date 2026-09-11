@@ -31,6 +31,17 @@ interface Expected {
 }
 
 const EXPECTED: Record<string, Expected> = {
+  // The showcase sample. The kinds list is the point of it: twelve different
+  // machines means twelve different shipped graphic objects on the board.
+  "beverage-plant": {
+    tags: 228,
+    kinds: [
+      "pump", "tank", "valve", "heater", "reactor", "motor",
+      "doser", "conveyor", "boiler", "fan", "chiller", "compressor",
+    ],
+    minUnits: 25,
+    minScreens: 5,
+  },
   "transfer-pump-station": { tags: 20, kinds: ["pump", "tank"], minUnits: 3, minScreens: 1 },
   "boiler-house": { tags: 93, kinds: ["boiler", "fan", "pump"], minUnits: 9, minScreens: 2 },
   // Chillers are CHL, not CMP: an HVAC plant has no air compressors, and a

@@ -303,17 +303,28 @@ export function fallbackPlan(
   if (hasReadings) sections.push("process");
   if (hasFaults || hasReadings) sections.push("alarms");
 
-  // The most common machine kind, not the first one seen: a boiler house whose
-  // first inferred unit happens to be a fan is not a fan station.
+  /**
+   * The most common machine kind, but only when it actually dominates.
+   *
+   * Naming by the top kind alone was already better than naming by the first
+   * unit seen - a boiler house whose first inferred unit happens to be a fan is
+   * not a fan station. It still falls over on a mixed plant: a beverage line
+   * with five pumps, five tanks, three motors and six valves came out as
+   * ValveStation1 through ValveStation6, because six of twenty-eight was enough
+   * to win. A plant that is not mostly one thing has no business being named
+   * after one, so it gets Area instead.
+   */
+  const machines = equipment.filter((unit) => unit.kind !== "instrument");
   const counts = new Map<string, number>();
-  for (const unit of equipment) {
-    if (unit.kind === "instrument") continue;
-    counts.set(unit.kind, (counts.get(unit.kind) ?? 0) + 1);
-  }
-  const kind = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-  const stem = kind
+  for (const unit of machines) counts.set(unit.kind, (counts.get(unit.kind) ?? 0) + 1);
+
+  const [kind, most] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0] ?? [];
+  const dominant = kind && most && most / machines.length > 0.45;
+  const stem = dominant
     ? `${kind.charAt(0).toUpperCase()}${kind.slice(1)}Station`
-    : "Unit";
+    : machines.length > 0
+      ? "Area"
+      : "Unit";
 
   const screens: ScreenSpec[] = [];
   if (equipment.length > OVERVIEW_THRESHOLD) {
