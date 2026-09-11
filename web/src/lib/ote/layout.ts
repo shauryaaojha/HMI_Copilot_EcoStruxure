@@ -23,6 +23,7 @@ import {
   alarmSummary,
   lamp,
   numericDisplay,
+  pathPart,
   rectangle,
   screenOf,
   textBox,
@@ -38,6 +39,21 @@ export interface LayoutUnit {
   kind: string;
   label: string;
   roles: { tag: string; role: string; dataType: string; comment: string }[];
+  /**
+   * The shipped graphic object for this kind of equipment, when the machine
+   * running the layout has the library indexed.
+   *
+   * Not `symbol`, which on an InferredEquipment is the *hint* - the string
+   * "Pumps/Pump01" naming which object to look for. This is the geometry that
+   * hint resolved to, and confusing the two is a mistake the compiler should
+   * catch rather than a comment.
+   *
+   * Passed in as geometry rather than looked up here: lib/ote/symbols.ts reads
+   * the index off disk and this module is imported by the browser too. Absent
+   * everywhere the library is not installed, and a faceplate without one is the
+   * same faceplate with no picture on it.
+   */
+  graphic?: { Commands: string; Points: string };
 }
 
 export interface ScreenSpec {
@@ -68,6 +84,10 @@ const GAP = 16;
 const CARD = { width: 320, height: 162, columns: 3 };
 /** Level 1: four tiles across, three rows down. Status only, no readings. */
 const TILE = { width: 238, height: 100, columns: 4 };
+/** A faceplate's symbol, big enough to recognise across a control room. */
+const SYMBOL = 52;
+/** A tile's, which has a third of the room. */
+const TILE_SYMBOL = 26;
 
 /** The engineering unit a reading is in, from what the tag comment says. */
 function unitOf(comment: string, role: string): string {
@@ -235,19 +255,52 @@ function drawCard(place: Adds, unit: LayoutUnit, box: Box) {
   const { left: x, top: y } = box;
 
   place.add(rectangle(`Card_${key}`, box, { fill: WHITE, border: GREY }));
-  place.add(textBox(`CardName_${key}`, unit.label, { left: x + 12, top: y + 8, width: box.width - 110, height: 20 }, { size: 13, bold: true }));
+
+  /**
+   * The product's own drawing of this machine, at the top right of its card.
+   *
+   * It is a real Path part with the geometry out of the installation's .path
+   * file - the same object an engineer would drag off the library palette, not
+   * a picture of one - so it exports into the .eote like anything else. When
+   * the library is not indexed there is no symbol, the kind is spelled out in
+   * words instead, and the lamps take the width back.
+   */
+  const symbolSize = unit.graphic ? SYMBOL : 0;
+  if (unit.graphic) {
+    place.add(
+      pathPart(
+        `Sym_${key}`,
+        unit.graphic,
+        { left: x + box.width - symbolSize - 12, top: y + 8, width: symbolSize, height: symbolSize },
+        { fill: GREY, border: DARK_GREY },
+      ),
+    );
+  } else {
+    place.add(
+      textBox(`CardKind_${key}`, unit.kind.toUpperCase(), { left: x + box.width - 96, top: y + 9, width: 84, height: 18 }, { size: 10, colour: DARK_GREY }),
+    );
+  }
+
   place.add(
-    textBox(`CardKind_${key}`, unit.kind.toUpperCase(), { left: x + box.width - 96, top: y + 9, width: 84, height: 18 }, { size: 10, colour: DARK_GREY }),
+    textBox(
+      `CardName_${key}`,
+      unit.label,
+      { left: x + 12, top: y + 8, width: box.width - (symbolSize || 96) - 26, height: 20 },
+      { size: 13, bold: true },
+    ),
   );
 
   const run = unit.roles.find((r) => r.role === "running");
   const fault = unit.roles.find((r) => r.role === "fault");
   const lampsTop = y + 34;
-  const halfWidth = Math.floor((box.width - 24 - 8) / 2);
+  // The symbol occupies the top right down to y+8+SYMBOL, which the lamps row
+  // runs through - so they give up its width rather than run under it.
+  const lampsWidth = box.width - 24 - symbolSize - (symbolSize ? 12 : 0);
+  const halfWidth = Math.floor((lampsWidth - 8) / 2);
 
   if (run) {
     place.add(
-      lamp(`Lamp_${key}_RUN`, "STOPPED", "RUNNING", { left: x + 12, top: lampsTop, width: fault ? halfWidth : box.width - 24, height: 44 }),
+      lamp(`Lamp_${key}_RUN`, "STOPPED", "RUNNING", { left: x + 12, top: lampsTop, width: fault ? halfWidth : lampsWidth, height: 44 }),
       run.tag,
     );
   }
@@ -256,7 +309,7 @@ function drawCard(place: Adds, unit: LayoutUnit, box: Box) {
       alarmLamp(`Lamp_${key}_FLT`, "NO FAULT", "FAULT", {
         left: run ? x + 12 + halfWidth + 8 : x + 12,
         top: lampsTop,
-        width: run ? halfWidth : box.width - 24,
+        width: run ? halfWidth : lampsWidth,
         height: 44,
       }),
       fault.tag,
@@ -292,7 +345,27 @@ function tile(place: Placer, unit: LayoutUnit, box: Box) {
   const { left: x, top: y } = box;
 
   place.add(rectangle(`Tile_${key}`, box, { fill: WHITE, border: GREY }));
-  place.add(textBox(`TileName_${key}`, unit.label, { left: x + 10, top: y + 8, width: box.width - 20, height: 18 }, { size: 12, bold: true }));
+
+  const symbolSize = unit.graphic ? TILE_SYMBOL : 0;
+  if (unit.graphic) {
+    place.add(
+      pathPart(
+        `TileSym_${key}`,
+        unit.graphic,
+        { left: x + box.width - symbolSize - 10, top: y + 6, width: symbolSize, height: symbolSize },
+        { fill: GREY, border: DARK_GREY },
+      ),
+    );
+  }
+
+  place.add(
+    textBox(
+      `TileName_${key}`,
+      unit.label,
+      { left: x + 10, top: y + 8, width: box.width - 20 - (symbolSize ? symbolSize + 8 : 0), height: 18 },
+      { size: 12, bold: true },
+    ),
+  );
 
   const fault = unit.roles.find((r) => r.role === "fault");
   const run = unit.roles.find((r) => r.role === "running");

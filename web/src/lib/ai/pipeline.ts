@@ -17,7 +17,8 @@
  * Phase 4 of docs/BUILD_PLAN.md.
  */
 
-import { layoutApplication } from "@/lib/ote/layout";
+import { layoutApplication, type LayoutUnit } from "@/lib/ote/layout";
+import { libraryAvailable, symbolsFor } from "@/lib/ote/symbols";
 import type { Wire } from "@/lib/ote/bindings";
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
 import { validateProject } from "@/lib/validation/rules";
@@ -127,7 +128,39 @@ export async function* runPipeline(
 
   // --- 4 layout -----------------------------------------------------------
   yield step("layout", "running");
-  const laidOut = layoutApplication(plan.screens, equipment, SCREEN);
+
+  /**
+   * The product's own drawing of each machine, where this installation has one.
+   *
+   * inference already decided that a PMP is a "Pumps/Pump01"; nothing had ever
+   * looked the hint up. It resolves to a real Path part with the geometry out
+   * of the .path file - the same object an engineer drags off the library
+   * palette - so a generated faceplate carries Schneider's own pump rather than
+   * the word PUMP.
+   *
+   * The index is derived from a local EcoStruxure installation and is never
+   * committed, so on any other machine this finds nothing and the screens come
+   * out exactly as they did before. That is said out loud rather than left as a
+   * silent difference between two machines.
+   */
+  const graphics = await symbolsFor(equipment.map((unit) => unit.symbol));
+  const drawn: LayoutUnit[] = equipment.map((unit) => ({
+    ...unit,
+    graphic: unit.symbol ? graphics.get(unit.symbol) : undefined,
+  }));
+
+  const withGraphic = drawn.filter((unit) => unit.graphic).length;
+  if (withGraphic > 0) {
+    yield log(
+      `Placed ${withGraphic} shipped graphic object${withGraphic === 1 ? "" : "s"} from the installation's library`,
+    );
+  } else if (!(await libraryAvailable())) {
+    yield log(
+      "No graphic object library on this machine - faceplates are drawn without symbols",
+    );
+  }
+
+  const laidOut = layoutApplication(plan.screens, drawn, SCREEN);
   const screens: Screen[] = [];
   const wires: Wire[] = [];
 

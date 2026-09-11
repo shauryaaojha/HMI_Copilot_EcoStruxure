@@ -201,3 +201,77 @@ describe("the board", () => {
     expect(extent.width).toBeGreaterThan(PANEL.width);
   });
 });
+
+describe("a faceplate carrying the installation's own symbol", () => {
+  const drawn = (id: string): LayoutUnit => ({
+    ...unit(id),
+    // Stand-in geometry: the real thing comes from graphics-index.json, which
+    // is derived from a local EcoStruxure installation and never committed.
+    graphic: { Commands: "MLLz", Points: "0,0,10,0,10,10,0,10" },
+  });
+
+  const units = [drawn("P101"), drawn("P102"), drawn("P103")];
+  const [built] = layoutApplication(
+    [spec({ include: units.map((u) => u.id) })],
+    units,
+    PANEL,
+  );
+
+  const boxes = (prefix: string) =>
+    built.parts.filter((p) => p.Name.startsWith(prefix)).map(boxOf);
+
+  it("places a Path part per unit, which the packager can emit", () => {
+    const symbols = built.parts.filter((p) => p.Type === "Path");
+    expect(symbols).toHaveLength(units.length);
+    for (const symbol of symbols) {
+      expect(symbol.Type === "Path" && symbol.Commands.length).toBeGreaterThan(0);
+      expect(symbol.Type === "Path" && symbol.Points.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("drops the spelled-out kind, because the picture says it", () => {
+    expect(built.parts.some((p) => p.Name.startsWith("CardKind_"))).toBe(false);
+  });
+
+  it("does not let the symbol sit on the lamps or the name", () => {
+    // The lamps row runs through the symbol's height, so they give up its
+    // width rather than run under it.
+    for (const symbol of boxes("Sym_")) {
+      for (const other of [...boxes("Lamp_"), ...boxes("CardName_")]) {
+        const apart =
+          symbol.right <= other.left ||
+          other.right <= symbol.left ||
+          symbol.bottom <= other.top ||
+          other.bottom <= symbol.top;
+        expect(apart, "the symbol covers something on its own card").toBe(true);
+      }
+    }
+  });
+
+  it("keeps every symbol inside the card it belongs to", () => {
+    const cards = boxes("Card_");
+    for (const symbol of boxes("Sym_")) {
+      const home = cards.find(
+        (card) =>
+          symbol.left >= card.left &&
+          symbol.top >= card.top &&
+          symbol.right <= card.right &&
+          symbol.bottom <= card.bottom,
+      );
+      expect(home, "a symbol landed outside every card").toBeDefined();
+    }
+  });
+
+  it("lays out identically to a machine with no library, minus the symbols", () => {
+    // The feature is local to a machine with the product installed. Everywhere
+    // else the same request has to produce the same screen without it.
+    const [plain] = layoutApplication(
+      [spec({ include: units.map((u) => u.id) })],
+      units.map(({ graphic: _graphic, ...rest }) => rest),
+      PANEL,
+    );
+    expect(plain.parts.some((p) => p.Type === "Path")).toBe(false);
+    expect(plain.parts.some((p) => p.Name.startsWith("CardKind_"))).toBe(true);
+    expect(plain.wires.length).toBe(built.wires.length);
+  });
+});
