@@ -222,7 +222,7 @@ def demo(kicker, title, img, caption, points, badge=None):
     colw = x - Inches(0.75) - Inches(0.4)
     y = Inches(2.0)
     if badge:
-        b = box(s, Inches(0.75), y, colw, Inches(0.42), fill=GREEN)
+        box(s, Inches(0.75), y, colw, Inches(0.42), fill=GREEN)
         tfb = tb(s, Inches(0.85), y + Inches(0.09), colw - Inches(0.2), Inches(0.3))
         para(tfb, badge, 12, WHITE, True, first=True)
         y = y + Inches(0.62)
@@ -231,7 +231,7 @@ def demo(kicker, title, img, caption, points, badge=None):
     para(tf, points, 13, MUTED, line=1.38)
     return s
 
-# ============================================================ 1 · HOOK  (0:00)
+# ================================================== 1 · HOOK (0:00, 20s)
 s = slide(DARK)
 box(s, 0, 0, Inches(0.16), H, fill=GREEN)
 tf = tb(s, Inches(1.1), Inches(0.95), Inches(11), Inches(0.4))
@@ -254,95 +254,125 @@ rule(s, Inches(1.1), Inches(5.62), Inches(1.4))
 tf = tb(s, Inches(1.1), Inches(5.95), Inches(11.1), Inches(1.2))
 para(tf, "And the file opens in EcoStruxure Operator Terminal Expert 4.4.", 22, WHITE, True, first=True, line=1.25, space_after=8)
 para(tf, "It was never saved by the product.", 15, GREEN, True)
-note(s, "0:00–0:25 · HOOK. Read the sentence. Then the numbers. Then the last line, slowly. Do not explain yet.")
+note(s, "0:00–0:20 · HOOK. Read the sentence, then the numbers, then the last line slowly. Two seconds of silence. Do not explain yet.")
 
-# ============================================================ 2 · PROBLEM (0:25)
+# ================================================== 2 · PROBLEM (0:20, 30s)
 s = slide()
-header(s, "The brief", "Today this is done by hand, and it is done twice")
-table(s, ["The work", "What it looks like"],
+header(s, "01 · The problem", "Today this is done by hand, every time")
+table(s, ["The cost the brief names", "What it looks like on a real project"],
  [["**Manual screen development**", "Hand-place every lamp, bargraph and trend. Then repeat it for 40 near-identical equipment screens."],
   ["**Expert-driven configuration**", "Only senior engineers know which object, animation and colour standard applies. Juniors block on them."],
   ["**Complex tag integration**", "Hundreds of PLC symbols mapped by hand onto object properties, one property sheet at a time."],
   ["**Inconsistency**", "Two engineers on one project produce two differently-named, differently-coloured HMIs."]],
- widths=[3.2, 8.8], size=13.5)
-box(s, Inches(0.75), fy(0.3), Inches(11.8), Inches(1.0), fill=DARK)
-tf = tb(s, Inches(1.15), fy(0.3) + Inches(0.22), Inches(11.0), Inches(0.6))
+ widths=[3.3, 8.7], size=13.5)
+box(s, Inches(0.75), fy(0.28), Inches(11.8), Inches(1.0), fill=DARK)
+tf = tb(s, Inches(1.15), fy(0.28) + Inches(0.22), Inches(11.0), Inches(0.6))
 para(tf, "A wrong binding is not a drawing error. It is pump 2’s flow under pump 1’s label, found during an upset.", 19, WHITE, True, first=True)
-note(s, "0:25–0:55 · Four costs, fast. Do not read the table. Land the black bar — this is a safety story, not only a productivity one.")
+note(s, "0:20–0:50 · Do not read the table. Land the black bar: this is a safety problem, not only a productivity one.")
 
-# ============================================================ 3 · INSIGHT (0:55)
+# ================================================== 3 · SOLUTION (0:50, 25s)
 s = slide()
-header(s, "Why this is possible at all", "The project format is fully legible")
+header(s, "02 · The solution", "A tag export and a sentence become a finished project")
 code(s, [
- "<project>.eote                 ZIP    (nested entries use BACKSLASH separators)",
- " |-- Project.dat, Target.dat   JSON   panel model, resolution",
- " |-- Variables.db              SQLite the tags",
- " |-- Alarm.db                  SQLite alarm groups and alarms",
- " |-- Bindings.dat              JSON   Sources[] -> Bindings[] -> Targets[]",
- " +-- Screens\\<guid>\\Screen.dat JSON   the object tree",
-], y=Inches(1.95), size=13)
-tf = tb(s, Inches(0.75), Inches(4.15), Inches(11.8), Inches(2.4))
-para(tf, "Plain JSON and plain SQLite. No signature. No encryption. Nothing to defeat.", 17, INK, True, first=True, line=1.3, space_after=14)
-para(tf, "So the first thing we did was not design a UI or pick a model. It was to take the product’s own shipped templates apart and find out whether a project could be written from scratch at all.", 15, MUTED, line=1.35, space_after=14)
-para(tf, "It can. Everything after this follows from that.", 17, GREEN, True, line=1.3)
-note(s, "0:55–1:20 · The enabling insight. Say: we asked the one question that kills this category of idea, and we asked it first.")
+ "   PLC tag export  (.csv / .xlsx / symbol file) ---+",
+ "                                                   |",
+ "   \"Two pump station with running lamps,        ---+---> HMI COPILOT ---> project.eote",
+ "    a flow display and a high-level alarm\"         |          |           validation report",
+ "                                                   |          |",
+ "   Company standards (naming, colours, layout) ----+          v",
+ "                                                     LIVE CANVAS + BINDING MAP",
+ "                                                     (the engineer sees it and steers it)",
+], y=Inches(1.95), size=12.5)
+tf = tb(s, Inches(0.75), Inches(4.75), Inches(11.8), Inches(2.2))
+para(tf, "One file. File ▸ Open Project, and the HMI is there — screens drawn, tags declared, alarms configured, bindings wired. Nothing to import, nothing to assemble.", 16, INK, True, first=True, line=1.32, space_after=14)
+para(tf, "The engineer stays in control throughout: the AI proposes, the canvas makes the proposal legible, and a human accepts, edits or redirects. It never deploys anything itself.", 14.5, MUTED, line=1.35)
+note(s, "0:50–1:15 · The product in one diagram. Stress the last line — the human is in the loop by design, not by limitation.")
 
-# ============================================================ 4-7 · DEMO (1:20)
-demo("Live", "One sentence becomes a plant", "18-board-all-screens",
- "Eleven screens, laid out as a board. A plant overview, then a screen per area, with navigation between them.",
- "A 1,248-tag plant is not one screen — it is a screen hierarchy, and inferring that hierarchy from tag names is the real problem. Every unit gets a screen. A chiller is not an air compressor.",
- badge="DEMO · 1")
-note(demo.__self__ if False else prs.slides[-1], "1:20–1:50 · Switch to the app if it is up. Type the sentence live. Otherwise this slide is the fallback.")
+# ================================================== 4 · FILE STRUCTURE (1:15, 25s)
+s = slide()
+header(s, "03 · The project file", "Why this is possible at all")
+code(s, [
+ "<project>.eote                  ZIP    (nested entries use BACKSLASH separators)",
+ " |-- Project.dat, Target.dat    JSON   project identity, panel model, resolution",
+ " |-- Variables.db               SQLite the tags",
+ " |-- Alarm.db                   SQLite alarm groups and alarms",
+ " |-- Recipe.db, Security.db ... SQLite other subsystems, passed through untouched",
+ " |-- Bindings.dat               JSON   Sources[] -> Bindings[] -> Targets[] graph",
+ " |-- Screens\\Hierarchy.dat      JSON   screen order",
+ " +-- Screens\\<guid>\\Screen.dat  JSON   the object tree",
+], y=Inches(1.9), size=12.5)
+tf = tb(s, Inches(0.75), Inches(4.65), Inches(11.8), Inches(2.4))
+para(tf, "Plain JSON and plain SQLite. No signature. No encryption. Nothing to defeat.", 17, INK, True, first=True, line=1.3, space_after=13)
+para(tf, "Bindings are declarative — wiring a tag to a display is one JSON object. And the geometry is absolute Location, Width and Height inside a ViewBox, which maps one-to-one onto SVG. That last property is what lets one model drive both the preview and the file.", 14.5, MUTED, line=1.35, space_after=13)
+para(tf, "So the first thing we did was not design a UI. It was to prove a project could be written from scratch.", 15.5, GREEN, True, line=1.3)
+note(s, "1:15–1:40 · The enabling insight. Say: we asked the one question that kills this category of idea, and we asked it first.")
 
-demo("Live", "You watch it work, in engineering language", "17-generation-running",
+# ================================================== 5 · ARCHITECTURE (1:40, 35s)
+s = slide()
+header(s, "04 · System architecture", "Eight stages, one streaming contract")
+code(s, [
+ "+---------------------------------------------------------------------------+",
+ "|  WEB CLIENT   Conversation . Live HMI canvas . Binding map . Validation    |",
+ "+-------------------------------+-------------------------------------------+",
+ "                                |   SSE - one finished object at a time",
+ "+-------------------------------v-------------------------------------------+",
+ "|  ORCHESTRATOR                                                             |",
+ "|    Tag Ingestion --> Equipment Inference --> Layout Planner               |",
+ "|          |                   |                     |                      |",
+ "|          |                   v                     v                      |",
+ "|          |            Part Selector -------> Screen Generator             |",
+ "|          |        (50 real part shapes)    (schema-grounded JSON)         |",
+ "|          +------------> Binding Resolver <--------+                       |",
+ "|                               |                                           |",
+ "|                    Validation Engine --> Project Packager                 |",
+ "|                          (7 rules)     (.eote: screens, Variables.db,     |",
+ "|                                         Alarm.db, Bindings.dat)           |",
+ "+---------------------------------------------------------------------------+",
+], y=Inches(1.88), size=10.5)
+tf = tb(s, Inches(0.75), Inches(5.72), Inches(11.8), Inches(1.5))
+para(tf, "One model, two renderers — so the preview cannot lie.", 18, GREEN, True, first=True, line=1.28, space_after=9)
+para(tf, "The same Screen.dat JSON drives the SVG canvas and the packager. There is no second model of the screen to drift from the first, and the compiler enforces it: the canvas switches exhaustively over the part union, so it cannot draw a part the packager cannot write.", 14, MUTED, line=1.33)
+note(s, "1:40–2:15 · The longest non-demo slide. Trace the flow left to right once, then land the green line — that is the credibility claim.")
+
+# ================================================== 6-9 · DEMO (2:15, 100s)
+demo("05 · Demo", "One sentence becomes a plant", "18-board-all-screens",
+ "Eleven screens on a board. An overview, then a screen per area, with navigation between them.",
+ "A 1,248-tag plant is not one screen — it is a hierarchy, and inferring that hierarchy from tag names is the actual problem. Every unit gets a screen.",
+ badge="DEMO · 1  ·  THE RESULT")
+note(prs.slides[-1], "2:15–2:40 · Switch to the live app here if it is up. Otherwise this slide is the fallback.")
+
+demo("05 · Demo", "You watch it work, in engineering language", "17-generation-running",
  "Eight steps, each reporting what it produced, each clickable to select the objects it created.",
- "Not “Thinking…”. Parse PLC tags → 1,248. Infer equipment → pumps, instruments, motors. Configure alarms → 232. An engineer will not accept a screen they did not see being built.",
- badge="DEMO · 2")
-note(prs.slides[-1], "1:50–2:15 · Point at the step details. This is the difference between a black box and a tool.")
+ "Not “Thinking…”. Parsed 1,248 tags. Inferred pumps, instruments, motors. Configured 232 alarms. An engineer will not accept a screen they did not see being built.",
+ badge="DEMO · 2  ·  THE PIPELINE, RUNNING")
+note(prs.slides[-1], "2:40–3:02 · Point at the step details. This is the difference between a black box and a tool.")
 
-demo("Live", "Every tag, wired and visible", "04-bindings",
- "The binding map, drawn from the real Sources / Targets graph the .eote contains.",
- "This is the pain point the brief names, and today it is invisible until commissioning. Here it is a picture you can check before you export.",
- badge="DEMO · 3")
-note(prs.slides[-1], "2:15–2:40 · The highest-value view. Say: this is the stated problem, and this is it solved.")
+demo("05 · Demo", "Every tag, wired and visible", "04-bindings",
+ "The binding map, drawn from the real Sources / Targets graph inside the .eote.",
+ "Tag integration is the pain point the brief names, and today it is invisible until commissioning. Here you can check it before you export.",
+ badge="DEMO · 3  ·  THE PAIN POINT, SOLVED")
+note(prs.slides[-1], "3:02–3:24 · The highest-value view. Say: this is the stated problem, and this is it solved.")
 
-demo("Live", "Behaviour, before any hardware exists", "06-simulation-live",
+demo("05 · Demo", "Behaviour, before any hardware exists", "06-simulation-live",
  "Press Simulate and a process model drives the screen: lamps change state, numbers move, alarms raise.",
- "Numerics are driven through their own alarm setpoints, so every alarm the project defines actually fires. Lead and standby pumps behave differently.",
- badge="DEMO · 4")
-note(prs.slides[-1], "2:40–3:05 · Let it run for a few seconds in silence. The alarms firing is the moment.")
+ "Values are driven through the project’s own alarm setpoints, so every alarm it configured actually fires. Lead and standby pumps behave differently.",
+ badge="DEMO · 4  ·  VALIDATION WITHOUT HARDWARE")
+note(prs.slides[-1], "3:24–3:46 · Let it run in silence for a few seconds. The alarms firing is the moment.")
 
-# ============================================================ 8 · WHY IT CANNOT LIE (3:05)
+# ================================================== 10 · PROOF (3:46, 24s)
 s = slide()
-header(s, "Why you can trust it", "One model, two renderers — the preview cannot lie")
-code(s, [
- "                       Screen.dat  (one JSON object tree)",
- "                              |",
- "               +--------------+--------------+",
- "               v                             v",
- "        SVG in the browser            .eote packager",
- "        (what the engineer approves)  (what EcoStruxure opens)",
-], y=Inches(1.95), size=13)
-tf = tb(s, Inches(0.75), Inches(4.2), Inches(11.8), Inches(2.5))
-para(tf, "The same JSON drives the preview and the file. There is no second model of the screen to drift from the first.", 16, INK, True, first=True, line=1.32, space_after=13)
-para(tf, "And it is the compiler that enforces it, not discipline: the canvas switches exhaustively over the part union, so it cannot draw a part the packager cannot write.", 14.5, MUTED, line=1.35, space_after=13)
-para(tf, "What the engineer approves is what OTE opens.", 19, GREEN, True, line=1.3)
-note(s, "3:05–3:35 · The credibility slide. Most tools in this space render a pretty approximation and generate the file separately. Ours cannot.")
-
-# ============================================================ 9 · PROOF (3:35)
-s = slide()
-header(s, "Proof", "Built, not proposed")
+header(s, "06 · Proof", "Built, not proposed")
 tf = tb(s, Inches(0.75), Inches(1.95), Inches(11.8), Inches(0.7))
 para(tf, "Two .eote files written from scratch, both open in EcoStruxure Operator Terminal Expert 4.4. Neither was ever saved by the product.", 16.5, INK, first=True, line=1.35)
 stats(s, [("19","parts placed"),("7","typed tags"),("5","alarms"),("11","bindings"),("0","placed by hand")], y=Inches(2.9))
 stats(s, [("467","tests"),("474","shipped symbols indexed"),("50","real part types extracted"),("2","independent packagers\nthat agree")], y=Inches(4.75))
 tf = tb(s, Inches(0.75), Inches(6.5), Inches(11.8), Inches(0.7))
 para(tf, "A Python reference and a TypeScript packager, structurally diffed against each other. Two implementations agreeing is a stronger claim than either passing its own tests.", 13.5, MUTED, first=True, line=1.3)
-note(s, "3:35–4:05 · If a judge takes one thing away, it is this slide. Offer to open the file on their machine.")
+note(s, "3:46–4:10 · If a judge takes one thing away, it is this slide. Offer to open the file on their machine.")
 
-# ============================================================ 10 · BUSINESS (4:05)
+# ================================================== 11 · BUSINESS (4:10, 35s)
 s = slide()
-header(s, "The business", "Who pays, and what it costs them")
+header(s, "07 · Business proposal", "Who pays, and what it costs them")
 table(s, ["", "Who", "Why they buy", "Price"],
  [["**The wedge**", "System integrators and panel builders", "Fixed-price work. Time saved is margin on hours they already quoted, and they decide fast.", "**₹3,499 / seat / month**"],
   ["**Expand**", "Plants, utilities, OEMs", "They own the house style. Standards packs make every contractor produce their HMI.", "from ₹25,00,000 / year"],
@@ -352,12 +382,12 @@ code(s, [
  "#  BREAK-EVEN      Indian automation engineer, fully loaded   INR 700-1,200 / hour",
  "                   Team seat                                  INR 41,988 / year",
  "                   Hours it must give back    41,988 / 950  =  ~44 h  =  5.5 days",
-], y=fy(0.25), size=13)
-tf = tb(s, Inches(0.75), fy(0.2), Inches(11.8), Inches(0.8))
-para(tf, "Does generating your first draft and resolving your bindings save you five days a year? That is the whole question — and it needs no savings claim we have not measured.", 14.5, GREEN, True, first=True, line=1.3)
-note(s, "4:05–4:40 · Integrators already have the licensed OTE install the tool needs. Customer and technical precondition are the same people.")
+], y=fy(0.22), size=12.5)
+tf = tb(s, Inches(0.75), fy(0.18), Inches(11.8), Inches(0.8))
+para(tf, "Does generating your first draft and resolving your bindings save you five days a year? That is the whole question — and it needs no savings claim we have not measured.", 14, GREEN, True, first=True, line=1.28)
+note(s, "4:10–4:45 · Integrators already have the licensed OTE install the tool needs. Customer and technical precondition are the same people.")
 
-# ============================================================ 11 · ASK / CLOSE (4:40)
+# ================================================== 12 · FINAL (4:45, 15s)
 s = slide(DARK)
 box(s, 0, 0, Inches(0.16), H, fill=GREEN)
 tf = tb(s, Inches(1.1), Inches(1.35), Inches(11), Inches(1.6))
@@ -366,11 +396,11 @@ rule(s, Inches(1.1), Inches(3.15), Inches(1.4))
 tf = tb(s, Inches(1.1), Inches(3.55), Inches(10.8), Inches(1.6))
 para(tf, "It encodes the senior engineer’s judgement — which part to use, which alarm every pump needs, which naming standard applies — and gives it to everyone on the team, every time.", 18, RGBColor(0xC5,0xCE,0xD8), first=True, line=1.38)
 tf = tb(s, Inches(1.1), Inches(5.35), Inches(11), Inches(1.4))
-para(tf, "It is working today, at the file boundary, with no change to the product.", 16, WHITE, True, first=True, space_after=9)
+para(tf, "It works today, at the file boundary, with no change to Schneider’s product.", 16, WHITE, True, first=True, space_after=9)
 para(tf, "Ask us to open the generated project on your machine.", 15, GREEN, True)
 tf = tb(s, Inches(1.1), Inches(6.75), Inches(11), Inches(0.4))
 para(tf, "HMI Copilot  ·  From Intent to HMI — Faster. Smarter. Safer.", 12, FAINT, True, first=True)
-note(s, "4:40–5:00 · Close on the invitation. Stop talking.")
+note(s, "4:45–5:00 · Close on the invitation. Stop talking.")
 
 for w in WARN: print("WARN:", w)
 prs.save("HMI_Copilot_5min.pptx")
