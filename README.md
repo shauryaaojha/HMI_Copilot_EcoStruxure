@@ -158,6 +158,10 @@ docs/
   DEMO.md               the ninety-second demo path, with fallbacks
   PRODUCTION.md         what it would take to put this in front of real engineers
   FRONTEND_PROMPTS.md   paste-ready prompts for the UI screens
+  SHOWCASE.md           every visible feature, and the order to show them in
+  PITCH.md / SCRIPT_5MIN.md   the five-minute deck (HMI_Copilot_5min.pptx/.pdf) and its script
+  BUSINESS_MODEL.md     pricing for the market it is sold in
+  ENGAGEMENT_PLAN.md    what to settle with Schneider before building more
   ui-reference/         the agreed UI design, 6 reference renders
 web/                    the product — Next.js full stack
   src/lib/ote/          the format layer: a TypeScript port of tools/make_project.py
@@ -172,7 +176,10 @@ tools/                  the proven generator core, in Python
   make_binding_map.py   renders a project's binding graph
   make_demo_co.py       compound-object (.co) packager, secondary output
   make_deck.py          builds the presentation from the generated project
+  make_sample_projects.py  regenerates samples/ as .eote projects
   fill_deck.py          fills the single-slide submission poster
+samples/                eight plants (tank farm, boiler house, HVAC, chemical, beverage,
+                        packaging, water treatment, pump station) to upload by hand
 demo_project/           generated .eote files — the proof
 demo_objects/           generated .co compound objects
 reference/              one real example of each of the 50 OTE part types
