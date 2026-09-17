@@ -60,7 +60,21 @@ interface EditSnapshot {
   screenPlacement: Record<string, ScreenPlacement>;
   activeScreenId?: string;
   selectedIds: string[];
+  /**
+   * Bindings and alarms too, since a conversational turn adds them alongside
+   * the objects it creates and undoing the objects without the bindings left
+   * references pointing at nothing.
+   */
+  bindings: Binding[];
+  alarms: Alarm[];
+  handles: Record<string, string>;
 }
+
+/**
+ * What a dry run hands back to be committed as one step - docs/LLD.md F7.
+ * The same slice `EditSnapshot` covers, minus the label.
+ */
+export type BatchPatch = Omit<EditSnapshot, "label"> & { handleSeq: number };
 
 /** Deep enough to cover a session's editing, shallow enough to stay in memory. */
 const HISTORY_DEPTH = 60;
@@ -82,6 +96,14 @@ interface ProjectState {
   objectMeta: Record<string, ObjectMeta>;
   /** Where each screen has been dragged to on the board, keyed by screen id. */
   screenPlacement: Record<string, ScreenPlacement>;
+  /**
+   * Short stable handles - `o17` for an object, `s2` for a screen - keyed by
+   * UniqueId. The conversation addresses things by these rather than by name,
+   * because a name changes when it collides and a handle never does. Allocated
+   * once, never reused. docs/LLD.md F2.
+   */
+  handles: Record<string, string>;
+  handleSeq: number;
 
   selectedIds: string[];
   hoveredId?: string;
@@ -148,6 +170,12 @@ interface ProjectState {
   /* --- history ------------------------------------------------------- */
   undo: () => void;
   redo: () => void;
+  /**
+   * Replace the editable slice in one undoable step. This is how a
+   * conversational turn lands: the ops ran on a scratch store, and the result
+   * is committed whole, so a ten-op turn is one undo rather than ten.
+   */
+  commitBatch: (label: string, patch: BatchPatch) => void;
 
   importTags: (variables: Variable[], meta: TagImport) => void;
   setStandards: (patch: Partial<Standards>) => void;
@@ -184,7 +212,7 @@ type ProjectActions = Pick<
   | "updateObject" | "setProperty" | "nudge" | "setBox" | "removeObjects"
   | "duplicateObjects" | "copyObjects" | "cutObjects" | "pasteObjects" | "align"
   | "spread" | "restackObjects" | "setMeta" | "group" | "ungroup" | "undo"
-  | "redo" | "importTags" | "setStandards" | "snapshot" | "restore"
+  | "redo" | "commitBatch" | "importTags" | "setStandards" | "snapshot" | "restore"
   | "ensureScreen" | "appendToView" | "setStep" | "attribute" | "setGenerating"
   | "addBinding" | "addAlarm" | "addFinding" | "setEquipment" | "log"
   | "addMessage" | "patchMessage" | "clearChat" | "reset" | "resetRun"
@@ -198,21 +226,54 @@ type ProjectActions = Pick<
 
 type Draft = ProjectState;
 
-/** Record the pre-edit state so undo has somewhere to go. Clears redo. */
-function remember(s: Draft, label: string) {
-  s.past.push({
+/** The editable slice, detached from the draft. What undo and a batch move. */
+function editable_slice(s: Draft, label: string): EditSnapshot {
+  return {
     label,
     screens: current(s.screens),
     objectMeta: current(s.objectMeta),
     screenPlacement: current(s.screenPlacement),
     activeScreenId: s.activeScreenId,
     selectedIds: current(s.selectedIds),
-  });
+    bindings: current(s.bindings),
+    alarms: current(s.alarms),
+    handles: current(s.handles),
+  };
+}
+
+function restoreSlice(s: Draft, from: EditSnapshot) {
+  s.screens = from.screens;
+  s.objectMeta = from.objectMeta;
+  s.screenPlacement = from.screenPlacement;
+  s.activeScreenId = from.activeScreenId;
+  s.selectedIds = from.selectedIds;
+  s.bindings = from.bindings;
+  s.alarms = from.alarms;
+  s.handles = from.handles;
+}
+
+/** Record the pre-edit state so undo has somewhere to go. Clears redo. */
+function remember(s: Draft, label: string) {
+  s.past.push(editable_slice(s, label));
   if (s.past.length > HISTORY_DEPTH) s.past.shift();
   s.future.length = 0;
 }
 
 const viewOf = (screen: Screen) => screen.Children[0];
+
+/**
+ * Every screen and object gets a handle the first time it is seen, and keeps
+ * it. Called after anything that can create one, and on hydrate so a project
+ * saved before handles existed gets them without a migration.
+ */
+function ensureHandles(s: Draft) {
+  for (const screen of s.screens) {
+    if (!s.handles[screen.UniqueId]) s.handles[screen.UniqueId] = `s${++s.handleSeq}`;
+    for (const part of viewOf(screen).Children) {
+      if (!s.handles[part.UniqueId]) s.handles[part.UniqueId] = `o${++s.handleSeq}`;
+    }
+  }
+}
 
 const activeScreen = (s: Draft) =>
   s.screens.find((x) => x.UniqueId === s.activeScreenId) ?? s.screens[0];
@@ -259,7 +320,13 @@ function detachedPartsByIds(s: Draft, ids: string[]): Part[] {
 const editable = (s: Draft, ids: string[]) =>
   ids.filter((id) => !s.objectMeta[id]?.locked);
 
-export const useProject = create<ProjectState>()(
+/**
+ * A factory rather than a singleton, so a conversational turn can run its ops
+ * on a scratch instance and commit the result whole. The application uses the
+ * one instance exported below; docs/LLD.md F7 uses a second.
+ */
+export function createProjectStore() {
+  return create<ProjectState>()(
   immer((set, get) => ({
     id: "",
     name: "Untitled",
@@ -272,6 +339,8 @@ export const useProject = create<ProjectState>()(
     findings: [],
     objectMeta: {},
     screenPlacement: {},
+    handles: {},
+    handleSeq: 0,
     selectedIds: [],
     simulating: false,
     clipboard: [],
@@ -290,6 +359,7 @@ export const useProject = create<ProjectState>()(
       set((s) => {
         Object.assign(s, project);
         s.savedAt = Date.now();
+        ensureHandles(s);
       }),
 
     rename: (name) =>
@@ -364,6 +434,7 @@ export const useProject = create<ProjectState>()(
         });
         s.activeScreenId = id;
         s.selectedIds = [];
+        ensureHandles(s);
       });
       return id;
     },
@@ -391,6 +462,7 @@ export const useProject = create<ProjectState>()(
         s.screens.splice(s.screens.indexOf(original) + 1, 0, copy);
         s.activeScreenId = newId;
         s.selectedIds = [];
+        ensureHandles(s);
       });
       return newId;
     },
@@ -462,6 +534,7 @@ export const useProject = create<ProjectState>()(
         remember(s, `Add ${part.Type}`);
         part.Name = uniqueName(takenNames(s), part.Name);
         viewOf(screen).Children.push(part);
+        s.handles[part.UniqueId] ??= `o${++s.handleSeq}`;
       }),
 
     updateObject: (id, patch) =>
@@ -546,6 +619,7 @@ export const useProject = create<ProjectState>()(
         });
         viewOf(screen).Children.push(...copies);
         s.selectedIds = copies.map((p) => p.UniqueId);
+        ensureHandles(s);
       }),
 
     copyObjects: (ids) =>
@@ -570,6 +644,7 @@ export const useProject = create<ProjectState>()(
         });
         viewOf(screen).Children.push(...copies);
         s.selectedIds = copies.map((p) => p.UniqueId);
+        ensureHandles(s);
       }),
 
     align: (ids, mode) =>
@@ -654,38 +729,24 @@ export const useProject = create<ProjectState>()(
       set((s) => {
         const previous = s.past.pop();
         if (!previous) return;
-        s.future.push({
-          label: previous.label,
-          screens: current(s.screens),
-          objectMeta: current(s.objectMeta),
-          screenPlacement: current(s.screenPlacement),
-          activeScreenId: s.activeScreenId,
-          selectedIds: current(s.selectedIds),
-        });
-        s.screens = previous.screens;
-        s.objectMeta = previous.objectMeta;
-        s.screenPlacement = previous.screenPlacement;
-        s.activeScreenId = previous.activeScreenId;
-        s.selectedIds = previous.selectedIds;
+        s.future.push(editable_slice(s, previous.label));
+        restoreSlice(s, previous);
       }),
 
     redo: () =>
       set((s) => {
         const next = s.future.pop();
         if (!next) return;
-        s.past.push({
-          label: next.label,
-          screens: current(s.screens),
-          objectMeta: current(s.objectMeta),
-          screenPlacement: current(s.screenPlacement),
-          activeScreenId: s.activeScreenId,
-          selectedIds: current(s.selectedIds),
-        });
-        s.screens = next.screens;
-        s.objectMeta = next.objectMeta;
-        s.screenPlacement = next.screenPlacement;
-        s.activeScreenId = next.activeScreenId;
-        s.selectedIds = next.selectedIds;
+        s.past.push(editable_slice(s, next.label));
+        restoreSlice(s, next);
+      }),
+
+    commitBatch: (label, patch) =>
+      set((s) => {
+        remember(s, label);
+        restoreSlice(s, { label, ...patch });
+        s.handleSeq = Math.max(s.handleSeq, patch.handleSeq);
+        ensureHandles(s);
       }),
 
     importTags: (variables, meta) =>
@@ -735,6 +796,7 @@ export const useProject = create<ProjectState>()(
         s.activeScreenId = s.screens[0]?.UniqueId;
         s.selectedIds = [];
         s.findings = [];
+        ensureHandles(s);
       }),
 
     ensureScreen: (viewBoxId, name) =>
@@ -757,6 +819,7 @@ export const useProject = create<ProjectState>()(
         };
         s.screens.push(screen);
         s.activeScreenId = screen.UniqueId;
+        ensureHandles(s);
       }),
 
     appendToView: (viewBoxId, part) =>
@@ -764,6 +827,7 @@ export const useProject = create<ProjectState>()(
         for (const screen of s.screens) {
           if (viewOf(screen).UniqueId !== viewBoxId) continue;
           viewOf(screen).Children.push(part);
+          s.handles[part.UniqueId] ??= `o${++s.handleSeq}`;
           return;
         }
       }),
@@ -879,4 +943,10 @@ export const useProject = create<ProjectState>()(
         s.logs = [];
       }),
   })),
-);
+  );
+}
+
+export type ProjectStore = ReturnType<typeof createProjectStore>;
+
+/** The application's one project. Everything on screen reads from here. */
+export const useProject = createProjectStore();

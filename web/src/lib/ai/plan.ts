@@ -37,7 +37,8 @@ export interface ScreenPlan {
   rationale: string;
 }
 
-export type Provider = "gemini" | "claude";
+export type { Provider } from "./provider";
+import { activeProvider, resolveProvider, type Provider } from "./provider";
 
 /** More units than this on one display is what ISA-101 warns against. */
 const UNITS_PER_SCREEN = 6;
@@ -170,16 +171,12 @@ function geminiSchema() {
 
 const env = (name: string) => process.env[name]?.trim() || undefined;
 
-/** Gemini first: it is the configured free tier. Claude if only that key is set. */
-export function activeProvider(): Provider | null {
-  if (env("GEMINI_API_KEY")) return "gemini";
-  if (env("ANTHROPIC_API_KEY")) return "claude";
-  return null;
-}
-
-export function hasApiKey(): boolean {
-  return activeProvider() !== null;
-}
+/**
+ * Provider selection lives in ./provider now - explicit configuration, never
+ * "whichever key exists". Re-exported so the pipeline's imports still hold.
+ */
+export { activeProvider, hasApiKey } from "./provider";
+void env;
 
 function prompt(intent: string, equipment: InferredEquipment[]): string {
   const inventory = equipment
@@ -240,7 +237,7 @@ async function planWithGemini(
   const ai = new GoogleGenAI({ apiKey: env("GEMINI_API_KEY")! });
 
   const response = await ai.models.generateContent({
-    model: env("GEMINI_MODEL") ?? "gemini-flash-lite-latest",
+    model: resolveProvider().model ?? "gemini-flash-lite-latest",
     contents: prompt(intent, equipment),
     config: {
       systemInstruction: SYSTEM,
@@ -272,7 +269,7 @@ async function planWithClaude(
 
   const client = new Anthropic();
   const response = await client.messages.parse({
-    model: "claude-opus-5",
+    model: resolveProvider().model ?? "claude-opus-5",
     max_tokens: 8192,
     thinking: { type: "adaptive" },
     system: SYSTEM,

@@ -16,6 +16,7 @@
 
 import { z } from "zod";
 import { PART_TYPES } from "@/lib/ote/schema";
+import { REGIONS, SIDES } from "@/lib/ote/regions";
 
 export const OP_NAMES = [
   "addScreen",
@@ -63,14 +64,30 @@ export const ALIGN_MODES = [
   "spreadVertical",
 ] as const;
 
+/**
+ * Where a new or moved object goes, in words rather than numbers.
+ *
+ * A region on its own means "the first free spot in that region". An anchor
+ * and a side means "next to that object". The layout engine turns either into
+ * a box, or refuses with a reason. docs/LLD.md F3.
+ */
+export const Place = z.object({
+  region: z.enum(REGIONS).optional(),
+  /** Handle (o12) or exact name of the object to place relative to. */
+  anchor: z.string().optional(),
+  side: z.enum(SIDES).optional(),
+});
+export type Place = z.infer<typeof Place>;
+
 export const Op = z.object({
   op: z.enum(OP_NAMES),
-  /** Screen name the op applies to. Absent means the active screen. */
+  /** Screen handle (s2) or exact name the op applies to. Absent means the active screen. */
   screen: z.string().optional(),
-  /** Object name the op acts on, or the new name for addScreen/renameScreen. */
+  /** Object handle (o12) or exact name the op acts on, or the new name for addScreen/renameScreen. */
   target: z.string().optional(),
   targets: z.array(z.string()).optional(),
   name: z.string().optional(),
+  place: Place.optional(),
   /**
    * For addEquipment: which unit to place, by the id or label inference gave
    * it - "PMP_101", "Boiler 4001". One op, one whole faceplate.
@@ -103,7 +120,12 @@ export const Op = z.object({
 
 export type Op = z.infer<typeof Op>;
 
-export const TurnMode = z.enum(["clarify", "build", "edit", "answer"]);
+/**
+ * build     lay out a whole application from the tag list; only on an empty project
+ * extend    add screens or equipment to the application as it stands
+ * startOver the engineer wants to discard the screens and begin again; confirmed first
+ */
+export const TurnMode = z.enum(["clarify", "build", "extend", "startOver", "edit", "answer"]);
 export type TurnMode = z.infer<typeof TurnMode>;
 
 export const Turn = z.object({
@@ -151,10 +173,19 @@ export function coerceTurn(value: unknown): Turn | null {
     "duplicateObject",
     "bindTag",
   ];
-  const ops = (parsed.data.ops ?? []).filter((op) => {
-    if (needsTarget.includes(op.op) && !op.target) return false;
-    if (needsEquipment.includes(op.op) && !op.equipment && !op.target) return false;
-    return true;
-  });
+  const ops = (parsed.data.ops ?? [])
+    .filter((op) => {
+      if (needsTarget.includes(op.op) && !op.target) return false;
+      if (needsEquipment.includes(op.op) && !op.equipment && !op.target) return false;
+      return true;
+    })
+    // A model never places by coordinate. Numbers on an add op are dropped
+    // here so the slot resolver decides; only moveObject keeps them, for the
+    // case where the engineer typed a number.
+    .map((op) =>
+      op.op === "addObject" || op.op === "addEquipment"
+        ? { ...op, left: undefined, top: undefined }
+        : op,
+    );
   return { ...parsed.data, ops };
 }

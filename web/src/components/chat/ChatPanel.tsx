@@ -93,7 +93,7 @@ export function ChatPanel() {
         ? [...sample.followUps, ...OPENERS]
         : OPENERS;
 
-  const { send } = useChat();
+  const { send, accept, discard } = useChat();
   const newProject = useNewProject();
   const thread = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
@@ -335,6 +335,63 @@ export function ChatPanel() {
                 </ul>
               )}
 
+              {message.proposal && (
+                <div
+                  className={cn(
+                    "space-y-2 rounded-lg border p-2.5",
+                    message.proposal.status === "pending"
+                      ? "border-brand-500/40 bg-brand-500/[0.06]"
+                      : "border-line-subtle bg-surface-raised/40",
+                  )}
+                >
+                  <p className="label-eyebrow">
+                    {message.proposal.status === "pending"
+                      ? message.proposal.deleted
+                        ? "Proposal — this deletes something"
+                        : "Proposal — not everything could be done"
+                      : `Proposal ${message.proposal.status}`}
+                  </p>
+                  {message.proposal.applied.length > 0 && (
+                    <ul className="space-y-1">
+                      {message.proposal.applied.map((line, i) => (
+                        <li key={i} className="flex gap-2 text-[11px] leading-relaxed text-text-muted">
+                          <Check size={11} aria-hidden strokeWidth={2.5} className="mt-0.5 shrink-0 text-brand-400" />
+                          <span className="min-w-0">{line}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {message.proposal.rejected.length > 0 && (
+                    <ul className="space-y-1">
+                      {message.proposal.rejected.map((line, i) => (
+                        <li key={i} className="flex gap-2 text-[11px] leading-relaxed text-status-warn">
+                          <AlertTriangle size={11} aria-hidden className="mt-0.5 shrink-0" />
+                          <span className="min-w-0">{line}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {message.proposal.status === "pending" && (
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => accept(message.id)}
+                        className="focus-ring rounded-md bg-brand-500 px-2.5 py-1 text-[11px] font-medium text-text-onbrand transition hover:bg-brand-600"
+                      >
+                        Apply what could be done
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => discard(message.id)}
+                        className="focus-ring rounded-md border border-line px-2.5 py-1 text-[11px] font-medium text-text-secondary transition hover:bg-surface-hover"
+                      >
+                        Discard
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {message.error && (
                 <p className="flex gap-2 rounded-lg border border-status-warn/30 bg-status-warn/[0.08] px-2.5 py-2 text-[11px] leading-snug text-status-warn">
                   <AlertTriangle size={12} aria-hidden className="mt-px shrink-0" />
@@ -352,8 +409,18 @@ export function ChatPanel() {
                           ? "bg-status-warn/15 text-status-warn"
                           : "bg-surface-hover text-text-muted",
                       )}
+                      title={
+                        message.usage
+                          ? `${message.usage.input} in (${message.usage.cached} cached), ${message.usage.output} out`
+                          : undefined
+                      }
                     >
                       {message.provider}
+                      {message.usage && message.usage.input > 0 && (
+                        <span className="ml-1 text-text-faint">
+                          {Math.round((100 * message.usage.cached) / message.usage.input)}% cached
+                        </span>
+                      )}
                     </span>
                   )}
                   {message.versionAt && (

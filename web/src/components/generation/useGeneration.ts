@@ -18,6 +18,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import type { GenerationEvent } from "@/types/events";
+import type { ExistingScreen } from "@/lib/ai/pipeline";
 import { useProject } from "@/store/project";
 import { mockGeneration } from "./mockPipeline";
 import { readEvents } from "./sse";
@@ -31,6 +32,11 @@ export interface GenerateOptions {
    * application is several screens and the second must not erase the first.
    */
   fresh?: boolean;
+  /**
+   * The screens the application already has, when extending it. The pipeline
+   * plans only the equipment not yet placed and never reuses a name.
+   */
+  existing?: ExistingScreen[];
 }
 
 export function useGeneration() {
@@ -138,7 +144,11 @@ export function useGeneration() {
           const response = await fetch("/api/generate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ intent, variables: store.getState().variables }),
+            body: JSON.stringify({
+              intent,
+              variables: store.getState().variables,
+              existing: options.existing,
+            }),
           });
 
           if (response.ok && response.body) {

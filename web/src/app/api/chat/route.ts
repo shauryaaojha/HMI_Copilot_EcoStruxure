@@ -2,13 +2,17 @@
  * One conversational turn.
  *
  * Not streamed, unlike /api/generate: a turn's whole value is the decision it
- * makes - clarify, build, edit or answer - and a half-arrived op list is worse
- * than none. Generation still streams, because watching a screen fill in object
- * by object is the demo; this is the thing that decides whether to run it.
+ * makes - clarify, build, extend, edit or answer - and a half-arrived op list
+ * is worse than none. Generation still streams, because watching a screen
+ * fill in object by object is the demo; this is the thing that decides
+ * whether to run it.
+ *
+ * The body carries the structured history (what happened, not what was said)
+ * and the digest; `repair` marks the one retry after rejected ops.
  */
 
-import { converse, type ProjectDigest } from "@/lib/ai/converse";
-import { activeProvider } from "@/lib/ai/plan";
+import { converse, type HistoryItem, type ProjectDigest } from "@/lib/ai/converse";
+import { resolveProvider } from "@/lib/ai/provider";
 import type { Turn } from "@/lib/ai/ops";
 
 export const runtime = "nodejs";
@@ -16,8 +20,9 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 
 interface Body {
-  history?: { role: "user" | "assistant"; text: string }[];
+  history?: HistoryItem[];
   digest?: ProjectDigest;
+  repair?: boolean;
 }
 
 export async function POST(request: Request) {
@@ -28,7 +33,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "expected a JSON body" }, { status: 400 });
   }
 
-  const history = (body.history ?? []).filter((m) => m?.text?.trim());
+  const history = (body.history ?? []).filter((m) => m && typeof m.text === "string");
   const digest = body.digest;
   if (!digest || history.length === 0) {
     return Response.json(
@@ -37,16 +42,18 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!activeProvider()) {
-    // Not an error: the product runs without a key, it just cannot converse.
-    // Saying so plainly beats a 500 the client has to guess the meaning of.
+  const choice = resolveProvider();
+  if (!choice.provider) {
+    // Not an error: the product runs without a model, it just cannot converse.
+    // Saying which configuration is missing beats a 500.
     return Response.json(
       {
         provider: null,
+        model: null,
         turn: {
           mode: "answer",
           reply:
-            "No model key is configured, so I cannot read a request in words. " +
+            `No conversational model is configured (${choice.reason}). ` +
             "The Generate button still lays out a screen from the tag names, and " +
             "every editing tool works.",
         } satisfies Turn,
@@ -56,11 +63,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await converse({ history, digest });
+    const result = await converse({ history, digest, repair: body.repair === true });
     if (!result) {
       return Response.json(
         {
-          provider: activeProvider(),
+          provider: choice.provider,
+          model: choice.model,
           turn: {
             mode: "answer",
             reply: "The model answered with something I could not read as a turn.",
@@ -69,12 +77,15 @@ export async function POST(request: Request) {
         { status: 200 },
       );
     }
-    return Response.json({ provider: result.provider, turn: result.turn });
+    return Response.json({
+      provider: result.provider,
+      model: result.model,
+      turn: result.turn,
+      usage: result.usage,
+    });
   } catch (error) {
     return Response.json(
-      {
-        error: error instanceof Error ? error.message : "the model call failed",
-      },
+      { error: error instanceof Error ? error.message : "the model call failed" },
       { status: 502 },
     );
   }

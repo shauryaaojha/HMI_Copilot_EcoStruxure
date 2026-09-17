@@ -183,55 +183,64 @@ describe("applyOps", () => {
 describe("the digest handed to the model", () => {
   beforeEach(seed);
 
-  it("names objects and screens, and never sends the whole tree", () => {
-    const digest = digestOf({
-      name: s().name,
-      target: s().target,
-      screens: s().screens,
-      activeScreenId: s().activeScreenId,
-      variables: s().variables,
-      alarms: s().alarms,
-      bindings: s().bindings,
-      selectedIds: [],
-    });
+  const source = (over: Partial<Parameters<typeof digestOf>[0]> = {}) => ({
+    name: s().name,
+    target: s().target,
+    screens: s().screens,
+    activeScreenId: s().activeScreenId,
+    variables: s().variables,
+    alarms: s().alarms,
+    bindings: s().bindings,
+    selectedIds: [] as string[],
+    handles: s().handles,
+    ...over,
+  });
+
+  it("names objects by handle and region, and never sends a coordinate", () => {
+    const digest = digestOf(source());
 
     expect(digest.screens).toHaveLength(1);
     expect(digest.screens[0].active).toBe(true);
-    expect(digest.screens[0].objects[0]).toHaveProperty("name");
-    expect(digest.screens[0].objects[0]).not.toHaveProperty("Children");
+    const first = digest.screens[0].objects![0];
+    expect(first.handle).toMatch(/^o\d+$/);
+    expect(first).toHaveProperty("region");
+    expect(first).not.toHaveProperty("left");
+    expect(first).not.toHaveProperty("Children");
+    expect(JSON.stringify(digest)).not.toMatch(/"left"|"top"|"Location"/);
   });
 
-  it("caps the tag list, so a 1,200-tag import does not become the prompt", () => {
+  it("says what still fits per region, rather than that the screen is full", () => {
+    const digest = digestOf(source());
+    expect(digest.screens[0].room).toMatch(/body: \d+ of \d+ card cells free/);
+    expect(digest.screens[0].room).not.toMatch(/move something/);
+  });
+
+  it("retrieves the tags the request is about, not the first hundred", () => {
     const many = Array.from({ length: 400 }, (_, i) => ({
-      Name: `TAG_${i}`,
+      Name: i === 250 ? "BW_FLT_LVL_HI" : `TAG_${i}`,
       DataType: "REAL" as const,
-      Comments: "",
+      Comments: i === 250 ? "Backwash filter high level" : "",
       DeviceAddress: "",
     }));
-    const digest = digestOf({
-      name: "big",
-      target: s().target,
-      screens: s().screens,
-      variables: many,
-      alarms: [],
-      bindings: [],
-      selectedIds: [],
-    });
+    const digest = digestOf(source({ variables: many }), "add an alarm on the backwash high level");
     expect(digest.variables.length).toBeLessThanOrEqual(120);
+    expect(digest.variables.map((v) => v.name)).toContain("BW_FLT_LVL_HI");
+    expect(digest.variableCount).toBe(400);
   });
 
-  it("resolves the selection to names, because that is how ops address things", () => {
+  it("resolves the selection to handle and name, because handles are what ops take", () => {
     const first = parts()[0];
-    const digest = digestOf({
-      name: s().name,
-      target: s().target,
-      screens: s().screens,
-      variables: [],
-      alarms: [],
-      bindings: [],
-      selectedIds: [first.UniqueId],
-    });
-    expect(digest.selection).toEqual([first.Name]);
+    const digest = digestOf(source({ selectedIds: [first.UniqueId] }));
+    expect(digest.selection[0]).toMatch(new RegExp(`^o\\d+ ${first.Name}$`));
+  });
+
+  it("changes its structure hash only when the structure changes", () => {
+    const a = digestOf(source(), "one request");
+    const b = digestOf(source(), "a different request");
+    expect(a.structureHash).toBe(b.structureHash);
+    applyOps([{ op: "addScreen", name: "Another", note: "n" }]);
+    const c = digestOf(source());
+    expect(c.structureHash).not.toBe(a.structureHash);
   });
 });
 
@@ -347,23 +356,54 @@ describe("where a conversational edit puts things", () => {
     }
   });
 
-  it("still spreads them out on a screen with no room left", () => {
+  it("refuses, and says which region is full, rather than piling on", () => {
     // A generated screen is mostly full - chrome, faceplates and an alarm
-    // banner - so this is the common case, not the edge case. Nothing can be
-    // placed clear, but they must not all land on the same spot.
+    // banner - so this is the common case, not the edge case. The old answer
+    // was "least overlap", which put the new lamp on top of a reading. Now the
+    // op is rejected with a sentence the model can act on next turn.
     const before = boxes().length;
-    applyOps([
+    const { problems, changes } = applyOps([
       { op: "addObject", type: "Lamp", name: "Full_A", note: "n" },
-      { op: "addObject", type: "Lamp", name: "Full_B", note: "n" },
     ]);
 
-    const added = boxes().slice(before);
-    expect(new Set(added.map((b) => `${b.left},${b.top}`)).size).toBe(2);
-    const view = screenOf().Children[0];
-    for (const b of added) {
-      expect(b.left + b.width).toBeLessThanOrEqual(view.Width);
-      expect(b.top + b.height).toBeLessThanOrEqual(view.Height);
-    }
+    expect(changes).toEqual([]);
+    expect(problems[0]).toMatch(/body of s\d+ PumpStation1 has no free space/);
+    expect(boxes().length).toBe(before);
+  });
+
+  it("puts a thing beside its anchor when asked, in the same band", () => {
+    sparse();
+    applyOps([
+      { op: "addObject", type: "TextBox", name: "Lbl_Anchor", left: 200, top: 200, width: 160, height: 24, text: "FLOW", note: "n" },
+      { op: "addObject", type: "NumericDisplay", name: "Num_Beside", place: { anchor: "Lbl_Anchor", side: "rightOf" }, note: "n" },
+    ]);
+    const [anchor, beside] = boxes().slice(-2);
+    expect(beside.left).toBeGreaterThanOrEqual(anchor.left + anchor.width);
+    expect(beside.top).toBe(anchor.top);
+    expect(clash(anchor, beside)).toBe(false);
+  });
+
+  it("addresses an object by its handle, which survives a rename", () => {
+    sparse();
+    applyOps([{ op: "addObject", type: "TextBox", name: "Lbl_H", left: 100, top: 100, text: "x", note: "n" }]);
+    const s0 = useProject.getState();
+    const part = parts().at(-1)!;
+    const handle = s0.handles[part.UniqueId];
+    expect(handle).toMatch(/^o\d+$/);
+
+    const { problems } = applyOps([{ op: "setText", target: handle, text: "RENAMED", note: "n" }]);
+    expect(problems).toEqual([]);
+    const after = parts().find((p) => p.UniqueId === part.UniqueId)!;
+    expect(after.Type === "TextBox" && after.Text).toBe("RENAMED");
+  });
+
+  it("does not guess from a substring; it names the nearest handles instead", () => {
+    // "Pump" used to resolve to any single object whose name contained it.
+    const { problems, changes } = applyOps([
+      { op: "setColor", target: "Pump", colorRole: "fill", color: "red", note: "n" },
+    ]);
+    expect(changes).toEqual([]);
+    expect(problems[0]).toMatch(/No object called Pump; nearest: o\d+ /);
   });
 
   it("cannot shift a full-width object sideways, because that would clip it", () => {
@@ -401,29 +441,20 @@ describe("where a conversational edit puts things", () => {
     expect(placed.top).toBe(8);
   });
 
-  it("will not drop a new object on top of existing content", () => {
+  it("puts a thing in the header clear of the caption already there", () => {
     // Reported: "put the outside air temperature in the header" put a numeric
     // display exactly where the header already printed its level caption, on
-    // every screen. Two pieces of text in the same place is not a decision.
+    // every screen. A region slot finds the clear spot in that band.
     sparse();
+    const banner = boxes()[0];
     applyOps([
-      { op: "addObject", type: "TextBox", name: "Lbl_First", left: 200, top: 200, width: 160, height: 24, text: "FIRST", note: "n" },
+      { op: "addObject", type: "TextBox", name: "Lbl_Caption", left: 16, top: 8, width: 300, height: 24, text: "LEVEL 2", note: "n" },
+      { op: "addObject", type: "NumericDisplay", name: "Num_OAT", width: 160, height: 24, place: { region: "header" }, note: "n" },
     ]);
-    const first = boxes().at(-1)!;
-
-    applyOps([
-      { op: "addObject", type: "NumericDisplay", name: "Num_Second", left: 200, top: 200, width: 160, height: 24, note: "n" },
-    ]);
-    const second = boxes().at(-1)!;
-
-    const clash =
-      first.left < second.left + second.width &&
-      first.left + first.width > second.left &&
-      first.top < second.top + second.height &&
-      first.top + first.height > second.top;
-    expect(clash, "the second object landed on the first").toBe(false);
-    // Nearby, not banished to the far corner.
-    expect(Math.abs(second.top - 200)).toBeLessThanOrEqual(200);
+    const [caption, oat] = boxes().slice(-2);
+    expect(clash(caption, oat), "the reading landed on the caption").toBe(false);
+    // In the header band, not banished below it.
+    expect(oat.top + oat.height).toBeLessThanOrEqual(banner.top + banner.height + 8);
   });
 
   it("clamps a move that would push an object off the screen", () => {
@@ -438,7 +469,14 @@ describe("where a conversational edit puts things", () => {
 });
 
 describe("naming an object the request did not name", () => {
-  beforeEach(seed);
+  beforeEach(() => {
+    seed();
+    // Room to place in: the demo screen's body is full, and a full body is a
+    // rejection now rather than a pile.
+    const screen = structuredClone(demoScreen);
+    screen.Children[0].Children = screen.Children[0].Children.slice(0, 1);
+    useProject.getState().hydrate({ screens: [screen], activeScreenId: screen.UniqueId });
+  });
 
   it("binds to what the batch just created, whatever it ended up called", () => {
     // A model that omits `name` on addObject still has to bind to the thing it
@@ -461,11 +499,13 @@ describe("naming an object the request did not name", () => {
 
   it("will not guess when the batch created two of the same type", () => {
     // Two lamps and a bind to "Lamp_1" is genuinely ambiguous, and binding the
-    // wrong one silently is worse than saying so.
+    // wrong one silently is worse than saying so. On the full demo screen the
+    // new lamps land as Lamp_5 and Lamp_6, so "Lamp_1" names nothing real.
+    seed();
     const tag = useProject.getState().variables.find((v) => v.DataType === "BOOL")!;
     const { problems } = applyOps([
-      { op: "addObject", type: "Lamp", note: "n" },
-      { op: "addObject", type: "Lamp", note: "n" },
+      { op: "addObject", type: "Lamp", left: 600, top: 320, width: 120, height: 40, note: "n" },
+      { op: "addObject", type: "Lamp", left: 740, top: 320, width: 120, height: 40, note: "n" },
       { op: "bindTag", target: "Lamp_1", tag: tag.Name, note: "n" },
     ]);
     expect(problems[0]).toContain("Lamp_1");

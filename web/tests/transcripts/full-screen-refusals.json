@@ -1,0 +1,51 @@
+{
+  "name": "a full generated screen: every add is refused, nothing moves",
+  "seed": "demo-full",
+  "turns": [
+    {
+      "request": "add a lamp for the standby pump",
+      "turn": {
+        "mode": "edit",
+        "reply": "Added.",
+        "ops": [{ "op": "addObject", "type": "Lamp", "name": "Lamp_Standby", "note": "n" }]
+      },
+      "expect": { "rejected": 1, "applied": 0 }
+    },
+    {
+      "request": "put it in the header then",
+      "turn": {
+        "mode": "edit",
+        "reply": "In the header.",
+        "ops": [{ "op": "addObject", "type": "Lamp", "name": "Lamp_Standby", "width": 120, "height": 24, "place": { "region": "header" }, "note": "n" }]
+      },
+      "expect": { "rejected": 0 }
+    },
+    {
+      "request": "move the flow reading right of the process label",
+      "turn": {
+        "mode": "edit",
+        "reply": "Moved.",
+        "ops": [{ "op": "moveObject", "target": "Num_Flow", "place": { "anchor": "Lbl_Process", "side": "rightOf" }, "note": "n" }]
+      },
+      "expect": { "rejected": 1, "applied": 0 }
+    },
+    {
+      "request": "move the flow reading to 670,130",
+      "turn": {
+        "mode": "edit",
+        "reply": "Moved.",
+        "ops": [{ "op": "moveObject", "target": "Num_Flow", "left": 670, "top": 130, "note": "n" }]
+      },
+      "expect": { "rejected": 0 }
+    },
+    {
+      "request": "add another pump",
+      "turn": {
+        "mode": "edit",
+        "reply": "Added.",
+        "ops": [{ "op": "addEquipment", "equipment": "PMP_101", "note": "n" }]
+      },
+      "expect": { "rejected": 1, "applied": 0 }
+    }
+  ]
+}

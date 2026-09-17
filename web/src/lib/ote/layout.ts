@@ -84,6 +84,13 @@ const GAP = 16;
 const CARD = { width: 320, height: 162, columns: 3 };
 /** Level 1: four tiles across, three rows down. Status only, no readings. */
 const TILE = { width: 238, height: 100, columns: 4 };
+
+/**
+ * The fixed zones, exported so lib/ote/regions.ts can name them for the
+ * conversation: an op says "in the header" or "below o12" and the region
+ * geometry here turns that into a box. One source of truth for both.
+ */
+export const ZONES = { HEADER, NAV, FOOTER, MARGIN, GAP, CARD, TILE } as const;
 /** A faceplate's symbol, big enough to recognise across a control room. */
 const SYMBOL = 52;
 /** A tile's, which has a third of the room. */
@@ -397,13 +404,18 @@ export function layoutApplication(
   specs: ScreenSpec[],
   equipment: LayoutUnit[],
   panel: { width: number; height: number },
+  /**
+   * Every screen the navigation strip should list, when the application
+   * already has some. Defaults to the screens being laid out.
+   */
+  navigation: ScreenSpec[] = specs,
 ): LaidOutScreen[] {
   const place = new Placer();
   const byId = new Map(equipment.map((e) => [e.id, e]));
 
   return specs.map((spec) => {
     place.begin();
-    chrome(place, spec, specs, panel);
+    chrome(place, spec, navigation, panel);
 
     const wantsAlarms = spec.sections.includes("alarms");
     const contentTop = HEADER + NAV + 8;

@@ -1,0 +1,36 @@
+{
+  "name": "handles survive renames; substrings are refused",
+  "seed": "demo-sparse",
+  "turns": [
+    {
+      "request": "add two lamps",
+      "turn": {
+        "mode": "edit",
+        "reply": "Two lamps.",
+        "ops": [
+          { "op": "addObject", "type": "Lamp", "name": "Lamp_A", "note": "n" },
+          { "op": "addObject", "type": "Lamp", "name": "Lamp_A", "note": "n" }
+        ]
+      },
+      "expect": { "rejected": 0, "created": 2, "renamed": 1 }
+    },
+    {
+      "request": "rename the first lamp",
+      "turn": {
+        "mode": "edit",
+        "reply": "Relabelled.",
+        "ops": [{ "op": "setText", "target": "$handle:0", "onText": "RUNNING", "note": "n" }]
+      },
+      "expect": { "rejected": 0 }
+    },
+    {
+      "request": "make the lamp red",
+      "turn": {
+        "mode": "edit",
+        "reply": "Red.",
+        "ops": [{ "op": "setColor", "target": "Lamp", "colorRole": "fill", "color": "red", "note": "n" }]
+      },
+      "expect": { "rejected": 1, "applied": 0 }
+    }
+  ]
+}

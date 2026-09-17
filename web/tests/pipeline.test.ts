@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import { runPipeline } from "@/lib/ai/pipeline";
 import { inferEquipment, proposeAlarms } from "@/lib/ai/infer";
 import { activeProvider, hasApiKey } from "@/lib/ai/plan";
+import { resolveProvider } from "@/lib/ai/provider";
 import { DEMO_VARIABLES } from "@/lib/ote/demo-project";
 import { PIPELINE_STEPS, type GenerationEvent } from "@/types/events";
 
@@ -129,7 +130,7 @@ describe("the pipeline, with no API key", () => {
 });
 
 describe("provider selection", () => {
-  const KEYS = ["GEMINI_API_KEY", "ANTHROPIC_API_KEY"] as const;
+  const KEYS = ["GEMINI_API_KEY", "ANTHROPIC_API_KEY", "AI_PROVIDER", "AI_MODEL"] as const;
 
   function withKeys(set: Partial<Record<(typeof KEYS)[number], string>>, run: () => void) {
     const saved = Object.fromEntries(KEYS.map((k) => [k, process.env[k]]));
@@ -145,15 +146,51 @@ describe("provider selection", () => {
     }
   }
 
-  it("prefers Gemini, because that is the configured free tier", () => {
+  it("prefers Claude when both keys are set and nothing was asked for", () => {
     withKeys({ GEMINI_API_KEY: "x", ANTHROPIC_API_KEY: "y" }, () => {
-      expect(activeProvider()).toBe("gemini");
+      expect(activeProvider()).toBe("claude");
     });
   });
 
   it("uses Claude when only that key is set", () => {
     withKeys({ ANTHROPIC_API_KEY: "y" }, () => {
       expect(activeProvider()).toBe("claude");
+    });
+  });
+
+  it("does not pick Gemini just because its key exists", () => {
+    // The demo ran every turn on Flash Lite for exactly this reason.
+    withKeys({ GEMINI_API_KEY: "x" }, () => {
+      expect(activeProvider()).toBeNull();
+      expect(resolveProvider().reason).toMatch(/AI_PROVIDER/);
+    });
+  });
+
+  it("uses Gemini when asked for by name", () => {
+    withKeys({ GEMINI_API_KEY: "x", ANTHROPIC_API_KEY: "y", AI_PROVIDER: "gemini" }, () => {
+      expect(activeProvider()).toBe("gemini");
+    });
+  });
+
+  it("refuses a provider whose key is missing, and says which", () => {
+    withKeys({ GEMINI_API_KEY: "x", AI_PROVIDER: "claude" }, () => {
+      expect(activeProvider()).toBeNull();
+      expect(resolveProvider().reason).toContain("ANTHROPIC_API_KEY");
+    });
+  });
+
+  it("lets AI_PROVIDER=none switch the model off with keys present", () => {
+    withKeys({ ANTHROPIC_API_KEY: "y", AI_PROVIDER: "none" }, () => {
+      expect(activeProvider()).toBeNull();
+    });
+  });
+
+  it("takes the model id from AI_MODEL, else the provider default", () => {
+    withKeys({ ANTHROPIC_API_KEY: "y" }, () => {
+      expect(resolveProvider().model).toBe("claude-opus-5");
+    });
+    withKeys({ ANTHROPIC_API_KEY: "y", AI_MODEL: "claude-sonnet-5" }, () => {
+      expect(resolveProvider().model).toBe("claude-sonnet-5");
     });
   });
 

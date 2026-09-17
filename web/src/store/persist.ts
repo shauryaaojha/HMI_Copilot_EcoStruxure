@@ -42,6 +42,9 @@ export interface PersistedProject {
   bindings: Binding[];
   objectMeta: Record<string, ObjectMeta>;
   screenPlacement: Record<string, ScreenPlacement>;
+  /** Optional so a save from before handles existed still loads; hydrate backfills. */
+  handles?: Record<string, string>;
+  handleSeq?: number;
   standards: Standards;
   versions: Version[];
   chat: ChatMessage[];

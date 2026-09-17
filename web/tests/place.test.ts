@@ -1,21 +1,12 @@
 /**
- * Where a new object goes when the request did not say.
- *
- * Reported from a real session: several turns of conversational editing put
- * everything in one corner, on top of each other. Two causes, both here -
- * a missing position defaulted to 20,20 rather than being computed, and a
- * position outside the panel was written through unchanged, where SVG clips it
- * and the object is simply invisible.
+ * The one placement rule that survives an explicit coordinate: a box is kept
+ * inside the panel, because an object outside the ViewBox is clipped by SVG
+ * and simply invisible. Everything else about where a new object goes lives
+ * in lib/ote/regions.ts and tests/regions.test.ts now.
  */
 
 import { describe, expect, it } from "vitest";
-import {
-  avoidContent,
-  clampToPanel,
-  freeSpaceHint,
-  freeSpot,
-  type Box,
-} from "@/lib/ote/place";
+import { clampToPanel, type Box } from "@/lib/ote/place";
 
 const PANEL = { width: 1024, height: 600 };
 
@@ -26,20 +17,12 @@ const box = (left: number, top: number, width = 200, height = 100): Box => ({
   height,
 });
 
-const overlap = (a: Box, b: Box) =>
-  a.left < b.left + b.width &&
-  a.left + a.width > b.left &&
-  a.top < b.top + b.height &&
-  a.top + a.height > b.top;
-
 describe("clampToPanel", () => {
   it("leaves a box that already fits exactly where it is", () => {
     expect(clampToPanel(box(100, 80), PANEL)).toEqual(box(100, 80));
   });
 
   it("pulls a box back inside rather than letting SVG clip it away", () => {
-    // top: 900 on a 600-high panel is the failure: the object exists, is bound,
-    // and cannot be seen.
     expect(clampToPanel(box(0, 900), PANEL).top).toBe(500);
     expect(clampToPanel(box(2000, 0), PANEL).left).toBe(824);
   });
@@ -64,121 +47,5 @@ describe("clampToPanel", () => {
       expect(c.left + c.width).toBeLessThanOrEqual(PANEL.width);
       expect(c.top + c.height).toBeLessThanOrEqual(PANEL.height);
     }
-  });
-});
-
-describe("freeSpot", () => {
-  it("starts at the margin on an empty screen", () => {
-    expect(freeSpot([], { width: 200, height: 100 }, PANEL)).toEqual({ left: 12, top: 12 });
-  });
-
-  it("does not land on top of what is already there", () => {
-    const taken = [box(0, 0, 1024, 44), box(12, 60, 320, 162)];
-    const size = { width: 200, height: 100 };
-    const at = freeSpot(taken, size, PANEL);
-    for (const t of taken) expect(overlap({ ...at, ...size }, t)).toBe(false);
-  });
-
-  it("puts three objects added in a row in three different places", () => {
-    // The reported bug: three turns, three objects, one corner.
-    const taken: Box[] = [];
-    const size = { width: 200, height: 100 };
-    const placed: { left: number; top: number }[] = [];
-
-    for (let i = 0; i < 3; i++) {
-      const at = freeSpot(taken, size, PANEL);
-      placed.push(at);
-      taken.push({ ...at, ...size });
-    }
-
-    expect(new Set(placed.map((p) => `${p.left},${p.top}`)).size).toBe(3);
-    for (let i = 0; i < placed.length; i++) {
-      for (let j = i + 1; j < placed.length; j++) {
-        expect(overlap({ ...placed[i], ...size }, { ...placed[j], ...size })).toBe(false);
-      }
-    }
-  });
-
-  it("walks around the header, nav strip and footer without knowing what they are", () => {
-    // Chrome needs no special case: on a generated screen it is objects.
-    const chrome = [
-      box(0, 0, 1024, 44),
-      box(0, 44, 1024, 32),
-      box(0, 572, 1024, 28),
-    ];
-    const at = freeSpot(chrome, { width: 300, height: 120 }, PANEL);
-    expect(at.top).toBeGreaterThanOrEqual(76);
-    expect(at.top + 120).toBeLessThanOrEqual(572);
-  });
-
-  it("stays inside the panel even for a box nearly as large as it", () => {
-    const at = freeSpot([], { width: 1000, height: 580 }, PANEL);
-    expect(at.left + 1000).toBeLessThanOrEqual(PANEL.width);
-    expect(at.top + 580).toBeLessThanOrEqual(PANEL.height);
-  });
-
-  it("aligns to the grid, so a placed object lines up with a laid-out one", () => {
-    const at = freeSpot([box(0, 0, 1024, 44)], { width: 100, height: 40 }, PANEL);
-    expect(at.left % 4).toBe(0);
-    expect(at.top % 4).toBe(0);
-  });
-
-  it("still places something on a full screen rather than refusing", () => {
-    const full = [box(0, 0, 1024, 600)];
-    const at = freeSpot(full, { width: 200, height: 100 }, PANEL);
-    expect(at.left).toBeGreaterThanOrEqual(0);
-    expect(at.top + 100).toBeLessThanOrEqual(PANEL.height);
-  });
-});
-
-describe("freeSpaceHint", () => {
-  it("says the whole screen is free when it is", () => {
-    expect(freeSpaceHint([], PANEL)).toContain("1024 x 600");
-  });
-
-  it("points below the content when that is where the room is", () => {
-    expect(freeSpaceHint([box(0, 0, 1024, 200)], PANEL)).toContain("below");
-  });
-
-  it("points beside it when the content is a narrow column", () => {
-    expect(freeSpaceHint([box(0, 0, 300, 600)], PANEL)).toContain("right");
-  });
-
-  it("says so when there is nowhere left, rather than inventing room", () => {
-    expect(freeSpaceHint([box(0, 0, 1024, 600)], PANEL)).toContain("full");
-  });
-});
-
-describe("avoidContent", () => {
-  it("leaves a position alone when nothing is under it", () => {
-    expect(avoidContent(box(400, 300), [box(0, 0, 100, 40)], PANEL)).toEqual(box(400, 300));
-  });
-
-  it("moves off a piece of content, and not far", () => {
-    // The reported case: a reading placed exactly where the header already
-    // prints its level caption.
-    const caption = box(704, 13, 300, 20);
-    const moved = avoidContent(box(704, 8, 160, 30), [caption], PANEL);
-    expect(overlap(moved, caption)).toBe(false);
-    expect(Math.abs(moved.left - 704) + Math.abs(moved.top - 8)).toBeLessThanOrEqual(400);
-  });
-
-  it("prefers moving sideways, because a thing put in a band belongs in it", () => {
-    const blocker = box(400, 0, 200, 44);
-    const moved = avoidContent(box(400, 8, 120, 28), [blocker], PANEL);
-    expect(overlap(moved, blocker)).toBe(false);
-    expect(moved.top).toBe(8);
-  });
-
-  it("stays inside the panel while it looks", () => {
-    const moved = avoidContent(box(900, 560, 120, 36), [box(880, 550, 200, 50)], PANEL);
-    expect(moved.left).toBeGreaterThanOrEqual(0);
-    expect(moved.left + moved.width).toBeLessThanOrEqual(PANEL.width);
-    expect(moved.top + moved.height).toBeLessThanOrEqual(PANEL.height);
-  });
-
-  it("gives the position back rather than wandering when nothing is clear", () => {
-    const wall = [box(0, 0, PANEL.width, PANEL.height)];
-    expect(avoidContent(box(100, 100), wall, PANEL)).toEqual(box(100, 100));
   });
 });

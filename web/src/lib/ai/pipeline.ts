@@ -49,9 +49,23 @@ const step = (
   detail?: string,
 ): GenerationEvent => ({ type: "step", step: s, state, detail });
 
+/** A screen the application already has, so an extension plans around it. */
+export interface ExistingScreen {
+  name: string;
+  level: 1 | 2 | 3;
+  /** Equipment ids already placed on it. */
+  include: string[];
+}
+
 export interface PipelineInput {
   intent: string;
   variables: Variable[];
+  /**
+   * When set, this is an extension of an application that already exists:
+   * only unplaced equipment is planned, screen names already taken are never
+   * reused, and the navigation strip lists every screen. docs/LLD.md F5.
+   */
+  existing?: ExistingScreen[];
 }
 
 const PROVIDER_NAME: Record<Provider, string> = {
@@ -63,6 +77,8 @@ export async function* runPipeline(
   input: PipelineInput,
 ): AsyncGenerator<GenerationEvent> {
   const { intent, variables } = input;
+  const existing = input.existing ?? [];
+  const extending = existing.length > 0;
 
   // --- 1 ingest -----------------------------------------------------------
   yield step("ingest", "running");
@@ -91,6 +107,29 @@ export async function* runPipeline(
   let provider: Provider | null = null;
   const configured = hasApiKey();
   const waitingOn = activeProvider();
+
+  /**
+   * Extending: the units already on a screen are not planned again. The
+   * second request for "the whole plant" used to lay the whole plant out a
+   * second time beside the first.
+   */
+  const placed = new Set(existing.flatMap((s) => s.include));
+  const toPlan = extending ? equipment.filter((u) => !placed.has(u.id)) : equipment;
+  if (extending) {
+    yield log(
+      `Extending an application of ${existing.length} screen${existing.length === 1 ? "" : "s"}: ${toPlan.length} of ${equipment.length} units still to place`,
+    );
+    if (toPlan.length === 0) {
+      yield step("select", "failed", "every unit is already on a screen");
+      yield {
+        type: "error",
+        message:
+          "Every unit in the tag list is already on a screen. Ask for a change to a screen instead, or import more tags.",
+      };
+      return;
+    }
+  }
+
   if (configured) {
     // The model call is the only slow step - seconds, against milliseconds for
     // everything else. Saying which provider is being asked keeps that gap
@@ -98,7 +137,7 @@ export async function* runPipeline(
     // what anything is thinking.
     yield log(`Asking ${waitingOn === "gemini" ? "Gemini" : "Claude"} to read the request`);
     try {
-      const planned = await planScreen(intent, equipment);
+      const planned = await planScreen(intent, toPlan);
       if (planned) {
         plan = planned.plan;
         provider = planned.provider;
@@ -110,7 +149,23 @@ export async function* runPipeline(
       );
     }
   }
-  plan ??= fallbackPlan(intent, equipment);
+  plan ??= fallbackPlan(intent, toPlan);
+
+  if (extending) {
+    // A name the application already uses is never reused: the packager's
+    // hierarchy keys screens by name, and the store would rename it to
+    // PumpStation1_2, which is the duplicate the engineer complained about.
+    const taken = new Set(existing.map((s) => s.name.toLowerCase()));
+    plan = {
+      ...plan,
+      screens: plan.screens.map((spec) => {
+        let name = spec.screenName;
+        for (let n = 2; taken.has(name.toLowerCase()); n++) name = `${spec.screenName}${n}`;
+        taken.add(name.toLowerCase());
+        return { ...spec, screenName: name };
+      }),
+    };
+  }
 
   yield log(
     provider
@@ -160,7 +215,19 @@ export async function* runPipeline(
     );
   }
 
-  const laidOut = layoutApplication(plan.screens, drawn, SCREEN);
+  const navigation = extending
+    ? [
+        ...existing.map((s) => ({
+          screenName: s.name,
+          title: s.name,
+          level: s.level,
+          include: s.include,
+          sections: [] as ("status" | "process" | "alarms")[],
+        })),
+        ...plan.screens,
+      ]
+    : plan.screens;
+  const laidOut = layoutApplication(plan.screens, drawn, SCREEN, navigation);
   const screens: Screen[] = [];
   const wires: Wire[] = [];
 

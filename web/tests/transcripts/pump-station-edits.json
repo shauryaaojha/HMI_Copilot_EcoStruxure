@@ -1,0 +1,96 @@
+{
+  "name": "pump station, eight editing turns",
+  "seed": "demo-sparse",
+  "turns": [
+    {
+      "request": "add pump 101 and pump 102 as faceplates",
+      "turn": {
+        "mode": "edit",
+        "reply": "Placed both pumps.",
+        "ops": [
+          { "op": "addEquipment", "equipment": "PMP_101", "note": "placed pump 101" },
+          { "op": "addEquipment", "equipment": "PMP_102", "note": "placed pump 102" }
+        ]
+      },
+      "expect": { "rejected": 0, "applied": 2 }
+    },
+    {
+      "request": "put a title in the header",
+      "turn": {
+        "mode": "edit",
+        "reply": "Titled it.",
+        "ops": [
+          { "op": "addObject", "type": "TextBox", "name": "Lbl_Title", "text": "TRANSFER PUMPS", "place": { "region": "header" }, "note": "added the title" }
+        ]
+      },
+      "expect": { "rejected": 0 }
+    },
+    {
+      "request": "add a flow reading right of the title",
+      "turn": {
+        "mode": "edit",
+        "reply": "Added it beside the title.",
+        "ops": [
+          { "op": "addObject", "type": "NumericDisplay", "name": "Num_Flow", "width": 140, "height": 28, "place": { "anchor": "Lbl_Title", "side": "rightOf" }, "note": "flow reading beside the title" },
+          { "op": "bindTag", "target": "Num_Flow", "tag": "FT_101_PV", "note": "bound to the flow transmitter" }
+        ]
+      },
+      "expect": { "rejected": 0 }
+    },
+    {
+      "request": "make the title red",
+      "turn": {
+        "mode": "edit",
+        "reply": "Red.",
+        "ops": [
+          { "op": "setColor", "target": "Lbl_Title", "colorRole": "text", "color": "red", "note": "title text red" }
+        ]
+      },
+      "expect": { "rejected": 0 }
+    },
+    {
+      "request": "colour the pump 3 lamp",
+      "turn": {
+        "mode": "edit",
+        "reply": "Done.",
+        "ops": [
+          { "op": "setColor", "target": "Lamp_PUMP3_RUN", "colorRole": "fill", "color": "green", "note": "n" }
+        ]
+      },
+      "expect": { "rejected": 1, "applied": 0 }
+    },
+    {
+      "request": "add a level display below the flow reading",
+      "turn": {
+        "mode": "edit",
+        "reply": "Added.",
+        "ops": [
+          { "op": "addObject", "type": "NumericDisplay", "name": "Num_Level", "width": 140, "height": 28, "place": { "anchor": "Num_Flow", "side": "below" }, "note": "level under flow" }
+        ]
+      },
+      "expect": { "rejected": 1, "applied": 0 }
+    },
+    {
+      "request": "add a level display in the body then",
+      "turn": {
+        "mode": "edit",
+        "reply": "In the body.",
+        "ops": [
+          { "op": "addObject", "type": "NumericDisplay", "name": "Num_Level", "place": { "region": "body" }, "note": "level reading in the body" }
+        ]
+      },
+      "expect": { "rejected": 0 }
+    },
+    {
+      "request": "delete the second pump",
+      "turn": {
+        "mode": "edit",
+        "reply": "Removed the card.",
+        "ops": [
+          { "op": "deleteObject", "target": "Card_PMP102", "note": "removed pump 102's card" }
+        ]
+      },
+      "expect": { "rejected": 0, "deleted": true }
+    }
+  ]
+}

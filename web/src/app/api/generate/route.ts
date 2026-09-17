@@ -8,7 +8,7 @@
  * Phase 4 of docs/BUILD_PLAN.md.
  */
 
-import { runPipeline } from "@/lib/ai/pipeline";
+import { runPipeline, type ExistingScreen } from "@/lib/ai/pipeline";
 import type { GenerationEvent } from "@/types/events";
 import type { Variable } from "@/lib/ote/schema";
 
@@ -17,7 +17,7 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 
 export async function POST(request: Request) {
-  let body: { intent?: string; variables?: Variable[] };
+  let body: { intent?: string; variables?: Variable[]; existing?: ExistingScreen[] };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -26,6 +26,7 @@ export async function POST(request: Request) {
 
   const intent = (body.intent ?? "").trim();
   const variables = body.variables ?? [];
+  const existing = Array.isArray(body.existing) ? body.existing : undefined;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
 
       try {
-        for await (const event of runPipeline({ intent, variables })) {
+        for await (const event of runPipeline({ intent, variables, existing })) {
           send(event);
         }
       } catch (error) {

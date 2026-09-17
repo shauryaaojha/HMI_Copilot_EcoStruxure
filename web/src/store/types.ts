@@ -127,6 +127,30 @@ export interface ChatMessage {
   /** Which provider answered, or "local" when nothing was configured. */
   provider?: string;
   error?: string;
+  /**
+   * The structured record of an assistant turn - what applied, what was
+   * rejected and why, what was renamed. This, not `text`, is what the model
+   * is shown as its own history next turn. docs/LLD.md F4.
+   */
+  turn?: {
+    mode: "clarify" | "build" | "extend" | "startOver" | "edit" | "answer";
+    applied: string[];
+    rejected: { op: string; reason: string }[];
+    renamed: { asked: string; became: string; handle: string }[];
+    decision?: "committed" | "proposed" | "accepted" | "discarded";
+  };
+  /**
+   * A turn that could not be auto-committed - something was rejected, or
+   * something would be deleted - waits here for the engineer. docs/LLD.md F7.
+   */
+  proposal?: {
+    status: "pending" | "accepted" | "discarded" | "expired";
+    applied: string[];
+    rejected: string[];
+    deleted: boolean;
+  };
+  /** Tokens for the debug line: in, of which cached, out. */
+  usage?: { input: number; cached: number; output: number };
 }
 
 /** What the assistant needs before it will build rather than ask. */
