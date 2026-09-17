@@ -1,0 +1,52 @@
+{
+  "name": "recorded: lamp then move on a sparse screen, Gemini",
+  "seed": "demo-sparse",
+  "recorded": {
+    "provider": "gemini",
+    "model": "gemini-flash-lite-latest",
+    "at": "2026-09-17T17:07:52.383Z"
+  },
+  "turns": [
+    {
+      "request": "add a lamp for the standby pump, PMP_103, in the header",
+      "turn": {
+        "mode": "clarify",
+        "reply": "PMP_103 is not in the project tag list. Did you mean PMP_101 or PMP_102?",
+        "questions": [
+          "Which pump tag should be used for the standby pump since PMP_103 is not in the tag list?"
+        ],
+        "ops": []
+      },
+      "repaired": false,
+      "reply": "PMP_103 is not in the project tag list. Did you mean PMP_101 or PMP_102?",
+      "expect": {
+        "rejected": 0,
+        "applied": 0,
+        "created": 0,
+        "renamed": 0,
+        "deleted": false
+      }
+    },
+    {
+      "request": "now move it right of the process label",
+      "turn": {
+        "mode": "clarify",
+        "reply": "There is no process label on the screen, and PMP_103 was not found. Which object should I move?",
+        "questions": [
+          "Which object should be moved?",
+          "Did you mean PMP_101 or PMP_102?"
+        ],
+        "ops": []
+      },
+      "repaired": false,
+      "reply": "There is no process label on the screen, and PMP_103 was not found. Which object should I move?",
+      "expect": {
+        "rejected": 0,
+        "applied": 0,
+        "created": 0,
+        "renamed": 0,
+        "deleted": false
+      }
+    }
+  ]
+}

@@ -20,6 +20,7 @@
  */
 
 import {
+  FONT,
   alarmSummary,
   barScale,
   blockTrend,
@@ -307,6 +308,11 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
     const asked = created.find((c) => c.asked?.toLowerCase() === wanted);
     if (asked) return findPartById(s, asked.id);
 
+    // A handle that does not exist, in a batch that created exactly one
+    // object: the model guessed the handle its own add would get. The
+    // recorded sessions do this on every "add and bind" request.
+    if (HANDLE.test(wanted) && created.length === 1) return findPartById(s, created[0].id);
+
     const ofType = created.filter((c) => c.type.toLowerCase() === impliedType(wanted));
     if (ofType.length === 1 && /_\d+$/.test(wanted)) return findPartById(s, ofType[0].id);
 
@@ -538,6 +544,12 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
           reject(op, unresolved(s, op.target!));
           break;
         }
+        // A resize with no size did nothing and was reported as done - the
+        // recorded session's "made the flow reading bold" was one of these.
+        if (op.width === undefined && op.height === undefined) {
+          reject(op, `resizeObject on ${found.part.Name} names no width or height; to restyle text use setText with bold or fontSize`);
+          break;
+        }
         s.setBox(
           found.part.UniqueId,
           clampToPanel(
@@ -562,19 +574,53 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
           break;
         }
         const { part } = found;
-        if (part.Type === "TextBox") s.setProperty(part.UniqueId, ["Text"], op.text ?? "");
-        else if (part.Type === "Lamp") {
-          if (op.offText !== undefined) s.setProperty(part.UniqueId, ["Off", "Text"], op.offText);
-          if (op.onText !== undefined) s.setProperty(part.UniqueId, ["On", "Text"], op.onText);
-          if (op.text !== undefined && op.offText === undefined && op.onText === undefined) {
-            s.setProperty(part.UniqueId, ["On", "Text"], op.text);
-          }
-        } else {
+        const styling = op.bold !== undefined || op.fontSize !== undefined;
+        const wording = op.text !== undefined || op.offText !== undefined || op.onText !== undefined;
+        if (!styling && !wording) {
+          reject(op, `setText on ${part.Name} carries no text, bold or fontSize`);
+          break;
+        }
+        // Where the faces live: one Font on a display, one per state on a
+        // lamp or a switch. Restyling touches every face; relabelling the
+        // ones the op names.
+        const faces: string[][] =
+          part.Type === "Lamp" || part.Type === "ToggleSwitch" ? [["Off"], ["On"]]
+          : part.Type === "Switch" ? [["Release"], ["Press"]]
+          : part.Type === "N-StateLamp" ? part.States.map((_, i) => ["States", String(i)])
+          : part.Type === "TextBox" || part.Type === "NumericDisplay" || part.Type === "StringDisplay" || part.Type === "DateTimeDisplay" ? [[]]
+          : [];
+        if (faces.length === 0) {
           reject(op, `${part.Name} is a ${part.Type} and carries no text.`);
           break;
         }
+        if (wording) {
+          if (part.Type === "TextBox") s.setProperty(part.UniqueId, ["Text"], op.text ?? "");
+          else if (faces.length >= 2 && faces[0].length > 0) {
+            const [off, on] = faces;
+            if (op.offText !== undefined) s.setProperty(part.UniqueId, [...off, "Text"], op.offText);
+            if (op.onText !== undefined) s.setProperty(part.UniqueId, [...on, "Text"], op.onText);
+            if (op.text !== undefined && op.offText === undefined && op.onText === undefined) {
+              s.setProperty(part.UniqueId, [...on, "Text"], op.text);
+            }
+          } else {
+            reject(op, `${part.Name} is a ${part.Type}; its text comes from the bound tag`);
+            break;
+          }
+        }
+        if (styling) {
+          for (const face of faces) {
+            const holder = face.reduce<Record<string, unknown>>(
+              (n, k) => (n[k] ?? {}) as Record<string, unknown>,
+              part as unknown as Record<string, unknown>,
+            );
+            const font: Record<string, unknown> = { ...((holder.Font as Record<string, unknown> | undefined) ?? FONT) };
+            if (op.bold !== undefined) font.Bold = op.bold;
+            if (op.fontSize !== undefined) font.Size = op.fontSize;
+            s.setProperty(part.UniqueId, [...face, "Font"], font);
+          }
+        }
         touch(s, part.UniqueId);
-        ok(note || `Relabelled ${part.Name}`);
+        ok(note || (wording ? `Relabelled ${part.Name}` : `Restyled ${part.Name}`));
         break;
       }
 

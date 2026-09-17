@@ -40,7 +40,29 @@ that afternoon is short. 4 is small and last because it touches nothing else.
 
 | # | State | Where |
 |---|---|---|
-| 1 | | |
-| 2 | | |
-| 3 | | |
-| 4 | | |
+| 1 | done | `foreign` in the reader, the store and the persisted project; hatched placeholders in `ScreenRenderer`; "Carried, not editable" in the layers panel; `tests/foreign.test.ts` |
+| 2 | done | `POST /api/import/screens`, `importScreens` in the store, Import on the screen strip with `ImportScreensDialog`; `tests/import-screens.test.ts` |
+| 3 | done | `scripts/record-session.mts`; two sessions recorded against Gemini Flash Lite in `tests/transcripts/recorded-*.json` and replayed by `tests/transcripts.test.ts`. The first run found two applier faults in three turns (below) |
+| 4 | done | `lib/tags/table.ts` (exceljs for spreadsheets, own delimiter-sniffing reader for text); `parseTagsFile` async for both, `parseTags` sync for text; `xlsx` removed. Left in `npm audit --omit=dev`: `postcss` inside Next and `uuid` inside exceljs, both transitive, neither reachable from a tag file |
+
+### What the first recorded sessions found (17 September 2026)
+
+Three turns on the full demo screen, Gemini Flash Lite, and two of them
+exposed the applier rather than the model:
+
+- **"add a lamp ... in the header" was refused.** A lamp's default size is the
+  body's 180x64; the header is 44 high. The slot resolver now sizes a part to
+  its region (`fitTo` in `regions.ts`), with the same top margin the free-slot
+  search applies, so a header lamp is a 64x24 lamp. The model also bound the
+  lamp by the handle it guessed its own add would get (`o21`); a handle that
+  does not exist, in a batch that created exactly one object, now resolves to
+  that object.
+- **"make the flow reading bold" was reported done and did nothing.** The
+  model sent `resizeObject` with no size, and the applier applied it. A resize
+  with no width or height is now refused, with the reason naming `setText`
+  with `bold` or `fontSize`, and `setText` restyles every face of a lamp, a
+  switch, an N-state lamp or a display without relabelling it.
+
+After the fixes the same three requests all land on the first try. The
+recorded transcript is the regression test: `tests/recorded-findings.test.ts`
+holds the applier side, and the replay holds the model's actual answers.

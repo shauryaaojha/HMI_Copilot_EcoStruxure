@@ -30,7 +30,7 @@ Items 1 to 3 are this pass. 4 and 5 follow. 6 needs an afternoon with keys.
 | 3 | done | `refreshNavigation` in `layout.ts`, store action, called after every extension; `tests/navigation.test.ts` |
 | 4 | done | `previewOf` in `applier.ts`; ghosts drawn by `ScreenRenderer` (added translucent with a dashed outline, removed hatched, moved outlined with a line from where they are); cleared on accept, discard, or the next request; `tests/preview.test.ts` |
 | 5 | done | `find_tags` and `find_objects` as strict tools in a bounded lookup phase before the propose call on the Claude path; the client sends a compact catalog that never enters the prompt; scoring weights said words over synonyms, rare words over common, with prefix credit and whole-word matching |
-| 6 | open | needs keys and an afternoon |
+| 6 | done | `scripts/record-session.mts` records a real session as a transcript; two Gemini sessions in `tests/transcripts/recorded-*.json`. See `PLAN_PHASE2.md` item 3 for what the first one found |
 | 7 | done | `Switch`, `N-StateLamp`, `StringDisplay` in `schema.ts` against the captured examples; constructors, renderers, toolbar, shortcuts, layers, validation and the applier all know them; `tests/parts.test.ts` parses the product's own property names, renders each state, checks type rules and round-trips them through an opened project. Doing this exposed that the product writes `Fill: {Type: 0}` for none and `{Type: 5, …}` for a gradient, so `Paint` is now a union that carries typed paints through and the canvas draws none as none |
 
 ### Part track, second batch (17 September 2026, later the same day)

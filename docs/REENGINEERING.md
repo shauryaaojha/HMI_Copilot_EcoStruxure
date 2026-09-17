@@ -183,6 +183,22 @@ sign-off record), **brownfield round-trip**, or a genuinely **offline** path. An
 Schneider's own roadmap language, an orchestrator with specialised agents that validate
 before deployment, is a description of the pipeline in §4 with HMI as the missing agent.
 
+*Added 17 September 2026.* A practitioner post (an automation engineer at an
+integrator, on LinkedIn) describes an AI agent wired into Siemens WinCC Unified
+through Node.js, n8n and MCP: operators ask "what is the motor speed" in words,
+and the agent reads the PLC, changes setpoints, starts pumps, and writes an
+audit trail to a spreadsheet. The first substantive comment under it is the
+whole regulatory position in two sentences: under GMP and 21 CFR Part 11 every
+setpoint change needs a traceable actor and reason, and prompt injection from
+operator input becomes a plant-control risk. Two things follow for this
+product. It is design-time, not runtime: the model proposes edits to a project
+file, an engineer accepts them, and nothing it does reaches a PLC - which is the
+answer to both objections by construction, and worth saying in the first
+meeting. And the runtime agent's hardest problem, that operators do not know
+tag names, is solved upstream by the Plant Model in §3: equipment classes with
+their tag patterns are exactly the semantics such an agent would need, so the
+project file this tool writes is also the context file that agent would read.
+
 ### 1.7 Constraints that pick the architecture
 
 - **OT networks are restricted and often air-gapped.** A tool that phones a cloud model

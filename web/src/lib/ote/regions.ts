@@ -172,6 +172,31 @@ export type SlotResult = { ok: true; box: Box; region: Region } | { ok: false; r
  * `anchorBox` is the already-resolved anchor, because handles and names are the
  * applier's business. `screenLabel` is only for the refusal message.
  */
+/**
+ * A part's default size is the body's idea of it - a 180x64 lamp. Asked for
+ * in the header, which is 44 high, the same lamp has to be a header lamp.
+ * The height shrinks to the region with a little air, the width follows in
+ * proportion down to a floor a label still fits in. The first recorded
+ * session (docs/PLAN_PHASE2.md item 3) refused every header add without this.
+ */
+const INSET = 4;
+const MIN_WIDTH = 60;
+const down = (n: number) => Math.max(GRID, Math.floor(n / GRID) * GRID);
+export function fitTo(size: { width: number; height: number }, region: Box) {
+  // The same top margin firstFree() applies to a region on the panel's top
+  // edge, or the fitted object can never start where the search starts.
+  const topInset = region.top === 0 ? MARGIN : 0;
+  const maxHeight = Math.max(GRID, region.height - topInset - INSET);
+  const maxWidth = Math.max(GRID, region.width - MARGIN * 2);
+  let { width, height } = size;
+  if (height > maxHeight) {
+    width = Math.max(MIN_WIDTH, Math.round((width * maxHeight) / height));
+    height = maxHeight;
+  }
+  if (width > maxWidth) width = maxWidth;
+  return { width: down(width), height: down(height) };
+}
+
 export function resolveSlot(
   slot: Slot,
   parts: Part[],
@@ -181,7 +206,7 @@ export function resolveSlot(
 ): SlotResult {
   const regions = regionsOf(parts, panel);
   const label = options.screenLabel ?? "this screen";
-  const fits = { width: Math.min(size.width, panel.width - MARGIN * 2), height: Math.min(size.height, panel.height) };
+  const fitsPanel = { width: Math.min(size.width, panel.width - MARGIN * 2), height: Math.min(size.height, panel.height) };
 
   if (slot.anchor !== undefined && !options.anchorBox) {
     return { ok: false, reason: `No object called ${slot.anchor} to place beside` };
@@ -192,6 +217,7 @@ export function resolveSlot(
     const anchorPart = parts.find((p) => p.UniqueId === options.anchorId);
     const regionName = anchorPart ? regionOf(anchorPart, regions) : (slot.region ?? "body");
     const region: Box = regions[regionName] ?? regions.body!;
+    const fits = slot.side === "inside" ? fitTo(fitsPanel, a) : fitTo(fitsPanel, region);
 
     if (slot.side === "inside") {
       // Inside the anchor: the anchor is the region and its own box is not an
@@ -247,6 +273,7 @@ export function resolveSlot(
   if (!region) {
     return { ok: false, reason: `${label} has no ${regionName} region; add an alarm banner first` };
   }
+  const fits = fitTo(fitsPanel, region);
   const taken = obstaclesIn(parts, region, options.exceptId);
   const at = firstFree(region, taken, fits);
   if (!at) {

@@ -1,0 +1,94 @@
+{
+  "name": "recorded: add, restyle, delete on the full screen, Gemini",
+  "seed": "demo-full",
+  "recorded": {
+    "provider": "gemini",
+    "model": "gemini-flash-lite-latest",
+    "at": "2026-09-17T17:09:11.182Z"
+  },
+  "turns": [
+    {
+      "request": "add a lamp bound to PMP_102_RUN, in the header, labelled STANDBY",
+      "turn": {
+        "mode": "edit",
+        "reply": "Added the standby lamp for Pump 102 to the header.",
+        "ops": [
+          {
+            "op": "addObject",
+            "name": "Lamp_Standby_102",
+            "place": {
+              "region": "header"
+            },
+            "type": "Lamp",
+            "text": "STANDBY",
+            "note": "added standby indicator lamp in header"
+          },
+          {
+            "op": "bindTag",
+            "target": "Lamp_Standby_102",
+            "tag": "PMP_102_RUN",
+            "note": "bound standby lamp to PMP_102_RUN"
+          }
+        ]
+      },
+      "repaired": false,
+      "reply": "Added the standby lamp for Pump 102 to the header.",
+      "expect": {
+        "rejected": 0,
+        "applied": 2,
+        "created": 1,
+        "renamed": 0,
+        "deleted": false
+      }
+    },
+    {
+      "request": "make the flow reading bold",
+      "turn": {
+        "mode": "edit",
+        "reply": "Made the flow reading text bold.",
+        "ops": [
+          {
+            "op": "setText",
+            "target": "o14",
+            "name": "Num_Flow",
+            "type": "NumericDisplay",
+            "bold": true,
+            "note": "made the flow reading bold"
+          }
+        ]
+      },
+      "repaired": false,
+      "reply": "Made the flow reading text bold.",
+      "expect": {
+        "rejected": 0,
+        "applied": 1,
+        "created": 0,
+        "renamed": 0,
+        "deleted": false
+      }
+    },
+    {
+      "request": "delete the lamp you just added",
+      "turn": {
+        "mode": "edit",
+        "reply": "Deleted the standby lamp from the header.",
+        "ops": [
+          {
+            "op": "deleteObject",
+            "target": "o21",
+            "note": "removed the standby lamp from the header"
+          }
+        ]
+      },
+      "repaired": false,
+      "reply": "Deleted the standby lamp from the header.",
+      "expect": {
+        "rejected": 0,
+        "applied": 1,
+        "created": 0,
+        "renamed": 0,
+        "deleted": true
+      }
+    }
+  ]
+}
