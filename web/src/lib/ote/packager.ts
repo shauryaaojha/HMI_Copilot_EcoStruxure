@@ -21,15 +21,24 @@
 import JSZip from "jszip";
 import initSqlJs, { type SqlJsStatic } from "sql.js";
 import {
+  syncAlarms,
+  syncVariables,
   writeAlarms,
   writeVariables,
   type AlarmTarget,
   type VariableIds,
 } from "./databases";
-import { buildGraph, type Wire } from "./bindings";
+import { buildGraph, type BindingGraph, type Wire } from "./bindings";
 import { gid } from "./parts";
 import type { Alarm, Screen, Variable } from "./schema";
 import { loadSkeleton, type Skeleton } from "./skeleton";
+import {
+  fingerprintAlarms,
+  fingerprintScreen,
+  fingerprintVariables,
+  fingerprintWires,
+  type Preserved,
+} from "./reader";
 
 export interface PackageInput {
   name: string;
@@ -110,6 +119,12 @@ async function sql(): Promise<SqlJsStatic> {
     })();
   }
   return sqlPromise;
+}
+
+/** A database opened from bytes, for the reader. Caller closes it. */
+export async function openDatabase(bytes: Uint8Array): Promise<import("sql.js").Database> {
+  const SQL = await sql();
+  return new SQL.Database(bytes);
 }
 
 /** Runs `mutate` against a template database and returns the modified bytes. */
@@ -201,10 +216,177 @@ export async function panelOf(skeleton?: Skeleton): Promise<Panel | null> {
   return readPanel(JSON.parse(Buffer.from(entry).toString("utf8")));
 }
 
+/** The screen JSON to write: the store's tree merged over what was read. */
+function mergeScreen(screen: Screen, kept: Preserved["screens"] extends Map<string, infer S> ? S : never): unknown {
+  const rawView = (kept.raw.Children as Record<string, unknown>[])[0];
+  const merged: unknown[] = screen.Children[0].Children.map((part) => ({
+    ...(kept.parts.get(part.UniqueId) ?? {}),
+    ...part,
+  }));
+  // Opaque children go back where they were, by original index, as far as
+  // the list still reaches; anything past the end is appended.
+  for (const { index, raw } of kept.opaque) {
+    merged.splice(Math.min(index, merged.length), 0, raw);
+  }
+  return {
+    ...kept.raw,
+    ...screen,
+    Children: [{ ...rawView, ...screen.Children[0], Children: merged }],
+  };
+}
+
+/** Appends the binding rows the reader could not model, re-indexed. */
+function appendExtra(graph: BindingGraph, extra: Preserved["extra"]): BindingGraph {
+  const sourceMap = new Map<number, number>();
+  const targetMap = new Map<number, number>();
+  const Sources = [...graph.Sources];
+  const Targets = [...graph.Targets];
+  for (const s of extra.sources) {
+    const ref = Sources.length;
+    sourceMap.set(s.ReferenceId, ref);
+    Sources.push({ ...s, ReferenceId: ref });
+  }
+  for (const t of extra.targets) {
+    const ref = Targets.length;
+    targetMap.set(t.ReferenceId, ref);
+    Targets.push({ ...t, ReferenceId: ref });
+  }
+  const Bindings = [
+    ...graph.Bindings,
+    ...extra.bindings.map((b) => ({
+      ...b,
+      Target: targetMap.get(b.Target) ?? b.Target,
+      Sources: String(b.Sources)
+        .split(",")
+        .filter((x) => x.trim() !== "")
+        .map((x) => String(sourceMap.get(Number(x)) ?? x))
+        .join(","),
+    })),
+  ];
+  return { Sources, Targets, Bindings };
+}
+
+/**
+ * Writes an opened project back, changing only what changed.
+ *
+ * Every entry starts as it was read. Variables, alarms, each screen and the
+ * bindings are rewritten only when their modelled content differs from what
+ * the reader fingerprinted; everything else, and everything the reader could
+ * not model, comes back byte-identical. docs/PLAN_PHASE1.md.
+ */
+async function packagePreserved(input: PackageInput, kept: Preserved): Promise<Uint8Array> {
+  const entries = new Map<string, Uint8Array>(kept.entries);
+  const nameOf = (path: string) => {
+    const wanted = path.replace(/\\/g, "/").toLowerCase();
+    for (const name of entries.keys()) if (name.replace(/\\/g, "/").toLowerCase() === wanted) return name;
+    return path.replace(/\//g, "\\");
+  };
+  let changed = false;
+
+  // --- variables ----------------------------------------------------------
+  let variableIds = kept.variableIds;
+  if (fingerprintVariables(input.variables) !== kept.fingerprints.variables) {
+    const name = nameOf("Variables.db");
+    const template = entries.get(name);
+    if (!template) throw new Error("the opened project has no Variables.db");
+    const written = await editDatabase(template, (db) => syncVariables(db, input.variables, kept.variableIds));
+    entries.set(name, written.bytes);
+    variableIds = written.result;
+    changed = true;
+  }
+
+  // --- alarms -------------------------------------------------------------
+  let alarmTargets = kept.alarmTargets;
+  const alarmsChanged = fingerprintAlarms(input.alarms) !== kept.fingerprints.alarms;
+  if (alarmsChanged) {
+    const name = nameOf("Alarm.db");
+    const template = entries.get(name);
+    if (!template) throw new Error("the opened project has no Alarm.db");
+    const written = await editDatabase(template, (db) => syncAlarms(db, input.alarms, kept.alarms));
+    entries.set(name, written.bytes);
+    alarmTargets = written.result;
+    changed = true;
+  }
+
+  // --- screens ------------------------------------------------------------
+  const ids = input.screens.map((s) => s.UniqueId);
+  for (const id of kept.order) {
+    if (!ids.includes(id)) {
+      for (const file of ["Screen.dat", "Metadata.dat", "LocalVariables.db"]) entries.delete(nameOf(`Screens/${id}/${file}`));
+      changed = true;
+    }
+  }
+  const localVariables = [...entries.entries()].find(([n]) => /LocalVariables\.db$/i.test(n))?.[1];
+  input.screens.forEach((screen, index) => {
+    const id = screen.UniqueId;
+    const was = kept.screens.get(id);
+    if (was && was.fingerprint === fingerprintScreen(screen)) {
+      // Untouched, but the order or name may still have moved.
+      if (was.metadata.Name !== screen.Name || was.metadata.Order !== index) {
+        entries.set(nameOf(`Screens/${id}/Metadata.dat`), jsonEntry({ ...was.metadata, Name: screen.Name, Order: index, Id: index + 1 }));
+        changed = true;
+      }
+      return;
+    }
+    changed = true;
+    entries.set(nameOf(`Screens/${id}/Screen.dat`), jsonEntry(was ? mergeScreen(screen, was) : screen));
+    // Metadata only when it actually differs: a touched screen with the same
+    // name and position keeps its Metadata.dat byte-identical.
+    if (!was || was.metadata.Name !== screen.Name || was.metadata.Order !== index) {
+      entries.set(
+        nameOf(`Screens/${id}/Metadata.dat`),
+        jsonEntry({ LayoutType: 8, ObjectType: 9, ...(was?.metadata ?? {}), Id: index + 1, Name: screen.Name, Order: index }),
+      );
+    }
+    if (!entries.has(nameOf(`Screens/${id}/LocalVariables.db`))) {
+      if (!localVariables) throw new Error("no LocalVariables.db to copy for a new screen");
+      entries.set(nameOf(`Screens/${id}/LocalVariables.db`), localVariables);
+    }
+  });
+  if (JSON.stringify(ids) !== JSON.stringify(kept.order)) {
+    entries.set(nameOf(SCREENS_HIERARCHY), jsonEntry(ids.map((id) => ({ ObjectId: id, Children: [] }))));
+    changed = true;
+  }
+
+  // --- bindings -----------------------------------------------------------
+  const wiresChanged = fingerprintWires(input.wires) !== kept.fingerprints.wires;
+  if (wiresChanged || alarmsChanged || variableIds !== kept.variableIds) {
+    const first = input.screens[0];
+    if (!first) throw new Error("a project needs at least one screen");
+    const graph = appendExtra(buildGraph(first.UniqueId, input.wires, variableIds, alarmTargets), kept.extra);
+    entries.set(nameOf("Bindings.dat"), jsonEntry(graph));
+    changed = true;
+  }
+
+  // --- project identity ---------------------------------------------------
+  if (changed) {
+    const name = nameOf("Project.dat");
+    const raw = entries.get(name);
+    if (raw) {
+      const project = JSON.parse(Buffer.from(raw).toString("utf8"));
+      project.ModifiedDateTime = new Date().toISOString().replace(/\.\d+Z$/, "Z");
+      entries.set(name, jsonEntry(project));
+    }
+  }
+
+  const zip = new JSZip();
+  for (const [name, data] of entries) zip.file(name, data, { createFolders: false, binary: true });
+  const bytes = await zip.generateAsync({
+    type: "uint8array",
+    compression: "DEFLATE",
+    compressionOptions: { level: 6 },
+  });
+  assertBackslashEntries(bytes);
+  return bytes;
+}
+
 export async function packageProject(
   input: PackageInput,
   skeleton?: Skeleton,
+  /** Set when the project was opened from a file: write back into it. */
+  preserved?: Preserved,
 ): Promise<Uint8Array> {
+  if (preserved) return packagePreserved(input, preserved);
   const base = skeleton ?? (await loadSkeleton());
   const entries = new Map<string, Uint8Array>(base.entries);
 

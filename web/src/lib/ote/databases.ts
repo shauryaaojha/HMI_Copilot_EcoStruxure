@@ -107,6 +107,76 @@ export function writeVariables(
   return ids;
 }
 
+/**
+ * Brings the Variables table into line with `variables` without touching any
+ * row the reader did not model.
+ *
+ * `known` maps a modelled name to the UniqueId it was read with. A name still
+ * present keeps its id and has its columns updated; a modelled name no longer
+ * present is deleted; a new name is inserted with a new id. Rows for names
+ * that were never modelled - arrays, structures, anything with a data type
+ * the schema does not know - are left exactly as they were. docs/PLAN_PHASE1.md.
+ */
+export function syncVariables(
+  db: Database,
+  variables: Variable[],
+  known: VariableIds,
+): VariableIds {
+  const columns = columnsOf(db, "Variables");
+  const ids: VariableIds = {};
+  const wanted = new Set(variables.map((v) => v.Name));
+
+  for (const [name, id] of Object.entries(known)) {
+    if (!wanted.has(name)) db.run('DELETE FROM Variables WHERE "UniqueId" = ?', [id]);
+  }
+
+  const maxOrder = db.exec('SELECT MAX("Order") FROM Variables')[0]?.values[0]?.[0];
+  let order = typeof maxOrder === "number" ? maxOrder : 0;
+
+  for (const variable of variables) {
+    const existing = known[variable.Name];
+    if (existing) {
+      ids[variable.Name] = existing;
+      db.run(
+        'UPDATE Variables SET "DataType" = ?, "Comments" = ?, "DeviceAddress" = ?, "InitialValue" = ? WHERE "UniqueId" = ?',
+        [variable.DataType, variable.Comments, variable.DeviceAddress, INITIAL[variable.DataType] ?? "0", existing],
+      );
+      continue;
+    }
+    const unique = upperGuid();
+    ids[variable.Name] = unique;
+    insert(db, "Variables", columns, {
+      UniqueId: unique,
+      Name: variable.Name,
+      DataType: variable.DataType,
+      Type: 1,
+      IsArray: 0,
+      Dimension: null,
+      EnableVariableLength: 0,
+      Size: 0,
+      InitialValue: INITIAL[variable.DataType] ?? "0",
+      InputRange: 0,
+      Min: "",
+      Max: "",
+      Comments: variable.Comments,
+      Value: null,
+      Order: ++order,
+      ParentId: null,
+      id: -1,
+      FolderId: null,
+      RootParentId: null,
+      Retentive: 0,
+      DataSharing: 0,
+      StringEncode: 0,
+      DeviceAddress: variable.DeviceAddress,
+      BaseAddress: 0,
+      IsSymbolVariable: 0,
+    });
+  }
+
+  return ids;
+}
+
 export interface AlarmTarget {
   /** UniqueId of the alarm row - the binding target. */
   uid: string;
@@ -181,5 +251,79 @@ export function writeAlarms(db: Database, alarms: Alarm[]): AlarmTarget[] {
     });
   });
 
+  return targets;
+}
+
+/**
+ * Rewrites the modelled alarms inside the group they were read from, leaving
+ * every other group and every unmodelled row alone.
+ *
+ * `previous` is what the reader found: the alarm rows it modelled (which are
+ * deleted and re-inserted, in order) and the group they belong to. If there
+ * was no group, one is created the way writeAlarms does.
+ */
+export function syncAlarms(
+  db: Database,
+  alarms: Alarm[],
+  previous: { groupId: string | null; groupName: string; uids: string[]; startId: number },
+): AlarmTarget[] {
+  for (const uid of previous.uids) db.run('DELETE FROM Alarm WHERE "UniqueId" = ?', [uid]);
+
+  let groupId = previous.groupId;
+  const groupName = previous.groupName || ALARM_GROUP;
+  if (!groupId) {
+    groupId = upperGuid();
+    insert(db, "AlarmGroup", columnsOf(db, "AlarmGroup"), {
+      UniqueId: groupId,
+      Order: 1,
+      Name: groupName,
+      Id: 3,
+      Parameter: 0,
+      ActiveLabel: "Active",
+      ACKLabel: "Ack",
+      RTNLabel: "Return",
+      HiHiLabel: "HiHi",
+      HiLabel: "Hi",
+      LoLabel: "Lo",
+      LoLoLabel: "LoLo",
+      Enable: 0,
+      CurrentActiveCount: 0,
+      CurrentRtnCount: 0,
+      CurrentAckCount: 0,
+      CurrentLogCount: 0,
+      CumulativeActiveCount: 0,
+      UNACKLabel: "UnAck",
+      CurrentUnAckCount: 0,
+      AlarmBehavior: 0,
+    });
+  }
+
+  const columns = columnsOf(db, "Alarm");
+  const targets: AlarmTarget[] = [];
+  alarms.forEach((alarm, index) => {
+    const uid = upperGuid();
+    const isBit = alarm.AlarmRecordType === 1;
+    const id = previous.startId + index;
+    insert(db, "Alarm", columns, {
+      UniqueId: uid,
+      AlarmGroupId: groupId,
+      AlarmType: alarm.AlarmType,
+      AlarmRecordType: alarm.AlarmRecordType,
+      Id: id,
+      IsOnTrigger: isBit ? 1 : 0,
+      Message: alarm.Message,
+      Order: index,
+      Parameter: 0,
+      Severity: alarm.Severity,
+      Value: alarm.Value,
+      Deadband: 0,
+    });
+    targets.push({
+      uid,
+      fullName: `${groupName}.Alarm${id}.${LEVEL_NAME[alarm.AlarmType]}`,
+      subType: isBit ? "BoolAlarm" : "LevelAlarm",
+      trigger: alarm.Trigger,
+    });
+  });
   return targets;
 }

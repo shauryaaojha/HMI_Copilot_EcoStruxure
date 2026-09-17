@@ -213,6 +213,60 @@ function chrome(
   );
 }
 
+/**
+ * Rebuilds the navigation strip on every screen that has one so it lists
+ * every screen in the application, in order, with the current one filled.
+ *
+ * An extension lays out new screens whose strips list everything, but the
+ * screens that already existed still list only the set they were born with.
+ * Nothing else on any screen is touched: the chips are removed and re-added
+ * at the same place in the tree, and any screen without a generated strip is
+ * left exactly as it is.
+ */
+export function refreshNavigation(
+  screens: Screen[],
+  panel: { width: number; height: number },
+): { screens: Screen[]; changed: boolean } {
+  const isChip = (name: string) => /^NavChip_|^NavLbl_/.test(name);
+  const chipWidth = Math.min(150, Math.floor((panel.width - MARGIN * 2) / Math.max(screens.length, 1)) - 6);
+  let changed = false;
+
+  const out = screens.map((screen) => {
+    const view = screen.Children[0];
+    const stripAt = view.Children.findIndex(
+      (p) => p.Type === "Rectangle" && p.Name.startsWith("Nav_") && p.Location.Top === HEADER,
+    );
+    if (stripAt === -1) return screen;
+
+    const key = screen.Name.replace(/[^A-Za-z0-9_]/g, "_");
+    const chips: Part[] = [];
+    screens.forEach((other, i) => {
+      const here = other.UniqueId === screen.UniqueId;
+      const left = MARGIN + i * (chipWidth + 6);
+      if (left + chipWidth > panel.width - MARGIN) return;
+      chips.push(
+        rectangle(`NavChip_${key}_${i}`, { left, top: HEADER + 4, width: chipWidth, height: NAV - 8 },
+          { fill: here ? GREEN : WHITE, border: here ? GREEN : GREY }),
+        textBox(`NavLbl_${key}_${i}`, other.Name, { left: left + 8, top: HEADER + 8, width: chipWidth - 16, height: 16 },
+          { size: 10, colour: here ? WHITE : INK }),
+      );
+    });
+
+    const kept = view.Children.filter((p) => !isChip(p.Name));
+    const before = view.Children.filter((p) => isChip(p.Name)).map((p) => p.Type === "TextBox" ? p.Text : p.Name);
+    const after = chips.map((p) => p.Type === "TextBox" ? p.Text : p.Name);
+    if (JSON.stringify(before) === JSON.stringify(after)) return screen;
+
+    changed = true;
+    const at = kept.findIndex((p) => p.UniqueId === view.Children[stripAt].UniqueId) + 1;
+    const children = [...kept.slice(0, at), ...chips, ...kept.slice(at)];
+    const next: Screen = { ...screen, Children: [{ ...view, Children: children }] };
+    return next;
+  });
+
+  return { screens: out, changed };
+}
+
 /* --- the content ------------------------------------------------------ */
 
 /** One faceplate's worth of parts, and what drives each of them. */

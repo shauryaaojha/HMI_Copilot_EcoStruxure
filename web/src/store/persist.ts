@@ -45,6 +45,8 @@ export interface PersistedProject {
   /** Optional so a save from before handles existed still loads; hydrate backfills. */
   handles?: Record<string, string>;
   handleSeq?: number;
+  /** The import id of the .eote this was opened from, if it was. */
+  source?: string;
   standards: Standards;
   versions: Version[];
   chat: ChatMessage[];

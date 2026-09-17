@@ -42,3 +42,6 @@ web/try-*.mts
 web/check-*.mts
 web/verify.mts
 web/t.mts
+
+# Projects opened in the app, kept so an export can write back into them.
+web/.imports/

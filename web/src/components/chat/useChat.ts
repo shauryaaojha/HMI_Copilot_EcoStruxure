@@ -143,6 +143,8 @@ export function useChat() {
       const runGeneration = async (intent: string, fresh: boolean, suggestedName?: string) => {
         const before = useProject.getState().screens.length;
         await generate(intent, fresh ? { fresh: true } : { fresh: false, existing: existingScreens() });
+        // The older screens' strips do not know about the new screens yet.
+        if (!fresh) useProject.getState().refreshNavigation();
         nameIfUnnamed(intent, suggestedName);
         const after = useProject.getState();
         const added = after.screens.slice(fresh ? 0 : before);

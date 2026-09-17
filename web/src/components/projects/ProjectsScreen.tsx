@@ -10,19 +10,38 @@
  * Phase 9 of docs/BUILD_PLAN.md.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { FolderOpen, Plus, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { FolderOpen, Plus, Trash2, Upload } from "lucide-react";
 import { Badge, Button, Input, Tabs, cn, type TabItem } from "@/components/ui";
 import {
   DEMO,
   DEMO_ID,
+  createProject,
   loadProjects,
   saveProjects,
+  touchProject,
   type ProjectRecord,
 } from "@/store/projects";
-import { clearProject } from "@/store/persist";
+import { clearProject, saveProject } from "@/store/persist";
+import { DEFAULT_STANDARDS, useProject } from "@/store/project";
 import { useNewProject } from "@/components/shell/useNewProject";
+import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
+import type { Binding } from "@/store/types";
+
+/** What /api/import answers with. */
+interface Imported {
+  source: string;
+  name: string;
+  target: { model: string; width: number; height: number };
+  screens: Screen[];
+  variables: Variable[];
+  alarms: Alarm[];
+  bindings: Binding[];
+  carried: { entries: number; opaqueParts: number; variableRows: number; bindingRows: number };
+  warnings: string[];
+}
 
 type Filter = "all" | "recent" | "starred";
 
@@ -45,12 +64,80 @@ function when(at: number) {
 
 export function ProjectsScreen() {
   const newProject = useNewProject();
+  const router = useRouter();
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
+  const [opening, setOpening] = useState<string | null>(null);
+  const [openError, setOpenError] = useState<string | null>(null);
+  const picker = useRef<HTMLInputElement>(null);
 
   useEffect(() => setProjects(loadProjects()), []);
+
+  /**
+   * Open an existing .eote. The file goes to /api/import, which keeps the
+   * bytes so an export can write back into them, and answers with what it
+   * could model. The project is saved under a new id and opened like any
+   * other; what was carried rather than modelled is written on its card.
+   */
+  async function open(file: File) {
+    setOpenError(null);
+    setOpening(file.name);
+    try {
+      const response = await fetch("/api/import", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "X-File-Name": encodeURIComponent(file.name),
+        },
+        body: await file.arrayBuffer(),
+      });
+      const data = (await response.json()) as Imported & { error?: string };
+      if (!response.ok || data.error) throw new Error(data.error ?? `import failed (${response.status})`);
+
+      const record = createProject(data.name);
+      const objects = data.screens.reduce((n, s) => n + s.Children[0].Children.length, 0);
+      saveProject({
+        id: record.id,
+        name: record.name,
+        target: data.target,
+        screens: data.screens,
+        activeScreenId: data.screens[0]?.UniqueId,
+        variables: data.variables,
+        alarms: data.alarms,
+        bindings: data.bindings,
+        objectMeta: {},
+        screenPlacement: {},
+        standards: DEFAULT_STANDARDS,
+        versions: [],
+        chat: [],
+        source: data.source,
+      });
+      const carried = [
+        data.carried.opaqueParts ? `${data.carried.opaqueParts} objects` : "",
+        data.carried.variableRows ? `${data.carried.variableRows} variables` : "",
+        data.carried.bindingRows ? `${data.carried.bindingRows} bindings` : "",
+      ].filter(Boolean);
+      touchProject(record.id, {
+        screens: data.screens.length,
+        objects,
+        tags: data.variables.length,
+        alarms: data.alarms.length,
+        bindings: data.bindings.length,
+        target: `${data.target.model} · ${data.target.width} × ${data.target.height}`,
+        intent:
+          `Opened ${file.name}` +
+          (carried.length ? ` — carrying ${carried.join(", ")} the editor does not model` : ""),
+      });
+      useProject.getState().reset();
+      router.push(`/project/${record.id}`);
+    } catch (caught) {
+      setOpenError(caught instanceof Error ? caught.message : "could not open that file");
+    } finally {
+      setOpening(null);
+    }
+  }
 
   function write(next: ProjectRecord[]) {
     setProjects(next);
@@ -92,15 +179,42 @@ export function ProjectsScreen() {
         <span className="text-figure text-xs text-text-faint">
           {all.length} project{all.length === 1 ? "" : "s"}
         </span>
+        <input
+          ref={picker}
+          type="file"
+          accept=".eote"
+          className="hidden"
+          aria-label="Open a project file"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) void open(file);
+          }}
+        />
+        <Button
+          variant="ghost"
+          className="ml-auto"
+          onClick={() => picker.current?.click()}
+          disabled={opening !== null}
+          icon={<Upload size={16} />}
+          title="Open an existing EcoStruxure Operator Terminal Expert project. Everything the editor does not model is carried through unchanged."
+        >
+          {opening ? `Opening ${opening}…` : "Open .eote"}
+        </Button>
         <Button
           variant="primary"
-          className="ml-auto"
           onClick={() => setCreating((c) => !c)}
           icon={<Plus size={16} />}
         >
           New project
         </Button>
       </div>
+
+      {openError && (
+        <p className="rounded-panel border border-status-warn/30 bg-status-warn/[0.08] px-3 py-2 text-xs text-status-warn">
+          {openError}
+        </p>
+      )}
 
       {creating && (
         <div className="flex items-center gap-2 rounded-panel border border-line bg-surface-raised p-3">

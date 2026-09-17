@@ -42,8 +42,9 @@ export interface BindingRow {
   Type: number;
   Mode: number;
   BindingText: string;
-  ConverterId: null;
-  ConverterName: null;
+  /** Null for everything this writer produces; a read file may carry one. */
+  ConverterId: string | null;
+  ConverterName: string | null;
   Target: number;
   TargetProperty: string;
   /** The referenceId of the source, as a string - the product's own convention. */

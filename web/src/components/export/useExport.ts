@@ -74,6 +74,8 @@ export function packageInput(state: ReturnType<typeof useProject.getState>) {
     variables: state.variables,
     alarms,
     wires,
+    // Set when the project was opened from a file: export writes back into it.
+    source: state.source,
   };
 }
 

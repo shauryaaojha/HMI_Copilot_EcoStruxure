@@ -22,6 +22,7 @@ import {
   type ZMove,
 } from "./edits";
 import { DEFAULT_STANDARDS } from "./types";
+import { refreshNavigation as refreshNavigationParts } from "@/lib/ote/layout";
 import type {
   Binding,
   ChatMessage,
@@ -84,6 +85,12 @@ interface ProjectState {
   name: string;
   target: { model: string; width: number; height: number };
   savedAt?: number;
+  /**
+   * The import id of the .eote this project was opened from, when it was.
+   * Export writes back into that file's entries rather than the skeleton, so
+   * everything the reader did not model survives. docs/PLAN_PHASE1.md.
+   */
+  source?: string;
 
   screens: Screen[];
   activeScreenId?: string;
@@ -167,6 +174,12 @@ interface ProjectState {
   group: (ids: string[]) => void;
   ungroup: (ids: string[]) => void;
 
+  /**
+   * Rebuild every generated navigation strip so it lists every screen. An
+   * extension adds screens the older strips do not know about.
+   */
+  refreshNavigation: () => void;
+
   /* --- history ------------------------------------------------------- */
   undo: () => void;
   redo: () => void;
@@ -212,7 +225,7 @@ type ProjectActions = Pick<
   | "updateObject" | "setProperty" | "nudge" | "setBox" | "removeObjects"
   | "duplicateObjects" | "copyObjects" | "cutObjects" | "pasteObjects" | "align"
   | "spread" | "restackObjects" | "setMeta" | "group" | "ungroup" | "undo"
-  | "redo" | "commitBatch" | "importTags" | "setStandards" | "snapshot" | "restore"
+  | "redo" | "commitBatch" | "refreshNavigation" | "importTags" | "setStandards" | "snapshot" | "restore"
   | "ensureScreen" | "appendToView" | "setStep" | "attribute" | "setGenerating"
   | "addBinding" | "addAlarm" | "addFinding" | "setEquipment" | "log"
   | "addMessage" | "patchMessage" | "clearChat" | "reset" | "resetRun"
@@ -749,6 +762,18 @@ export function createProjectStore() {
         ensureHandles(s);
       }),
 
+    refreshNavigation: () =>
+      set((s) => {
+        const next = refreshNavigationParts(current(s.screens), {
+          width: s.target.width,
+          height: s.target.height,
+        });
+        if (!next.changed) return;
+        remember(s, "Refresh navigation");
+        s.screens = next.screens;
+        ensureHandles(s);
+      }),
+
     importTags: (variables, meta) =>
       set((s) => {
         s.variables = variables;
@@ -920,6 +945,7 @@ export function createProjectStore() {
 
     reset: () =>
       set((s) => {
+        s.source = undefined;
         s.screens = [];
         s.variables = [];
         s.alarms = [];
