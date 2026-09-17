@@ -12,8 +12,8 @@
  * Phase 3 of docs/BUILD_PLAN.md.
  */
 
-import * as XLSX from "xlsx";
 import { DATA_TYPES, type Variable } from "@/lib/ote/schema";
+import { readTable, readTextTable } from "./table";
 import { normaliseNames, type Correction } from "@/lib/validation/naming";
 
 type DataType = (typeof DATA_TYPES)[number];
@@ -102,17 +102,34 @@ function toBytes(input: ArrayBuffer | ArrayBufferView): Uint8Array {
     : new Uint8Array(input);
 }
 
+/**
+ * Any tag export: a spreadsheet or a text file. Async because a spreadsheet is
+ * a ZIP that has to be inflated; the route and the picker use this.
+ */
+export async function parseTagsFile(
+  file: ArrayBuffer | ArrayBufferView,
+  filename = "",
+): Promise<ParseResult> {
+  return parseGrid(await readTable(toBytes(file), filename), filename);
+}
+
+/**
+ * A text export - CSV, TSV, semicolons, pipes - read synchronously. A
+ * spreadsheet handed to this is refused by name rather than misread as text.
+ */
 export function parseTags(
   file: ArrayBuffer | ArrayBufferView,
   filename = "",
 ): ParseResult {
-  const book = XLSX.read(toBytes(file), { type: "array", raw: true });
-  const sheet = book.Sheets[book.SheetNames[0]];
-  if (!sheet) {
-    return { variables: [], corrections: [], skipped: [], summary: { total: 0 } };
+  const bytes = toBytes(file);
+  if ((bytes[0] === 0x50 && bytes[1] === 0x4b) || /\.xls[xm]$/i.test(filename)) {
+    throw new Error(`${filename || "that file"} is a spreadsheet; use parseTagsFile`);
   }
+  return parseGrid(readTextTable(bytes), filename);
+}
 
-  const grid = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, blankrows: false });
+/** The importer proper, over rows of raw cells from whichever reader. */
+export function parseGrid(grid: unknown[][], filename = ""): ParseResult {
   if (grid.length === 0) {
     return { variables: [], corrections: [], skipped: [], summary: { total: 0 } };
   }

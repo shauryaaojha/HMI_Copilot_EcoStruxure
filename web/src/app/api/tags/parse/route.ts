@@ -9,7 +9,7 @@
  * Phase 3 of docs/BUILD_PLAN.md.
  */
 
-import { parseTags } from "@/lib/tags/parse";
+import { parseTagsFile } from "@/lib/tags/parse";
 
 export const runtime = "nodejs";
 
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = parseTags(await file.arrayBuffer(), file.name);
+    const result = await parseTagsFile(await file.arrayBuffer(), file.name);
     if (result.variables.length === 0) {
       return Response.json(
         {

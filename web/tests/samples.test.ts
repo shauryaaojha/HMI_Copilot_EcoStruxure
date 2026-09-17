@@ -19,18 +19,28 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseTags } from "@/lib/tags/parse";
+import { parseTagsFile } from "@/lib/tags/parse";
 import { SAMPLES } from "@/components/tags/useTagImport";
 import { Variable } from "@/lib/ote/schema";
 
 const DIR = join(process.cwd(), "public", "demo");
 
+/**
+ * Every sample parsed once, up front. A spreadsheet is read asynchronously,
+ * and describe() blocks are collected synchronously, so the parsing happens
+ * at module load rather than inside them.
+ */
+const PARSED = Object.fromEntries(
+  await Promise.all(
+    SAMPLES.map(async (s) => {
+      const buf = readFileSync(join(DIR, s.name));
+      return [s.name, await parseTagsFile(buf, s.name)] as const;
+    }),
+  ),
+);
+
 function read(name: string) {
-  const buf = readFileSync(join(DIR, name));
-  return parseTags(
-    buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer,
-    name,
-  );
+  return PARSED[name];
 }
 
 interface Expected {

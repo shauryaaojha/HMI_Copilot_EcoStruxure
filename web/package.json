@@ -19,6 +19,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
     "@google/genai": "^2.21.0",
+    "exceljs": "^4.4.0",
     "immer": "^10.1.1",
     "jszip": "^3.10.1",
     "lucide-react": "^1.44.0",
@@ -27,7 +28,6 @@
     "react-dom": "^19.1.1",
     "react-resizable-panels": "^4.12.4",
     "sql.js": "^1.13.0",
-    "xlsx": "^0.18.5",
     "zod": "^3.25.76",
     "zustand": "^5.0.8"
   },
