@@ -33,8 +33,30 @@ Items 1 to 3 are this pass. 4 and 5 follow. 6 needs an afternoon with keys.
 | 6 | open | needs keys and an afternoon |
 | 7 | done | `Switch`, `N-StateLamp`, `StringDisplay` in `schema.ts` against the captured examples; constructors, renderers, toolbar, shortcuts, layers, validation and the applier all know them; `tests/parts.test.ts` parses the product's own property names, renders each state, checks type rules and round-trips them through an opened project. Doing this exposed that the product writes `Fill: {Type: 0}` for none and `{Type: 5, …}` for a gradient, so `Paint` is now a union that carries typed paints through and the canvas draws none as none |
 
-Next on the part track, in operator value order: BarScale, TrendGraph, BlockTrend,
-Pipe, Image, DateTimeDisplay, GroupObject, DockPanel, ToggleSwitch.
+### Part track, second batch (17 September 2026, later the same day)
+
+ToggleSwitch, BarScale, Pipe, DateTimeDisplay, TrendGraph and BlockTrend landed
+the same way as item 7, in `tests/parts2.test.ts`. Two format facts came out of
+it: a trend names its tags inline in `Channels[].Variable`, not through
+`Bindings.dat`, and carries a dozen nested scale objects the schema passes
+through untouched; a pipe's geometry is a list of Locations in the 3072-unit
+square, where a Path's is a string. The toolbar keeps five tools inline and the
+rest sit behind an Insert menu grouped as an engineer thinks about them.
+
+Still to do on the track: Image (needs the resource the hash points at,
+which lives outside `Screen.dat`), GroupObject (its children are not in the
+captured example, so the file has to be read with one open), DockPanel and the
+other grid containers (layout, not canvas - `Location: {Row, Column}` has no
+meaning on an absolute canvas until the reader models grids).
+
+### Editor gaps closed the same day
+
+- The inspector binds: a picker of the tags the part can take, by type, with
+  unbind, as one undo step. Before this a hand-placed lamp had no route to a
+  tag except a sentence to the copilot.
+- Arrays are editable one element at a time: an N-state lamp's faces, a
+  pipe's states, a trend's channels.
+- The status bar names the model that is answering, from `/api/provider`.
 
 ## Reader design, in short
 
