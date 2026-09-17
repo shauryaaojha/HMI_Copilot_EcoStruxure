@@ -69,6 +69,113 @@ export function LampPart({ part, on }: { part: PartOf<"Lamp">; on: boolean }) {
   );
 }
 
+/** A face: the box and its text, shared by a lamp state, a switch state and an N-state. */
+function Face({
+  state,
+  x,
+  y,
+  width,
+  height,
+  fallbackFill,
+}: {
+  state: {
+    Text?: string;
+    Thickness?: number;
+    TextLayout?: { HorizontalAlignment?: number };
+    Font?: { Size?: number; Bold?: boolean; Italic?: boolean };
+  };
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fallbackFill: string;
+}) {
+  const stroke = (state.Thickness ?? 1) * 2;
+  return (
+    <>
+      <rect
+        {...insetStroke(x, y, width, height, stroke)}
+        fill={fill(state, "Fill", fallbackFill)}
+        stroke={fill(state, "Border", "#515151")}
+        strokeWidth={stroke}
+      />
+      <PlacedText
+        text={state.Text ?? ""}
+        left={x}
+        top={y}
+        width={width}
+        height={height}
+        color={fill(state, "TextColor", "#030303")}
+        align={state.TextLayout?.HorizontalAlignment ?? 2}
+        {...fontOf(state, 13)}
+      />
+    </>
+  );
+}
+
+/** A switch shows its Release face at rest; `pressed` swaps to Press. */
+export function SwitchPart({ part, pressed }: { part: PartOf<"Switch">; pressed: boolean }) {
+  return (
+    <Face
+      state={pressed ? part.Press : part.Release}
+      x={part.Location.Left}
+      y={part.Location.Top}
+      width={part.Width}
+      height={part.Height}
+      fallbackFill="#ffffff"
+    />
+  );
+}
+
+/**
+ * The bound integer picks the face. Out of range shows the Invalid face when
+ * there is one, else the last state - which is what an engineer expects to
+ * see rather than nothing.
+ */
+export function NStateLampPart({ part, value }: { part: PartOf<"N-StateLamp">; value?: number }) {
+  const index = Math.trunc(value ?? part.CurrentValue);
+  const state =
+    index >= 0 && index < part.States.length
+      ? part.States[index]
+      : (part.Invalid ?? part.States[part.States.length - 1]);
+  return (
+    <Face
+      state={state}
+      x={part.Location.Left}
+      y={part.Location.Top}
+      width={part.Width}
+      height={part.Height}
+      fallbackFill="#d9d9d9"
+    />
+  );
+}
+
+export function StringDisplayPart({ part, value }: { part: PartOf<"StringDisplay">; value?: string }) {
+  const stroke = part.Thickness ?? 1;
+  const shown = (value ?? part.CurrentValue).slice(0, part.DisplayLength ?? 255);
+  return (
+    <>
+      <rect
+        {...insetStroke(part.Location.Left, part.Location.Top, part.Width, part.Height, stroke)}
+        fill={fill(part, "Fill", "#ffffff")}
+        stroke={fill(part, "Border", "#515151")}
+        strokeWidth={stroke}
+      />
+      <PlacedText
+        text={shown}
+        left={part.Location.Left}
+        top={part.Location.Top}
+        width={part.Width}
+        height={part.Height}
+        color={fill(part, "TextColor", "#030303")}
+        align={part.TextLayout?.HorizontalAlignment ?? 1}
+        mono
+        {...fontOf(part, 16)}
+      />
+    </>
+  );
+}
+
 export function NumericDisplayPart({
   part,
   value,

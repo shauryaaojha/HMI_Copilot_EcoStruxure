@@ -22,8 +22,11 @@
 import {
   alarmSummary,
   lamp,
+  nStateLamp,
   numericDisplay,
   rectangle,
+  stringDisplay,
+  switchPart,
   textBox,
 } from "@/lib/ote/parts";
 import {
@@ -169,6 +172,12 @@ const sizeFor = (type: Op["type"]): { width: number; height: number } => {
       return { width: 180, height: 52 };
     case "AlarmSummary":
       return { width: 600, height: 220 };
+    case "Switch":
+      return { width: 120, height: 48 };
+    case "N-StateLamp":
+      return { width: 160, height: 48 };
+    case "StringDisplay":
+      return { width: 200, height: 36 };
     default:
       return { width: 200, height: 100 };
   }
@@ -190,6 +199,17 @@ function buildPart(op: Op, name: string, box: Box): Part | null {
       return numericDisplay(name, box, op.decimals ?? 1);
     case "AlarmSummary":
       return alarmSummary(name, box);
+    case "Switch":
+      return switchPart(name, op.text ?? "START", box);
+    case "N-StateLamp": {
+      // "states" arrive as the lamp texts in order: offText, onText, then any
+      // more in `text` separated by commas - STOPPED, RUNNING, FAULT.
+      const listed = (op.text ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+      const states = [op.offText, op.onText, ...listed].filter((s): s is string => !!s);
+      return nStateLamp(name, states.length >= 2 ? states : listed.length >= 2 ? listed : ["STOPPED", "RUNNING", "FAULT"], box);
+    }
+    case "StringDisplay":
+      return stringDisplay(name, box);
     default:
       // Path needs geometry from the shipped library, which a model cannot
       // supply - it comes from the library panel or not at all.

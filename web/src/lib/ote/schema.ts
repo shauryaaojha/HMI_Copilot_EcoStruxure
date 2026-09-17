@@ -13,10 +13,25 @@
 
 import { z } from "zod";
 
-/** { Color: { Value: <palette index> } } */
+/** { Color: { Value: <palette index>, Transparency?: 0-100 } } */
 export const ColorRef = z.object({
-  Color: z.object({ Value: z.number().int().min(1).max(60) }),
+  Color: z.object({
+    Value: z.number().int().min(1).max(60),
+    Transparency: z.number().min(0).max(100).optional(),
+  }),
 });
+
+/**
+ * What a Fill or Border can be in the product's own files: a solid palette
+ * colour, or a typed paint - `{ Type: 0 }` for none, `{ Type: 5, Color1,
+ * Color2, Speed }` for a gradient. The typed form is carried through as-is
+ * (passthrough) so a gradient survives the round trip; the canvas draws the
+ * solid form and falls back sensibly on the rest.
+ */
+export const Paint = z.union([
+  ColorRef,
+  z.object({ Type: z.number().int() }).passthrough(),
+]);
 
 export const FontRef = z.object({
   Type: z.object({
@@ -52,8 +67,8 @@ const base = {
 export const Rectangle = z.object({
   Type: z.literal("Rectangle"),
   ...base,
-  Fill: ColorRef.optional(),
-  Border: ColorRef.optional(),
+  Fill: Paint.optional(),
+  Border: Paint.optional(),
   Thickness: z.number().optional(),
 });
 
@@ -72,8 +87,8 @@ const LampState = z.object({
   TextColor: ColorRef.optional(),
   Font: FontRef.optional(),
   TextLayout: TextLayout.optional(),
-  Fill: ColorRef.optional(),
-  Border: ColorRef.optional(),
+  Fill: Paint.optional(),
+  Border: Paint.optional(),
   Thickness: z.number().optional(),
 });
 
@@ -91,8 +106,8 @@ export const NumericDisplay = z.object({
   DecimalDigits: z.number().int().min(0).max(6).optional(),
   TextColor: ColorRef.optional(),
   Font: FontRef.optional(),
-  Fill: ColorRef.optional(),
-  Border: ColorRef.optional(),
+  Fill: Paint.optional(),
+  Border: Paint.optional(),
   Thickness: z.number().optional(),
   TextLayout: TextLayout.optional(),
 });
@@ -108,9 +123,55 @@ export const PathPart = z.object({
   ...base,
   Commands: z.string(),
   Points: z.string(),
-  Fill: ColorRef.optional(),
-  Border: ColorRef.optional(),
+  Fill: Paint.optional(),
+  Border: Paint.optional(),
   Thickness: z.number().optional(),
+});
+
+/**
+ * A Switch is a touch target with a face for each of its two states, and a
+ * click trigger saying what a touch does. Property names are the product's
+ * (reference/part_examples.json, Demo 1.eote); the geometry is absolute, as
+ * for every part placed on a canvas rather than in a grid.
+ */
+export const ClickTrigger = z.object({
+  OperationType: z.number().int(),
+  Operation: z.number().int().optional(),
+  Source: z.string().optional(),
+  Screen: z.number().int().optional(),
+  Content: z.number().int().optional(),
+});
+
+export const Switch = z.object({
+  Type: z.literal("Switch"),
+  ...base,
+  Release: LampState,
+  Press: LampState,
+  ClickTrigger: ClickTrigger.optional(),
+});
+
+/** An indicator with two to sixteen faces; the bound integer picks one. */
+export const NStateLamp = z.object({
+  Type: z.literal("N-StateLamp"),
+  ...base,
+  NumberOfStates: z.number().int().min(2).max(16),
+  States: z.array(LampState).min(2).max(16),
+  Invalid: LampState.optional(),
+  CurrentValue: z.number().int().default(0),
+});
+
+/** Text from a STRING tag, as a NumericDisplay is a number from a numeric one. */
+export const StringDisplay = z.object({
+  Type: z.literal("StringDisplay"),
+  ...base,
+  CurrentValue: z.string().default(""),
+  DisplayLength: z.number().int().min(1).max(255).optional(),
+  TextColor: ColorRef.optional(),
+  Font: FontRef.optional(),
+  Fill: Paint.optional(),
+  Border: Paint.optional(),
+  Thickness: z.number().optional(),
+  TextLayout: TextLayout.optional(),
 });
 
 export const Part = z.discriminatedUnion("Type", [
@@ -120,6 +181,9 @@ export const Part = z.discriminatedUnion("Type", [
   NumericDisplay,
   AlarmSummary,
   PathPart,
+  Switch,
+  NStateLamp,
+  StringDisplay,
 ]);
 
 export const ViewBox = z.object({
@@ -155,6 +219,9 @@ export const PART_TYPES = [
   "NumericDisplay",
   "AlarmSummary",
   "Path",
+  "Switch",
+  "N-StateLamp",
+  "StringDisplay",
 ] as const satisfies readonly PartType[];
 export type ViewBox = z.infer<typeof ViewBox>;
 export type Screen = z.infer<typeof Screen>;

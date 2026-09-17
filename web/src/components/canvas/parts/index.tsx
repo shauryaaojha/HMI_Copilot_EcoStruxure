@@ -13,8 +13,11 @@
 import type { Part } from "@/lib/ote/schema";
 import {
   LampPart,
+  NStateLampPart,
   NumericDisplayPart,
   RectanglePart,
+  StringDisplayPart,
+  SwitchPart,
   TextBoxPart,
 } from "./BasicParts";
 import { AlarmSummaryPart, type AlarmRow } from "./AlarmSummaryPart";
@@ -26,7 +29,7 @@ export { GraphicObject } from "./GraphicObject";
 export interface PartNodeProps {
   part: Part;
   /** Live tag values keyed by object name; absent means the design state. */
-  values?: Record<string, number | boolean>;
+  values?: Record<string, number | boolean | string>;
   /** The alarms the summary grid should list. */
   alarms: AlarmRow[];
 }
@@ -57,6 +60,24 @@ export function PartNode({ part, values, alarms }: PartNodeProps) {
 
     case "Path":
       return <PathPartNode part={part} />;
+
+    case "Switch":
+      return <SwitchPart part={part} pressed={values?.[part.Name] === true} />;
+
+    case "N-StateLamp": {
+      const raw = values?.[part.Name];
+      return (
+        <NStateLampPart
+          part={part}
+          value={typeof raw === "number" ? raw : typeof raw === "boolean" ? Number(raw) : undefined}
+        />
+      );
+    }
+
+    case "StringDisplay": {
+      const raw = values?.[part.Name];
+      return <StringDisplayPart part={part} value={raw === undefined ? undefined : String(raw)} />;
+    }
 
     default: {
       const exhaustive: never = part;

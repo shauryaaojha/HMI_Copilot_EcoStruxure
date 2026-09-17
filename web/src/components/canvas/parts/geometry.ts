@@ -14,8 +14,21 @@
 import type { Part } from "@/lib/ote/schema";
 import { colorIndexOf, resolveColor } from "@/lib/ote/palette";
 
-/** Resolve a {Fill|Border|TextColor}: {Color: {Value: n}} to "#rrggbb". */
+/**
+ * Resolve a {Fill|Border|TextColor} to "#rrggbb", or "none".
+ *
+ * A solid paint is {Color: {Value: n}}. The product also writes typed paints:
+ * {Type: 0} means no fill or no border and is drawn as nothing; a gradient
+ * ({Type: 5, Color1, Color2}) is drawn as its first colour, which is what the
+ * product's own thumbnail does. Anything else falls back.
+ */
 export function fill(node: unknown, key: string, fallback: string): string {
+  const paint = (node as Record<string, unknown> | null)?.[key] as Record<string, unknown> | undefined;
+  if (paint && !("Color" in paint) && typeof paint.Type === "number") {
+    if (paint.Type === 0) return "none";
+    const first = paint.Color1 as { Value?: number } | undefined;
+    if (first && typeof first.Value === "number") return resolveColor(first.Value, fallback);
+  }
   return resolveColor(colorIndexOf(node, key), fallback);
 }
 

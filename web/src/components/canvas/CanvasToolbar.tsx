@@ -58,6 +58,7 @@ import {
   Ungroup,
   Unlock,
 } from "lucide-react";
+import { Layers, Quote, ToggleLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import type { PartType } from "@/lib/ote/schema";
 import { useProject } from "@/store/project";
@@ -69,6 +70,9 @@ const TOOL_ICON: Record<string, typeof Square> = {
   Lamp: Lightbulb,
   NumericDisplay: Hash,
   AlarmSummary: Bell,
+  Switch: ToggleLeft,
+  "N-StateLamp": Layers,
+  StringDisplay: Quote,
 };
 
 const TOOLS: { type: PartType; label: string; key: string }[] = [
@@ -77,6 +81,9 @@ const TOOLS: { type: PartType; label: string; key: string }[] = [
   { type: "Lamp", label: "Lamp", key: "L" },
   { type: "NumericDisplay", label: "Numeric display", key: "N" },
   { type: "AlarmSummary", label: "Alarm summary", key: "A" },
+  { type: "Switch", label: "Switch", key: "S" },
+  { type: "N-StateLamp", label: "N-state lamp", key: "M" },
+  { type: "StringDisplay", label: "String display", key: "G" },
 ];
 
 export interface CanvasToolbarProps {

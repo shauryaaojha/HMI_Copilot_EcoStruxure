@@ -7,6 +7,7 @@
  */
 
 import {
+  AMBER,
   DARK_GREEN,
   DARK_GREY,
   GREEN,
@@ -127,6 +128,73 @@ export function numericDisplay(name: string, box: Box, decimals = 1): Part {
     Border: color(DARK_GREY),
     Thickness: 1,
     TextLayout: { HorizontalAlignment: 4, VerticalAlignment: 64 },
+    Location: { Left: box.left, Top: box.top },
+    Width: box.width,
+    Height: box.height,
+  };
+}
+
+/**
+ * A momentary switch: a grey face at rest, the brand green while pressed.
+ * OperationType 1 with Operation 1 is the bit operation the shipped demo uses
+ * on its own switch-lamps; which bit is decided by the binding.
+ */
+export function switchPart(name: string, label: string, box: Box): Part {
+  return {
+    Type: "Switch",
+    UniqueId: gid(),
+    Name: name,
+    Release: face(label, INK, WHITE, DARK_GREY),
+    Press: face(label, WHITE, GREEN, DARK_GREEN),
+    ClickTrigger: { OperationType: 1, Operation: 1 },
+    Location: { Left: box.left, Top: box.top },
+    Width: box.width,
+    Height: box.height,
+  };
+}
+
+/** Palette per state: grey, green, amber, red, then grey again. */
+const STATE_FACES: [number, number, number][] = [
+  [INK, GREY, DARK_GREY],
+  [WHITE, GREEN, DARK_GREEN],
+  [INK, AMBER, DARK_GREY],
+  [WHITE, RED, DARK_GREY],
+];
+
+/** An indicator with one face per state; the bound integer picks the face. */
+export function nStateLamp(name: string, states: string[], box: Box): Part {
+  const labels = states.length >= 2 ? states.slice(0, 16) : ["STOPPED", "RUNNING"];
+  return {
+    Type: "N-StateLamp",
+    UniqueId: gid(),
+    Name: name,
+    NumberOfStates: labels.length,
+    States: labels.map((text, i) => {
+      const [fg, bg, bd] = STATE_FACES[i % STATE_FACES.length];
+      return face(text, fg, bg, bd);
+    }),
+    Invalid: face("?", WHITE, DARK_GREY, DARK_GREY),
+    CurrentValue: 0,
+    Location: { Left: box.left, Top: box.top },
+    Width: box.width,
+    Height: box.height,
+  };
+}
+
+/** Text from a STRING tag, drawn the way a numeric display draws a number. */
+export function stringDisplay(name: string, box: Box, length = 20): Part {
+  return {
+    Type: "StringDisplay",
+    UniqueId: gid(),
+    Name: name,
+    CurrentValue: "",
+    DisplayLength: length,
+    TextColor: color(INK),
+    Font: { ...FONT, Size: 16 },
+    Fill: color(WHITE),
+    Border: color(DARK_GREY),
+    Thickness: 1,
+    TextLayout: { HorizontalAlignment: 1, VerticalAlignment: 64 },
     Location: { Left: box.left, Top: box.top },
     Width: box.width,
     Height: box.height,

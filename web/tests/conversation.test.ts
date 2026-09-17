@@ -160,7 +160,10 @@ describe("applyOps", () => {
       { op: "setColor", target: target.Name, colorRole: "fill", color: "red", note: "n" },
     ]);
     const after = parts().find((p) => p.UniqueId === target.UniqueId)!;
-    expect(after.Type === "Rectangle" && after.Fill?.Color.Value).toBe(5);
+    const paint = (after.Type === "Rectangle" ? after.Fill : undefined) as
+      | { Color?: { Value: number } }
+      | undefined;
+    expect(paint?.Color?.Value).toBe(5);
   });
 
   it("adds a level alarm with the setpoint in Value, and a bit alarm without", () => {

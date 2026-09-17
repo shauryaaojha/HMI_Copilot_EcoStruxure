@@ -19,6 +19,9 @@ const TOOL_KEYS: Record<string, PartType> = {
   l: "Lamp",
   n: "NumericDisplay",
   a: "AlarmSummary",
+  s: "Switch",
+  m: "N-StateLamp",
+  g: "StringDisplay",
 };
 
 export interface CanvasShortcutHandlers {

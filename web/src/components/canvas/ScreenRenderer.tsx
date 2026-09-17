@@ -65,7 +65,7 @@ export interface ScreenRendererProps {
   /** Lock and hide, which live beside the parts rather than inside them. */
   objectMeta?: Record<string, ObjectMeta>;
   /** Live tag values, keyed by object name. Absent = design state. */
-  values?: Record<string, number | boolean>;
+  values?: Record<string, number | boolean | string>;
   /** Rows for the AlarmSummary part, which cannot be drawn from its own JSON. */
   alarms?: AlarmRow[];
   /**
@@ -606,6 +606,12 @@ function defaultSize(type: PartType): { width: number; height: number } {
       return { width: 480, height: 200 };
     case "Path":
       return { width: 96, height: 96 };
+    case "Switch":
+      return { width: 120, height: 48 };
+    case "N-StateLamp":
+      return { width: 160, height: 48 };
+    case "StringDisplay":
+      return { width: 200, height: 36 };
     case "Rectangle":
     default:
       return { width: 200, height: 120 };

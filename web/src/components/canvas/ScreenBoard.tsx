@@ -140,7 +140,7 @@ export interface ScreenBoardProps {
   selectedIds: string[];
   hoveredId?: string;
   objectMeta?: Record<string, ObjectMeta>;
-  values?: Record<string, number | boolean>;
+  values?: Record<string, number | boolean | string>;
   /** A pending proposal's ghosts, keyed by screen id. */
   preview?: Record<string, ScreenPreview>;
   alarms?: AlarmRow[];

@@ -9,9 +9,12 @@
 import {
   alarmSummary,
   lamp,
+  nStateLamp,
   numericDisplay,
   pathPart,
   rectangle,
+  stringDisplay,
+  switchPart,
   textBox,
   type Box,
 } from "@/lib/ote/parts";
@@ -29,6 +32,9 @@ export const TOOLS: {
   { type: "Lamp", label: "Lamp", hint: "Two-state indicator", key: "l" },
   { type: "NumericDisplay", label: "Numeric", hint: "Bound reading", key: "n" },
   { type: "AlarmSummary", label: "Alarm summary", hint: "Active alarm grid", key: "a" },
+  { type: "Switch", label: "Switch", hint: "Touch target that writes a bit", key: "s" },
+  { type: "N-StateLamp", label: "N-state lamp", hint: "One face per integer state", key: "m" },
+  { type: "StringDisplay", label: "String", hint: "Bound text", key: "g" },
 ];
 
 /** A stem the store then makes unique, in the shape the pipeline already uses. */
@@ -39,6 +45,9 @@ const STEM: Record<PartType, string> = {
   NumericDisplay: "Num",
   AlarmSummary: "AlarmBanner",
   Path: "Symbol",
+  Switch: "Sw",
+  "N-StateLamp": "State",
+  StringDisplay: "Str",
 };
 
 export function partFromTool(type: PartType, box: Box): Part {
@@ -54,6 +63,12 @@ export function partFromTool(type: PartType, box: Box): Part {
       return numericDisplay(name, box);
     case "AlarmSummary":
       return alarmSummary(name, box);
+    case "Switch":
+      return switchPart(name, "START", box);
+    case "N-StateLamp":
+      return nStateLamp(name, ["STOPPED", "RUNNING", "FAULT"], box);
+    case "StringDisplay":
+      return stringDisplay(name, box);
     case "Path":
       // A Path with no geometry would render as nothing; a library drop goes
       // through symbolPart instead, which has the geometry to give it.

@@ -26,6 +26,7 @@ import {
   Type,
   Unlock,
 } from "lucide-react";
+import { Layers, Quote, ToggleLeft } from "lucide-react";
 import type { PartType } from "@/lib/ote/schema";
 import { useProject } from "@/store/project";
 import { cn } from "@/components/ui";
@@ -37,6 +38,9 @@ const ICON: Record<PartType, typeof Square> = {
   NumericDisplay: Hash,
   AlarmSummary: Bell,
   Path: Route,
+  Switch: ToggleLeft,
+  "N-StateLamp": Layers,
+  StringDisplay: Quote,
 };
 
 export function LayersPanel() {
