@@ -8,34 +8,52 @@
 
 import {
   alarmSummary,
+  barScale,
+  blockTrend,
+  dateTimeDisplay,
   lamp,
   nStateLamp,
   numericDisplay,
   pathPart,
+  pipe,
   rectangle,
   stringDisplay,
   switchPart,
   textBox,
+  toggleSwitch,
+  trendGraph,
   type Box,
 } from "@/lib/ote/parts";
 import type { Part, PartType } from "@/lib/ote/schema";
 
 /** Every tool the toolbar can arm, with the label and the key that arms it. */
+export type ToolGroup = "Basic" | "Indicators" | "Controls" | "Displays" | "Data";
+
 export const TOOLS: {
   type: PartType;
   label: string;
   hint: string;
   key: string;
+  group: ToolGroup;
 }[] = [
-  { type: "Rectangle", label: "Rectangle", hint: "Panel or background", key: "r" },
-  { type: "TextBox", label: "Text", hint: "Label or title", key: "t" },
-  { type: "Lamp", label: "Lamp", hint: "Two-state indicator", key: "l" },
-  { type: "NumericDisplay", label: "Numeric", hint: "Bound reading", key: "n" },
-  { type: "AlarmSummary", label: "Alarm summary", hint: "Active alarm grid", key: "a" },
-  { type: "Switch", label: "Switch", hint: "Touch target that writes a bit", key: "s" },
-  { type: "N-StateLamp", label: "N-state lamp", hint: "One face per integer state", key: "m" },
-  { type: "StringDisplay", label: "String", hint: "Bound text", key: "g" },
+  { type: "Rectangle", label: "Rectangle", hint: "Panel or background", key: "r", group: "Basic" },
+  { type: "TextBox", label: "Text", hint: "Label or title", key: "t", group: "Basic" },
+  { type: "Pipe", label: "Pipe", hint: "Line whose colour follows a state", key: "p", group: "Basic" },
+  { type: "Lamp", label: "Lamp", hint: "Two-state indicator", key: "l", group: "Indicators" },
+  { type: "N-StateLamp", label: "N-state lamp", hint: "One face per integer state", key: "m", group: "Indicators" },
+  { type: "Switch", label: "Switch", hint: "Momentary touch target that writes a bit", key: "s", group: "Controls" },
+  { type: "ToggleSwitch", label: "Toggle switch", hint: "Latching two-position switch", key: "k", group: "Controls" },
+  { type: "NumericDisplay", label: "Numeric", hint: "Bound reading", key: "n", group: "Displays" },
+  { type: "StringDisplay", label: "String", hint: "Bound text", key: "g", group: "Displays" },
+  { type: "DateTimeDisplay", label: "Date and time", hint: "The panel clock", key: "d", group: "Displays" },
+  { type: "BarScale", label: "Scale", hint: "Ticks and labels beside a level", key: "b", group: "Displays" },
+  { type: "AlarmSummary", label: "Alarm summary", hint: "Active alarm grid", key: "a", group: "Data" },
+  { type: "TrendGraph", label: "Trend", hint: "Line trend of up to sixteen tags", key: "e", group: "Data" },
+  { type: "BlockTrend", label: "Block trend", hint: "Bar trend of the last samples", key: "w", group: "Data" },
 ];
+
+/** The tools a hand reaches for most; the rest sit in the Insert menu. */
+export const QUICK_TOOLS: PartType[] = ["Rectangle", "TextBox", "Lamp", "NumericDisplay", "Switch"];
 
 /** A stem the store then makes unique, in the shape the pipeline already uses. */
 const STEM: Record<PartType, string> = {
@@ -48,6 +66,12 @@ const STEM: Record<PartType, string> = {
   Switch: "Sw",
   "N-StateLamp": "State",
   StringDisplay: "Str",
+  ToggleSwitch: "Tgl",
+  BarScale: "Scale",
+  Pipe: "Pipe",
+  DateTimeDisplay: "Clock",
+  TrendGraph: "Trend",
+  BlockTrend: "Blocks",
 };
 
 export function partFromTool(type: PartType, box: Box): Part {
@@ -69,6 +93,18 @@ export function partFromTool(type: PartType, box: Box): Part {
       return nStateLamp(name, ["STOPPED", "RUNNING", "FAULT"], box);
     case "StringDisplay":
       return stringDisplay(name, box);
+    case "ToggleSwitch":
+      return toggleSwitch(name, "OFF", "ON", box);
+    case "BarScale":
+      return barScale(name, box);
+    case "Pipe":
+      return pipe(name, box);
+    case "DateTimeDisplay":
+      return dateTimeDisplay(name, box);
+    case "TrendGraph":
+      return trendGraph(name, [], box);
+    case "BlockTrend":
+      return blockTrend(name, [], box);
     case "Path":
       // A Path with no geometry would render as nothing; a library drop goes
       // through symbolPart instead, which has the geometry to give it.

@@ -8,6 +8,7 @@
 
 import {
   AMBER,
+  BLUE,
   DARK_GREEN,
   DARK_GREY,
   GREEN,
@@ -15,6 +16,7 @@ import {
   INK,
   PAPER,
   RED,
+  TEAL,
   WHITE,
 } from "./palette";
 import type { Part, Screen, ViewBox } from "./schema";
@@ -195,6 +197,135 @@ export function stringDisplay(name: string, box: Box, length = 20): Part {
     Border: color(DARK_GREY),
     Thickness: 1,
     TextLayout: { HorizontalAlignment: 1, VerticalAlignment: 64 },
+    Location: { Left: box.left, Top: box.top },
+    Width: box.width,
+    Height: box.height,
+  };
+}
+
+/** A latching two-position switch: grey at rest, the brand green when on. */
+export function toggleSwitch(name: string, off: string, on: string, box: Box): Part {
+  return {
+    Type: "ToggleSwitch",
+    UniqueId: gid(),
+    Name: name,
+    InterlockState: false,
+    Off: face(off, INK, GREY, DARK_GREY),
+    On: face(on, WHITE, GREEN, DARK_GREEN),
+    Location: { Left: box.left, Top: box.top },
+    Width: box.width,
+    Height: box.height,
+  };
+}
+
+/** A scale from 0 to `max`, in the ink colour, one label per major tick. */
+export function barScale(name: string, box: Box, max = 100): Part {
+  return {
+    Type: "BarScale",
+    UniqueId: gid(),
+    Name: name,
+    ScaleLabel: true,
+    LabelAttribute: {
+      Max: max,
+      TextColor: color(INK),
+      Font: { ...FONT, Size: 10 },
+      IntegerDigits: String(Math.round(max)).length,
+      FloatDigits: 0,
+    },
+    Stroke: color(INK),
+    Location: { Left: box.left, Top: box.top },
+    Width: box.width,
+    Height: box.height,
+  };
+}
+
+/**
+ * A straight pipe across the box: along its longer side, so a tall box draws
+ * a riser and a wide one a header. State 0 is the empty pipe, state 1 the
+ * flowing one, in the product's own 3072-unit geometry.
+ */
+export function pipe(name: string, box: Box): Part {
+  const vertical = box.height >= box.width;
+  const half = 1536;
+  const data = vertical
+    ? [{ Location: { Left: half, Top: 0 } }, { Location: { Left: half, Top: 3072 } }]
+    : [{ Location: { Left: 0, Top: half } }, { Location: { Left: 3072, Top: half } }];
+  return {
+    Type: "Pipe",
+    UniqueId: gid(),
+    Name: name,
+    States: [
+      { Fill: color(GREY), Border: color(DARK_GREY), FillThickness: 6, BorderThickness: 10 },
+      { Fill: color(BLUE), Border: color(DARK_GREY), FillThickness: 6, BorderThickness: 10 },
+    ],
+    Invalid: { Fill: color(RED), Border: color(DARK_GREY), FillThickness: 6, BorderThickness: 10 },
+    Path: { Commands: "ML", Data: data },
+    Location: { Left: box.left, Top: box.top },
+    Width: box.width,
+    Height: box.height,
+  };
+}
+
+/** The panel clock, drawn like a numeric display. */
+export function dateTimeDisplay(name: string, box: Box): Part {
+  return {
+    Type: "DateTimeDisplay",
+    UniqueId: gid(),
+    Name: name,
+    IsInputModeEnabled: false,
+    TextColor: color(INK),
+    Font: { ...FONT, Size: 14 },
+    Fill: color(WHITE),
+    Border: color(DARK_GREY),
+    Thickness: 1,
+    TextLayout: { HorizontalAlignment: 2, VerticalAlignment: 64 },
+    Location: { Left: box.left, Top: box.top },
+    Width: box.width,
+    Height: box.height,
+  };
+}
+
+/** Channel colours, in the order an operator expects to tell them apart. */
+const CHANNEL_COLOURS = [GREEN, AMBER, BLUE, RED, TEAL, DARK_GREY];
+
+function channels(tags: string[]) {
+  const named = tags.length > 0 ? tags.slice(0, 16) : [""];
+  return named.map((tag, i) => ({
+    ...(tag ? { Variable: tag } : {}),
+    Stroke: color(CHANNEL_COLOURS[i % CHANNEL_COLOURS.length]),
+    UseGlobalRange: true,
+    DisplayFormat: 1,
+  }));
+}
+
+/** A line trend of the named tags; an empty list makes one unassigned channel. */
+export function trendGraph(name: string, tags: string[], box: Box): Part {
+  return {
+    Type: "TrendGraph",
+    UniqueId: gid(),
+    Name: name,
+    Channels: channels(tags),
+    GraphType: 1,
+    CursorLabelsEnabled: true,
+    DisplayHistoricalData: true,
+    Fill: color(WHITE),
+    Border: color(DARK_GREY),
+    Location: { Left: box.left, Top: box.top },
+    Width: box.width,
+    Height: box.height,
+  };
+}
+
+/** A bar trend: the last `points` samples of each named tag, side by side. */
+export function blockTrend(name: string, tags: string[], box: Box, points = 12): Part {
+  return {
+    Type: "BlockTrend",
+    UniqueId: gid(),
+    Name: name,
+    Channels: channels(tags).map((c) => ({ ...c, NumberOfData: points })),
+    NumberOfDataPoints: points,
+    Fill: color(WHITE),
+    Border: color(DARK_GREY),
     Location: { Left: box.left, Top: box.top },
     Width: box.width,
     Height: box.height,

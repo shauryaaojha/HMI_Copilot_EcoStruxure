@@ -174,6 +174,140 @@ export const StringDisplay = z.object({
   TextLayout: TextLayout.optional(),
 });
 
+/**
+ * A two-position switch that holds its state: an Off face and an On face, and
+ * the bound bit flips between them. InterlockState is the product's own gate
+ * flag (Demo 1.eote, ToggleSwitch1).
+ */
+export const ToggleSwitch = z.object({
+  Type: z.literal("ToggleSwitch"),
+  ...base,
+  InterlockState: z.boolean().optional(),
+  Off: LampState,
+  On: LampState,
+});
+
+/**
+ * A scale drawn beside a level or a bar: ticks and labels, no value of its own.
+ * LabelAttribute's fields are the ones the product writes on its scales
+ * (BarScale1 and Manifold1_scale in Demo 1.eote); anything else it writes is
+ * carried through by passthrough.
+ */
+export const ScaleLabel = z
+  .object({
+    Max: z.number().optional(),
+    TextColor: ColorRef.optional(),
+    Font: FontRef.optional(),
+    IntegerDigits: z.number().int().optional(),
+    FloatDigits: z.number().int().optional(),
+  })
+  .passthrough();
+
+export const BarScale = z.object({
+  Type: z.literal("BarScale"),
+  ...base,
+  ScaleLabel: z.boolean().optional(),
+  LabelAttribute: ScaleLabel.optional(),
+  ScaleAttribute: z.object({ Type: z.number().int().optional() }).passthrough().optional(),
+  Stroke: Paint.optional(),
+});
+
+/**
+ * A pipe is a polyline with a state per bound value: a fill stroke drawn over
+ * a wider border stroke. Its geometry is in the product's 3072-unit space and
+ * scaled to the box, as a Path's is.
+ */
+const PipeState = z.object({
+  Fill: Paint.optional(),
+  Border: Paint.optional(),
+  FillThickness: z.number().optional(),
+  BorderThickness: z.number().optional(),
+});
+
+export const Pipe = z.object({
+  Type: z.literal("Pipe"),
+  ...base,
+  States: z.array(PipeState).min(1).max(16),
+  Invalid: PipeState.optional(),
+  Path: z.object({
+    Commands: z.string(),
+    Data: z.array(z.object({ Location: Location })).min(2),
+  }),
+});
+
+/**
+ * The panel clock. Text properties are the ones its sibling TimeDisplay
+ * carries in the same file; the product writes none of them when they are
+ * default, which is why the captured example is nearly empty.
+ */
+export const DateTimeDisplay = z.object({
+  Type: z.literal("DateTimeDisplay"),
+  ...base,
+  IsInputModeEnabled: z.boolean().optional(),
+  SelectedColor: z.number().int().optional(),
+  TextColor: ColorRef.optional(),
+  Font: FontRef.optional(),
+  Fill: Paint.optional(),
+  Border: Paint.optional(),
+  Thickness: z.number().optional(),
+  TextLayout: TextLayout.optional(),
+});
+
+/**
+ * A trend channel names its tag inline - Channels[].Variable - rather than
+ * through Bindings.dat. The channel's Fill is the product's typed paint with
+ * the colour beside the type, which is not a Paint, so it is kept as written.
+ */
+export const TrendChannel = z
+  .object({
+    Variable: z.string().optional(),
+    Stroke: Paint.optional(),
+    Fill: z
+      .object({
+        Type: z.number().int().optional(),
+        Color: ColorRef.shape.Color.optional(),
+      })
+      .passthrough()
+      .optional(),
+    UseGlobalRange: z.boolean().optional(),
+    DisplayFormat: z.number().int().optional(),
+    Mark: z.number().int().optional(),
+    NumberOfData: z.number().int().optional(),
+  })
+  .passthrough();
+
+/**
+ * The scale and cursor configuration of a trend is a dozen nested objects the
+ * product writes in full; they are carried through (passthrough) rather than
+ * modelled, because the canvas has nothing to draw with them and the writer
+ * has to hand them back unchanged.
+ */
+export const TrendGraph = z
+  .object({
+    Type: z.literal("TrendGraph"),
+    ...base,
+    Options: z.number().int().optional(),
+    Channels: z.array(TrendChannel).min(1).max(16),
+    GraphType: z.number().int().optional(),
+    CursorLabelsEnabled: z.boolean().optional(),
+    DisplayHistoricalData: z.boolean().optional(),
+    Fill: Paint.optional(),
+    Border: Paint.optional(),
+  })
+  .passthrough();
+
+export const BlockTrend = z
+  .object({
+    Type: z.literal("BlockTrend"),
+    ...base,
+    Options: z.number().int().optional(),
+    Channels: z.array(TrendChannel).min(1).max(16),
+    NumberOfDataPoints: z.number().int().optional(),
+    Fill: Paint.optional(),
+    Border: Paint.optional(),
+  })
+  .passthrough();
+
 export const Part = z.discriminatedUnion("Type", [
   Rectangle,
   TextBox,
@@ -184,6 +318,12 @@ export const Part = z.discriminatedUnion("Type", [
   Switch,
   NStateLamp,
   StringDisplay,
+  ToggleSwitch,
+  BarScale,
+  Pipe,
+  DateTimeDisplay,
+  TrendGraph,
+  BlockTrend,
 ]);
 
 export const ViewBox = z.object({
@@ -222,6 +362,12 @@ export const PART_TYPES = [
   "Switch",
   "N-StateLamp",
   "StringDisplay",
+  "ToggleSwitch",
+  "BarScale",
+  "Pipe",
+  "DateTimeDisplay",
+  "TrendGraph",
+  "BlockTrend",
 ] as const satisfies readonly PartType[];
 export type ViewBox = z.infer<typeof ViewBox>;
 export type Screen = z.infer<typeof Screen>;

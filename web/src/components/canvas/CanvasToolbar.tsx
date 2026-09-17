@@ -32,15 +32,12 @@ import {
   AlignStartHorizontal,
   AlignStartVertical,
   AlignVerticalSpaceAround,
-  Bell,
   BringToFront,
   Eye,
   EyeOff,
   Grid3x3,
   Group,
   Hand,
-  Hash,
-  Lightbulb,
   Lock,
   Magnet,
   Maximize2,
@@ -53,38 +50,20 @@ import {
   SendToBack,
   Square,
   Trash2,
-  Type,
   Undo2,
   Ungroup,
   Unlock,
 } from "lucide-react";
-import { Layers, Quote, ToggleLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import type { PartType } from "@/lib/ote/schema";
 import { useProject } from "@/store/project";
 import { Badge, Button, cn } from "@/components/ui";
+import { InsertMenu } from "./InsertMenu";
+import { QUICK_TOOLS, TOOLS } from "./newPart";
+import { TOOL_ICON } from "./toolIcons";
 
-const TOOL_ICON: Record<string, typeof Square> = {
-  Rectangle: Square,
-  TextBox: Type,
-  Lamp: Lightbulb,
-  NumericDisplay: Hash,
-  AlarmSummary: Bell,
-  Switch: ToggleLeft,
-  "N-StateLamp": Layers,
-  StringDisplay: Quote,
-};
-
-const TOOLS: { type: PartType; label: string; key: string }[] = [
-  { type: "Rectangle", label: "Rectangle", key: "R" },
-  { type: "TextBox", label: "Text", key: "T" },
-  { type: "Lamp", label: "Lamp", key: "L" },
-  { type: "NumericDisplay", label: "Numeric display", key: "N" },
-  { type: "AlarmSummary", label: "Alarm summary", key: "A" },
-  { type: "Switch", label: "Switch", key: "S" },
-  { type: "N-StateLamp", label: "N-state lamp", key: "M" },
-  { type: "StringDisplay", label: "String display", key: "G" },
-];
+/** The five inline tools, in the order the hand expects them. */
+const QUICK = QUICK_TOOLS.map((type) => TOOLS.find((t) => t.type === type)!);
 
 export interface CanvasToolbarProps {
   tool: PartType | null;
@@ -234,12 +213,19 @@ export function CanvasToolbar({
 
           <Sep />
 
-          {TOOLS.map((t) =>
-            icon(`${t.label} (${t.key})`, TOOL_ICON[t.type] ?? Square, () => {
+          {QUICK.map((t) =>
+            icon(`${t.label} (${t.key.toUpperCase()})`, TOOL_ICON[t.type], () => {
               onPanMode(false);
               onTool(tool === t.type ? null : t.type);
             }, { pressed: tool === t.type }),
           )}
+          <InsertMenu
+            tool={tool}
+            onTool={(next) => {
+              onPanMode(false);
+              onTool(next);
+            }}
+          />
 
           <Sep />
 

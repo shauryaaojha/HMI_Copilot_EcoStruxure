@@ -14,34 +14,10 @@
  */
 
 import { useRef, useState } from "react";
-import {
-  Bell,
-  Eye,
-  EyeOff,
-  Hash,
-  Lightbulb,
-  Lock,
-  Route,
-  Square,
-  Type,
-  Unlock,
-} from "lucide-react";
-import { Layers, Quote, ToggleLeft } from "lucide-react";
-import type { PartType } from "@/lib/ote/schema";
+import { Eye, EyeOff, Lock, Unlock } from "lucide-react";
+import { TOOL_ICON } from "@/components/canvas/toolIcons";
 import { useProject } from "@/store/project";
 import { cn } from "@/components/ui";
-
-const ICON: Record<PartType, typeof Square> = {
-  Rectangle: Square,
-  TextBox: Type,
-  Lamp: Lightbulb,
-  NumericDisplay: Hash,
-  AlarmSummary: Bell,
-  Path: Route,
-  Switch: ToggleLeft,
-  "N-StateLamp": Layers,
-  StringDisplay: Quote,
-};
 
 export function LayersPanel() {
   const screens = useProject((s) => s.screens);
@@ -96,7 +72,7 @@ export function LayersPanel() {
       <ul className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
         {rows.map((part, row) => {
           const meta = objectMeta[part.UniqueId] ?? {};
-          const Icon = ICON[part.Type] ?? Square;
+          const Icon = TOOL_ICON[part.Type];
           const isSelected = selected.has(part.UniqueId);
           return (
             <li key={part.UniqueId}>

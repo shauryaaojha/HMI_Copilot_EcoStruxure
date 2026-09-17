@@ -20,6 +20,14 @@ import {
   SwitchPart,
   TextBoxPart,
 } from "./BasicParts";
+import {
+  BarScalePart,
+  BlockTrendPart,
+  DateTimeDisplayPart,
+  PipePart,
+  ToggleSwitchPart,
+  TrendGraphPart,
+} from "./DataParts";
 import { AlarmSummaryPart, type AlarmRow } from "./AlarmSummaryPart";
 import { PathPartNode } from "./GraphicObject";
 
@@ -78,6 +86,38 @@ export function PartNode({ part, values, alarms }: PartNodeProps) {
       const raw = values?.[part.Name];
       return <StringDisplayPart part={part} value={raw === undefined ? undefined : String(raw)} />;
     }
+
+    case "ToggleSwitch":
+      return (
+        <ToggleSwitchPart
+          part={part}
+          on={values?.[part.Name] === true || values?.[part.Name] === 1}
+        />
+      );
+
+    case "BarScale":
+      return <BarScalePart part={part} />;
+
+    case "Pipe": {
+      const raw = values?.[part.Name];
+      return (
+        <PipePart
+          part={part}
+          value={typeof raw === "number" ? raw : typeof raw === "boolean" ? Number(raw) : undefined}
+        />
+      );
+    }
+
+    case "DateTimeDisplay": {
+      const raw = values?.[part.Name];
+      return <DateTimeDisplayPart part={part} value={typeof raw === "string" ? raw : undefined} />;
+    }
+
+    case "TrendGraph":
+      return <TrendGraphPart part={part} />;
+
+    case "BlockTrend":
+      return <BlockTrendPart part={part} />;
 
     default: {
       const exhaustive: never = part;

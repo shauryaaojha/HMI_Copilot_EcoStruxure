@@ -612,6 +612,17 @@ function defaultSize(type: PartType): { width: number; height: number } {
       return { width: 160, height: 48 };
     case "StringDisplay":
       return { width: 200, height: 36 };
+    case "ToggleSwitch":
+      return { width: 140, height: 56 };
+    case "BarScale":
+      return { width: 40, height: 160 };
+    case "Pipe":
+      return { width: 160, height: 12 };
+    case "DateTimeDisplay":
+      return { width: 180, height: 32 };
+    case "TrendGraph":
+    case "BlockTrend":
+      return { width: 420, height: 220 };
     case "Rectangle":
     default:
       return { width: 200, height: 120 };

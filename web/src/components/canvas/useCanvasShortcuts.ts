@@ -12,17 +12,12 @@
 import { useEffect } from "react";
 import type { PartType } from "@/lib/ote/schema";
 import { useProject } from "@/store/project";
+import { TOOLS } from "./newPart";
 
-const TOOL_KEYS: Record<string, PartType> = {
-  r: "Rectangle",
-  t: "TextBox",
-  l: "Lamp",
-  n: "NumericDisplay",
-  a: "AlarmSummary",
-  s: "Switch",
-  m: "N-StateLamp",
-  g: "StringDisplay",
-};
+/** One key per tool, from the same table the toolbar and the Insert menu read. */
+const TOOL_KEYS: Record<string, PartType> = Object.fromEntries(
+  TOOLS.map((t) => [t.key, t.type]),
+);
 
 export interface CanvasShortcutHandlers {
   onTool: (tool: PartType | null) => void;

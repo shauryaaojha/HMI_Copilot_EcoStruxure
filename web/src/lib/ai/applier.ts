@@ -21,13 +21,19 @@
 
 import {
   alarmSummary,
+  barScale,
+  blockTrend,
+  dateTimeDisplay,
   lamp,
   nStateLamp,
   numericDisplay,
+  pipe,
   rectangle,
   stringDisplay,
   switchPart,
   textBox,
+  toggleSwitch,
+  trendGraph,
 } from "@/lib/ote/parts";
 import {
   AMBER,
@@ -178,6 +184,17 @@ const sizeFor = (type: Op["type"]): { width: number; height: number } => {
       return { width: 160, height: 48 };
     case "StringDisplay":
       return { width: 200, height: 36 };
+    case "ToggleSwitch":
+      return { width: 140, height: 56 };
+    case "BarScale":
+      return { width: 40, height: 160 };
+    case "Pipe":
+      return { width: 160, height: 12 };
+    case "DateTimeDisplay":
+      return { width: 180, height: 32 };
+    case "TrendGraph":
+    case "BlockTrend":
+      return { width: 420, height: 220 };
     default:
       return { width: 200, height: 100 };
   }
@@ -210,6 +227,22 @@ function buildPart(op: Op, name: string, box: Box): Part | null {
     }
     case "StringDisplay":
       return stringDisplay(name, box);
+    case "ToggleSwitch":
+      return toggleSwitch(name, op.offText ?? "OFF", op.onText ?? "ON", box);
+    case "BarScale":
+      return barScale(name, box);
+    case "Pipe":
+      return pipe(name, box);
+    case "DateTimeDisplay":
+      return dateTimeDisplay(name, box);
+    case "TrendGraph":
+    case "BlockTrend": {
+      // A trend names its tags inline: the op's tag for one, or its text as
+      // a comma-separated list - "FT_101_PV, PT_101_PV".
+      const listed = (op.text ?? "").split(",").map((t) => t.trim()).filter(Boolean);
+      const tags = [op.tag, ...listed].filter((t): t is string => !!t);
+      return op.type === "TrendGraph" ? trendGraph(name, tags, box) : blockTrend(name, tags, box);
+    }
     default:
       // Path needs geometry from the shipped library, which a model cannot
       // supply - it comes from the library panel or not at all.

@@ -28,21 +28,25 @@ export interface Finding {
 }
 
 /** Properties that carry a live value, by part type. */
-const VALUE_PROPERTY: Partial<Record<Part["Type"], string>> = {
+export const VALUE_PROPERTY: Partial<Record<Part["Type"], string>> = {
   Lamp: "CurrentValue",
   NumericDisplay: "CurrentValue",
   Switch: "CurrentValue",
   "N-StateLamp": "CurrentValue",
   StringDisplay: "CurrentValue",
+  ToggleSwitch: "CurrentValue",
+  Pipe: "CurrentValue",
 };
 
 /** What a part can legitimately be driven by. */
-const ACCEPTS: Partial<Record<Part["Type"], Variable["DataType"][]>> = {
+export const ACCEPTS: Partial<Record<Part["Type"], Variable["DataType"][]>> = {
   Lamp: ["BOOL"],
   NumericDisplay: ["INT", "DINT", "UINT", "UDINT", "WORD", "DWORD", "REAL", "LREAL"],
   Switch: ["BOOL"],
   "N-StateLamp": ["BOOL", "INT", "DINT", "UINT", "UDINT", "WORD", "DWORD"],
   StringDisplay: ["STRING"],
+  ToggleSwitch: ["BOOL"],
+  Pipe: ["BOOL", "INT", "DINT", "UINT", "UDINT", "WORD", "DWORD"],
 };
 
 const isNumeric = (t: Variable["DataType"]) => t !== "BOOL" && t !== "STRING";
