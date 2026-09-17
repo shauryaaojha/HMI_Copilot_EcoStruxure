@@ -28,8 +28,10 @@ import type {
   ChatMessage,
   Finding,
   ForeignPart,
+  ImportReport,
   ObjectMeta,
   Preview,
+  ScreenImport,
   ScreenPlacement,
   Standards,
   TagImport,
@@ -167,6 +169,13 @@ interface ProjectState {
   placeScreen: (id: string, at: ScreenPlacement) => void;
   /** Forget every hand placement, so the automatic grid takes over again. */
   tidyBoard: () => void;
+  /**
+   * Lift screens out of another project into this one. Fresh ids, unique
+   * names, missing tags added, bindings re-pointed by tag name; a binding to
+   * a tag neither project has is dropped and named in the report. One undo
+   * step. docs/PLAN_PHASE2.md item 2.
+   */
+  importScreens: (incoming: ScreenImport) => ImportReport;
 
   /* --- objects ------------------------------------------------------- */
   appendObject: (screenId: string, part: Part) => void;
@@ -242,7 +251,7 @@ type ProjectActions = Pick<
   | "hydrate" | "rename" | "setTarget" | "markSaved" | "select" | "selectAll"
   | "hover" | "setSimulating" | "setPreview" | "addScreen" | "duplicateScreen" | "renameScreen"
   | "removeScreen" | "setActiveScreen" | "reorderScreens" | "placeScreen"
-  | "tidyBoard" | "appendObject"
+  | "tidyBoard" | "importScreens" | "appendObject"
   | "updateObject" | "setProperty" | "nudge" | "setBox" | "removeObjects"
   | "duplicateObjects" | "copyObjects" | "cutObjects" | "pasteObjects" | "align"
   | "spread" | "restackObjects" | "setMeta" | "group" | "ungroup" | "undo"
@@ -450,6 +459,79 @@ export function createProjectStore() {
       }),
 
     /* --- screens ------------------------------------------------------ */
+
+    importScreens: (incoming) => {
+      const report: ImportReport = {
+        screens: 0,
+        objects: 0,
+        tagsAdded: 0,
+        bindings: 0,
+        droppedBindings: [],
+        carriedLeftBehind: 0,
+        renamed: [],
+      };
+      if (incoming.screens.length === 0) return report;
+      let firstId: string | undefined;
+      set((s) => {
+        remember(s, `Import ${incoming.screens.length} screen${incoming.screens.length === 1 ? "" : "s"}`);
+
+        // Tags first, so a binding can be re-pointed at one that just arrived.
+        const have = new Set(s.variables.map((v) => v.Name));
+        for (const v of incoming.variables) {
+          if (have.has(v.Name)) continue;
+          have.add(v.Name);
+          s.variables.push(structuredClone(v));
+          report.tagsAdded += 1;
+        }
+
+        const screenNames = new Set(s.screens.map((x) => x.Name));
+        const partNames = takenNames(s);
+        /** Incoming object id -> the id it has here, for the bindings. */
+        const idMap = new Map<string, string>();
+
+        for (const source of incoming.screens) {
+          const view = source.Children[0];
+          const parts: Part[] = view.Children.map((part) => {
+            const name = uniqueName(partNames, part.Name);
+            partNames.add(name);
+            const id = crypto.randomUUID();
+            idMap.set(part.UniqueId, id);
+            return { ...structuredClone(part), UniqueId: id, Name: name };
+          });
+          const name = uniqueName(screenNames, source.Name);
+          screenNames.add(name);
+          if (name !== source.Name) report.renamed.push(`${source.Name} → ${name}`);
+          const id = crypto.randomUUID();
+          firstId ??= id;
+          s.screens.push({
+            Type: "Screen",
+            UniqueId: id,
+            Name: name,
+            Children: [{ ...structuredClone(view), UniqueId: crypto.randomUUID(), Children: parts }],
+          });
+          report.screens += 1;
+          report.objects += parts.length;
+          report.carriedLeftBehind += incoming.foreign?.[source.UniqueId]?.length ?? 0;
+        }
+
+        for (const b of incoming.bindings) {
+          const targetId = idMap.get(b.targetId);
+          if (!targetId) continue;
+          const part = s.screens.flatMap((x) => viewOf(x).Children).find((p) => p.UniqueId === targetId)!;
+          if (!have.has(b.tag)) {
+            report.droppedBindings.push(`${part.Name} → ${b.tag}`);
+            continue;
+          }
+          s.bindings.push({ tag: b.tag, targetId, targetName: part.Name, property: b.property });
+          report.bindings += 1;
+        }
+
+        s.activeScreenId = firstId;
+        s.selectedIds = [];
+        ensureHandles(s);
+      });
+      return report;
+    },
 
     addScreen: (name) => {
       const id = crypto.randomUUID();

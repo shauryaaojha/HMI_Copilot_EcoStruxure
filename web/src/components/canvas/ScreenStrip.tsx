@@ -19,9 +19,10 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Copy, Plus, Trash2 } from "lucide-react";
+import { Copy, Import, Plus, Trash2 } from "lucide-react";
 import { useProject } from "@/store/project";
 import { cn } from "@/components/ui";
+import { ImportScreensDialog } from "./ImportScreensDialog";
 
 export function ScreenStrip() {
   const screens = useProject((s) => s.screens);
@@ -35,6 +36,8 @@ export function ScreenStrip() {
 
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [importing, setImporting] = useState<File | null>(null);
+  const picker = useRef<HTMLInputElement>(null);
   const dragFrom = useRef<number | null>(null);
   const input = useRef<HTMLInputElement>(null);
 
@@ -148,6 +151,33 @@ export function ScreenStrip() {
         <Plus size={12} aria-hidden />
         Screen
       </button>
+
+      {/* Screens from another project. The file is read, the engineer picks,
+          and the picked screens land here with their bindings re-pointed. */}
+      <input
+        ref={picker}
+        type="file"
+        accept=".eote"
+        className="hidden"
+        aria-hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file) setImporting(file);
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => picker.current?.click()}
+        title="Import screens from another .eote project"
+        aria-label="Import screens from another project"
+        className="focus-ring flex h-6 shrink-0 items-center gap-1 rounded-full border border-line-subtle px-2 text-[11px] text-text-muted transition hover:border-brand-500/50 hover:text-brand-400"
+      >
+        <Import size={12} aria-hidden />
+        Import
+      </button>
+
+      {importing && <ImportScreensDialog file={importing} onClose={() => setImporting(null)} />}
     </div>
   );
 }

@@ -167,6 +167,29 @@ export interface ForeignPart {
   box: { left: number; top: number; width: number; height: number } | null;
 }
 
+/** Screens lifted out of another project, as the import route returns them. */
+export interface ScreenImport {
+  screens: Screen[];
+  variables: Variable[];
+  bindings: Binding[];
+  /** Carried objects per incoming screen id; they do not come along. */
+  foreign?: Record<string, ForeignPart[]>;
+}
+
+/** What importing screens did, for the engineer to read before moving on. */
+export interface ImportReport {
+  screens: number;
+  objects: number;
+  tagsAdded: number;
+  bindings: number;
+  /** "Lamp_1 → PMP_101_RUN": the tag was not in either project. */
+  droppedBindings: string[];
+  /** Carried objects on the imported screens, which cannot come along. */
+  carriedLeftBehind: number;
+  /** Screen names that changed to stay unique, as "was → is". */
+  renamed: string[];
+}
+
 /** What a pending proposal would do to one screen, for the canvas to ghost. */
 export interface ScreenPreview {
   added: Part[];
