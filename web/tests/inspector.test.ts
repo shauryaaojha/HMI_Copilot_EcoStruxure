@@ -17,8 +17,10 @@ import {
   fieldsOf,
   groupsOf,
   valueAt,
+  withIndex,
   type SchemaField,
 } from "@/components/inspector/schemaFields";
+import { nStateLamp, trendGraph } from "@/lib/ote/parts";
 import { demoScreen } from "@/fixtures";
 
 const options = Part._def.options as z.AnyZodObject[];
@@ -111,5 +113,34 @@ describe("inspector fields come from the schema, not from a list", () => {
   it("survives a part type it has never seen", () => {
     expect(fieldsOf("NotAPart")).toEqual([]);
     expect(groupsOf("NotAPart")).toEqual([]);
+  });
+
+  it("turns an array into a list whose elements are editable one at a time", () => {
+    // An N-state lamp's faces were a read-only JSON blob; now each face is a
+    // group with the same fields a Lamp state has, at a path with the index.
+    const states = fieldsOf("N-StateLamp").find((f) => f.key === "States")!;
+    expect(states.kind).toBe("list");
+    expect(states.readOnly).toBe(false);
+    expect(states.item?.kind).toBe("group");
+    expect(states.item?.fields?.map((f) => f.key)).toEqual(
+      fieldsOf("Lamp").find((f) => f.key === "Off")!.fields!.map((f) => f.key),
+    );
+
+    const second = withIndex(states.item!, 1);
+    const text = second.fields!.find((f) => f.key === "Text")!;
+    expect(text.path).toEqual(["States", "1", "Text"]);
+
+    const lamp = nStateLamp("S", ["STOPPED", "RUNNING", "FAULT"], { left: 0, top: 0, width: 100, height: 40 });
+    expect(valueAt(lamp, text.path)).toBe("RUNNING");
+  });
+
+  it("reaches a trend channel's Variable, which is where a trend binds its tag", () => {
+    const channels = fieldsOf("TrendGraph").find((f) => f.key === "Channels")!;
+    expect(channels.kind).toBe("list");
+    const first = withIndex(channels.item!, 0);
+    const variable = first.fields!.find((f) => f.key === "Variable")!;
+    expect(variable.kind).toBe("text");
+    const trend = trendGraph("T", ["FT_101_PV"], { left: 0, top: 0, width: 400, height: 200 });
+    expect(valueAt(trend, variable.path)).toBe("FT_101_PV");
   });
 });

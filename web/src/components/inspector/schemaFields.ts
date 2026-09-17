@@ -27,6 +27,7 @@ export type FieldKind =
   | "location"
   | "align"
   | "group"
+  | "list"
   | "unknown";
 
 export interface SchemaField {
@@ -41,6 +42,11 @@ export interface SchemaField {
   options?: string[];
   /** For "group" - a nested object with fields of its own, like a Lamp state. */
   fields?: SchemaField[];
+  /**
+   * For "list" - the shape of one element, with "*" in its path where the
+   * index goes. withIndex() turns it into the field for element n.
+   */
+  item?: SchemaField;
   min?: number;
   max?: number;
 }
@@ -147,6 +153,13 @@ function describe(key: string, schema: z.ZodTypeAny, path: string[]): SchemaFiel
       return { path: at, key, kind: kind === "color" ? "color" : "unknown", optional, readOnly: kind !== "color" };
     }
 
+    case "ZodArray": {
+      // An N-state lamp's faces, a pipe's states, a trend's channels: a list
+      // of groups the engineer edits one element at a time.
+      const item = describe("*", inner._def.type as z.ZodTypeAny, at);
+      return { path: at, key, kind: "list", optional, readOnly, item };
+    }
+
     case "ZodObject": {
       const kind = shapeKind(inner);
       if (kind !== "group") return { path: at, key, kind, optional, readOnly };
@@ -178,10 +191,19 @@ function describe(key: string, schema: z.ZodTypeAny, path: string[]): SchemaFiel
 const GROUPS: { title: string; keys: string[] }[] = [
   { title: "General", keys: ["Type", "Name", "UniqueId", "Location", "Width", "Height"] },
   { title: "Text", keys: ["Text", "Font", "TextColor", "TextLayout"] },
-  { title: "Appearance", keys: ["Fill", "Border", "Thickness"] },
-  { title: "Value", keys: ["CurrentValue", "DecimalDigits"] },
-  { title: "States", keys: ["Off", "On"] },
-  { title: "Geometry", keys: ["Commands", "Points"] },
+  { title: "Appearance", keys: ["Fill", "Border", "Thickness", "Stroke"] },
+  { title: "Value", keys: ["CurrentValue", "DecimalDigits", "DisplayLength"] },
+  {
+    title: "States",
+    keys: ["Off", "On", "Release", "Press", "NumberOfStates", "States", "Invalid", "InterlockState"],
+  },
+  { title: "Scale", keys: ["ScaleLabel", "LabelAttribute", "ScaleAttribute"] },
+  {
+    title: "Trend",
+    keys: ["Channels", "NumberOfDataPoints", "GraphType", "CursorLabelsEnabled", "DisplayHistoricalData"],
+  },
+  { title: "Behaviour", keys: ["ClickTrigger", "IsInputModeEnabled", "SelectedColor"] },
+  { title: "Geometry", keys: ["Commands", "Points", "Path"] },
 ];
 
 const OPTION_BY_TYPE = new Map(
@@ -220,6 +242,21 @@ export function groupsOf(type: string): FieldGroup[] {
   if (rest.length > 0) groups.push({ title: "Other", fields: rest });
 
   return groups;
+}
+
+/** The field for element `index` of a list: every "*" in the tree becomes the index. */
+export function withIndex(item: SchemaField, index: number): SchemaField {
+  return { ...reindex(item, index), key: String(index) };
+}
+
+/** Swaps the index into every path in the tree; the keys are the property names and stay. */
+function reindex(field: SchemaField, index: number): SchemaField {
+  return {
+    ...field,
+    path: field.path.map((step) => (step === "*" ? String(index) : step)),
+    fields: field.fields?.map((f) => reindex(f, index)),
+    item: field.item ? reindex(field.item, index) : undefined,
+  };
 }
 
 /** Reads a value out of a part by the path a SchemaField carries. */

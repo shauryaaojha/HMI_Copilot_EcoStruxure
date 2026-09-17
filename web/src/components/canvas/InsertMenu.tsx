@@ -29,7 +29,25 @@ export function InsertMenu({
   onTool: (tool: PartType | null) => void;
 }) {
   const [open, setOpen] = useState(false);
+  /**
+   * Where the menu goes, in viewport pixels. The button lives inside the
+   * toolbar's horizontal scroller, and a container that scrolls on one axis
+   * clips on the other - so a menu positioned inside it would be cut off at
+   * the toolbar's bottom edge. Fixed positioning takes it out of that box.
+   */
+  const [at, setAt] = useState<{ left: number; top: number } | null>(null);
   const root = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+
+  const toggle = () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const rect = button.current?.getBoundingClientRect();
+    if (rect) setAt({ left: rect.left, top: rect.bottom + 4 });
+    setOpen(true);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -39,19 +57,30 @@ export function InsertMenu({
     const key = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
+    // A scroll or a resize moves the button out from under a fixed menu -
+    // unless it is the menu's own list scrolling, which is fine.
+    const close = () => setOpen(false);
+    const scrolled = (event: Event) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    };
     window.addEventListener("pointerdown", away);
     window.addEventListener("keydown", key);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", scrolled, true);
     return () => {
       window.removeEventListener("pointerdown", away);
       window.removeEventListener("keydown", key);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", scrolled, true);
     };
   }, [open]);
 
   return (
     <div ref={root} className="relative shrink-0">
       <button
+        ref={button}
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={open}
         title="Insert an object"
@@ -67,12 +96,12 @@ export function InsertMenu({
         <ChevronDown size={11} aria-hidden className="text-text-faint" />
       </button>
 
-      {open && (
+      {open && at && (
         <div
           role="menu"
           aria-label="Insert an object"
-          className="absolute left-0 top-full z-30 mt-1 w-72 rounded-lg border border-line bg-surface-float p-1.5"
-          style={{ boxShadow: "var(--elev-3)" }}
+          className="fixed z-30 max-h-[70vh] w-72 overflow-y-auto rounded-lg border border-line bg-surface-float p-1.5"
+          style={{ left: at.left, top: at.top, boxShadow: "var(--elev-3)" }}
         >
           {GROUPS.map((group) => {
             const members = TOOLS.filter((t) => t.group === group);

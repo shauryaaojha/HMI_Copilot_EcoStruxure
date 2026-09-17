@@ -208,6 +208,12 @@ interface ProjectState {
   attribute: (step: PipelineStep, id: string) => void;
   setGenerating: (on: boolean) => void;
   addBinding: (binding: Binding) => void;
+  /**
+   * Bind one property of one object to a tag, replacing whatever drove it
+   * before; null unbinds. One undo step, like any other edit - a binding is
+   * part of the editable slice, so undo puts the old tag back.
+   */
+  setBinding: (targetId: string, property: string, tag: string | null) => void;
   addAlarm: (alarm: Alarm) => void;
   addFinding: (finding: Finding) => void;
   setEquipment: (equipment: Equipment[]) => void;
@@ -235,7 +241,7 @@ type ProjectActions = Pick<
   | "spread" | "restackObjects" | "setMeta" | "group" | "ungroup" | "undo"
   | "redo" | "commitBatch" | "refreshNavigation" | "importTags" | "setStandards" | "snapshot" | "restore"
   | "ensureScreen" | "appendToView" | "setStep" | "attribute" | "setGenerating"
-  | "addBinding" | "addAlarm" | "addFinding" | "setEquipment" | "log"
+  | "addBinding" | "setBinding" | "addAlarm" | "addFinding" | "setEquipment" | "log"
   | "addMessage" | "patchMessage" | "clearChat" | "reset" | "resetRun"
 >;
 
@@ -889,6 +895,19 @@ export function createProjectStore() {
     addBinding: (binding) =>
       set((s) => {
         s.bindings.push(binding);
+      }),
+
+    setBinding: (targetId, property, tag) =>
+      set((s) => {
+        const screen = screenHolding(s, targetId);
+        if (!screen) return;
+        const part = viewOf(screen).Children.find((p) => p.UniqueId === targetId);
+        if (!part) return;
+        const had = s.bindings.find((b) => b.targetId === targetId && b.property === property);
+        if ((had?.tag ?? null) === tag) return;
+        remember(s, tag ? `Bind ${part.Name} to ${tag}` : `Unbind ${part.Name}`);
+        s.bindings = s.bindings.filter((b) => !(b.targetId === targetId && b.property === property));
+        if (tag) s.bindings.push({ tag, targetId, targetName: part.Name, property });
       }),
 
     addAlarm: (alarm) =>

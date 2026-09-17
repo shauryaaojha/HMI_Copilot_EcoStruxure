@@ -19,10 +19,11 @@ import { Lock, Trash2, Unlock } from "lucide-react";
 import { useProject } from "@/store/project";
 import { TagTable } from "@/components/tags";
 import { LibraryPanel } from "@/components/library/LibraryPanel";
-import { Badge, Button, Field, Panel, Tabs, type TabItem } from "@/components/ui";
+import { Button, Field, Panel, Tabs, type TabItem } from "@/components/ui";
+import { BindingEditor } from "./BindingEditor";
 import { FieldEditor } from "./editors";
 import { LayersPanel } from "./LayersPanel";
-import { groupsOf, valueAt, type SchemaField } from "./schemaFields";
+import { groupsOf, valueAt, withIndex, type SchemaField } from "./schemaFields";
 
 type InspectorTab = "properties" | "layers" | "library" | "tags";
 
@@ -41,6 +42,44 @@ function FieldRow({
   part: unknown;
   onChange: (path: string[], value: unknown) => void;
 }) {
+  // A list - an N-state lamp's faces, a pipe's states, a trend's channels -
+  // is one subsection per element, numbered the way the product numbers them.
+  if (field.kind === "list" && field.item) {
+    const items = valueAt(part, field.path);
+    const count = Array.isArray(items) ? items.length : 0;
+    if (count === 0) {
+      return (
+        <Field label={label(field.key)}>
+          <p className="text-[11px] text-text-faint">None</p>
+        </Field>
+      );
+    }
+    return (
+      <div className="space-y-1.5">
+        <p className="text-xs font-medium text-text-secondary">{label(field.key)}</p>
+        {Array.from({ length: count }, (_, i) => {
+          const element = withIndex(field.item!, i);
+          return (
+            <div key={i} className="rounded-md border border-line-subtle p-2">
+              <p className="mb-2 text-[11px] font-medium text-text-muted">
+                {label(field.key).replace(/s$/, "")} {i}
+              </p>
+              {element.kind === "group" && element.fields ? (
+                <div className="space-y-2">
+                  {element.fields.map((child) => (
+                    <FieldRow key={child.path.join(".")} field={child} part={part} onChange={onChange} />
+                  ))}
+                </div>
+              ) : (
+                <FieldEditor field={element} value={valueAt(part, element.path)} onChange={onChange} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   // A nested group - a Lamp's Off and On states - becomes its own subsection,
   // because a state is a set of properties rather than a single value.
   if (field.kind === "group" && field.fields) {
@@ -238,25 +277,7 @@ export function Inspector() {
             )}
 
             <Panel title="Data binding" collapsible>
-              {bound.length === 0 ? (
-                <Badge tone="warn" dot>
-                  Unbound
-                </Badge>
-              ) : (
-                <ul className="space-y-2">
-                  {bound.map((b) => (
-                    <li
-                      key={`${b.tag}-${b.property}`}
-                      className="rounded-md border border-line-subtle p-2"
-                    >
-                      <p className="font-mono text-xs text-brand-400">{b.tag}</p>
-                      <p className="text-[11px] text-text-muted">
-                        drives {b.property}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <BindingEditor part={part} bound={bound} variables={variables} locked={locked} />
             </Panel>
 
             {groupsOf(part.Type).map((group) => (

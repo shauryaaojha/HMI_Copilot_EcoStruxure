@@ -117,3 +117,47 @@ describe("a generation run", () => {
     expect(useProject.getState().screens).toHaveLength(1);
   });
 });
+
+describe("binding from the inspector", () => {
+  beforeEach(() => {
+    useProject.getState().reset();
+    seed();
+  });
+
+  const lampId = () =>
+    useProject.getState().screens[0].Children[0].Children.find((p) => p.Type === "Lamp")!.UniqueId;
+  const bound = (id: string) =>
+    useProject.getState().bindings.filter((b) => b.targetId === id && b.property === "CurrentValue");
+
+  it("binds one property to one tag, replacing what drove it before", () => {
+    const id = lampId();
+    const [a, b] = demoVariables.filter((v) => v.DataType === "BOOL");
+    useProject.getState().setBinding(id, "CurrentValue", a.Name);
+    expect(bound(id).map((x) => x.tag)).toEqual([a.Name]);
+    useProject.getState().setBinding(id, "CurrentValue", b.Name);
+    expect(bound(id).map((x) => x.tag)).toEqual([b.Name]);
+    expect(bound(id)[0].targetName).toBe(
+      useProject.getState().screens[0].Children[0].Children.find((p) => p.UniqueId === id)!.Name,
+    );
+  });
+
+  it("null unbinds, and undo puts the tag back", () => {
+    const id = lampId();
+    const tag = demoVariables.find((v) => v.DataType === "BOOL")!.Name;
+    useProject.getState().setBinding(id, "CurrentValue", tag);
+    useProject.getState().setBinding(id, "CurrentValue", null);
+    expect(bound(id)).toHaveLength(0);
+    useProject.getState().undo();
+    expect(bound(id).map((x) => x.tag)).toEqual([tag]);
+  });
+
+  it("does nothing for an object that does not exist, or a binding that already holds", () => {
+    const id = lampId();
+    const tag = demoVariables.find((v) => v.DataType === "BOOL")!.Name;
+    useProject.getState().setBinding(id, "CurrentValue", tag);
+    const depth = useProject.getState().past.length;
+    useProject.getState().setBinding(id, "CurrentValue", tag);
+    useProject.getState().setBinding("nope", "CurrentValue", tag);
+    expect(useProject.getState().past.length).toBe(depth);
+  });
+});
