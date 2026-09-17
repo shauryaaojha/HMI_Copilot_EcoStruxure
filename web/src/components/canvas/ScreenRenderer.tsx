@@ -28,7 +28,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { Part, PartType, Screen } from "@/lib/ote/schema";
 import { resolveColor } from "@/lib/ote/palette";
-import type { ObjectMeta } from "@/store/types";
+import type { ObjectMeta, ScreenPreview } from "@/store/types";
 import { snapDelta, snapTargets, unionOf, type Box } from "@/store/edits";
 import { PartNode, type AlarmRow } from "./parts";
 
@@ -68,6 +68,13 @@ export interface ScreenRendererProps {
   values?: Record<string, number | boolean>;
   /** Rows for the AlarmSummary part, which cannot be drawn from its own JSON. */
   alarms?: AlarmRow[];
+  /**
+   * A pending proposal for this screen, drawn as ghosts: added objects
+   * translucent with a dashed brand outline, removed ones hatched, moved ones
+   * outlined at their new place with a line from where they are. None of it
+   * is interactive and none of it has a UniqueId the export could see.
+   */
+  preview?: ScreenPreview;
 
   /** Screen units per CSS pixel, so handles stay one size at every zoom. */
   scale?: number;
@@ -177,6 +184,7 @@ export function ScreenRenderer({
   objectMeta,
   values,
   alarms = [],
+  preview,
   scale = 1,
   showGrid = false,
   gridSize = 8,
@@ -424,6 +432,49 @@ export function ScreenRenderer({
           </g>
         );
       })}
+
+      {/* A pending proposal, as ghosts. Drawn above the objects and below the
+          grid; nothing here can be selected, dragged or exported. */}
+      {preview && (
+        <g pointerEvents="none" data-preview>
+          {preview.removed.map((id) => {
+            const part = visible.find((p) => p.UniqueId === id);
+            if (!part) return null;
+            const b = boxOf(part);
+            return (
+              <g key={`rm-${id}`}>
+                <rect x={b.left} y={b.top} width={b.width} height={b.height} fill="var(--color-status-warn)" fillOpacity={0.18} />
+                <line x1={b.left} y1={b.top} x2={b.left + b.width} y2={b.top + b.height} stroke="var(--color-status-warn)" strokeWidth={px(1)} />
+                <line x1={b.left + b.width} y1={b.top} x2={b.left} y2={b.top + b.height} stroke="var(--color-status-warn)" strokeWidth={px(1)} />
+                <rect x={b.left} y={b.top} width={b.width} height={b.height} fill="none" stroke="var(--color-status-warn)" strokeWidth={px(1)} strokeDasharray={`${px(4)} ${px(3)}`} />
+              </g>
+            );
+          })}
+          {preview.moved.map(({ id, from, to }) => (
+            <g key={`mv-${id}`}>
+              <line
+                x1={from.left + from.width / 2}
+                y1={from.top + from.height / 2}
+                x2={to.left + to.width / 2}
+                y2={to.top + to.height / 2}
+                stroke="var(--color-brand-400)"
+                strokeWidth={px(1)}
+                strokeDasharray={`${px(3)} ${px(3)}`}
+              />
+              <rect x={to.left} y={to.top} width={to.width} height={to.height} fill="var(--color-brand-400)" fillOpacity={0.1} stroke="var(--color-brand-400)" strokeWidth={px(1.5)} strokeDasharray={`${px(4)} ${px(3)}`} />
+            </g>
+          ))}
+          {preview.added.map((part) => {
+            const b = boxOf(part);
+            return (
+              <g key={`add-${part.UniqueId}`} opacity={0.55}>
+                <PartNode part={part} values={values} alarms={alarms} />
+                <rect x={b.left} y={b.top} width={b.width} height={b.height} fill="none" stroke="var(--color-brand-400)" strokeWidth={px(1.5)} strokeDasharray={`${px(4)} ${px(3)}`} />
+              </g>
+            );
+          })}
+        </g>
+      )}
 
       {/* The design grid is ours, not the project's, so it is drawn above the
           objects but never exported - nothing here has a UniqueId. */}

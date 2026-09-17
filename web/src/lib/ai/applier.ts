@@ -45,6 +45,7 @@ import { CARD_SIZE, equipmentCard, type LayoutUnit } from "@/lib/ote/layout";
 import { inferEquipment } from "@/lib/ai/infer";
 import type { Op } from "@/lib/ai/ops";
 import { createProjectStore, useProject, type BatchPatch, type ProjectStore } from "@/store/project";
+import type { ScreenPreview } from "@/store/types";
 
 const COLOR: Record<string, number> = {
   ink: INK,
@@ -732,4 +733,42 @@ export function dryRun(ops: Op[], live: ProjectStore = useProject): DryRun {
 /** Lands a dry run on the live project as one undo step. */
 export function commit(run: DryRun, label: string, live: ProjectStore = useProject) {
   live.getState().commitBatch(label, run.patch);
+}
+
+/**
+ * What the dry run would change, per screen, for the canvas to ghost: parts
+ * that would appear, parts that would go, parts whose box would change.
+ * Screens the run would create appear with everything on them as added.
+ */
+export function previewOf(run: DryRun, live: ProjectStore = useProject): Record<string, ScreenPreview> {
+  const before = new Map(live.getState().screens.map((s) => [s.UniqueId, s]));
+  const out: Record<string, ScreenPreview> = {};
+  const box = (p: Part) => ({ left: p.Location.Left, top: p.Location.Top, width: p.Width, height: p.Height });
+
+  for (const screen of run.patch.screens) {
+    const was = before.get(screen.UniqueId);
+    const preview: ScreenPreview = { added: [], removed: [], moved: [] };
+    const after = new Map(screen.Children[0].Children.map((p) => [p.UniqueId, p]));
+    const earlier = new Map(was?.Children[0].Children.map((p) => [p.UniqueId, p]) ?? []);
+    for (const [id, part] of after) {
+      const old = earlier.get(id);
+      if (!old) preview.added.push(part);
+      else {
+        const a = box(old);
+        const b = box(part);
+        if (a.left !== b.left || a.top !== b.top || a.width !== b.width || a.height !== b.height) {
+          preview.moved.push({ id, from: a, to: b });
+        }
+      }
+    }
+    for (const id of earlier.keys()) if (!after.has(id)) preview.removed.push(id);
+    if (preview.added.length || preview.removed.length || preview.moved.length) out[screen.UniqueId] = preview;
+  }
+  // A screen the run would delete: everything on it is "removed".
+  for (const [id, screen] of before) {
+    if (!run.patch.screens.some((s) => s.UniqueId === id)) {
+      out[id] = { added: [], removed: screen.Children[0].Children.map((p) => p.UniqueId), moved: [] };
+    }
+  }
+  return out;
 }

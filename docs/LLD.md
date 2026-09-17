@@ -246,10 +246,11 @@ All nine landed in one pass. 504 tests, typecheck and `next build` clean.
 | F8 | system and project block with `cache_control` (1 h); usage on every message | cache read shown in the UI |
 | F9 | `tests/transcripts/*.json` replayed against the invariants | `tests/transcripts.test.ts` |
 
-Not yet done from §2: the `find_tags` lookup tool (retrieval is deterministic
-pre-selection for now), ghosted diff rendering on the canvas (the proposal is a
-list with accept and discard), and the ten *real* recorded sessions (the three
-transcripts are hand-written and cover the failure modes, not live model output).
+Landed later the same day, under `PLAN_PHASE1.md`: the `find_tags` and
+`find_objects` lookup tools on the Claude path, ghosted proposals on the canvas,
+and the `.eote` reader with a byte-identical round trip. Still open: the ten
+*real* recorded sessions (the three transcripts are hand-written and cover the
+failure modes, not live model output).
 
 ---
 

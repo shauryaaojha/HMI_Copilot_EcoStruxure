@@ -22,7 +22,7 @@
 
 import { useMemo, useRef } from "react";
 import type { Screen } from "@/lib/ote/schema";
-import type { ObjectMeta } from "@/store/types";
+import type { ObjectMeta, ScreenPreview } from "@/store/types";
 import { cn } from "@/components/ui";
 import { ScreenRenderer, type Box, type DrawTool } from "./ScreenRenderer";
 import type { AlarmRow } from "./parts";
@@ -141,6 +141,8 @@ export interface ScreenBoardProps {
   hoveredId?: string;
   objectMeta?: Record<string, ObjectMeta>;
   values?: Record<string, number | boolean>;
+  /** A pending proposal's ghosts, keyed by screen id. */
+  preview?: Record<string, ScreenPreview>;
   alarms?: AlarmRow[];
 
   showGrid?: boolean;
@@ -173,6 +175,7 @@ export function ScreenBoard({
   objectMeta,
   values,
   alarms,
+  preview,
   showGrid,
   gridSize,
   snap,
@@ -315,6 +318,7 @@ export function ScreenBoard({
                 objectMeta={objectMeta}
                 values={values}
                 alarms={alarms}
+                preview={preview?.[screen.UniqueId]}
                 scale={scale}
                 showGrid={live && showGrid}
                 gridSize={gridSize}

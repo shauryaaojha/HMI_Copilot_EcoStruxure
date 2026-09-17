@@ -28,6 +28,7 @@ import type {
   ChatMessage,
   Finding,
   ObjectMeta,
+  Preview,
   ScreenPlacement,
   Standards,
   TagImport,
@@ -115,6 +116,12 @@ interface ProjectState {
   selectedIds: string[];
   hoveredId?: string;
   simulating: boolean;
+  /**
+   * A pending conversational proposal, drawn as ghosts on the canvas: what
+   * would be added, removed or moved if the engineer accepts. Never part of
+   * the project; cleared on accept, discard or the next turn. docs/PLAN_PHASE1.md item 4.
+   */
+  preview?: Preview;
 
   /** Cut or copied parts, waiting for a paste. Survives a screen change. */
   clipboard: Part[];
@@ -140,6 +147,7 @@ interface ProjectState {
   selectAll: () => void;
   hover: (id?: string) => void;
   setSimulating: (on: boolean) => void;
+  setPreview: (preview?: Preview) => void;
 
   /* --- screens, as pages -------------------------------------------- */
   addScreen: (name?: string) => string;
@@ -219,7 +227,7 @@ const NO_STEPS = {} as Record<PipelineStep, StepState>;
 type ProjectActions = Pick<
   ProjectState,
   | "hydrate" | "rename" | "setTarget" | "markSaved" | "select" | "selectAll"
-  | "hover" | "setSimulating" | "addScreen" | "duplicateScreen" | "renameScreen"
+  | "hover" | "setSimulating" | "setPreview" | "addScreen" | "duplicateScreen" | "renameScreen"
   | "removeScreen" | "setActiveScreen" | "reorderScreens" | "placeScreen"
   | "tidyBoard" | "appendObject"
   | "updateObject" | "setProperty" | "nudge" | "setBox" | "removeObjects"
@@ -420,6 +428,11 @@ export function createProjectStore() {
     setSimulating: (on) =>
       set((s) => {
         s.simulating = on;
+      }),
+
+    setPreview: (preview) =>
+      set((s) => {
+        s.preview = preview;
       }),
 
     /* --- screens ------------------------------------------------------ */

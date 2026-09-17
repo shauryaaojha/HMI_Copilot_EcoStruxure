@@ -73,6 +73,7 @@ export function CanvasPane() {
   const objectMeta = useProject((s) => s.objectMeta);
   const alarms = useProject((s) => s.alarms);
   const bindings = useProject((s) => s.bindings);
+  const preview = useProject((s) => s.preview);
   const select = useProject((s) => s.select);
   const hover = useProject((s) => s.hover);
   const nudge = useProject((s) => s.nudge);
@@ -448,6 +449,7 @@ export function CanvasPane() {
               objectMeta={objectMeta}
               values={live}
               alarms={rows}
+              preview={preview?.screens}
               showGrid={standards.showGrid}
               gridSize={standards.gridSize}
               snap={standards.snap}
@@ -484,6 +486,7 @@ export function CanvasPane() {
                   objectMeta={objectMeta}
                   values={live}
                   alarms={rows}
+                  preview={preview?.screens[screen.UniqueId]}
                   scale={scale}
                   showGrid={standards.showGrid}
                   gridSize={standards.gridSize}

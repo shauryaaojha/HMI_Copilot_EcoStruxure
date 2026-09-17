@@ -23,7 +23,7 @@ import { isUnnamed, nameProject } from "@/lib/ai/name";
 import type { Turn } from "@/lib/ai/ops";
 import { inferEquipment } from "@/lib/ai/infer";
 import type { ExistingScreen } from "@/lib/ai/pipeline";
-import { commit, dryRun, type DryRun, type OpOutcome } from "@/lib/ai/applier";
+import { commit, dryRun, previewOf, type DryRun, type OpOutcome } from "@/lib/ai/applier";
 import { useProject } from "@/store/project";
 import type { ChatMessage } from "@/store/types";
 import { loadProjects, touchProject } from "@/store/projects";
@@ -98,6 +98,19 @@ export function useChat() {
       body: JSON.stringify({
         history,
         repair,
+        // What the lookup tools can search. Compact, never in the prompt.
+        catalog: {
+          tags: s.variables.map((v) => ({ name: v.Name, dataType: v.DataType, comment: v.Comments ?? "" })),
+          objects: s.screens.flatMap((screen) =>
+            screen.Children[0].Children.map((p) => ({
+              handle: s.handles[p.UniqueId] ?? "?",
+              name: p.Name,
+              type: p.Type,
+              screen: s.handles[screen.UniqueId] ?? screen.Name,
+              tag: s.bindings.find((b) => b.targetId === p.UniqueId)?.tag,
+            })),
+          ),
+        },
         digest: digestOf(
           {
             name: s.name,
@@ -133,6 +146,16 @@ export function useChat() {
       busy.current = true;
 
       const store = useProject.getState();
+      // A new request supersedes any proposal still waiting; its dry run was
+      // against a project that is about to be asked something else.
+      if (store.preview) {
+        pending.delete(store.preview.messageId);
+        const stale = store.chat.find((m) => m.id === store.preview?.messageId);
+        if (stale?.proposal?.status === "pending") {
+          store.patchMessage(stale.id, { proposal: { ...stale.proposal, status: "expired" } });
+        }
+        store.setPreview(undefined);
+      }
       const question: ChatMessage = { id: id(), role: "user", at: Date.now(), text: request };
       const answerId = id();
       store.addMessage(question);
@@ -287,8 +310,9 @@ export function useChat() {
         }
 
         // Something was rejected even after repair, or something would be
-        // deleted: the engineer decides.
+        // deleted: the engineer decides, looking at ghosts on the canvas.
         pending.set(answerId, run);
+        useProject.getState().setPreview({ messageId: answerId, screens: previewOf(run) });
         patch({
           pending: false,
           turn: { ...record, decision: "proposed" },
@@ -323,6 +347,7 @@ export function useChat() {
       return;
     }
     pending.delete(messageId);
+    s.setPreview(undefined);
     commit(run, run.outcome.applied[0]?.slice(0, 60) || "Accepted proposal");
     const after = useProject.getState();
     for (const line of run.outcome.applied) after.log(line);
@@ -338,6 +363,7 @@ export function useChat() {
   const discard = useCallback((messageId: string) => {
     pending.delete(messageId);
     const s = useProject.getState();
+    if (s.preview?.messageId === messageId) s.setPreview(undefined);
     const message = s.chat.find((m) => m.id === messageId);
     if (!message?.proposal) return;
     s.patchMessage(messageId, {

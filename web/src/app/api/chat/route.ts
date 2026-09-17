@@ -11,7 +11,7 @@
  * and the digest; `repair` marks the one retry after rejected ops.
  */
 
-import { converse, type HistoryItem, type ProjectDigest } from "@/lib/ai/converse";
+import { converse, type Catalog, type HistoryItem, type ProjectDigest } from "@/lib/ai/converse";
 import { resolveProvider } from "@/lib/ai/provider";
 import type { Turn } from "@/lib/ai/ops";
 
@@ -23,6 +23,7 @@ interface Body {
   history?: HistoryItem[];
   digest?: ProjectDigest;
   repair?: boolean;
+  catalog?: Catalog;
 }
 
 export async function POST(request: Request) {
@@ -63,7 +64,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await converse({ history, digest, repair: body.repair === true });
+    const catalog =
+      body.catalog && Array.isArray(body.catalog.tags) && Array.isArray(body.catalog.objects)
+        ? body.catalog
+        : undefined;
+    const result = await converse({ history, digest, repair: body.repair === true, catalog });
     if (!result) {
       return Response.json(
         {

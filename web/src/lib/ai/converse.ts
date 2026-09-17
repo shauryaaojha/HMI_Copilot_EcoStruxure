@@ -29,7 +29,7 @@ import { ALIGN_MODES, COLOR_NAMES, OP_NAMES, coerceTurn, type Op, type Turn } fr
 import { PART_TYPES } from "@/lib/ote/schema";
 import { REGIONS, SIDES } from "@/lib/ote/regions";
 import { inferEquipment } from "./infer";
-import { relevantTags } from "./retrieve";
+import { findObjects, findTags, relevantTags, type ObjectEntry } from "./retrieve";
 import { resolveProvider, type Provider } from "./provider";
 import { isUnnamed } from "./name";
 
@@ -500,6 +500,16 @@ const JSON_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+/**
+ * Everything the lookup tools can search. Sent by the client each turn and
+ * never put in the prompt - the model asks for what it needs by name.
+ * docs/PLAN_PHASE1.md item 5.
+ */
+export interface Catalog {
+  tags: { name: string; dataType: string; comment: string }[];
+  objects: ObjectEntry[];
+}
+
 export interface ConverseInput {
   /** Oldest first. The current request is the last user message. */
   history: HistoryItem[];
@@ -509,6 +519,7 @@ export interface ConverseInput {
    * repair pass. The last history item is the assistant record carrying them.
    */
   repair?: boolean;
+  catalog?: Catalog;
 }
 
 /**
@@ -643,11 +654,123 @@ async function withGemini(input: ConverseInput, model: string): Promise<Converse
   }
 }
 
+/** At most this many lookups before the turn proceeds with what it has. */
+const MAX_LOOKUPS = 4;
+
+const LOOKUP_TOOLS: Anthropic.Tool[] = [
+  {
+    name: "find_tags",
+    description:
+      "Search the full PLC tag list by words in the tag name or comment. Use when the " +
+      "request names a signal that is not in the tags you were shown.",
+    input_schema: {
+      type: "object",
+      properties: { query: { type: "string", description: "Words from the request, e.g. 'backwash high level'" } },
+      required: ["query"],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+  {
+    name: "find_objects",
+    description:
+      "Search every object on every screen by name, type or bound tag. Use when the " +
+      "request refers to an object that is not on the active screen.",
+    input_schema: {
+      type: "object",
+      properties: { query: { type: "string", description: "Words from the request, e.g. 'dosing pump fault lamp'" } },
+      required: ["query"],
+      additionalProperties: false,
+    },
+    strict: true,
+  },
+];
+
+const LOOKUP_SYSTEM =
+  "You are checking whether an engineer's request refers to anything not already in " +
+  "the context you were given. If every tag and object it needs is present, reply with " +
+  "the single word READY. Otherwise call find_tags or find_objects with the words from " +
+  "the request, then reply READY. Never guess a tag or object name.";
+
+/**
+ * The lookup phase: the model asks for what it cannot see, bounded, before the
+ * propose call. Returns lines to append to the volatile block. Skipped when
+ * there is no catalog.
+ */
+async function lookup(
+  client: InstanceType<typeof import("@anthropic-ai/sdk").default>,
+  model: string,
+  input: ConverseInput,
+  request: string,
+): Promise<{ lines: string[]; usage: Usage }> {
+  const catalog = input.catalog;
+  const usage: Usage = { input: 0, cached: 0, output: 0 };
+  if (!catalog) return { lines: [], usage };
+  const lines: string[] = [];
+  const messages: Anthropic.MessageParam[] = [
+    {
+      role: "user",
+      content:
+        `${volatileContext(input.digest)}\n\nRequest: "${request}"\n\n` +
+        `The full tag list has ${catalog.tags.length} entries and there are ${catalog.objects.length} objects across all screens.`,
+    },
+  ];
+  const variables: Variable[] = catalog.tags.map((t) => ({
+    Name: t.name,
+    DataType: t.dataType as Variable["DataType"],
+    Comments: t.comment,
+    DeviceAddress: "",
+  }));
+
+  for (let round = 0; round < MAX_LOOKUPS; round++) {
+    const response = await client.messages.create({
+      model,
+      max_tokens: 1024,
+      system: LOOKUP_SYSTEM,
+      tools: LOOKUP_TOOLS,
+      tool_choice: { type: "auto" },
+      output_config: { effort: "low" },
+      messages,
+    });
+    usage.input += response.usage.input_tokens;
+    usage.cached += response.usage.cache_read_input_tokens ?? 0;
+    usage.output += response.usage.output_tokens;
+    if (response.stop_reason !== "tool_use") break;
+
+    const calls = response.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
+    messages.push({ role: "assistant", content: response.content });
+    const results: Anthropic.ToolResultBlockParam[] = [];
+    for (const call of calls) {
+      const query = String((call.input as { query?: unknown }).query ?? "");
+      let text: string;
+      if (call.name === "find_tags") {
+        const hits = findTags(variables, query);
+        text = hits.length
+          ? hits.map((v) => `${v.Name} (${v.DataType})${v.Comments ? ` — ${v.Comments}` : ""}`).join("\n")
+          : "no tags match";
+        if (hits.length) lines.push(`Looked up tags for "${query}":\n${text}`);
+      } else {
+        const hits = findObjects(catalog.objects, query);
+        text = hits.length
+          ? hits.map((o) => `${o.handle} ${o.name} [${o.type}, on ${o.screen}${o.tag ? `, shows ${o.tag}` : ""}]`).join("\n")
+          : "no objects match";
+        if (hits.length) lines.push(`Looked up objects for "${query}":\n${text}`);
+      }
+      results.push({ type: "tool_result", tool_use_id: call.id, content: text });
+    }
+    messages.push({ role: "user", content: results });
+  }
+  return { lines, usage };
+}
+
 async function withClaude(input: ConverseInput, model: string): Promise<ConverseResult | null> {
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
   const { jsonSchemaOutputFormat } = await import("@anthropic-ai/sdk/helpers/json-schema");
   const client = new Anthropic();
   const { anchor, recent } = splitHistory(input.history);
+
+  const request = [...input.history].reverse().find((m) => m.role === "user")?.text ?? "";
+  const found = input.repair ? { lines: [], usage: { input: 0, cached: 0, output: 0 } } : await lookup(client, model, input, request);
 
   // The cached prefix is system + project context. The volatile block sits
   // after the breakpoint, then the history as real turns.
@@ -660,7 +783,13 @@ async function withClaude(input: ConverseInput, model: string): Promise<Converse
           text: projectContext(input.digest),
           cache_control: { type: "ephemeral", ttl: "1h" },
         },
-        { type: "text", text: volatileContext(input.digest) + (anchor ? `\n\n${anchor}` : "") },
+        {
+          type: "text",
+          text:
+            volatileContext(input.digest) +
+            (found.lines.length ? `\n\n${found.lines.join("\n\n")}` : "") +
+            (anchor ? `\n\n${anchor}` : ""),
+        },
       ],
     },
   ];
@@ -693,9 +822,9 @@ async function withClaude(input: ConverseInput, model: string): Promise<Converse
     provider: "claude",
     model,
     usage: {
-      input: response.usage.input_tokens,
-      cached: response.usage.cache_read_input_tokens ?? 0,
-      output: response.usage.output_tokens,
+      input: response.usage.input_tokens + found.usage.input,
+      cached: (response.usage.cache_read_input_tokens ?? 0) + found.usage.cached,
+      output: response.usage.output_tokens + found.usage.output,
     },
   };
 }

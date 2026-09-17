@@ -4,7 +4,7 @@
  * without pulling zustand into a server bundle).
  */
 
-import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
+import type { Alarm, Part, Screen, Variable } from "@/lib/ote/schema";
 
 export interface Binding {
   tag: string;
@@ -151,6 +151,24 @@ export interface ChatMessage {
   };
   /** Tokens for the debug line: in, of which cached, out. */
   usage?: { input: number; cached: number; output: number };
+}
+
+/** What a pending proposal would do to one screen, for the canvas to ghost. */
+export interface ScreenPreview {
+  added: Part[];
+  /** UniqueIds of objects that would be deleted. */
+  removed: string[];
+  moved: {
+    id: string;
+    from: { left: number; top: number; width: number; height: number };
+    to: { left: number; top: number; width: number; height: number };
+  }[];
+}
+
+export interface Preview {
+  messageId: string;
+  /** Keyed by screen UniqueId. */
+  screens: Record<string, ScreenPreview>;
 }
 
 /** What the assistant needs before it will build rather than ask. */

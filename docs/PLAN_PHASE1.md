@@ -21,6 +21,18 @@ unblocks the next thing and by what the Schneider conversation needs first.
 Items 1 to 3 are this pass. 4 and 5 follow. 6 needs an afternoon with keys.
 7 starts the part-coverage track that continues into Phase B.
 
+### Status (17 September 2026)
+
+| # | State | Where |
+|---|---|---|
+| 1 | done | `lib/ote/reader.ts`, `packagePreserved` in `packager.ts`, `syncVariables` / `syncAlarms`; `tests/reader.test.ts` holds the byte-identical round trip, the one-entry edit, an unknown part surviving in place, an unknown property surviving on a known part, a tag added without disturbing ids, a screen dropped cleanly |
+| 2 | done | `POST /api/import` keeps the bytes under `web/.imports/`; "Open .eote" on the Projects page; export of an opened project writes back into its file |
+| 3 | done | `refreshNavigation` in `layout.ts`, store action, called after every extension; `tests/navigation.test.ts` |
+| 4 | done | `previewOf` in `applier.ts`; ghosts drawn by `ScreenRenderer` (added translucent with a dashed outline, removed hatched, moved outlined with a line from where they are); cleared on accept, discard, or the next request; `tests/preview.test.ts` |
+| 5 | done | `find_tags` and `find_objects` as strict tools in a bounded lookup phase before the propose call on the Claude path; the client sends a compact catalog that never enters the prompt; scoring weights said words over synonyms, rare words over common, with prefix credit and whole-word matching |
+| 6 | open | needs keys and an afternoon |
+| 7 | open | next |
+
 ## Reader design, in short
 
 - Read the whole ZIP. Every entry's bytes are kept in `preserved.entries`.
