@@ -28,7 +28,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { Part, PartType, Screen } from "@/lib/ote/schema";
 import { resolveColor } from "@/lib/ote/palette";
-import type { ObjectMeta, ScreenPreview } from "@/store/types";
+import type { ForeignPart, ObjectMeta, ScreenPreview } from "@/store/types";
 import { snapDelta, snapTargets, unionOf, type Box } from "@/store/edits";
 import { PartNode, type AlarmRow } from "./parts";
 
@@ -75,6 +75,8 @@ export interface ScreenRendererProps {
    * is interactive and none of it has a UniqueId the export could see.
    */
   preview?: ScreenPreview;
+  /** Objects the reader carried rather than modelled; drawn as placeholders. */
+  foreign?: ForeignPart[];
 
   /** Screen units per CSS pixel, so handles stay one size at every zoom. */
   scale?: number;
@@ -185,6 +187,7 @@ export function ScreenRenderer({
   values,
   alarms = [],
   preview,
+  foreign,
   scale = 1,
   showGrid = false,
   gridSize = 8,
@@ -388,6 +391,38 @@ export function ScreenRenderer({
         onContextMenu({ x: e.clientX, y: e.clientY }, id ?? undefined);
       }}
     >
+      {/* Carried objects, under everything the editor owns. The product will
+          paint them at their original index; the canvas cannot know what they
+          look like, so it shows where they are and what they are. */}
+      {foreign && foreign.length > 0 && (
+        <g pointerEvents="none" data-foreign>
+          <defs>
+            <pattern id="foreign-hatch" width={px(8)} height={px(8)} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <line x1={0} y1={0} x2={0} y2={px(8)} stroke="var(--color-text-faint)" strokeWidth={px(1)} />
+            </pattern>
+          </defs>
+          {foreign.map((f, i) =>
+            f.box ? (
+              <g key={i}>
+                <rect x={f.box.left} y={f.box.top} width={f.box.width} height={f.box.height} fill="url(#foreign-hatch)" fillOpacity={0.35} />
+                <rect x={f.box.left} y={f.box.top} width={f.box.width} height={f.box.height} fill="none" stroke="var(--color-text-faint)" strokeWidth={px(1)} strokeDasharray={`${px(3)} ${px(3)}`} />
+                <text
+                  x={f.box.left + px(4)}
+                  y={f.box.top + px(4)}
+                  fill="var(--color-text-muted)"
+                  fontSize={px(10)}
+                  fontFamily="var(--font-mono)"
+                  dominantBaseline="hanging"
+                >
+                  {f.type}
+                  {f.name ? ` ${f.name}` : ""}
+                </text>
+              </g>
+            ) : null,
+          )}
+        </g>
+      )}
+
       {visible.map((part) => {
         const isSelected = selected.has(part.UniqueId);
         const locked = meta[part.UniqueId]?.locked;

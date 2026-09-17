@@ -27,6 +27,7 @@ import type {
   Binding,
   ChatMessage,
   Finding,
+  ForeignPart,
   ObjectMeta,
   Preview,
   ScreenPlacement,
@@ -95,6 +96,12 @@ interface ProjectState {
 
   screens: Screen[];
   activeScreenId?: string;
+  /**
+   * Objects the reader carried rather than modelled, per screen id. Drawn as
+   * placeholders, listed as carried, never edited; the packager puts the
+   * originals back at export. docs/PLAN_PHASE2.md item 1.
+   */
+  foreign: Record<string, ForeignPart[]>;
   variables: Variable[];
   alarms: Alarm[];
   bindings: Binding[];
@@ -368,6 +375,7 @@ export function createProjectStore() {
     screenPlacement: {},
     handles: {},
     handleSeq: 0,
+    foreign: {},
     selectedIds: [],
     simulating: false,
     clipboard: [],
@@ -979,6 +987,7 @@ export function createProjectStore() {
       set((s) => {
         s.source = undefined;
         s.screens = [];
+        s.foreign = {};
         s.variables = [];
         s.alarms = [];
         s.bindings = [];

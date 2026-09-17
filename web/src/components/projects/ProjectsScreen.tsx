@@ -28,7 +28,7 @@ import { clearProject, saveProject } from "@/store/persist";
 import { DEFAULT_STANDARDS, useProject } from "@/store/project";
 import { useNewProject } from "@/components/shell/useNewProject";
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
-import type { Binding } from "@/store/types";
+import type { Binding, ForeignPart } from "@/store/types";
 
 /** What /api/import answers with. */
 interface Imported {
@@ -36,6 +36,7 @@ interface Imported {
   name: string;
   target: { model: string; width: number; height: number };
   screens: Screen[];
+  foreign: Record<string, ForeignPart[]>;
   variables: Variable[];
   alarms: Alarm[];
   bindings: Binding[];
@@ -113,6 +114,7 @@ export function ProjectsScreen() {
         versions: [],
         chat: [],
         source: data.source,
+        foreign: data.foreign ?? {},
       });
       const carried = [
         data.carried.opaqueParts ? `${data.carried.opaqueParts} objects` : "",

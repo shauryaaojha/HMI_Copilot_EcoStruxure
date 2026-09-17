@@ -153,6 +153,20 @@ export interface ChatMessage {
   usage?: { input: number; cached: number; output: number };
 }
 
+/**
+ * An object the reader carried rather than modelled: a type the schema does
+ * not know, kept verbatim in the file and put back at export. The canvas
+ * draws it as a placeholder so the engineer does not place a lamp on top of
+ * a Grid they cannot see. Read-only by construction - it has no editor, no
+ * handle and no place in the undo history. docs/PLAN_PHASE2.md item 1.
+ */
+export interface ForeignPart {
+  type: string;
+  name: string;
+  /** Null when the object is laid out by a grid and has no box of its own. */
+  box: { left: number; top: number; width: number; height: number } | null;
+}
+
 /** What a pending proposal would do to one screen, for the canvas to ghost. */
 export interface ScreenPreview {
   added: Part[];

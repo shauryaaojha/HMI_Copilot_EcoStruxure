@@ -41,6 +41,7 @@ export async function POST(request: Request) {
       name: read.name,
       target: read.target,
       screens: read.screens,
+      foreign: read.foreign,
       variables: read.variables,
       alarms: read.alarms,
       bindings: read.wires.map((w) => ({

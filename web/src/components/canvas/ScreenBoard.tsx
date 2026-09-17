@@ -22,7 +22,7 @@
 
 import { useMemo, useRef } from "react";
 import type { Screen } from "@/lib/ote/schema";
-import type { ObjectMeta, ScreenPreview } from "@/store/types";
+import type { ForeignPart, ObjectMeta, ScreenPreview } from "@/store/types";
 import { cn } from "@/components/ui";
 import { ScreenRenderer, type Box, type DrawTool } from "./ScreenRenderer";
 import type { AlarmRow } from "./parts";
@@ -143,6 +143,8 @@ export interface ScreenBoardProps {
   values?: Record<string, number | boolean | string>;
   /** A pending proposal's ghosts, keyed by screen id. */
   preview?: Record<string, ScreenPreview>;
+  /** Carried objects, keyed by screen id. */
+  foreign?: Record<string, ForeignPart[]>;
   alarms?: AlarmRow[];
 
   showGrid?: boolean;
@@ -176,6 +178,7 @@ export function ScreenBoard({
   values,
   alarms,
   preview,
+  foreign,
   showGrid,
   gridSize,
   snap,
@@ -319,6 +322,7 @@ export function ScreenBoard({
                 values={values}
                 alarms={alarms}
                 preview={preview?.[screen.UniqueId]}
+                foreign={foreign?.[screen.UniqueId]}
                 scale={scale}
                 showGrid={live && showGrid}
                 gridSize={gridSize}

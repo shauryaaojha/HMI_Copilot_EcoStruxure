@@ -104,7 +104,8 @@ describe("the round trip", () => {
     const zip = await JSZip.loadAsync(bytes());
     const screenName = Object.keys(zip.files).find((n) => /Screen\.dat$/i.test(n))!;
     const raw = JSON.parse(await zip.file(screenName)!.async("string"));
-    const alien = { Type: "TrendGraph", UniqueId: "11111111-2222-3333-4444-555555555555", Name: "Trend_Alien", Location: { Left: 0, Top: 0 }, Width: 10, Height: 10, Pens: [{ Colour: 3 }] };
+    // A type the schema does not model. (It was TrendGraph until the canvas learned to draw one.)
+    const alien = { Type: "ZoomCanvas", UniqueId: "11111111-2222-3333-4444-555555555555", Name: "Trend_Alien", Location: { Left: 0, Top: 0 }, Width: 10, Height: 10, Pens: [{ Colour: 3 }] };
     raw.Children[0].Children.splice(2, 0, alien);
     zip.file(screenName, JSON.stringify(raw, null, 2));
     const withAlien = await zip.generateAsync({ type: "uint8array" });

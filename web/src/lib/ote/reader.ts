@@ -50,10 +50,38 @@ export interface Preserved {
   fingerprints: { variables: string; alarms: string; wires: string };
 }
 
+/** A carried object, described for the canvas: see ForeignPart in the store. */
+export interface ForeignSummary {
+  type: string;
+  name: string;
+  box: { left: number; top: number; width: number; height: number } | null;
+}
+
+/** What the canvas can say about an object it cannot model. */
+export function summariseOpaque(raw: unknown): ForeignSummary {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const loc = r.Location as Record<string, unknown> | undefined;
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+  const left = num(loc?.Left);
+  const top = num(loc?.Top);
+  const width = num(r.Width);
+  const height = num(r.Height);
+  return {
+    type: typeof r.Type === "string" ? r.Type : "Unknown",
+    name: typeof r.Name === "string" ? r.Name : "",
+    box:
+      left !== undefined && top !== undefined && width !== undefined && height !== undefined
+        ? { left, top, width, height }
+        : null,
+  };
+}
+
 export interface ReadProject {
   name: string;
   target: Panel;
   screens: Screen[];
+  /** Carried objects per screen UniqueId, for the canvas and the layers panel. */
+  foreign: Record<string, ForeignSummary[]>;
   variables: Variable[];
   alarms: Alarm[];
   wires: Wire[];
@@ -146,6 +174,7 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
 
   const screens: Screen[] = [];
   const preservedScreens = new Map<string, PreservedScreen>();
+  const foreign: Record<string, ForeignSummary[]> = {};
   let opaqueParts = 0;
   for (const id of order) {
     const raw = json(`Screens/${id}/Screen.dat`) as Record<string, unknown> | undefined;
@@ -160,6 +189,7 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
       continue;
     }
     opaqueParts += opaque.length;
+    if (opaque.length > 0) foreign[screen.UniqueId] = opaque.map((o) => summariseOpaque(o.raw));
     screens.push(screen);
     preservedScreens.set(id, { raw, parts, opaque, metadata, fingerprint: fingerprintScreen(screen) });
   }
@@ -301,6 +331,7 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
     name,
     target,
     screens,
+    foreign,
     variables,
     alarms,
     wires,

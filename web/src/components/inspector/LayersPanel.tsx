@@ -14,7 +14,7 @@
  */
 
 import { useRef, useState } from "react";
-import { Eye, EyeOff, Lock, Unlock } from "lucide-react";
+import { Eye, EyeOff, Lock, PackageOpen, Unlock } from "lucide-react";
 import { TOOL_ICON } from "@/components/canvas/toolIcons";
 import { useProject } from "@/store/project";
 import { cn } from "@/components/ui";
@@ -25,6 +25,7 @@ export function LayersPanel() {
   const selectedIds = useProject((s) => s.selectedIds);
   const objectMeta = useProject((s) => s.objectMeta);
   const bindings = useProject((s) => s.bindings);
+  const foreign = useProject((s) => s.foreign);
   const select = useProject((s) => s.select);
   const hover = useProject((s) => s.hover);
   const setMeta = useProject((s) => s.setMeta);
@@ -162,6 +163,33 @@ export function LayersPanel() {
           </li>
         )}
       </ul>
+
+      {/* Carried objects: in the file, on the screen, not in the editor. Listed
+          so the engineer knows they are there, without a control that would
+          suggest they can be changed here. */}
+      {(foreign[screen.UniqueId]?.length ?? 0) > 0 && (
+        <div className="mt-3">
+          <p
+            className="label-eyebrow px-1 pb-1"
+            title="Objects of a type this editor does not model. They stay exactly as the file has them and are written back at export."
+          >
+            Carried, not editable
+          </p>
+          <ul className="space-y-0.5" data-foreign-list>
+            {foreign[screen.UniqueId].map((f, i) => (
+              <li
+                key={i}
+                className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[11px] text-text-faint"
+                title={f.box ? `${f.type} at ${f.box.left}, ${f.box.top}` : `${f.type}, laid out by a grid`}
+              >
+                <PackageOpen size={12} aria-hidden className="shrink-0" />
+                <span className="min-w-0 flex-1 truncate">{f.name || f.type}</span>
+                <span className="shrink-0 font-mono text-[9px]">{f.type}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

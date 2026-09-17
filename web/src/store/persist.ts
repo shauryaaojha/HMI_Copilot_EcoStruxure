@@ -17,6 +17,7 @@ import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
 import type {
   Binding,
   ChatMessage,
+  ForeignPart,
   ObjectMeta,
   ScreenPlacement,
   Standards,
@@ -47,6 +48,8 @@ export interface PersistedProject {
   handleSeq?: number;
   /** The import id of the .eote this was opened from, if it was. */
   source?: string;
+  /** Carried objects per screen, when the project was opened from a file. */
+  foreign?: Record<string, ForeignPart[]>;
   standards: Standards;
   versions: Version[];
   chat: ChatMessage[];
