@@ -273,6 +273,40 @@ export function pipe(name: string, box: Box): Part {
   };
 }
 
+/**
+ * A pipe along an explicit path: points in screen units, anywhere in the box
+ * or outside it, mapped into the product's 3072-unit square. This is what a
+ * process view draws between two symbols - an elbow or two, never a diagonal.
+ */
+export function pipeRun(name: string, points: { x: number; y: number }[]): Part {
+  const xs = points.map((p) => p.x);
+  const ys = points.map((p) => p.y);
+  const left = Math.min(...xs);
+  const top = Math.min(...ys);
+  const width = Math.max(1, Math.max(...xs) - left);
+  const height = Math.max(1, Math.max(...ys) - top);
+  const data = points.map((p) => ({
+    Location: {
+      Left: Math.round(((p.x - left) / width) * 3072),
+      Top: Math.round(((p.y - top) / height) * 3072),
+    },
+  }));
+  return {
+    Type: "Pipe",
+    UniqueId: gid(),
+    Name: name,
+    States: [
+      { Fill: color(T.panel), Border: color(T.line), FillThickness: 6, BorderThickness: 10 },
+      { Fill: color(T.runningLine), Border: color(T.line), FillThickness: 6, BorderThickness: 10 },
+    ],
+    Invalid: { Fill: color(T.alarmP1), Border: color(T.line), FillThickness: 6, BorderThickness: 10 },
+    Path: { Commands: "M" + "L".repeat(Math.max(1, points.length - 1)), Data: data },
+    Location: { Left: left, Top: top },
+    Width: width,
+    Height: height,
+  };
+}
+
 /** The panel clock, drawn like a numeric display. */
 export function dateTimeDisplay(name: string, box: Box): Part {
   return {

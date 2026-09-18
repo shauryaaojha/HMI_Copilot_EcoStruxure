@@ -81,15 +81,17 @@ export interface LaidOutScreen {
   wires: Wire[];
   /** Composite instances among the parts, for the store to adopt. */
   composites: CompositeInstance[];
+  /** What the compiler had to give up to fit, for the build log. */
+  notes?: string[];
 }
 
 /* --- the fixed zones, in screen units -------------------------------- */
 
-const HEADER = 44;
-const NAV = 32;
-const FOOTER = 28;
-const MARGIN = 12;
-const GAP = 16;
+export const HEADER = 44;
+export const NAV = 32;
+export const FOOTER = 28;
+export const MARGIN = 12;
+export const GAP = 16;
 
 /** Level 2 and 3: three cards across, two rows down. */
 const CARD = { width: 320, height: 162, columns: 3 };
@@ -116,7 +118,7 @@ const isReading = (dataType: string) => dataType !== "BOOL" && dataType !== "STR
  * One placer per application, so names stay unique across every screen and
  * every wire remembers the screen its object is on.
  */
-class Placer {
+export class Placer {
   private taken = new Set<string>();
   parts: Part[] = [];
   wires: Wire[] = [];
@@ -176,7 +178,7 @@ class Placer {
 
 /* --- the chrome every screen shares ---------------------------------- */
 
-function chrome(
+export function chrome(
   place: Placer,
   spec: ScreenSpec,
   all: ScreenSpec[],

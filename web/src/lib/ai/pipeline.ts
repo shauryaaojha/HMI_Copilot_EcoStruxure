@@ -19,6 +19,8 @@
 
 import { layoutApplication, type LayoutUnit } from "@/lib/ote/layout";
 import { modelPlant } from "@/lib/plant/model";
+import { architectPrograms } from "@/lib/program/program";
+import { compileProgram, specOf } from "@/lib/program/compile";
 import { libraryAvailable, symbolsFor } from "@/lib/ote/symbols";
 import type { Wire } from "@/lib/ote/bindings";
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
@@ -222,6 +224,14 @@ export async function* runPipeline(
     );
   }
 
+  // The process views: one per unit the model can connect, from a Screen
+  // Program (docs/ARCHITECTURE_SCREEN_QUALITY.md §3.4). They join the
+  // navigation before anything is laid out, so every strip lists them.
+  const programs = architectPrograms(plant).filter((p) => p.process);
+  const takenNames = new Set([...existing.map((s) => s.name.toLowerCase()), ...plan.screens.map((s) => s.screenName.toLowerCase())]);
+  const processPrograms = programs.filter((p) => !takenNames.has(p.name.toLowerCase()));
+  const processSpecs = processPrograms.map(specOf);
+
   const navigation = extending
     ? [
         ...existing.map((s) => ({
@@ -232,9 +242,17 @@ export async function* runPipeline(
           sections: [] as ("status" | "process" | "alarms")[],
         })),
         ...plan.screens,
+        ...processSpecs,
       ]
-    : plan.screens;
-  const laidOut = layoutApplication(plan.screens, drawn, SCREEN, navigation);
+    : [...plan.screens, ...processSpecs];
+  const laidOut = [
+    ...layoutApplication(plan.screens, drawn, SCREEN, navigation),
+    ...processPrograms.map((program) => compileProgram(program, plant, SCREEN, navigation, graphics)),
+  ];
+  if (processPrograms.length > 0) {
+    yield log(`Process views from the Plant Model: ${processPrograms.map((p) => `${p.title} (${p.rationale})`).join("; ")}`);
+    for (const note of laidOut.flatMap((l) => l.notes ?? [])) yield log(note);
+  }
   const screens: Screen[] = [];
   const wires: Wire[] = [];
 
