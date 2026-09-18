@@ -10,6 +10,7 @@
  */
 
 import type { Alarm, Part, Variable } from "@/lib/ote/schema";
+import type { PlantModel } from "@/lib/plant/model";
 
 /** The eight pipeline steps, in order. */
 export const PIPELINE_STEPS = [
@@ -72,6 +73,8 @@ export type GenerationEvent =
    * parts. Optional in the contract: a consumer that ignores it sees parts.
    */
   | { type: "composite"; id: string; kind: string; name: string; props: Record<string, unknown>; screenId: string; partIds: string[] }
+  /** The Plant Model the tags were read into; the client keeps it for the Plant page. */
+  | { type: "plant"; model: PlantModel }
   /** One resolved binding. */
   | { type: "binding"; tag: string; target: string; property: string }
   /** One configured alarm. */

@@ -25,6 +25,8 @@ import { DEFAULT_STANDARDS } from "./types";
 import { applyPack } from "@/lib/standard/apply";
 import { expandComposite, propsFor, unionBox, type CompositeKind } from "@/lib/composites";
 import type { Box } from "@/lib/ote/parts";
+import { modelPlant, type PlantModel } from "@/lib/plant/model";
+import type { Range } from "@/lib/plant/units";
 import { refreshNavigation as refreshNavigationParts } from "@/lib/ote/layout";
 import type {
   Binding,
@@ -110,6 +112,8 @@ interface ProjectState {
   foreign: Record<string, ForeignPart[]>;
   /** Composite instances by id (= the group id their parts carry). */
   composites: Record<string, CompositeInstance>;
+  /** What the plant is. Built from the tags; corrected here. docs/ARCHITECTURE_SCREEN_QUALITY.md §3.1. */
+  plant?: PlantModel;
   variables: Variable[];
   alarms: Alarm[];
   bindings: Binding[];
@@ -198,6 +202,14 @@ interface ProjectState {
   /** Adopt parts already on a screen (the generator's) as a composite instance. */
   registerComposite: (instance: CompositeInstance) => void;
 
+  /* --- the plant model ---------------------------------------------- */
+  setPlant: (model: PlantModel | undefined) => void;
+  /** Answer the modeller's question; the model is rebuilt with the answer kept. */
+  answerQuestion: (id: string, answer: string) => void;
+  setRange: (equipmentId: string, tag: string, patch: Partial<Range>) => void;
+  connect: (from: string, to: string) => void;
+  disconnect: (from: string, to: string) => void;
+
   /* --- objects ------------------------------------------------------- */
   appendObject: (screenId: string, part: Part) => void;
   updateObject: (id: string, patch: Partial<Part>) => void;
@@ -273,7 +285,8 @@ type ProjectActions = Pick<
   | "hover" | "setSimulating" | "setPreview" | "addScreen" | "duplicateScreen" | "renameScreen"
   | "removeScreen" | "setActiveScreen" | "reorderScreens" | "placeScreen"
   | "tidyBoard" | "importScreens" | "applyStandard" | "addComposite" | "setCompositeProps"
-  | "registerComposite" | "appendObject"
+  | "registerComposite" | "setPlant" | "answerQuestion" | "setRange" | "connect" | "disconnect"
+  | "appendObject"
   | "updateObject" | "setProperty" | "nudge" | "setBox" | "removeObjects"
   | "duplicateObjects" | "copyObjects" | "cutObjects" | "pasteObjects" | "align"
   | "spread" | "restackObjects" | "setMeta" | "group" | "ungroup" | "undo"
@@ -556,6 +569,55 @@ export function createProjectStore() {
       set((s) => {
         for (const partId of instance.partIds) (s.objectMeta[partId] ??= {}).groupId = instance.id;
         s.composites[instance.id] = instance;
+      }),
+
+    setPlant: (model) =>
+      set((s) => {
+        s.plant = model;
+      }),
+
+    answerQuestion: (id, answer) =>
+      set((s) => {
+        if (!s.plant) return;
+        const answers = { ...s.plant.answers, [id]: answer };
+        const engineerRanges = s.plant.equipment.flatMap((e) =>
+          Object.entries(e.ranges).filter(([, r]) => r.source === "engineer").map(([tag, r]) => [e.id, tag, r] as const),
+        );
+        const rebuilt = modelPlant(s.variables, answers);
+        // Ranges the engineer typed survive a rebuild; class defaults do not need to.
+        for (const [eid, tag, r] of engineerRanges) {
+          const e = rebuilt.equipment.find((x) => x.id === eid);
+          if (e && e.ranges[tag]) e.ranges[tag] = r;
+        }
+        const kept = s.plant.connections.filter((c) => c.source === "engineer");
+        for (const c of kept) if (!rebuilt.connections.some((x) => x.from === c.from && x.to === c.to)) rebuilt.connections.push(c);
+        s.plant = rebuilt;
+      }),
+
+    setRange: (equipmentId, tag, patch) =>
+      set((s) => {
+        const e = s.plant?.equipment.find((x) => x.id === equipmentId);
+        if (!e || !e.ranges[tag]) return;
+        e.ranges[tag] = { ...e.ranges[tag], ...patch, source: "engineer" };
+      }),
+
+    connect: (from, to) =>
+      set((s) => {
+        if (!s.plant || from === to) return;
+        if (!s.plant.equipment.some((e) => e.id === from) || !s.plant.equipment.some((e) => e.id === to)) return;
+        const existing = s.plant.connections.find((c) => c.from === from && c.to === to);
+        if (existing) {
+          existing.confidence = 1;
+          existing.source = "engineer";
+          return;
+        }
+        s.plant.connections.push({ from, to, confidence: 1, source: "engineer" });
+      }),
+
+    disconnect: (from, to) =>
+      set((s) => {
+        if (!s.plant) return;
+        s.plant.connections = s.plant.connections.filter((c) => !(c.from === from && c.to === to));
       }),
 
     applyStandard: (screenId) => {
@@ -1191,6 +1253,7 @@ export function createProjectStore() {
         s.screens = [];
         s.foreign = {};
         s.composites = {};
+        s.plant = undefined;
         s.variables = [];
         s.alarms = [];
         s.bindings = [];

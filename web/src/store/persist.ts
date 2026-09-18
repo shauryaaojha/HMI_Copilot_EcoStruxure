@@ -14,6 +14,7 @@
  */
 
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
+import type { PlantModel } from "@/lib/plant/model";
 import type {
   Binding,
   ChatMessage,
@@ -53,6 +54,7 @@ export interface PersistedProject {
   foreign?: Record<string, ForeignPart[]>;
   /** Composite instances, so an indicator is still an indicator after a reload. */
   composites?: Record<string, CompositeInstance>;
+  plant?: PlantModel;
   standards: Standards;
   versions: Version[];
   chat: ChatMessage[];

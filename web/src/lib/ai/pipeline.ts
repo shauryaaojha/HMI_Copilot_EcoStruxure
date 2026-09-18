@@ -18,6 +18,7 @@
  */
 
 import { layoutApplication, type LayoutUnit } from "@/lib/ote/layout";
+import { modelPlant } from "@/lib/plant/model";
 import { libraryAvailable, symbolsFor } from "@/lib/ote/symbols";
 import type { Wire } from "@/lib/ote/bindings";
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
@@ -199,9 +200,15 @@ export async function* runPipeline(
    * silent difference between two machines.
    */
   const graphics = await symbolsFor(equipment.map((unit) => unit.symbol));
+  // The Plant Model: ranges for every indicator, and the structure the
+  // process view will follow. Built from the same tags, stated as a document
+  // the engineer corrects on the Plant page rather than on every screen.
+  const plant = modelPlant(variables);
+  yield { type: "plant", model: plant };
   const drawn: LayoutUnit[] = equipment.map((unit) => ({
     ...unit,
     graphic: unit.symbol ? graphics.get(unit.symbol) : undefined,
+    ranges: plant.equipment.find((e) => e.id === unit.id)?.ranges,
   }));
 
   const withGraphic = drawn.filter((unit) => unit.graphic).length;

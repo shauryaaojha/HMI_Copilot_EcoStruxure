@@ -32,6 +32,7 @@ import {
 import { DARK_GREY, GREY } from "./palette";
 import { DEFAULT_PACK } from "../standard/pack";
 import { expandComposite, type CompositeKind } from "../composites";
+import { rangeFor, unitOf, type Range } from "../plant/units";
 import type { CompositeInstance } from "@/store/types";
 
 /** The Standard in force: a grey ground, lighter panels, colour only for alarms. */
@@ -60,6 +61,8 @@ export interface LayoutUnit {
    * same faceplate with no picture on it.
    */
   graphic?: { Commands: string; Points: string };
+  /** The Plant Model's range per reading tag, when the model has one. */
+  ranges?: Record<string, Range>;
 }
 
 export interface ScreenSpec {
@@ -103,22 +106,6 @@ export const ZONES = { HEADER, NAV, FOOTER, MARGIN, GAP, CARD, TILE } as const;
 const SYMBOL = 52;
 /** A tile's, which has a third of the room. */
 const TILE_SYMBOL = 26;
-
-/** The engineering unit a reading is in, from what the tag comment says. */
-function unitOf(comment: string, role: string): string {
-  if (/percent|%/i.test(comment)) return "%";
-  if (/lpm|l\/min/i.test(comment)) return "LPM";
-  if (/m3\/h|m³\/h/i.test(comment)) return "m3/h";
-  if (/\bbar\b/i.test(comment)) return "bar";
-  if (/\bpsi\b/i.test(comment)) return "psi";
-  if (/deg\s?c|°c|celsius/i.test(comment)) return "degC";
-  if (/\bkw\b/i.test(comment)) return "kW";
-  if (/\brpm\b/i.test(comment)) return "rpm";
-  if (/\bhz\b|hertz/i.test(comment)) return "Hz";
-  if (role === "level") return "%";
-  if (role === "flow") return "LPM";
-  return "";
-}
 
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -423,10 +410,10 @@ function drawCard(place: Adds, unit: LayoutUnit, box: Box) {
     readings.forEach((role, i) => {
       const rowTop = y + (run || fault ? 86 : 40) + i * 60;
       const tag = role.tag.replace(/[^A-Za-z0-9]/g, "");
-      const unitLabel = unitOf(role.comment, role.role);
+      const range = unit.ranges?.[role.tag] ?? rangeFor(role.comment, role.role);
       (place as Placer).composite(
         "AnalogIndicator",
-        { label: titleCase(role.role), tag: role.tag, units: unitLabel, min: 0, max: 100, normalLow: 20, normalHigh: 80, decimals: 1 },
+        { label: titleCase(role.role), tag: role.tag, units: range.units, min: range.min, max: range.max, normalLow: range.normalLow, normalHigh: range.normalHigh, decimals: 1 },
         { left: x + 12, top: rowTop, width: box.width - 24, height: 56 },
         `Ind_${tag}`,
       );

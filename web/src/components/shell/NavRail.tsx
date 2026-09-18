@@ -25,6 +25,7 @@ import {
   FolderOpen,
   History,
   LayoutGrid,
+  Network,
   Ruler,
   Settings,
   ShieldCheck,
@@ -51,6 +52,7 @@ const HOME: NavItem = { label: "Workspace", slug: "", icon: LayoutGrid };
 
 const MAIN: NavItem[] = [
   { label: "Tags", slug: "tags", icon: Tag, count: (s) => s.variables.length },
+  { label: "Plant", slug: "plant", icon: Network, count: (s) => s.plant?.equipment.length ?? 0 },
   { label: "Standards", slug: "standards", icon: Ruler },
   {
     label: "Validation",

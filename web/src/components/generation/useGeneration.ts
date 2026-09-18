@@ -78,6 +78,10 @@ export function useGeneration() {
         break;
       }
 
+      case "plant":
+        s.setPlant(event.model);
+        break;
+
       case "composite":
         s.registerComposite({
           id: event.id,
