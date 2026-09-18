@@ -21,6 +21,7 @@ import { TagTable } from "@/components/tags";
 import { LibraryPanel } from "@/components/library/LibraryPanel";
 import { Button, Field, Panel, Tabs, type TabItem } from "@/components/ui";
 import { BindingEditor } from "./BindingEditor";
+import { CompositeEditor } from "./CompositeEditor";
 import { FieldEditor } from "./editors";
 import { LayersPanel } from "./LayersPanel";
 import { groupsOf, valueAt, withIndex, type SchemaField } from "./schemaFields";
@@ -121,6 +122,7 @@ export function Inspector() {
   const findings = useProject((s) => s.findings);
   const selectedIds = useProject((s) => s.selectedIds);
   const objectMeta = useProject((s) => s.objectMeta);
+  const composites = useProject((s) => s.composites);
   const setProperty = useProject((s) => s.setProperty);
   const removeObjects = useProject((s) => s.removeObjects);
   const setBox = useProject((s) => s.setBox);
@@ -129,6 +131,14 @@ export function Inspector() {
   // The inspector edits one object; a marquee selection of several reports the
   // count instead, because a property panel over a heterogeneous selection is a
   // way to change something you cannot see.
+  // A selection that is exactly one composite's parts edits the composite:
+  // its props, not the six parts it expanded to.
+  const groupIds = new Set(selectedIds.map((id) => objectMeta[id]?.groupId));
+  const composite =
+    selectedIds.length > 0 && groupIds.size === 1
+      ? composites[[...groupIds][0] ?? ""]
+      : undefined;
+
   const only = selectedIds.length === 1 ? selectedIds[0] : undefined;
   const part = screens
     .flatMap((s) => s.Children[0].Children)
@@ -169,6 +179,8 @@ export function Inspector() {
           <LibraryPanel />
         ) : tab === "layers" ? (
           <LayersPanel />
+        ) : composite ? (
+          <CompositeEditor instance={composite} />
         ) : selectedIds.length > 1 ? (
           <p className="p-4 text-sm text-text-muted">
             {selectedIds.length} objects selected. The toolbar aligns and

@@ -167,6 +167,23 @@ export interface ForeignPart {
   box: { left: number; top: number; width: number; height: number } | null;
 }
 
+/**
+ * A composite instance: which parts on which screen were expanded from which
+ * props. The parts are ordinary parts (the packager sees only them); this is
+ * what lets the inspector edit "the indicator" and the store re-expand it.
+ * docs/ARCHITECTURE_SCREEN_QUALITY.md §3.3.
+ */
+export interface CompositeInstance {
+  /** Also the group id its parts carry in objectMeta. */
+  id: string;
+  kind: string;
+  name: string;
+  props: Record<string, unknown>;
+  screenId: string;
+  /** In paint order; the first is the frame the box is read from. */
+  partIds: string[];
+}
+
 /** Screens lifted out of another project, as the import route returns them. */
 export interface ScreenImport {
   screens: Screen[];

@@ -31,6 +31,8 @@ import {
 } from "./parts";
 import { DARK_GREY, GREY } from "./palette";
 import { DEFAULT_PACK } from "../standard/pack";
+import { expandComposite, type CompositeKind } from "../composites";
+import type { CompositeInstance } from "@/store/types";
 
 /** The Standard in force: a grey ground, lighter panels, colour only for alarms. */
 const T = DEFAULT_PACK.tokens;
@@ -74,6 +76,8 @@ export interface LaidOutScreen {
   screen: Screen;
   parts: Part[];
   wires: Wire[];
+  /** Composite instances among the parts, for the store to adopt. */
+  composites: CompositeInstance[];
 }
 
 /* --- the fixed zones, in screen units -------------------------------- */
@@ -129,11 +133,34 @@ class Placer {
   private taken = new Set<string>();
   parts: Part[] = [];
   wires: Wire[] = [];
+  composites: CompositeInstance[] = [];
 
   /** Fresh part list per screen; the name set carries across all of them. */
   begin() {
     this.parts = [];
     this.wires = [];
+    this.composites = [];
+  }
+
+  /** Expand a composite here: its parts are placed, its wires kept, its instance recorded. */
+  composite(kind: CompositeKind, props: Record<string, unknown>, box: Box, name: string): CompositeInstance {
+    const stem = this.unique(name);
+    const { parts, wires } = expandComposite(kind, props, box, stem);
+    for (const part of parts) this.add(part);
+    for (const w of wires) {
+      const part = parts[w.index];
+      if (part) this.wires.push({ part, tag: w.tag, property: w.property });
+    }
+    const instance: CompositeInstance = {
+      id: crypto.randomUUID(),
+      kind,
+      name: stem,
+      props,
+      screenId: "",
+      partIds: parts.map((p) => p.UniqueId),
+    };
+    this.composites.push(instance);
+    return instance;
   }
 
   private unique(wanted: string): string {
@@ -386,10 +413,26 @@ function drawCard(place: Adds, unit: LayoutUnit, box: Box) {
     );
   }
 
-  // Two readings fit. A unit with more of them earns a detail screen, which is
-  // what the plan is for - cramming six numerics into a card is the habit
-  // ISA-101 exists to break.
-  const readings = unit.roles.filter((r) => isReading(r.dataType)).slice(0, 2);
+  // A reading is an analogue indicator - scale, normal band, value, unit -
+  // not a number in a box. One fits under the lamps, two on a card without
+  // them; a unit with more earns a detail screen, which is what the plan is
+  // for. The range and the normal band are the class defaults until the tag
+  // export or the engineer says otherwise, and the inspector shows them.
+  const readings = unit.roles.filter((r) => isReading(r.dataType)).slice(0, run || fault ? 1 : 2);
+  if ("composite" in place) {
+    readings.forEach((role, i) => {
+      const rowTop = y + (run || fault ? 86 : 40) + i * 60;
+      const tag = role.tag.replace(/[^A-Za-z0-9]/g, "");
+      const unitLabel = unitOf(role.comment, role.role);
+      (place as Placer).composite(
+        "AnalogIndicator",
+        { label: titleCase(role.role), tag: role.tag, units: unitLabel, min: 0, max: 100, normalLow: 20, normalHigh: 80, decimals: 1 },
+        { left: x + 12, top: rowTop, width: box.width - 24, height: 56 },
+        `Ind_${tag}`,
+      );
+    });
+    return;
+  }
   readings.forEach((role, i) => {
     const rowTop = y + (run || fault ? 86 : 40) + i * 34;
     const tag = role.tag.replace(/[^A-Za-z0-9]/g, "");
@@ -535,6 +578,11 @@ export function layoutApplication(
     // Every wire now knows its screen, which is what keeps a Target's ScreenId
     // right in an application with more than one.
     const wires = place.wires.map((w) => ({ ...w, screenId: screen.UniqueId }));
-    return { screen, parts: place.parts, wires };
+    return {
+      screen,
+      parts: place.parts,
+      wires,
+      composites: place.composites.map((c) => ({ ...c, screenId: screen.UniqueId })),
+    };
   });
 }

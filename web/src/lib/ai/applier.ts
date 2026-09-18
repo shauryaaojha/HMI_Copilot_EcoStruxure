@@ -19,6 +19,7 @@
  *       The live project is untouched until then.
  */
 
+import { COMPOSITES, isCompositeKind, propsFor } from "@/lib/composites";
 import {
   FONT,
   alarmSummary,
@@ -168,6 +169,7 @@ function defaultName(type: string, screen?: Screen): string {
 }
 
 const sizeFor = (type: Op["type"]): { width: number; height: number } => {
+  if (type && isCompositeKind(type)) return COMPOSITES[type].size;
   switch (type) {
     case "Rectangle":
       return { width: 200, height: 120 };
@@ -485,6 +487,35 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
           }
           box = slot.box;
           region = slot.region;
+        }
+
+        if (isCompositeKind(op.type)) {
+          // A composite: its label is the text, its tag drives the value, the
+          // rest comes from the definition's defaults.
+          const cid = s.addComposite(
+            screen.UniqueId,
+            op.type,
+            propsFor(op.type, {
+              label: op.text ?? askedName ?? op.type,
+              ...(op.tag ? (op.type === "EquipmentSymbol" ? { runTag: op.tag } : { tag: op.tag }) : {}),
+            }),
+            box,
+            name,
+          );
+          const afterC = store.getState();
+          const instance = afterC.composites[cid];
+          if (!instance) {
+            reject(op, `${op.type} could not be placed on ${screen.Name}.`);
+            break;
+          }
+          const frameId = instance.partIds[0];
+          const h = handleOf(afterC, frameId);
+          created.push({ asked: askedName, name: instance.name, type: op.type, id: frameId });
+          out.created.push({ handle: h, name: instance.name, type: op.type, screen: handleOf(afterC, screen.UniqueId) });
+          if (askedName && instance.name !== askedName) out.renamed.push({ asked: askedName, became: instance.name, handle: h });
+          touch(afterC, frameId);
+          ok(note || `Added ${op.type} ${h} ${instance.name} in the ${region} of ${screen.Name}`);
+          break;
         }
 
         const part = buildPart(op, name, box);

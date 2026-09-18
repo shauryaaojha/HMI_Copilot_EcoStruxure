@@ -16,6 +16,7 @@
 
 import { z } from "zod";
 import { PART_TYPES } from "@/lib/ote/schema";
+import { COMPOSITE_KINDS } from "@/lib/composites";
 import { REGIONS, SIDES } from "@/lib/ote/regions";
 
 export const OP_NAMES = [
@@ -94,7 +95,7 @@ export const Op = z.object({
    * it - "PMP_101", "Boiler 4001". One op, one whole faceplate.
    */
   equipment: z.string().optional(),
-  type: z.enum(PART_TYPES).optional(),
+  type: z.enum([...PART_TYPES, ...COMPOSITE_KINDS]).optional(),
   text: z.string().optional(),
   offText: z.string().optional(),
   onText: z.string().optional(),

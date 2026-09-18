@@ -7,6 +7,7 @@
  * by calling it.
  */
 
+import { PART_TYPES } from "@/lib/ote/schema";
 import { describe, expect, it } from "vitest";
 import { runPipeline } from "@/lib/ai/pipeline";
 import { inferEquipment, proposeAlarms } from "@/lib/ai/infer";
@@ -90,7 +91,7 @@ describe("the pipeline, with no API key", () => {
     const { of } = await collect("Two pump station");
     const types = new Set(of("object").map((e) => e.part.Type));
     for (const type of types) {
-      expect(["Rectangle", "TextBox", "Lamp", "NumericDisplay", "AlarmSummary", "Path"]).toContain(type);
+      expect(PART_TYPES).toContain(type);
     }
   });
 

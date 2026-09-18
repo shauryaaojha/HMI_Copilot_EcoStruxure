@@ -8,6 +8,9 @@ import {
   BarChart3,
   Bell,
   CalendarClock,
+  Cog,
+  Gauge,
+  LayoutDashboard,
   Hash,
   Layers,
   Lightbulb,
@@ -23,8 +26,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { PartType } from "@/lib/ote/schema";
+import type { CompositeKind } from "@/lib/composites";
 
-export const TOOL_ICON: Record<PartType, LucideIcon> = {
+export const TOOL_ICON: Record<PartType | CompositeKind, LucideIcon> = {
+  AnalogIndicator: Gauge,
+  KpiTile: LayoutDashboard,
+  EquipmentSymbol: Cog,
   Rectangle: Square,
   TextBox: Type,
   Lamp: Lightbulb,

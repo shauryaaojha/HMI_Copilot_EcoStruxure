@@ -78,6 +78,17 @@ export function useGeneration() {
         break;
       }
 
+      case "composite":
+        s.registerComposite({
+          id: event.id,
+          kind: event.kind,
+          name: event.name,
+          props: event.props,
+          screenId: event.screenId,
+          partIds: event.partIds,
+        });
+        break;
+
       case "binding":
         s.addBinding({
           tag: event.tag,

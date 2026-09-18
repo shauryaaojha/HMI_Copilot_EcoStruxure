@@ -10,17 +10,16 @@
  */
 
 import { useEffect } from "react";
-import type { PartType } from "@/lib/ote/schema";
 import { useProject } from "@/store/project";
-import { TOOLS } from "./newPart";
+import { TOOLS, type ToolType } from "./newPart";
 
 /** One key per tool, from the same table the toolbar and the Insert menu read. */
-const TOOL_KEYS: Record<string, PartType> = Object.fromEntries(
+const TOOL_KEYS: Record<string, ToolType> = Object.fromEntries(
   TOOLS.map((t) => [t.key, t.type]),
 );
 
 export interface CanvasShortcutHandlers {
-  onTool: (tool: PartType | null) => void;
+  onTool: (tool: ToolType | null) => void;
   onPanMode: (on: boolean) => void;
   onZoomStep: (direction: 1 | -1) => void;
   onZoom: (percent: number) => void;

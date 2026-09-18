@@ -231,7 +231,7 @@ export async function* runPipeline(
   const screens: Screen[] = [];
   const wires: Wire[] = [];
 
-  for (const { screen, parts, wires: screenWires } of laidOut) {
+  for (const { screen, parts, wires: screenWires, composites } of laidOut) {
     screens.push(screen);
     wires.push(...screenWires);
     for (const part of parts) {
@@ -242,6 +242,7 @@ export async function* runPipeline(
         screenName: screen.Name,
       };
     }
+    for (const c of composites) yield { type: "composite", ...c };
   }
 
   const objectCount = laidOut.reduce((n, s) => n + s.parts.length, 0);

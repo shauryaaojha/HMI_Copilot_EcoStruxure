@@ -17,6 +17,7 @@ import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
 import type {
   Binding,
   ChatMessage,
+  CompositeInstance,
   ForeignPart,
   ObjectMeta,
   ScreenPlacement,
@@ -50,6 +51,8 @@ export interface PersistedProject {
   source?: string;
   /** Carried objects per screen, when the project was opened from a file. */
   foreign?: Record<string, ForeignPart[]>;
+  /** Composite instances, so an indicator is still an indicator after a reload. */
+  composites?: Record<string, CompositeInstance>;
   standards: Standards;
   versions: Version[];
   chat: ChatMessage[];

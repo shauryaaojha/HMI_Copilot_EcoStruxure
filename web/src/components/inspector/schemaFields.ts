@@ -216,6 +216,11 @@ const OPTION_BY_TYPE = new Map(
 /** Every part type the schema defines - which is every one the packager emits. */
 export const PART_TYPES = [...OPTION_BY_TYPE.keys()];
 
+/** The fields of any object schema - a composite's props, for its editor. */
+export function fieldsOfSchema(schema: z.AnyZodObject): SchemaField[] {
+  return Object.entries(schema.shape).map(([key, s]) => describe(key, s as z.ZodTypeAny, []));
+}
+
 export function fieldsOf(type: string): SchemaField[] {
   const option = OPTION_BY_TYPE.get(type);
   if (!option) return [];

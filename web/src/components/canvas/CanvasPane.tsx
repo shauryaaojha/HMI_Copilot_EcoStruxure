@@ -18,7 +18,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useProject } from "@/store/project";
 import { activeAlarms } from "@/lib/sim/alarms";
-import type { PartType, Screen } from "@/lib/ote/schema";
+import type { Screen } from "@/lib/ote/schema";
+import { isCompositeKind, propsFor } from "@/lib/composites";
+import type { ToolType } from "./newPart";
 import { useSimulation } from "./useSimulation";
 import { Tabs, cn, type TabItem } from "@/components/ui";
 import { BindingMap } from "@/components/bindings/BindingMap";
@@ -58,7 +60,7 @@ export function CanvasPane() {
   const [view, setView] = useState<CanvasView>("board");
   const [zoom, setZoom] = useState(100);
   const [panMode, setPanMode] = useState(false);
-  const [tool, setTool] = useState<PartType | null>(null);
+  const [tool, setTool] = useState<ToolType | null>(null);
   const [menu, setMenu] = useState<ContextTarget | null>(null);
 
   const viewport = useRef<HTMLDivElement>(null);
@@ -80,6 +82,7 @@ export function CanvasPane() {
   const nudge = useProject((s) => s.nudge);
   const setBox = useProject((s) => s.setBox);
   const appendObject = useProject((s) => s.appendObject);
+  const addComposite = useProject((s) => s.addComposite);
   const setActiveScreen = useProject((s) => s.setActiveScreen);
   const screenPlacement = useProject((s) => s.screenPlacement);
   const placeScreen = useProject((s) => s.placeScreen);
@@ -342,13 +345,14 @@ export function CanvasPane() {
 
   /** A completed draw gesture becomes a real part on the active screen. */
   const onDraw = useCallback(
-    (type: PartType, box: Box) => {
-      appendObject(screen.UniqueId, partFromTool(type, box));
+    (type: ToolType, box: Box) => {
+      if (isCompositeKind(type)) addComposite(screen.UniqueId, type, propsFor(type), box);
+      else appendObject(screen.UniqueId, partFromTool(type, box));
       // One shape per arming, the way every design tool behaves: the tool
       // disarms so the next drag selects rather than drawing a second panel.
       setTool(null);
     },
-    [appendObject, screen.UniqueId],
+    [appendObject, addComposite, screen.UniqueId],
   );
 
   // A screen change while a tool is armed would place the next shape somewhere

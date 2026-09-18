@@ -25,17 +25,28 @@ import {
   type Box,
 } from "@/lib/ote/parts";
 import type { Part, PartType } from "@/lib/ote/schema";
+import { COMPOSITES, type CompositeKind } from "@/lib/composites";
+
+/** What the canvas can be armed to draw: a part, or a composite of parts. */
+export type ToolType = PartType | CompositeKind;
 
 /** Every tool the toolbar can arm, with the label and the key that arms it. */
-export type ToolGroup = "Basic" | "Indicators" | "Controls" | "Displays" | "Data";
+export type ToolGroup = "Basic" | "Indicators" | "Controls" | "Displays" | "Data" | "Composites";
 
 export const TOOLS: {
-  type: PartType;
+  type: ToolType;
   label: string;
   hint: string;
   key: string;
   group: ToolGroup;
 }[] = [
+  ...Object.values(COMPOSITES).map((def) => ({
+    type: def.kind as ToolType,
+    label: def.label,
+    hint: def.hint,
+    key: def.key,
+    group: "Composites" as ToolGroup,
+  })),
   { type: "Rectangle", label: "Rectangle", hint: "Panel or background", key: "r", group: "Basic" },
   { type: "TextBox", label: "Text", hint: "Label or title", key: "t", group: "Basic" },
   { type: "Pipe", label: "Pipe", hint: "Line whose colour follows a state", key: "p", group: "Basic" },

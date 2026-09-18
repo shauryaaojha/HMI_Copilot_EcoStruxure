@@ -14,19 +14,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Plus } from "lucide-react";
-import type { PartType } from "@/lib/ote/schema";
 import { cn } from "@/components/ui";
-import { TOOLS, type ToolGroup } from "./newPart";
+import { TOOLS, type ToolGroup, type ToolType } from "./newPart";
 import { TOOL_ICON } from "./toolIcons";
 
-const GROUPS: ToolGroup[] = ["Basic", "Indicators", "Controls", "Displays", "Data"];
+const GROUPS: ToolGroup[] = ["Composites", "Basic", "Indicators", "Controls", "Displays", "Data"];
 
 export function InsertMenu({
   tool,
   onTool,
 }: {
-  tool: PartType | null;
-  onTool: (tool: PartType | null) => void;
+  tool: ToolType | null;
+  onTool: (tool: ToolType | null) => void;
 }) {
   const [open, setOpen] = useState(false);
   /**

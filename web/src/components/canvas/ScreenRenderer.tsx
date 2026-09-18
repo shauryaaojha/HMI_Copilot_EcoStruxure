@@ -26,7 +26,9 @@
  */
 
 import { useCallback, useRef, useState } from "react";
-import type { Part, PartType, Screen } from "@/lib/ote/schema";
+import type { Part, Screen } from "@/lib/ote/schema";
+import { COMPOSITES, isCompositeKind } from "@/lib/composites";
+import type { ToolType } from "./newPart";
 import { resolveColor } from "@/lib/ote/palette";
 import type { ForeignPart, ObjectMeta, ScreenPreview } from "@/store/types";
 import { snapDelta, snapTargets, unionOf, type Box } from "@/store/edits";
@@ -56,7 +58,7 @@ type HandleId = (typeof HANDLES)[number]["id"];
 export type { Box };
 
 /** What the toolbar can arm. Every one of these is a part the packager emits. */
-export type DrawTool = PartType | null;
+export type DrawTool = ToolType | null;
 
 export interface ScreenRendererProps {
   screen: Screen;
@@ -96,7 +98,7 @@ export interface ScreenRendererProps {
   onMove?: (ids: string[], dx: number, dy: number) => void;
   onResize?: (id: string, box: Box) => void;
   /** A completed draw gesture. The caller builds the part and names it. */
-  onDraw?: (type: PartType, box: Box) => void;
+  onDraw?: (type: ToolType, box: Box) => void;
   onContextMenu?: (at: { x: number; y: number }, objectId?: string) => void;
 }
 
@@ -629,7 +631,8 @@ export function ScreenRenderer({
 }
 
 /** What a click with a tool armed places, when there is no drag to size it. */
-function defaultSize(type: PartType): { width: number; height: number } {
+function defaultSize(type: ToolType): { width: number; height: number } {
+  if (isCompositeKind(type)) return COMPOSITES[type].size;
   switch (type) {
     case "TextBox":
       return { width: 160, height: 28 };

@@ -14,7 +14,7 @@
 import { describe, expect, it } from "vitest";
 import { layoutApplication, type LayoutUnit, type ScreenSpec } from "@/lib/ote/layout";
 import { boardExtent, boardMetrics, placementOf } from "@/components/canvas/ScreenBoard";
-import type { Part } from "@/lib/ote/schema";
+import { PART_TYPES, type Part } from "@/lib/ote/schema";
 
 const PANEL = { width: 1024, height: 600 };
 
@@ -68,8 +68,10 @@ describe("one screen", () => {
   });
 
   it("emits only part types the packager can write", () => {
-    const allowed = new Set(["Rectangle", "TextBox", "Lamp", "NumericDisplay", "AlarmSummary"]);
-    for (const part of built.parts) expect(allowed.has(part.Type)).toBe(true);
+    // The schema's own list: a part the packager writes is one the schema
+    // declares, and the exhaustive switch in the canvas keeps them equal.
+    const allowed = new Set<string>(PART_TYPES);
+    for (const part of built.parts) expect(allowed.has(part.Type), part.Type).toBe(true);
   });
 
   it("puts a numeric display on every reading and binds it", () => {

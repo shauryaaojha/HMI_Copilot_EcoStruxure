@@ -55,19 +55,18 @@ import {
   Unlock,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import type { PartType } from "@/lib/ote/schema";
 import { useProject } from "@/store/project";
 import { Badge, Button, cn } from "@/components/ui";
 import { InsertMenu } from "./InsertMenu";
-import { QUICK_TOOLS, TOOLS } from "./newPart";
+import { QUICK_TOOLS, TOOLS, type ToolType } from "./newPart";
 import { TOOL_ICON } from "./toolIcons";
 
 /** The five inline tools, in the order the hand expects them. */
 const QUICK = QUICK_TOOLS.map((type) => TOOLS.find((t) => t.type === type)!);
 
 export interface CanvasToolbarProps {
-  tool: PartType | null;
-  onTool: (tool: PartType | null) => void;
+  tool: ToolType | null;
+  onTool: (tool: ToolType | null) => void;
   panMode: boolean;
   onPanMode: (on: boolean) => void;
   zoom: number;

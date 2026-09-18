@@ -23,10 +23,13 @@ import {
 } from "./edits";
 import { DEFAULT_STANDARDS } from "./types";
 import { applyPack } from "@/lib/standard/apply";
+import { expandComposite, propsFor, unionBox, type CompositeKind } from "@/lib/composites";
+import type { Box } from "@/lib/ote/parts";
 import { refreshNavigation as refreshNavigationParts } from "@/lib/ote/layout";
 import type {
   Binding,
   ChatMessage,
+  CompositeInstance,
   Finding,
   ForeignPart,
   ImportReport,
@@ -105,6 +108,8 @@ interface ProjectState {
    * originals back at export. docs/PLAN_PHASE2.md item 1.
    */
   foreign: Record<string, ForeignPart[]>;
+  /** Composite instances by id (= the group id their parts carry). */
+  composites: Record<string, CompositeInstance>;
   variables: Variable[];
   alarms: Alarm[];
   bindings: Binding[];
@@ -185,6 +190,14 @@ interface ProjectState {
    */
   applyStandard: (screenId?: string) => string[];
 
+  /* --- composites ---------------------------------------------------- */
+  /** Expand a composite onto a screen; its parts land grouped and bound. Returns the instance id. */
+  addComposite: (screenId: string, kind: CompositeKind, props: Record<string, unknown>, box: Box, name?: string) => string;
+  /** Change props and re-expand in place: same screen, same paint index, same box. */
+  setCompositeProps: (id: string, patch: Record<string, unknown>) => void;
+  /** Adopt parts already on a screen (the generator's) as a composite instance. */
+  registerComposite: (instance: CompositeInstance) => void;
+
   /* --- objects ------------------------------------------------------- */
   appendObject: (screenId: string, part: Part) => void;
   updateObject: (id: string, patch: Partial<Part>) => void;
@@ -259,7 +272,8 @@ type ProjectActions = Pick<
   | "hydrate" | "rename" | "setTarget" | "markSaved" | "select" | "selectAll"
   | "hover" | "setSimulating" | "setPreview" | "addScreen" | "duplicateScreen" | "renameScreen"
   | "removeScreen" | "setActiveScreen" | "reorderScreens" | "placeScreen"
-  | "tidyBoard" | "importScreens" | "applyStandard" | "appendObject"
+  | "tidyBoard" | "importScreens" | "applyStandard" | "addComposite" | "setCompositeProps"
+  | "registerComposite" | "appendObject"
   | "updateObject" | "setProperty" | "nudge" | "setBox" | "removeObjects"
   | "duplicateObjects" | "copyObjects" | "cutObjects" | "pasteObjects" | "align"
   | "spread" | "restackObjects" | "setMeta" | "group" | "ungroup" | "undo"
@@ -393,6 +407,7 @@ export function createProjectStore() {
     handles: {},
     handleSeq: 0,
     foreign: {},
+    composites: {},
     selectedIds: [],
     simulating: false,
     clipboard: [],
@@ -467,6 +482,81 @@ export function createProjectStore() {
       }),
 
     /* --- screens ------------------------------------------------------ */
+
+    addComposite: (screenId, kind, props, box, name) => {
+      const id = crypto.randomUUID();
+      set((s) => {
+        const screen = s.screens.find((x) => x.UniqueId === screenId);
+        if (!screen) return;
+        remember(s, `Add ${kind}`);
+        const parsed = propsFor(kind, props);
+        const stem = uniqueName(takenNames(s), name ?? kind);
+        const { parts, wires } = expandComposite(kind, parsed, box, stem);
+        const taken = takenNames(s);
+        for (const part of parts) {
+          part.Name = uniqueName(taken, part.Name);
+          taken.add(part.Name);
+        }
+        viewOf(screen).Children.push(...parts);
+        for (const part of parts) (s.objectMeta[part.UniqueId] ??= {}).groupId = id;
+        for (const w of wires) {
+          const part = parts[w.index];
+          if (part) s.bindings.push({ tag: w.tag, targetId: part.UniqueId, targetName: part.Name, property: w.property });
+        }
+        s.composites[id] = { id, kind, name: stem, props: parsed, screenId, partIds: parts.map((p) => p.UniqueId) };
+        s.selectedIds = parts.map((p) => p.UniqueId);
+        ensureHandles(s);
+      });
+      return id;
+    },
+
+    setCompositeProps: (id, patch) =>
+      set((s) => {
+        const instance = s.composites[id];
+        if (!instance) return;
+        const screen = s.screens.find((x) => x.UniqueId === instance.screenId);
+        if (!screen) return;
+        const children = viewOf(screen).Children;
+        const own = new Set(instance.partIds);
+        const oldParts = current(children).filter((p) => own.has(p.UniqueId));
+        const box = unionBox(oldParts);
+        if (!box) return;
+        const first = children.findIndex((p) => own.has(p.UniqueId));
+        remember(s, `Edit ${instance.kind}`);
+
+        const props = propsFor(instance.kind as CompositeKind, { ...instance.props, ...patch });
+        // Names are freed before the new parts claim them, so a re-expansion
+        // keeps its own names rather than gaining a _2.
+        const others = new Set(takenNames(s));
+        for (const p of oldParts) others.delete(p.Name);
+        const { parts, wires } = expandComposite(instance.kind as CompositeKind, props, box, instance.name);
+        for (const part of parts) {
+          part.Name = uniqueName(others, part.Name);
+          others.add(part.Name);
+        }
+
+        viewOf(screen).Children = [
+          ...children.slice(0, first).filter((p) => !own.has(p.UniqueId)),
+          ...parts,
+          ...children.slice(first).filter((p) => !own.has(p.UniqueId)),
+        ];
+        for (const oldId of own) delete s.objectMeta[oldId];
+        s.bindings = s.bindings.filter((b) => !own.has(b.targetId));
+        for (const part of parts) (s.objectMeta[part.UniqueId] ??= {}).groupId = id;
+        for (const w of wires) {
+          const part = parts[w.index];
+          if (part) s.bindings.push({ tag: w.tag, targetId: part.UniqueId, targetName: part.Name, property: w.property });
+        }
+        s.composites[id] = { ...instance, props, partIds: parts.map((p) => p.UniqueId) };
+        s.selectedIds = parts.map((p) => p.UniqueId);
+        ensureHandles(s);
+      }),
+
+    registerComposite: (instance) =>
+      set((s) => {
+        for (const partId of instance.partIds) (s.objectMeta[partId] ??= {}).groupId = instance.id;
+        s.composites[instance.id] = instance;
+      }),
 
     applyStandard: (screenId) => {
       const target = get().screens.find((x) => x.UniqueId === (screenId ?? get().activeScreenId)) ?? get().screens[0];
@@ -746,6 +836,11 @@ export function createProjectStore() {
         s.selectedIds = s.selectedIds.filter((id) => !wanted.has(id));
         // A binding whose target is gone would export as a dangling reference.
         s.bindings = s.bindings.filter((b) => !wanted.has(b.targetId));
+        // A composite that lost any of its parts is no longer one: what is
+        // left is ordinary parts, still grouped, and no longer re-expandable.
+        for (const [cid, instance] of Object.entries(s.composites)) {
+          if (instance.partIds.some((pid) => wanted.has(pid))) delete s.composites[cid];
+        }
       }),
 
     duplicateObjects: (ids) =>
@@ -861,6 +956,8 @@ export function createProjectStore() {
         );
         if (groups.size === 0) return;
         remember(s, "Ungroup");
+        // Ungrouping a composite makes it ordinary parts, by choice.
+        for (const gid of groups) delete s.composites[gid];
         for (const [id, meta] of Object.entries(s.objectMeta)) {
           if (!meta.groupId || !groups.has(meta.groupId)) continue;
           delete meta.groupId;
@@ -1093,6 +1190,7 @@ export function createProjectStore() {
         s.source = undefined;
         s.screens = [];
         s.foreign = {};
+        s.composites = {};
         s.variables = [];
         s.alarms = [];
         s.bindings = [];

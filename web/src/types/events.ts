@@ -66,6 +66,12 @@ export type GenerationEvent =
    * an older producer still parses.
    */
   | { type: "object"; part: Part; parentId: string; screenName?: string }
+  /**
+   * Parts already emitted belong to one composite. The canvas groups them and
+   * keeps the props, so the inspector edits the indicator rather than its six
+   * parts. Optional in the contract: a consumer that ignores it sees parts.
+   */
+  | { type: "composite"; id: string; kind: string; name: string; props: Record<string, unknown>; screenId: string; partIds: string[] }
   /** One resolved binding. */
   | { type: "binding"; tag: string; target: string; property: string }
   /** One configured alarm. */
