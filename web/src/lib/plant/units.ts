@@ -21,9 +21,13 @@ export function unitOf(comment: string, role: string): string {
   if (/\bm3\b/i.test(comment)) return "m3";
   if (/\bkg\b/i.test(comment)) return "kg";
   if (/\bmm\b/i.test(comment)) return "mm";
+  if (/\bhours?\b|\bhrs\b|\brun ?time\b/i.test(comment) || role === "hours") return "h";
+  if (/\bamps?\b|\bcurrent\b/i.test(comment) || role === "current") return "A";
   if (role === "level") return "%";
   if (role === "flow") return "LPM";
   if (role === "speed") return "%";
+  if (role === "position") return "%";
+  if (role === "volume") return "m3";
   return "";
 }
 
@@ -70,6 +74,10 @@ export function defaultRange(units: string, role: string): Omit<Range, "source">
       return band(0, 100, 20, 90);
     case "m3":
       return band(0, 1000, 100, 900);
+    case "h":
+      return band(0, 100000, 0, 100000);
+    case "A":
+      return band(0, 100, 5, 90);
     default:
       return band(0, 100, 20, 80);
   }

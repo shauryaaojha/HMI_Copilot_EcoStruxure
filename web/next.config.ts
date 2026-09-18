@@ -20,7 +20,10 @@ const config: NextConfig = {
 
   // sql.js ships a .wasm that webpack must not try to bundle as a module; the
   // packager loads it from disk on the Node runtime instead.
-  serverExternalPackages: ["sql.js"],
+  // The same for resvg, whose renderer is a native binary; and for
+  // react-dom/server, which the critic uses to draw a screen headlessly and
+  // which the bundler refuses in any graph it might ship to a browser.
+  serverExternalPackages: ["sql.js", "@resvg/resvg-js", "react-dom/server"],
 
   // The project skeleton is read with fs at request time, so it has to be
   // traced into the standalone output or the export route 500s in production.

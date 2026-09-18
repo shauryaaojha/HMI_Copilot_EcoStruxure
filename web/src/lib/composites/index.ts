@@ -101,7 +101,13 @@ export const AnalogIndicator: CompositeDef<AnalogIndicatorProps> = {
     const frac = (v: number) => Math.min(1, Math.max(0, (v - p.min) / span));
 
     parts.push(rectangle(`${name}`, box, { fill: T.panel, border: T.line }));
-    parts.push(textBox(`${name}_Lbl`, p.label, { left: x + 8, top: y + 4, width: w - 16, height: 20 }, { size: 12, bold: true, colour: T.ink }));
+    // The label takes the row when the scale runs down; beside a horizontal
+    // scale it shares the top row with the value and stops short of it.
+    const valueWidth = vertical ? 0 : 80;
+    const unitWidth = vertical ? 0 : 40;
+    parts.push(
+      textBox(`${name}_Lbl`, p.label, { left: x + 8, top: y + 4, width: Math.max(GRID, w - 16 - (vertical ? 0 : valueWidth + unitWidth + 8)), height: 20 }, { size: 12, bold: true, colour: T.ink }),
+    );
 
     if (vertical) {
       const scaleTop = y + 28;
@@ -123,8 +129,8 @@ export const AnalogIndicator: CompositeDef<AnalogIndicatorProps> = {
       parts.push(
         rectangle(`${name}_Band`, { left: Math.round(bandLeft), top: y + h - 44, width: Math.max(2, Math.round(bandRight - bandLeft)), height: 10 }, { fill: T.ground, border: T.line }),
       );
-      parts.push(numericDisplay(`${name}_Val`, { left: x + w - 8 - 96 - 40, top: y + 4, width: 96, height: 24 }, p.decimals));
-      parts.push(textBox(`${name}_Unit`, p.units, { left: x + w - 44, top: y + 6, width: 36, height: 20 }, { size: 12, colour: T.muted }));
+      parts.push(numericDisplay(`${name}_Val`, { left: x + w - 8 - valueWidth - unitWidth, top: y + 4, width: valueWidth, height: 24 }, p.decimals));
+      parts.push(textBox(`${name}_Unit`, p.units, { left: x + w - 8 - unitWidth + 4, top: y + 6, width: unitWidth - 4, height: 20 }, { size: 12, colour: T.muted }));
     }
 
     if (p.tag) wires.push({ index: parts.findIndex((q) => q.Name === `${name}_Val`), tag: p.tag, property: "CurrentValue" });
@@ -206,11 +212,13 @@ export const EquipmentSymbol: CompositeDef<EquipmentSymbolProps> = {
     const { left: x, top: y, width: w, height: h } = box;
     const dot = 16;
     const symbolBox = { left: x + dot + 4, top: y + 4, width: Math.max(GRID, w - 2 * (dot + 4)), height: Math.max(GRID, h - 32) };
-    parts.push(
-      p.graphic
-        ? pathPart(`${name}`, p.graphic, symbolBox, { fill: T.equipmentFill, border: T.equipmentLine })
-        : rectangle(`${name}`, symbolBox, { fill: T.equipmentFill, border: T.equipmentLine }),
-    );
+    // The library's path is one filled shape; the outline is what makes it
+    // read on the grey ground, and a 2px one is what the handbook draws.
+    const symbol = p.graphic
+      ? pathPart(`${name}`, p.graphic, symbolBox, { fill: T.equipmentFill, border: T.equipmentLine })
+      : rectangle(`${name}`, symbolBox, { fill: T.equipmentFill, border: T.equipmentLine });
+    if ("Thickness" in symbol) symbol.Thickness = 2;
+    parts.push(symbol);
     parts.push(textBox(`${name}_Lbl`, p.label, { left: x, top: y + h - 24, width: w, height: 20 }, { size: 12, bold: true, colour: T.ink }));
     if (p.runTag) {
       const run = lamp(`${name}_RUN`, "", "", { left: x + w - dot, top: y, width: dot, height: dot });

@@ -53,13 +53,32 @@ export type ScreenProgram = z.infer<typeof ScreenProgram>;
 
 const isReading = (dataType: string) => dataType !== "BOOL" && dataType !== "STRING";
 
-/** The reading an operator would look at first: level, then flow, pressure, temperature, then anything. */
-const HEADLINE = ["level", "flow", "pressure", "temperature", "speed", "value"];
+/**
+ * The reading an operator would look at first, by what the equipment is: a
+ * vessel's level, a mover's flow or speed, a heater's temperature. A pump
+ * labelled "level" is what the first critic run found, and it was right.
+ */
+const HEADLINE_BY_CLASS: Record<string, string[]> = {
+  tank: ["level", "volume", "temperature", "pressure"],
+  reactor: ["temperature", "pressure", "level"],
+  boiler: ["pressure", "temperature", "level"],
+  pump: ["flow", "speed", "pressure", "current", "hours"],
+  doser: ["flow", "speed"],
+  compressor: ["pressure", "speed"],
+  fan: ["speed", "flow", "pressure"],
+  conveyor: ["speed"],
+  valve: ["position", "flow"],
+  filter: ["pressure", "flow"],
+  heater: ["temperature"],
+  chiller: ["temperature"],
+  motor: ["speed", "current"],
+};
+const HEADLINE_ANY = ["flow", "level", "pressure", "temperature", "speed", "value"];
 function headline(model: PlantModel, equipmentId: string): { tag: string; role: string } | undefined {
   const e = model.equipment.find((x) => x.id === equipmentId);
   if (!e) return undefined;
   const readings = e.roles.filter((r) => isReading(r.dataType));
-  for (const role of HEADLINE) {
+  for (const role of [...(HEADLINE_BY_CLASS[e.class] ?? []), ...HEADLINE_ANY]) {
     const hit = readings.find((r) => r.role === role);
     if (hit) return { tag: hit.tag, role: hit.role };
   }

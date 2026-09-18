@@ -67,7 +67,12 @@ export function GraphicObject({
       preserveAspectRatio="xMidYMid meet"
       overflow="visible"
     >
-      <path d={d} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />
+      {/* The path is in the product's 3072-unit space; a 2-unit stroke
+          scaled to a 120px symbol is a hairline nobody sees. Non-scaling
+          keeps the outline at its Thickness in screen pixels, which is what
+          the product draws and what makes a grey symbol read on a grey
+          ground. */}
+      <path d={d} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }

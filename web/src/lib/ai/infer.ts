@@ -66,6 +66,16 @@ const ROLES: [RegExp, string][] = [
   [/_(CMD|START|STOP)$/i, "command"],
   [/_(SPD|SPEED)$/i, "speed"],
   [/_(PV|VALUE|VAL)$/i, "value"],
+  // What a tag measures, when the name says so rather than an instrument
+  // prefix: TNK_101_LEVEL is a level, PMP_102_HRS is running hours.
+  [/_(LEVEL|LVL)$/i, "level"],
+  [/_(FLOW|FLW)$/i, "flow"],
+  [/_(PRESS|PRES|PRS)$/i, "pressure"],
+  [/_(TEMP|TMP)$/i, "temperature"],
+  [/_(VOL|VOLUME)$/i, "volume"],
+  [/_(HRS|HOURS|RUNTIME)$/i, "hours"],
+  [/_(CUR|CURRENT|AMPS)$/i, "current"],
+  [/_(POS|POSITION)$/i, "position"],
   [/_(SP|SETPOINT)$/i, "setpoint"],
   [/_(HI|HIGH|HH)$/i, "high"],
   [/_(LO|LOW|LL)$/i, "low"],

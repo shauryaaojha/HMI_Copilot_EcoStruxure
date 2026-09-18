@@ -91,12 +91,13 @@ export function placeGraph(
   const columns = orderLayers(nodes, edges);
   const count = columns.length;
   const span = Math.max(0, area.width - node.width);
-  const columnLeft = (c: number) =>
-    count === 1 ? area.left + snap(span / 2) : area.left + snap((span * c) / (count - 1));
-  // Never closer than the pitch while the area has the room; when it does
-  // not, the even spread is what fits, and the columns simply sit closer.
-  const roomForPitch = (count - 1) * pitch.column <= span;
-  const lefts = columns.map((_, c) => (roomForPitch ? Math.max(columnLeft(c), area.left + c * pitch.column) : columnLeft(c)));
+  // Columns one pitch apart, the whole block centred in the area: a tank
+  // and three pumps read as a process, not as two things at opposite edges
+  // of the panel. When the pitch does not fit, the columns share what does.
+  const wanted = (count - 1) * pitch.column;
+  const step = wanted <= span ? pitch.column : count > 1 ? span / (count - 1) : 0;
+  const start = area.left + snap((span - step * (count - 1)) / 2);
+  const lefts = columns.map((_, c) => start + c * step);
   const out: Placed[] = [];
   columns.forEach((column, c) => {
     column.forEach((id, r) => {

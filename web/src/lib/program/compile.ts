@@ -17,8 +17,9 @@ import { pipeRun, screenOf } from "@/lib/ote/parts";
 import { orderLayers, placeGraph } from "./topology";
 import type { ScreenProgram } from "./program";
 
-const NODE = { width: 120, height: 128 };
-const CALLOUT = { width: 176, height: 56 };
+const NODE = { width: 120, height: 96 };
+/** Wide enough for a label, a value and a unit on one row above the scale. */
+const CALLOUT = { width: 232, height: 64 };
 const KPI = { width: 208, height: 104 };
 
 /** The program as the ScreenSpec the navigation strip lists it by. */
@@ -75,11 +76,23 @@ export function compileProgram(
     // never the panel edge. The log says which.
     const rows = Math.max(1, ...orderLayers(nodes, edges).map((c) => c.length));
     let node = { ...NODE };
-    let rowPitch = node.height + (callouts.length > 0 ? CALLOUT.height + GAP : 0) + GAP;
-    if (rows * rowPitch - GAP > areaHeight && callouts.length > 0) {
-      notes.push(`${program.title}: ${callouts.length} callouts left off, the ${rows} rows of symbols need the room; the readings are on the faceplates`);
-      callouts = [];
-      rowPitch = node.height + GAP;
+    const calloutRoom = callouts.length > 0 ? CALLOUT.height + GAP / 2 : 0;
+    let rowPitch = node.height + calloutRoom + GAP;
+    // A reading beside its equipment is worth more than a large symbol: the
+    // symbols shrink first, down to a floor an operator still recognises,
+    // and only then do the callouts go.
+    const MIN_SYMBOL = 72;
+    if (rows * rowPitch - GAP > areaHeight) {
+      const height = Math.floor((areaHeight - (rows - 1) * GAP - rows * calloutRoom) / rows / 8) * 8;
+      if (height >= MIN_SYMBOL) {
+        notes.push(`${program.title}: symbols drawn at ${height}px to fit ${rows} rows with their readings`);
+        node = { width: Math.max(MIN_SYMBOL, Math.round((NODE.width * height) / NODE.height / 8) * 8), height };
+        rowPitch = height + calloutRoom + GAP;
+      } else if (callouts.length > 0) {
+        notes.push(`${program.title}: ${callouts.length} callouts left off, the ${rows} rows of symbols need the room; the readings are on the faceplates`);
+        callouts = [];
+        rowPitch = node.height + GAP;
+      }
     }
     if (rows * rowPitch - GAP > areaHeight) {
       const height = Math.max(64, Math.floor((areaHeight - (rows - 1) * GAP) / rows / 8) * 8);

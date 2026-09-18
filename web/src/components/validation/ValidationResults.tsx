@@ -17,6 +17,7 @@ import { CircleAlert, Info, Play, ShieldCheck, TriangleAlert } from "lucide-reac
 import { useProject, type Finding } from "@/store/project";
 import { Badge, Button, cn } from "@/components/ui";
 import { summarise, useValidation } from "./useValidation";
+import { CriticPanel } from "./CriticPanel";
 
 type Filter = "all" | "error" | "warning" | "info";
 
@@ -104,6 +105,12 @@ export function ValidationResults({ projectId }: { projectId?: string }) {
           {error}
         </p>
       )}
+
+      {/* The rules above are what a lint can check. What a picture shows -
+          flow, salience, balance - is the critic's, and it only proposes. */}
+      <div className="shrink-0 rounded-panel border border-line-subtle p-3">
+        <CriticPanel projectId={projectId} />
+      </div>
 
       <div className="flex shrink-0 gap-3">
         <Tile active={filter === "all"} onClick={() => setFilter("all")} label="All" count={counts.all} tone="neutral" />

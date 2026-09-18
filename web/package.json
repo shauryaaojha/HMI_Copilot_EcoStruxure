@@ -19,6 +19,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
     "@google/genai": "^2.21.0",
+    "@resvg/resvg-js": "^2.6.2",
     "exceljs": "^4.4.0",
     "immer": "^10.1.1",
     "jszip": "^3.10.1",
