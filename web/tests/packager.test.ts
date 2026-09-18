@@ -108,10 +108,20 @@ gate("packager (Phase 1)", () => {
     const refScreen = JSON.parse(await reference.file(refScreenName)!.async("string"));
     const ourScreen = JSON.parse(await ours.file(ourScreenName)!.async("string"));
 
-    // Same objects, same order, same geometry - only the ids differ.
+    // Same objects, same order, same geometry - only the ids differ, and
+    // the presentation: the reference was drawn in the demo's brand colours
+    // and the builder now draws on the Standard pack (lib/standard/pack.ts).
+    // What the reference still proves is that every object, its type, its
+    // name, its place and its size are what the product opened.
+    const PRESENTATION = new Set(["Fill", "Border", "TextColor", "Font", "Thickness"]);
     const strip = (node: Record<string, unknown>): unknown => {
-      const { UniqueId, ...rest } = node;
+      const { UniqueId, ...kept } = node;
       void UniqueId;
+      const rest: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(kept)) {
+        if (PRESENTATION.has(k)) continue;
+        rest[k] = v !== null && typeof v === "object" && !Array.isArray(v) && "Text" in (v as object) ? strip(v as Record<string, unknown>) : v;
+      }
       const children = rest.Children as Record<string, unknown>[] | undefined;
       return children
         ? { ...rest, Children: children.map(strip) }

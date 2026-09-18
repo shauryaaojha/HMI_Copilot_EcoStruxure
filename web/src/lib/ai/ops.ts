@@ -35,6 +35,7 @@ export const OP_NAMES = [
   "ungroupObjects",
   "bindTag",
   "addAlarm",
+  "applyPack",
 ] as const;
 
 export type OpName = (typeof OP_NAMES)[number];

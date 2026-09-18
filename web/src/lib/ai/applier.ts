@@ -692,6 +692,21 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
         break;
       }
 
+      case "applyPack": {
+        const screen = op.screen ? findScreen(s, op.screen) : undefined;
+        if (op.screen && !screen) {
+          reject(op, `No screen called ${op.screen}`);
+          break;
+        }
+        const changes = s.applyStandard(screen?.UniqueId);
+        if (changes.length === 0) {
+          ok(note || "Already on the Standard; nothing to change");
+          break;
+        }
+        ok(note || `Applied the Standard: ${changes.length} changes (${changes.slice(0, 3).join("; ")}${changes.length > 3 ? "; …" : ""})`);
+        break;
+      }
+
       case "ungroupObjects": {
         const ids = (op.targets ?? [])
           .map((name) => resolve(s, name)?.part.UniqueId)

@@ -94,6 +94,7 @@ export function CommandPalette({
       { id: "validation", label: "Validation", icon: ShieldCheck, group: "Go to", keywords: "errors warnings check", run: go("validation") },
       { id: "export", label: "Export", icon: Download, group: "Go to", keywords: "eote download zip build", run: go("export") },
       { id: "history", label: "History", icon: History, group: "Go to", keywords: "versions revert undo", run: go("history") },
+      { id: "apply-standard", label: "Apply the Standard to this screen", icon: Ruler, group: "Project", keywords: "pack isa colours fonts grey standard", run: () => { useProject.getState().applyStandard(); onClose(); } },
 
       ...TARGETS.map((t) => ({
         id: `target-${t.value}`,

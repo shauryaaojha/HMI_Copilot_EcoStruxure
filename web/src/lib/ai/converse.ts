@@ -336,7 +336,7 @@ const D = {
     "after the plant or area - Boiler_House, Transfer_Pump_Station",
   buildIntent: "Only for build or extend: the engineer's request, in their words",
   ops: "Only for edit: the changes to make, in order",
-  op: `One of: ${OP_NAMES.join(", ")}`,
+  op: `One of: ${OP_NAMES.join(", ")}. applyPack brings a screen onto the Standard pack: colour only for alarms, fonts at the floor`,
   screen: "Screen handle (s2) the op applies to. Omit for the active screen",
   target: "Object handle (o12) the op acts on",
   targets: "Object handles, for alignObjects, groupObjects and ungroupObjects",

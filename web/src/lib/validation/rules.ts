@@ -12,6 +12,7 @@
 import type { PackageInput } from "@/lib/ote/packager";
 import type { Part, Variable } from "@/lib/ote/schema";
 import { checkName } from "./naming";
+import { lintPack } from "@/lib/standard/lint";
 
 export type Severity = "error" | "warning" | "info";
 
@@ -294,6 +295,9 @@ export function validateProject(
   }
 
   const order: Record<Severity, number> = { error: 0, warning: 1, info: 2 };
+  // --- the Standard pack's rules (docs/ARCHITECTURE_SCREEN_QUALITY.md §3.2) ---
+  findings.push(...lintPack(project));
+
   return findings.sort((a, b) => order[a.severity] - order[b.severity]);
 }
 

@@ -17,6 +17,7 @@
 
 import { useState } from "react";
 import { COLOR_SETS, resolveColor } from "@/lib/ote/palette";
+import { DEFAULT_PACK, fontFloor } from "@/lib/standard/pack";
 import { useProject } from "@/store/project";
 import { Badge, Field, Panel, Select, Toggle, Tabs, type TabItem } from "@/components/ui";
 import { StandardsInForce } from "./StandardsInForce";
@@ -102,6 +103,38 @@ export function StandardsScreen() {
 
       {tab === "colours" && (
         <div className="grid gap-5 lg:grid-cols-2">
+          <Panel title="Standard pack" bordered className="lg:col-span-2">
+            <div className="space-y-3">
+              <p className="text-sm">
+                {DEFAULT_PACK.name}{" "}
+                <Badge tone="brand">v{DEFAULT_PACK.version}</Badge>
+              </p>
+              <p className="text-xs text-text-muted">
+                {DEFAULT_PACK.basis}. Every generated screen is built from these tokens, and
+                validation checks every screen against the rules: colour only for alarms and
+                abnormal states, a {fontFloor(DEFAULT_PACK)}pt font floor, an{" "}
+                {DEFAULT_PACK.rules.grid}px grid, at most{" "}
+                {DEFAULT_PACK.rules.density.valuesPerScreen} live values per screen.
+              </p>
+              <ul className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                {(Object.entries(DEFAULT_PACK.tokens) as [string, number][]).map(([role, index]) => (
+                  <li key={role} className="flex items-center gap-2">
+                    <span
+                      aria-hidden
+                      className="h-6 w-6 shrink-0 rounded-sm border border-line-strong"
+                      style={{ background: resolveColor(index) }}
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate text-xs font-medium">{role}</span>
+                      <span className="block font-mono text-[10px] text-text-muted">
+                        {index} · {resolveColor(index)}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Panel>
           <Panel title="Named roles" bordered>
             <ul className="grid grid-cols-2 gap-2">
               {ROLES.map(([role, index]) => (

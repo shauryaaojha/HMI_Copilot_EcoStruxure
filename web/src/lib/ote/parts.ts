@@ -9,7 +9,6 @@
 import {
   AMBER,
   BLUE,
-  DARK_GREEN,
   DARK_GREY,
   GREEN,
   GREY,
@@ -20,6 +19,10 @@ import {
   WHITE,
 } from "./palette";
 import type { Part, Screen, ViewBox } from "./schema";
+import { DEFAULT_PACK } from "../standard/pack";
+
+/** The Standard in force. Running is an outline change; colour is for alarms. */
+const T = DEFAULT_PACK.tokens;
 
 /** The font reference the product writes for the default face. */
 export const FONT = {
@@ -95,22 +98,22 @@ export function lamp(name: string, off: string, on: string, box: Box): Part {
     Type: "Lamp",
     UniqueId: gid(),
     Name: name,
-    Off: face(off, INK, GREY, DARK_GREY),
-    On: face(on, WHITE, GREEN, DARK_GREEN),
+    Off: face(off, T.ink, T.equipmentFill, T.equipmentLine),
+    On: { ...face(on, T.ink, T.white, T.runningLine), Thickness: 2 },
     Location: { Left: box.left, Top: box.top },
     Width: box.width,
     Height: box.height,
   };
 }
 
-/** Same part, red On face - a fault reads as an alarm, not a status. */
+/** Same part, priority-1 On face - a fault reads as an alarm, not a status. */
 export function alarmLamp(name: string, off: string, on: string, box: Box): Part {
   return {
     Type: "Lamp",
     UniqueId: gid(),
     Name: name,
-    Off: face(off, INK, GREY, DARK_GREY),
-    On: face(on, WHITE, RED, DARK_GREY),
+    Off: face(off, T.ink, T.equipmentFill, T.equipmentLine),
+    On: face(on, T.onAlarm, T.alarmP1, T.alarmP1),
     Location: { Left: box.left, Top: box.top },
     Width: box.width,
     Height: box.height,
@@ -146,8 +149,8 @@ export function switchPart(name: string, label: string, box: Box): Part {
     Type: "Switch",
     UniqueId: gid(),
     Name: name,
-    Release: face(label, INK, WHITE, DARK_GREY),
-    Press: face(label, WHITE, GREEN, DARK_GREEN),
+    Release: face(label, T.ink, T.white, T.line),
+    Press: face(label, T.pressedInk, T.pressedFill, T.pressedFill),
     ClickTrigger: { OperationType: 1, Operation: 1 },
     Location: { Left: box.left, Top: box.top },
     Width: box.width,
@@ -155,12 +158,16 @@ export function switchPart(name: string, label: string, box: Box): Part {
   };
 }
 
-/** Palette per state: grey, green, amber, red, then grey again. */
+/**
+ * Faces per state: at rest, running (outline), warning (priority 2), fault
+ * (priority 1), then round again. Colour appears from the third state on,
+ * because that is where "abnormal" starts.
+ */
 const STATE_FACES: [number, number, number][] = [
-  [INK, GREY, DARK_GREY],
-  [WHITE, GREEN, DARK_GREEN],
-  [INK, AMBER, DARK_GREY],
-  [WHITE, RED, DARK_GREY],
+  [T.ink, T.equipmentFill, T.equipmentLine],
+  [T.ink, T.white, T.runningLine],
+  [T.ink, T.alarmP2, T.alarmP2],
+  [T.onAlarm, T.alarmP1, T.alarmP1],
 ];
 
 /** An indicator with one face per state; the bound integer picks the face. */
@@ -175,7 +182,7 @@ export function nStateLamp(name: string, states: string[], box: Box): Part {
       const [fg, bg, bd] = STATE_FACES[i % STATE_FACES.length];
       return face(text, fg, bg, bd);
     }),
-    Invalid: face("?", WHITE, DARK_GREY, DARK_GREY),
+    Invalid: face("?", T.onAlarm, T.alarmP4, T.alarmP4),
     CurrentValue: 0,
     Location: { Left: box.left, Top: box.top },
     Width: box.width,
@@ -210,8 +217,8 @@ export function toggleSwitch(name: string, off: string, on: string, box: Box): P
     UniqueId: gid(),
     Name: name,
     InterlockState: false,
-    Off: face(off, INK, GREY, DARK_GREY),
-    On: face(on, WHITE, GREEN, DARK_GREEN),
+    Off: face(off, T.ink, T.equipmentFill, T.equipmentLine),
+    On: face(on, T.pressedInk, T.pressedFill, T.pressedFill),
     Location: { Left: box.left, Top: box.top },
     Width: box.width,
     Height: box.height,
@@ -255,10 +262,10 @@ export function pipe(name: string, box: Box): Part {
     UniqueId: gid(),
     Name: name,
     States: [
-      { Fill: color(GREY), Border: color(DARK_GREY), FillThickness: 6, BorderThickness: 10 },
-      { Fill: color(BLUE), Border: color(DARK_GREY), FillThickness: 6, BorderThickness: 10 },
+      { Fill: color(T.panel), Border: color(T.line), FillThickness: 6, BorderThickness: 10 },
+      { Fill: color(T.runningLine), Border: color(T.line), FillThickness: 6, BorderThickness: 10 },
     ],
-    Invalid: { Fill: color(RED), Border: color(DARK_GREY), FillThickness: 6, BorderThickness: 10 },
+    Invalid: { Fill: color(T.alarmP1), Border: color(T.line), FillThickness: 6, BorderThickness: 10 },
     Path: { Commands: "ML", Data: data },
     Location: { Left: box.left, Top: box.top },
     Width: box.width,

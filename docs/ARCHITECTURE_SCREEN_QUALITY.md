@@ -421,6 +421,14 @@ Items 1 and 2 need no key and change the look of everything already built.
 Item 3 is where Schneider's `.xvm` question from the mail matters. Items 4
 and 5 are the agents proper. Nothing in the list asks a model to draw.
 
+### Status (18 September 2026)
+
+| # | State | Where |
+|---|---|---|
+| 1 | done | `lib/standard/pack.ts` (tokens and rules as data, ISA-101 on colour set 4), `lib/standard/lint.ts` (colour.abnormalOnly, text.fontFloor, layout.offGrid, density.max) run inside `validateProject`; the generator, the part constructors and the demo builder read the tokens; `lib/standard/apply.ts` brings a screen drawn without the pack onto it with a per-object diff, as a store action, an `applyPack` op and a palette command; the demo fixture was brought across with `scripts/apply-pack.mts`; `tests/pack.test.ts` |
+| 1 (open) | | Off-grid positions in the generator: `ZONES` (header 44, nav 32, margin 12) are not multiples of 8, so every generated frame reports as information. Bringing the zones onto the grid touches the slot resolver's tests and the packager reference and is its own change |
+| 2 | next | composites |
+
 ---
 
 ## 9 · Risks, stated

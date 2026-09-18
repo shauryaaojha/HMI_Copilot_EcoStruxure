@@ -22,6 +22,7 @@ import {
   type ZMove,
 } from "./edits";
 import { DEFAULT_STANDARDS } from "./types";
+import { applyPack } from "@/lib/standard/apply";
 import { refreshNavigation as refreshNavigationParts } from "@/lib/ote/layout";
 import type {
   Binding,
@@ -176,6 +177,13 @@ interface ProjectState {
    * step. docs/PLAN_PHASE2.md item 2.
    */
   importScreens: (incoming: ScreenImport) => ImportReport;
+  /**
+   * Bring one screen (the active one by default) onto the Standard pack:
+   * every colour that is not a token becomes the token for its role, every
+   * font rises to the floor. One undo step; returns the per-object diff.
+   * docs/ARCHITECTURE_SCREEN_QUALITY.md §3.2.
+   */
+  applyStandard: (screenId?: string) => string[];
 
   /* --- objects ------------------------------------------------------- */
   appendObject: (screenId: string, part: Part) => void;
@@ -251,7 +259,7 @@ type ProjectActions = Pick<
   | "hydrate" | "rename" | "setTarget" | "markSaved" | "select" | "selectAll"
   | "hover" | "setSimulating" | "setPreview" | "addScreen" | "duplicateScreen" | "renameScreen"
   | "removeScreen" | "setActiveScreen" | "reorderScreens" | "placeScreen"
-  | "tidyBoard" | "importScreens" | "appendObject"
+  | "tidyBoard" | "importScreens" | "applyStandard" | "appendObject"
   | "updateObject" | "setProperty" | "nudge" | "setBox" | "removeObjects"
   | "duplicateObjects" | "copyObjects" | "cutObjects" | "pasteObjects" | "align"
   | "spread" | "restackObjects" | "setMeta" | "group" | "ungroup" | "undo"
@@ -459,6 +467,21 @@ export function createProjectStore() {
       }),
 
     /* --- screens ------------------------------------------------------ */
+
+    applyStandard: (screenId) => {
+      const target = get().screens.find((x) => x.UniqueId === (screenId ?? get().activeScreenId)) ?? get().screens[0];
+      if (!target) return [];
+      const view = viewOf(target);
+      // get() hands back plain state, not a draft; applyPack clones what it is given.
+      const { parts, changes } = applyPack(view.Children, undefined, { width: view.Width, height: view.Height });
+      if (changes.length === 0) return [];
+      set((s) => {
+        remember(s, `Apply the Standard to ${target.Name}`);
+        const screen = s.screens.find((x) => x.UniqueId === target.UniqueId)!;
+        viewOf(screen).Children = parts;
+      });
+      return changes;
+    },
 
     importScreens: (incoming) => {
       const report: ImportReport = {

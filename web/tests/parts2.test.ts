@@ -30,6 +30,7 @@ import { readProject } from "@/lib/ote/reader";
 import { packageProject } from "@/lib/ote/packager";
 import { validateProject } from "@/lib/validation/rules";
 import { demoScreen } from "@/fixtures";
+import { ISA101, tokenHex } from "@/lib/standard/pack";
 
 const EXAMPLES = JSON.parse(
   fs.readFileSync(path.join(__dirname, "..", "..", "reference", "part_examples.json"), "utf8"),
@@ -164,8 +165,8 @@ describe("the canvas draws them", () => {
     const flowing = render(screen, { P: 1 });
     expect(rest).toContain("<polyline");
     expect(rest).not.toEqual(flowing);
-    // Out of range: the Invalid state (red).
-    expect(render(screen, { P: 7 })).toContain("#f77a84");
+    // Out of range: the Invalid state, in the pack's priority-1 colour.
+    expect(render(screen, { P: 7 })).toContain(tokenHex(ISA101, "alarmP1"));
   });
 
   it("the clock shows the same instant on every render", () => {
