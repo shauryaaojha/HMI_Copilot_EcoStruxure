@@ -18,6 +18,7 @@ import { z } from "zod";
 import type { Variable } from "@/lib/ote/schema";
 import { inferEquipment, type InferredEquipment } from "@/lib/ai/infer";
 import { rangeFor, type Range } from "./units";
+import { measuredByClass } from "./classes";
 
 export const RangeSchema = z.object({
   min: z.number(),
@@ -107,7 +108,8 @@ function unitKeyOf(unit: InferredEquipment): string {
   return `${Math.floor(n / 10)}x`;
 }
 
-const isReading = (dataType: string) => dataType !== "BOOL" && dataType !== "STRING";
+/** A tag that carries a number, as opposed to a state or a string. */
+export const isReading = (dataType: string) => dataType !== "BOOL" && dataType !== "STRING";
 
 /**
  * Confidence in an inference: a machine prefix with a loop number is a
@@ -124,9 +126,21 @@ export function modelPlant(variables: Variable[], answers: Record<string, string
   const assumptions: string[] = [];
 
   // --- equipment -----------------------------------------------------------
+  const refined: string[] = [];
   const equipment: PlantEquipment[] = inferred.map((unit) => {
+    // A bare process variable says nothing about what it measures; the class
+    // does. VLV_202_PV is a valve's position, TNK_101_PV is a tank's level.
+    // Read as the generic "value" both end up on a screen labelled "Value"
+    // with no unit, which is the defect the critic caught on the pumps.
+    const measured = measuredByClass(unit.kind);
+    const roles = unit.roles.map((r) => {
+      if (r.role !== "value" || !measured || !isReading(r.dataType)) return r;
+      refined.push(`${r.tag} as a ${measured}`);
+      return { ...r, role: measured };
+    });
+
     const ranges: Record<string, Range> = {};
-    for (const r of unit.roles) {
+    for (const r of roles) {
       if (!isReading(r.dataType)) continue;
       ranges[r.tag] = rangeFor(r.comment, r.role);
     }
@@ -135,12 +149,17 @@ export function modelPlant(variables: Variable[], answers: Record<string, string
       class: unit.kind,
       label: unit.label,
       unit: unitKeyOf(unit),
-      roles: unit.roles.map((r) => ({ role: r.role, tag: r.tag, dataType: r.dataType })),
+      roles: roles.map((r) => ({ role: r.role, tag: r.tag, dataType: r.dataType })),
       ranges,
       symbol: unit.symbol,
       confidence: confidenceOf(unit),
     };
   });
+  if (refined.length > 0) {
+    assumptions.push(
+      `${refined.length} process variable${refined.length === 1 ? "" : "s"} read by equipment class because the name says only "PV": ${refined.slice(0, 4).join(", ")}${refined.length > 4 ? ", …" : ""}`,
+    );
+  }
 
   const classDefaults = equipment.flatMap((e) => Object.entries(e.ranges).filter(([, r]) => r.source === "class").map(([tag]) => tag));
   if (classDefaults.length > 0) {

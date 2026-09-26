@@ -70,8 +70,8 @@ const ROLES: [RegExp, string][] = [
   // prefix: TNK_101_LEVEL is a level, PMP_102_HRS is running hours.
   [/_(LEVEL|LVL)$/i, "level"],
   [/_(FLOW|FLW)$/i, "flow"],
-  [/_(PRESS|PRES|PRS)$/i, "pressure"],
-  [/_(TEMP|TMP)$/i, "temperature"],
+  [/_(PRESSURE|PRESS|PRES|PRS)$/i, "pressure"],
+  [/_(TEMPERATURE|TEMP|TMP)$/i, "temperature"],
   [/_(VOL|VOLUME)$/i, "volume"],
   [/_(HRS|HOURS|RUNTIME)$/i, "hours"],
   [/_(CUR|CURRENT|AMPS)$/i, "current"],
@@ -79,6 +79,36 @@ const ROLES: [RegExp, string][] = [
   [/_(SP|SETPOINT)$/i, "setpoint"],
   [/_(HI|HIGH|HH)$/i, "high"],
   [/_(LO|LOW|LL)$/i, "low"],
+  // Everything below was found by lib/critic/coverage.ts, which reads every
+  // sample's tag list and reports a trailing word the table does not know.
+  // Each of these was silently being read as a plain value, which is how a
+  // valve's open limit ends up on a screen as "Value" with a 0-100 range.
+  // --- states a machine reports (BOOL) ---
+  [/_(OPENED|OPEN)$/i, "open"],
+  [/_(CLOSED|CLOSE|SHUT)$/i, "closed"],
+  [/_(AVAILABLE|AVAIL)$/i, "available"],
+  [/_(READY)$/i, "ready"],
+  [/_(HEALTHY|HEALTH)$/i, "healthy"],
+  [/_(OCCUPIED|OCC)$/i, "occupied"],
+  [/_(ACTIVE|ENABLED)$/i, "active"],
+  [/_(FLAME)$/i, "flame"],
+  // --- abnormal conditions: a fault by any other name raises an alarm ---
+  [/_(ESTOP|EMERGENCYSTOP|EMSTOP)$/i, "estop"],
+  [/_(JAMMED|JAM)$/i, "fault"],
+  [/_(LOCKOUT|LOCKED)$/i, "fault"],
+  // --- what a sequence or a selector is on (INT) ---
+  [/_(MODE)$/i, "mode"],
+  [/_(STEP|PHASE)$/i, "step"],
+  [/_(ID|CIRCUIT|LEAD|SELECTED|SEL)$/i, "selection"],
+  // --- counted and computed numbers ---
+  [/_(REJECTS|REJECT|COUNT|CNT)$/i, "count"],
+  [/_(TOTALISER|TOTALIZER|TOTAL)$/i, "total"],
+  [/_(RATE)$/i, "rate"],
+  [/_(EFFICIENCY|OEE|EFF)$/i, "efficiency"],
+  [/_(FREQUENCY|FREQ|HZ)$/i, "frequency"],
+  [/_(POWER|KW)$/i, "power"],
+  [/_(FACTOR|PF)$/i, "factor"],
+  [/_(MODULATION|MOD)$/i, "modulation"],
 ];
 
 export interface TaggedRole {
@@ -92,6 +122,16 @@ export interface InferredEquipment extends Equipment {
   /** The loop number the tags share, when they share one. */
   loop?: string;
   roles: TaggedRole[];
+}
+
+/**
+ * Whether the role table recognised this name, as opposed to falling through
+ * to "value". A tag that ends in a word nobody taught us is the defect the
+ * critic caught as "two tags are not recognised", and the coverage rule in
+ * lib/critic/coverage.ts reads this to catch the next one for nothing.
+ */
+export function roleMatched(name: string): boolean {
+  return ROLES.some(([pattern]) => pattern.test(name));
 }
 
 function roleOf(name: string): string {

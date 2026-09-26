@@ -28,6 +28,13 @@ export function unitOf(comment: string, role: string): string {
   if (role === "speed") return "%";
   if (role === "position") return "%";
   if (role === "volume") return "m3";
+  // Roles the coverage rule added: a modulating output and an efficiency are
+  // percentages, a frequency is hertz, a power is kilowatts. A count, a total,
+  // a rate and a power factor are dimensionless until the comment says
+  // otherwise, and saying "" is better than guessing a unit onto a number.
+  if (role === "efficiency" || role === "modulation") return "%";
+  if (role === "frequency") return "Hz";
+  if (role === "power") return "kW";
   return "";
 }
 
@@ -79,6 +86,13 @@ export function defaultRange(units: string, role: string): Omit<Range, "source">
     case "A":
       return band(0, 100, 5, 90);
     default:
+      // No unit: the role still says what kind of number it is. A counter runs
+      // to a large number and has no normal band worth drawing; a power factor
+      // is a fraction whose normal band is near one.
+      if (role === "count" || role === "total") return band(0, 1_000_000, 0, 1_000_000);
+      if (role === "factor") return band(0, 1, 0.8, 1);
+      if (role === "rate") return band(0, 1000, 100, 900);
+      if (role === "mode" || role === "step" || role === "selection") return band(0, 16, 0, 16);
       return band(0, 100, 20, 80);
   }
 }

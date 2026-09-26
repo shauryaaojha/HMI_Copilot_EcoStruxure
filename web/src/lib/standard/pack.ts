@@ -64,6 +64,25 @@ export const Rules = z.object({
     /** Live values (displays, lamps, scales, trends) per screen before it is a wall. */
     valuesPerScreen: z.number().int().positive(),
   }),
+  /**
+   * Thresholds the geometric critic measures against. docs/PLAN_PHASE4.md §3.
+   * They live here, with the rest of the standard, because a customer pack
+   * changes what "readable" means as surely as it changes the colours.
+   */
+  geometry: z.object({
+    /** Contrast ratio floor for a drawn shape against what is behind it. */
+    contrastGraphic: z.number().positive(),
+    /** Contrast ratio floor for text. Higher: a glyph is thinner than a fill. */
+    contrastText: z.number().positive(),
+    /** Intersection, in pixels on both axes, before two boxes count as overlapping. */
+    overlapTolerance: z.number().nonnegative(),
+    /** Two edges this close without being equal read as a mistake, not a choice. */
+    alignmentSlop: z.number().nonnegative(),
+    /** Densest quadrant over sparsest, before a screen is lopsided. */
+    quadrantRatio: z.number().positive(),
+    /** An outline thinner than this on screen is not an outline. */
+    minStroke: z.number().positive(),
+  }),
 });
 export type Rules = z.infer<typeof Rules>;
 
@@ -116,6 +135,18 @@ export const ISA101: StandardPack = {
     viewing: "touch",
     unitsAlways: true,
     density: { valuesPerScreen: 40 },
+    geometry: {
+      // 3:1 and 4.5:1 are the WCAG 2.1 floors for graphics and body text. ISA-101
+      // states the principle - an operator must read the screen at a glance, in
+      // a lit control room - without giving a number, so the accessibility
+      // numbers stand in, and they are the ones a customer pack would override.
+      contrastGraphic: 3,
+      contrastText: 4.5,
+      overlapTolerance: 2,
+      alignmentSlop: 4,
+      quadrantRatio: 4,
+      minStroke: 1,
+    },
   },
 };
 

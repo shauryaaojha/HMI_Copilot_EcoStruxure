@@ -13,6 +13,8 @@ import type { PackageInput } from "@/lib/ote/packager";
 import type { Part, Variable } from "@/lib/ote/schema";
 import { checkName } from "./naming";
 import { lintPack } from "@/lib/standard/lint";
+import { critiqueGeometry } from "@/lib/critic/geometry";
+import { critiqueRoleCoverage } from "@/lib/critic/coverage";
 
 export type Severity = "error" | "warning" | "info";
 
@@ -297,6 +299,13 @@ export function validateProject(
   const order: Record<Severity, number> = { error: 0, warning: 1, info: 2 };
   // --- the Standard pack's rules (docs/ARCHITECTURE_SCREEN_QUALITY.md §3.2) ---
   findings.push(...lintPack(project));
+
+  // --- the geometric critic (docs/PLAN_PHASE4.md §3) ---------------------
+  // What a model used to be asked to look at: overlaps, invisible symbols,
+  // unreadable text, orphaned labels, a lopsided screen. Deterministic, so it
+  // runs here on every screen rather than on one when someone remembers.
+  for (const screen of project.screens) findings.push(...critiqueGeometry(screen).findings);
+  findings.push(...critiqueRoleCoverage(project.variables));
 
   return findings.sort((a, b) => order[a.severity] - order[b.severity]);
 }

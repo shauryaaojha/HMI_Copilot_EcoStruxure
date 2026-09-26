@@ -57,6 +57,7 @@ export interface CompositeDef<P extends Record<string, unknown>> {
 }
 
 const GRID = 8;
+const GAP = 4;
 const snap = (n: number) => Math.round(n / GRID) * GRID;
 
 /* ---------------------------------------------------------------------- */
@@ -109,26 +110,54 @@ export const AnalogIndicator: CompositeDef<AnalogIndicatorProps> = {
       textBox(`${name}_Lbl`, p.label, { left: x + 8, top: y + 4, width: Math.max(GRID, w - 16 - (vertical ? 0 : valueWidth + unitWidth + 8)), height: 20 }, { size: 12, bold: true, colour: T.ink }),
     );
 
+    // The rows are laid out from the box that was actually given, not pinned
+    // to both its edges: an indicator asked for in a short row used to draw
+    // its scale, its band, its value and its label on top of each other, and
+    // did so on every screen we generated. It now gives up the band, then the
+    // scale, the way the screen compiler gives up callouts - a composite that
+    // does not fit says less rather than becoming unreadable.
+    const SCALE = 24;
+    const BAND = 10;
+    const headerBottom = y + 4 + (vertical ? 20 : 24);
+    const bottom = y + h - 8;
+
     if (vertical) {
-      const scaleTop = y + 28;
-      const scaleH = Math.max(GRID, h - 28 - 40);
-      parts.push(barScale(`${name}_Scale`, { left: x + 8, top: scaleTop, width: 40, height: scaleH }, p.max));
-      const bandTop = scaleTop + (1 - frac(p.normalHigh)) * scaleH;
-      const bandBottom = scaleTop + (1 - frac(p.normalLow)) * scaleH;
-      parts.push(
-        rectangle(`${name}_Band`, { left: x + 56, top: Math.round(bandTop), width: 16, height: Math.max(2, Math.round(bandBottom - bandTop)) }, { fill: T.ground, border: T.line }),
-      );
-      parts.push(numericDisplay(`${name}_Val`, { left: x + 8, top: y + h - 36, width: w - 16 - 40, height: 28 }, p.decimals));
-      parts.push(textBox(`${name}_Unit`, p.units, { left: x + w - 44, top: y + h - 34, width: 36, height: 24 }, { size: 12, colour: T.muted }));
+      // Value and unit sit on the bottom row; the scale fills what is left
+      // between the label and them.
+      const valueTop = Math.max(headerBottom + GAP, bottom - 28);
+      const scaleTop = headerBottom + GAP;
+      const scaleH = valueTop - GAP - scaleTop;
+      if (scaleH >= GRID) {
+        parts.push(barScale(`${name}_Scale`, { left: x + 8, top: scaleTop, width: 40, height: scaleH }, p.max));
+        const bandTop = scaleTop + (1 - frac(p.normalHigh)) * scaleH;
+        const bandBottom = scaleTop + (1 - frac(p.normalLow)) * scaleH;
+        if (w >= 80) {
+          parts.push(
+            rectangle(`${name}_Band`, { left: x + 56, top: Math.round(bandTop), width: 16, height: Math.max(2, Math.round(bandBottom - bandTop)) }, { fill: T.ground, border: T.line }),
+          );
+        }
+      }
+      parts.push(numericDisplay(`${name}_Val`, { left: x + 8, top: valueTop, width: Math.max(GRID, w - 16 - 40), height: 28 }, p.decimals));
+      parts.push(textBox(`${name}_Unit`, p.units, { left: x + w - 44, top: valueTop + 2, width: 36, height: 24 }, { size: 12, colour: T.muted }));
     } else {
+      // The label, value and unit share the top row; the scale is bottom
+      // anchored and the band sits directly above it, marking the normal range.
       const scaleLeft = x + 8;
       const scaleW = Math.max(GRID, w - 16);
-      parts.push(barScale(`${name}_Scale`, { left: scaleLeft, top: y + h - 32, width: scaleW, height: 24 }, p.max));
-      const bandLeft = scaleLeft + frac(p.normalLow) * scaleW;
-      const bandRight = scaleLeft + frac(p.normalHigh) * scaleW;
-      parts.push(
-        rectangle(`${name}_Band`, { left: Math.round(bandLeft), top: y + h - 44, width: Math.max(2, Math.round(bandRight - bandLeft)), height: 10 }, { fill: T.ground, border: T.line }),
-      );
+      const scaleTop = bottom - SCALE;
+      const bandTop = scaleTop - BAND;
+      const roomForScale = scaleTop >= headerBottom + GAP;
+      const roomForBand = bandTop >= headerBottom + GAP;
+      if (roomForScale) {
+        parts.push(barScale(`${name}_Scale`, { left: scaleLeft, top: roomForBand ? scaleTop : Math.max(scaleTop, headerBottom + GAP), width: scaleW, height: SCALE }, p.max));
+      }
+      if (roomForBand) {
+        const bandLeft = scaleLeft + frac(p.normalLow) * scaleW;
+        const bandRight = scaleLeft + frac(p.normalHigh) * scaleW;
+        parts.push(
+          rectangle(`${name}_Band`, { left: Math.round(bandLeft), top: bandTop, width: Math.max(2, Math.round(bandRight - bandLeft)), height: BAND }, { fill: T.ground, border: T.line }),
+        );
+      }
       parts.push(numericDisplay(`${name}_Val`, { left: x + w - 8 - valueWidth - unitWidth, top: y + 4, width: valueWidth, height: 24 }, p.decimals));
       parts.push(textBox(`${name}_Unit`, p.units, { left: x + w - 8 - unitWidth + 4, top: y + 6, width: unitWidth - 4, height: 20 }, { size: 12, colour: T.muted }));
     }
