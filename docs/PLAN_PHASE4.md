@@ -111,6 +111,36 @@ regressions.
 every commit, and the eight sample plants report a geometric score with no key
 present.
 
+### Built, 27 September 2026
+
+`lib/critic/geometry.ts` and `lib/critic/coverage.ts`, both called from
+`validateProject`, so they are on the critical path rather than beside it.
+`tests/geometry.test.ts` builds each defect on purpose, holds the four real ones
+as regressions, and then reviews every screen of all eight sample plants. 48
+cases; 681 across the suite.
+
+**What the first run found in our own output, all now fixed:**
+
+| Found | It was |
+|---|---|
+| **446 overlaps** | One bug. The horizontal analogue indicator pinned its rows to both edges of its box, so at the 56–64px heights the compiler actually gives it, the scale, the band, the value and the label drew on top of each other. Shipped on every screen with a reading on it. It now lays out from the box it is given and gives up the band, then the scale — the way the screen compiler gives up callouts. |
+| **28 unrecognised tag suffixes** | `_OPEN`, `_CLOSED`, `_AVAIL`, `_READY`, `_HEALTHY`, `_ESTOP`, `_JAM`, `_LOCKOUT`, `_FLAME`, `_OCC`, `_ACTIVE`, `_MODE`, `_STEP`, `_COUNT`, `_REJECT`, `_TOTALISER`, `_RATE`, `_OEE`, `_FREQUENCY`, `_KW`, `_FACTOR`, `_MOD`, `_ID`, `_CIRCUIT`, `_LEAD` — every one read as a plain value. And `_PRESSURE` and `_TEMPERATURE`, which the existing patterns missed because they only matched `_PRESS` and `_TEMP`. 24 roles added, with their units and ranges. |
+| **26 headline mismatches** | 18 of them one thing: a bare `_PV` read as the generic "value". What a process variable measures is a property of the class — a valve's PV is its position, a tank's is its level — so that knowledge moved into `lib/plant/classes.ts`, where the model, the architect and the critic all read it. Down to 6, every one a genuine fallback (a heater whose only reading is an hours counter), which is what `info` severity is for. |
+| **112 near-miss alignments** | Nothing. The rule was wrong: it compared box tops on text, and text on a shared row is aligned by its baseline, so a 12pt caption beside a 13pt title sits a pixel lower **on purpose**. Narrowed to shapes. Our shapes turn out to be properly snapped. |
+| **37 lopsided screens** | True, and not yet fixed. A screen with three units puts three cards in the top-left and leaves the bottom half empty. This is the single biggest reason our screens read as basic beside the reference ones, and it is what §5 is for. Kept as `info` on every screen it applies to, deliberately, as a standing reminder. |
+
+One rule was also wrong in a way worth recording: `geom.orphanLabel` excluded
+containers from the candidate set, so a composite's label could never find its
+own base and every indicator label was reported as belonging to a neighbouring
+lamp. It now measures against the label's own family and reports only when
+another family's shape is strictly nearer.
+
+**The honest score of the exercise:** five of the seven things the first run
+reported were real, one was a bug in the critic, and one is a true finding we
+have not acted on. The 446 and the 26 are both single causes seen many times,
+which is exactly what a deterministic pass over a whole corpus gives you and a
+model looking at one screen does not.
+
 ---
 
 ## 4 · Phase 5 · The corpus and the release gate

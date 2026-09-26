@@ -14,7 +14,7 @@ import type { Part, Variable } from "@/lib/ote/schema";
 import { checkName } from "./naming";
 import { lintPack } from "@/lib/standard/lint";
 import { critiqueGeometry } from "@/lib/critic/geometry";
-import { critiqueRoleCoverage } from "@/lib/critic/coverage";
+import { critiqueNavigation, critiqueRoleCoverage } from "@/lib/critic/coverage";
 
 export type Severity = "error" | "warning" | "info";
 
@@ -306,6 +306,7 @@ export function validateProject(
   // runs here on every screen rather than on one when someone remembers.
   for (const screen of project.screens) findings.push(...critiqueGeometry(screen).findings);
   findings.push(...critiqueRoleCoverage(project.variables));
+  findings.push(...critiqueNavigation(project.screens));
 
   return findings.sort((a, b) => order[a.severity] - order[b.severity]);
 }

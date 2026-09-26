@@ -13,7 +13,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { contrastRatio, critiqueGeometry, critiqueScreens, scoreOf } from "@/lib/critic/geometry";
-import { critiqueHeadlines, critiqueRoleCoverage } from "@/lib/critic/coverage";
+import { critiqueHeadlines, critiqueNavigation, critiqueRoleCoverage } from "@/lib/critic/coverage";
 import { ISA101, tokenHex } from "@/lib/standard/pack";
 import { lamp, numericDisplay, pathPart, rectangle, screenOf, textBox } from "@/lib/ote/parts";
 import { modelPlant } from "@/lib/plant/model";
@@ -202,6 +202,19 @@ describe("the rest of the rules", () => {
   });
 });
 
+describe("a screen nobody can open", () => {
+  it("is an error, and a screen the strip names is not", () => {
+    const home = screenOf("Overview", [textBox("NavLbl_Area1", "Area1", { left: 8, top: 8, width: 80, height: 16 }, { size: 12 })], PANEL);
+    const reached = screenOf("Area1", [], PANEL);
+    const stranded = screenOf("Area2", [], PANEL);
+    expect(critiqueNavigation([home, reached])).toEqual([]);
+    const found = critiqueNavigation([home, reached, stranded]);
+    expect(found.map((f) => f.rule)).toEqual(["nav.reachable"]);
+    expect(found[0].severity).toBe("error");
+    expect(found[0].message).toMatch(/Area2 cannot be reached from Overview/);
+  });
+});
+
 describe("our own output, on every sample", () => {
   const every = samples();
 
@@ -219,6 +232,10 @@ describe("our own output, on every sample", () => {
           .map((f) => `${r.screen}: ${f.rule} — ${f.message}`),
       );
       expect(serious).toEqual([]);
+    });
+
+    it(`${name}: every screen can be reached from the first`, () => {
+      expect(critiqueNavigation(application(variables))).toEqual([]);
     });
 
     it(`${name}: the role table recognises every tag but the ones we decided not to`, () => {

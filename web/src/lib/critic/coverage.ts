@@ -11,10 +11,44 @@
  */
 
 import type { Finding } from "@/lib/validation/rules";
-import type { Variable } from "@/lib/ote/schema";
+import type { Screen, Variable } from "@/lib/ote/schema";
 import { isReading, type PlantModel } from "@/lib/plant/model";
 import { roleMatched } from "@/lib/ai/infer";
 import { headlineRolesFor } from "@/lib/plant/classes";
+
+/**
+ * A screen an operator cannot open. The navigation strip names its
+ * destinations in `NavLbl_*` labels, so reachability is a walk from the first
+ * screen through those names - and a screen nobody can reach is worse than a
+ * screen with a defect on it, because nobody will ever see the defect.
+ */
+export function critiqueNavigation(screens: Screen[]): Finding[] {
+  if (screens.length === 0) return [];
+  const byName = new Map(screens.map((s) => [s.Name, s]));
+  const linksFrom = (screen: Screen) =>
+    screen.Children[0].Children.flatMap((p) =>
+      p.Type === "TextBox" && p.Name.startsWith("NavLbl_") && byName.has(p.Text) ? [p.Text] : [],
+    );
+
+  const seen = new Set<string>([screens[0].Name]);
+  const queue = [screens[0]];
+  while (queue.length) {
+    for (const name of linksFrom(queue.shift()!)) {
+      if (seen.has(name)) continue;
+      seen.add(name);
+      queue.push(byName.get(name)!);
+    }
+  }
+
+  return screens
+    .filter((s) => !seen.has(s.Name))
+    .map((s) => ({
+      severity: "error" as const,
+      rule: "nav.reachable",
+      message: `${s.Name} cannot be reached from ${screens[0].Name}: no navigation strip names it.`,
+      suggestion: `Add ${s.Name} to a navigation strip, or delete it.`,
+    }));
+}
 
 /**
  * A trailing segment that looks like a word: TNK_101_LEVEL has one, FT_101
