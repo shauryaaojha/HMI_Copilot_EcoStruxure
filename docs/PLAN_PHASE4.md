@@ -219,6 +219,46 @@ up the order.
 - **Format independence.** The panel as a loaded profile; the writer as an
   interface with OTE first and Vijeo Designer second.
 
+### The format seam, built 27 September 2026
+
+`lib/backend/` — `types.ts` (the contract), `ote.ts`, `vijeo.ts`, `panels.ts`,
+`index.ts`. The export route asks for a format instead of assuming one, and the
+top bar's panel menu is built from the profiles rather than being a second copy
+of them. `tests/backend.test.ts`, 13 cases; 694 across the suite.
+
+Three things the seam forced into the open:
+
+- **Capabilities have to be asked, not assumed.** "The canvas may only render
+  what the packager can emit" was true of OTE by construction. With two formats
+  it becomes a question, so a backend declares its part types and
+  `unsupportedParts()` reports, against the object, what a target would lose.
+  The export refuses with a 409 rather than writing a file with holes in it.
+- **The panel was a constant in four places.** It is one list now, each row with
+  a resolution, a viewing distance and the formats that can target it — which is
+  Schneider's first answer, in code.
+- **A provisional backend may not write.** Asserted both ways: a capability list
+  taken from a product page must carry an `unavailable` reason, and a backend
+  without one must not be provisional. Neither can drift from the other.
+
+**Vijeo Designer is declared and deliberately cannot write.** It states the eight
+part types whose equivalent is unambiguous in any HMI tool and leaves out the
+seven — the bar scale, both trends, the pipe, the date and time display, the
+toggle and the multi-state lamp — whose configuration we would be inventing. Its
+`write` throws with what is needed to finish it. A seam with one implementation
+is not a seam, it is an untested interface; and a format written from
+documentation produces a file that opens and is quietly wrong, which is the one
+mistake that would cost us Schneider's trust.
+
+**What is left is the last mile only**, blocked on a file we have asked for: the
+part-type mapping confirmed against a real project, the target list from the
+installation, and the writer.
+
+**One correction to the record.** The round-trip guarantee is that **every entry**
+comes back byte-identical, not that the whole archive does — the container's own
+bytes belong to the zip library. `tests/reader.test.ts` always checked it that
+way; the new test now says so in as many words, and that is the phrasing to use
+with Schneider.
+
 ---
 
 ## 8 · Order, and why
@@ -230,7 +270,7 @@ up the order.
 | 3 | Reference profile (§5) | Turns "looks basic" into numbered work items | zero |
 | 4 | Native objects (§7) | Schneider asked for it; it is the strongest demo we do not have | zero |
 | 5 | Free model lane (§6) | A luxury once the above hold; the local endpoint also unblocks the offline story | zero |
-| 6 | Format independence (§7) | Wants a real Vijeo file, which we have asked for | zero |
+| ~~6~~ | ~~Format independence (§7)~~ | **The seam is built.** Only the Vijeo writer is left, and it wants a real file | zero |
 
 Every row costs nothing to run. That is the point: the plan is now funded.
 

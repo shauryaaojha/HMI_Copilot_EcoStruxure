@@ -1,24 +1,27 @@
 /**
- * Panels the layout can target.
+ * Panels the layout can target, for the top bar and the command palette.
+ *
+ * The list itself lives in `lib/backend/panels.ts` now, with the resolution,
+ * the viewing distance and the formats that can write for each one - because
+ * the panel is a property of the target, not of this dropdown, and Schneider's
+ * first answer was that nothing should be specific to a panel. This module is
+ * the option shape the two menus want, built from that one list.
  *
  * The exported file's panel is not one of these - it comes from Target.dat
  * inside the extracted skeleton, which the app cannot change. Choosing one here
  * sets what the layout is designed for; the top bar asks the server what the
  * file will actually say and flags a disagreement rather than showing a label
  * the .eote contradicts.
- *
- * Lifted out of TopBar because the command palette offers the same list, and
- * two copies would be two things to keep in step.
  */
+
+import { PANELS, panelValue } from "@/lib/backend/panels";
 
 export interface TargetOption {
   value: string;
   label: string;
 }
 
-export const TARGETS: TargetOption[] = [
-  { value: "HMIGTO6310|1024|768", label: "HMIGTO6310 · 1024 × 768" },
-  { value: "HMIGTO5310|800|480", label: "HMIGTO5310 · 800 × 480" },
-  { value: "HMIGTO4310|640|480", label: "HMIGTO4310 · 640 × 480" },
-  { value: "HMISTU855|320|240", label: "HMISTU855 · 320 × 240" },
-];
+export const TARGETS: TargetOption[] = PANELS.map((panel) => ({
+  value: panelValue(panel),
+  label: `${panel.model} · ${panel.width} × ${panel.height}`,
+}));
