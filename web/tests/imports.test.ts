@@ -17,6 +17,14 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 const FIXTURE = join(process.cwd(), "..", "demo_project", "HMICopilot_PumpStation.eote");
 
+/**
+ * Captured once, at load. The filesystem tests below clear the variable to
+ * force that path, so reading it again inside a test would find it gone and
+ * quietly exercise the wrong store - which is exactly the bug this file is
+ * here to catch, so it must not be the bug this file contains.
+ */
+const MONGO_URI = process.env.MONGODB_URI;
+
 /** Re-import the module so it reads the environment as it is now. */
 async function store(uri?: string) {
   if (uri) process.env.MONGODB_URI = uri;
@@ -79,9 +87,9 @@ describe("the filesystem store", () => {
 });
 
 // Runs against a real cluster when one is configured: `MONGODB_URI=... npm test`.
-describe.runIf(process.env.MONGODB_URI)("the MongoDB store", () => {
+describe.runIf(MONGO_URI)("the MongoDB store", () => {
   it("round-trips a real project's bytes through the database", async () => {
-    const mod = await store(process.env.MONGODB_URI);
+    const mod = await store(MONGO_URI);
     expect(mod.importStore()).toBe("mongo");
     const bytes = new Uint8Array(readFileSync(FIXTURE));
     const id = await mod.putImport(bytes, "HMICopilot_PumpStation.eote");
@@ -91,7 +99,7 @@ describe.runIf(process.env.MONGODB_URI)("the MongoDB store", () => {
   });
 
   it("refuses a file larger than a document can hold, with a reason", async () => {
-    const mod = await store(process.env.MONGODB_URI);
+    const mod = await store(MONGO_URI);
     const huge = new Uint8Array(15_000_001);
     await expect(mod.putImport(huge, "huge.eote")).rejects.toThrow(/16MB/);
   });
