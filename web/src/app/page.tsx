@@ -1,42 +1,58 @@
-import Link from "next/link";
 import {
-  ArrowRight,
   CircleCheck,
-  Clock,
+  FileInput,
   Link2,
+  Ruler,
+  ScanEye,
   ShieldCheck,
 } from "lucide-react";
 import { SchneiderMark } from "@/components/shell/SchneiderMark";
+import { StartButtons } from "@/components/landing/StartButtons";
 
 /**
- * Landing page - reference screen 1. Phase 9 of docs/BUILD_PLAN.md.
+ * Landing page.
  *
- * The four claims below are the ones docs/SOLUTION.md makes, and each is
- * something the product actually does rather than a slogan: the timings come
- * from the demo path, the bindings from the binding map, the standards from the
- * rules engine, the errors from design-time validation.
+ * Every claim below is something the product does and a test holds, because a
+ * landing page for an engineering tool is read by engineers who will check.
+ * The round trip is tests/reader.test.ts, the standard is lib/standard/lint.ts,
+ * the review is lib/critic/, the bindings are the binding map, the validation
+ * is lib/validation/rules.ts.
+ *
+ * It used to open the workspace on a built-in demo project. That is gone - the
+ * first screen an engineer saw was somebody else's plant, which demonstrated
+ * the tool rather than helping with theirs.
  */
 
 const CLAIMS = [
   {
-    icon: Clock,
-    title: "Reduce engineering time",
-    note: "A tag export and one sentence become a screen in minutes, not days.",
+    icon: FileInput,
+    title: "Open what you already have",
+    note: "An existing .eote opens, edits and exports back with every entry byte-identical. Objects the editor does not model are carried through untouched, not dropped.",
   },
   {
     icon: Link2,
-    title: "Automate tag integration",
-    note: "Every binding generated and shown, tag by tag, in the binding map.",
+    title: "Tags become equipment",
+    note: "Pumps, tanks and valves are inferred from ISA-5.1 tag names before any model runs, and every binding is shown tag by tag.",
   },
   {
-    icon: ShieldCheck,
-    title: "Ensure consistency",
-    note: "Company standards applied by construction — colours, naming, layout.",
+    icon: Ruler,
+    title: "A standard, not a style",
+    note: "ISA-101 as data: grey ground, colour reserved for abnormal states, a font floor for the viewing distance. The generator and the lint read the same document.",
+  },
+  {
+    icon: ScanEye,
+    title: "The tool reviews its own screens",
+    note: "Every screen is checked for overlapping objects, invisible symbols, unreadable text and orphaned labels — on every build, with no model and no network.",
   },
   {
     icon: CircleCheck,
-    title: "Catch errors early",
-    note: "Type mismatches and unbound objects found at the desk, not on site.",
+    title: "Mistakes found at the desk",
+    note: "Type mismatches, unbound objects, reserved words and unreachable screens are reported before the panel is ever mounted.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Nothing happens without you",
+    note: "Every change the conversation proposes is drawn as a ghost first, lands in the same undo history as a mouse edit, and nothing is exported until you say so.",
   },
 ];
 
@@ -47,13 +63,7 @@ export default function Landing() {
         <SchneiderMark className="text-text-primary" />
         <span aria-hidden className="h-6 w-px bg-line" />
         <span className="text-lg font-semibold tracking-tight">HMI Copilot</span>
-        <Link
-          href="/project/demo"
-          className="focus-ring ml-auto inline-flex h-9 items-center gap-2 rounded-md bg-brand-500 px-4 text-sm font-medium text-text-onbrand transition hover:bg-brand-600"
-        >
-          Get started
-          <ArrowRight size={15} aria-hidden />
-        </Link>
+        <StartButtons compact />
       </header>
 
       <main className="mx-auto max-w-5xl px-8 pb-16 pt-10">
@@ -64,27 +74,13 @@ export default function Landing() {
           Turn engineering intent into industrial HMI screens.
         </h1>
         <p className="mt-5 max-w-2xl text-lg text-text-secondary">
-          A PLC tag export plus one sentence of plain English becomes a complete,
-          validated project — screens drawn, tags declared, alarms configured,
-          bindings wired — while you watch every object being generated and approve
-          it before export.
+          Bring a PLC tag export and say what the plant does, or open a project you
+          already have. You get screens drawn to ISA-101, tags declared, alarms
+          configured and bindings wired — reviewed before you export, and written
+          into a file the product opens.
         </p>
 
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link
-            href="/project/demo"
-            className="focus-ring inline-flex h-11 items-center gap-2 rounded-md bg-brand-500 px-6 text-sm font-semibold text-text-onbrand transition hover:bg-brand-600"
-          >
-            Open the workspace
-            <ArrowRight size={16} aria-hidden />
-          </Link>
-          <Link
-            href="/project/demo/tags"
-            className="focus-ring inline-flex h-11 items-center rounded-md border border-line px-6 text-sm font-medium text-text-secondary transition hover:border-line-strong hover:text-text-primary"
-          >
-            Import a tag export
-          </Link>
-        </div>
+        <StartButtons />
 
         <dl className="mt-14 grid gap-x-10 gap-y-8 sm:grid-cols-2">
           {CLAIMS.map(({ icon: Icon, title, note }) => (
@@ -92,17 +88,20 @@ export default function Landing() {
               <Icon size={18} aria-hidden className="mt-0.5 shrink-0 text-brand-400" />
               <div>
                 <dt className="font-semibold">{title}</dt>
-                <dd className="mt-1 text-sm text-text-muted">{note}</dd>
+                <dd className="mt-1 text-sm leading-relaxed text-text-muted">{note}</dd>
               </div>
             </div>
           ))}
         </dl>
 
-        <p className="mt-14 border-t border-line-subtle pt-6 text-sm text-text-muted">
-          The generated project opens in EcoStruxure Operator Terminal Expert 4.4 —
-          screens, variables, alarms and the alarm summary grid, none of it written
-          by Schneider&apos;s software.
-        </p>
+        <div className="mt-14 border-t border-line-subtle pt-6">
+          <p className="text-sm leading-relaxed text-text-muted">
+            The generated project opens in EcoStruxure Operator Terminal Expert 4.4 —
+            screens, variables, alarms and the alarm summary grid. It runs without a
+            model key, where the inference, the layout, the standard and the review
+            are all deterministic.
+          </p>
+        </div>
       </main>
     </div>
   );
