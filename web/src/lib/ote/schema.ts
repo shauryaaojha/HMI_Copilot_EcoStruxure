@@ -33,11 +33,27 @@ export const Paint = z.union([
   z.object({ Type: z.number().int() }).passthrough(),
 ]);
 
+/**
+ * A font reference, in both the encodings the product writes.
+ *
+ * 4.4 writes `{Type: 2, Value: "0", DisplayValue: "0"}` - the id as a string,
+ * twice. 3.4 writes `{Type: 2, Value: 0}` - the same id as a number, with no
+ * DisplayValue at all. Both are the product's own output; neither is more
+ * correct than the other, so both parse.
+ *
+ * `Value` is a union rather than a coercion on purpose. The writer merges the
+ * parsed part over the raw one (`mergeScreen` in packager.ts), so a value
+ * coerced on the way in would be written back in the coerced form and the
+ * round trip would stop being byte-identical. Validate, never transform.
+ *
+ * docs/VXDZ_FINDINGS.md §3.1 counts 420 parts in one corpus file blocked on
+ * this alone.
+ */
 export const FontRef = z.object({
   Type: z.object({
     Type: z.literal(2),
-    Value: z.string(),
-    DisplayValue: z.string(),
+    Value: z.union([z.string(), z.number()]),
+    DisplayValue: z.string().optional(),
   }),
   Size: z.number().positive().optional(),
   Bold: z.boolean().optional(),

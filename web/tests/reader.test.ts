@@ -43,6 +43,56 @@ async function diff(a: Uint8Array, b: Uint8Array) {
   });
 }
 
+/**
+ * The demo project with its screen edited in place, as bytes.
+ *
+ * The encoding tests all do the same thing: write a shape the product writes
+ * but we had not seen into a real file, then prove it both models and survives
+ * the round trip. Mutating a real project rather than building one from the
+ * schema is deliberate - a fixture built from the schema can only contain what
+ * the schema already allows, which is the opposite of the thing under test.
+ */
+async function withScreen(mutate: (screen: Record<string, any>) => void) {
+  const zip = await JSZip.loadAsync(bytes());
+  const name = Object.keys(zip.files).find((n) => /Screen\.dat$/i.test(n))!;
+  const raw = JSON.parse(await zip.file(name)!.async("string"));
+  mutate(raw);
+  zip.file(name, JSON.stringify(raw, null, 2));
+  return zip.generateAsync({ type: "uint8array" });
+}
+
+/**
+ * Edit the screen, then look at what was written for the Title.
+ *
+ * Exporting an *unchanged* project is not enough to prove an encoding
+ * survives: `packagePreserved` fingerprints each screen and writes an
+ * untouched one back verbatim, so the merge never runs and the assertion
+ * passes whatever the schema did. Changing one unrelated part forces the
+ * rewrite, and the rewrite is where a value parsed into a narrower type would
+ * be written back in the narrower form.
+ */
+async function expectSurvivesAnEdit(
+  source: Uint8Array,
+  check: (title: Record<string, any>) => void,
+) {
+  const read = await readProject(source);
+  const input = inputOf(read);
+  input.screens[0].Children[0].Children.push(
+    rectangle("Forces_A_Rewrite", { left: 600, top: 320, width: 10, height: 10 }, {}),
+  );
+  const out = await packageProject(input, undefined, read.preserved);
+
+  // The screen really was rewritten, so what follows means something.
+  expect((await diff(source, out)).some((n) => /Screen\.dat$/i.test(n))).toBe(true);
+
+  const written = await entriesOf(out);
+  const name = [...written.keys()].find((n) => /Screen\.dat$/i.test(n))!;
+  const json = JSON.parse(new TextDecoder().decode(written.get(name)!));
+  const title = (json.Children[0].Children as Record<string, any>[]).find((p) => p.Name === "Title");
+  expect(title).toBeDefined();
+  check(title!);
+}
+
 const inputOf = (read: Awaited<ReturnType<typeof readProject>>): PackageInput => ({
   name: read.name,
   target: read.target,
@@ -186,5 +236,42 @@ describe("the round trip", () => {
     expect(readOne.screens.map((s) => s.Name)).toEqual(["Second"]);
     const names = [...(await entriesOf(one)).keys()];
     expect(names.filter((n) => /Screen\.dat$/i.test(n))).toHaveLength(1);
+  });
+});
+
+/**
+ * The four encodings docs/VXDZ_FINDINGS.md §3.1 found the schema did not
+ * accept. Each one was read out of a real Schneider-authored file; each was an
+ * assumption our schema had made from a single source project, `Demo 1.eote`
+ * at ColorSet 4, rather than a rule of the format.
+ *
+ * Every case asserts the same two things, because widening a schema can break
+ * either: that the shape now *models*, and that it still comes back
+ * byte-identical. The second is the one that matters - a field parsed into a
+ * narrower type and written back differently is exactly what this file exists
+ * to catch.
+ */
+describe("the encodings the product also writes", () => {
+  it("models a font written as a number, and writes it back unchanged", async () => {
+    // 4.4 writes {Type: 2, Value: "0", DisplayValue: "0"}; 3.4 writes
+    // {Type: 2, Value: 0} and no DisplayValue. docs/VXDZ_FINDINGS.md §3.1.
+    const modified = await withScreen((raw) => {
+      const title = raw.Children[0].Children.find((p: any) => p.Name === "Title");
+      title.Font = { Type: { Type: 2, Value: 0 }, Size: 20 };
+    });
+
+    const read = await readProject(modified);
+    expect(read.warnings).toEqual([]);
+    const title = read.screens[0].Children[0].Children.find((p) => p.Name === "Title");
+    expect(title).toBeDefined();
+    expect(title && "Font" in title && title.Font?.Type.Value).toBe(0);
+    expect(title && "Font" in title && title.Font?.Type.DisplayValue).toBeUndefined();
+
+    const out = await packageProject(inputOf(read), undefined, read.preserved);
+    expect(await diff(modified, out)).toEqual([]);
+
+    await expectSurvivesAnEdit(modified, (title) =>
+      expect(title.Font).toEqual({ Type: { Type: 2, Value: 0 }, Size: 20 }),
+    );
   });
 });
