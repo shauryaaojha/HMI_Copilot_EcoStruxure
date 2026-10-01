@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const WASM = "./node_modules/sql.js/dist/sql-wasm.wasm";
+
 const config: NextConfig = {
   /**
    * Build somewhere else when asked to.
@@ -28,10 +30,28 @@ const config: NextConfig = {
   // driver on Node's own require.
   serverExternalPackages: ["sql.js", "@resvg/resvg-js", "react-dom/server", "mongodb"],
 
-  // The project skeleton is read with fs at request time, so it has to be
-  // traced into the standalone output or the export route 500s in production.
+  /**
+   * Files read from disk at request time, which the bundler therefore cannot
+   * see and will not carry into the serverless output.
+   *
+   * sql.js is in serverExternalPackages, so it is required from node_modules at
+   * run time - but its WebAssembly is opened by path, not imported, so nothing
+   * statically references it and tracing leaves it behind. The deployed
+   * function then fails with "sql-wasm.wasm not found. Looked in:
+   * /var/task/web/node_modules/sql.js/dist/sql-wasm.wasm", which is exactly
+   * where it should have been. Every route that opens a database needs it.
+   *
+   * The skeleton is the same shape of problem, for the routes that write or
+   * read a project.
+   */
   outputFileTracingIncludes: {
-    "/api/export": ["./skeleton/**/*"],
+    "/api/export": ["./skeleton/**/*", WASM],
+    "/api/export/report": [WASM],
+    "/api/import": [WASM],
+    "/api/import/screens": [WASM],
+    "/api/panel": ["./skeleton/**/*", WASM],
+    "/api/validate": [WASM],
+    "/api/critique": [WASM],
   },
 };
 
