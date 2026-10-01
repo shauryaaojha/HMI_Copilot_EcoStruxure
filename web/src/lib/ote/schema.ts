@@ -64,12 +64,34 @@ const base = {
   Height: z.number().nonnegative(),
 };
 
+/**
+ * A Rectangle filled to a percentage: the product's live bar. There is no
+ * bar-graph part - docs/VXDZ_FINDINGS.md §6 - and the help's own recipe for a
+ * bar graph is this property on a Rectangle with a Scale converter on its
+ * binding. Fill is the bar, BackColor the unfilled remainder; HorizontalFill
+ * and VerticalFill take 0-100. Shapes from the 4.4 Polygon capture and the
+ * typed corpus Rectangles ({Enable, BackColor: {Value}}); the rest of the
+ * struct (start points) is carried through.
+ */
+export const FillLevel = z
+  .object({
+    Enable: z.boolean(),
+    HorizontalFill: z.number().min(-100).max(100).optional(),
+    VerticalFill: z.number().min(-100).max(100).optional(),
+    BackColor: z
+      .object({ Value: z.number().int().min(1).max(60).optional(), Transparency: z.number().min(0).max(100).optional() })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
 export const Rectangle = z.object({
   Type: z.literal("Rectangle"),
   ...base,
   Fill: Paint.optional(),
   Border: Paint.optional(),
   Thickness: z.number().optional(),
+  Animation: z.object({ FillLevel: FillLevel.optional() }).passthrough().optional(),
 });
 
 export const TextBox = z.object({

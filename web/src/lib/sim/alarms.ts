@@ -16,6 +16,7 @@
  */
 
 import type { Alarm } from "@/lib/ote/schema";
+import { applyScale } from "@/lib/ote/converters";
 import type { Binding } from "@/store/project";
 import type { AlarmRow } from "@/components/canvas/parts";
 
@@ -48,6 +49,9 @@ export function tagValues(
   const out: Record<string, number | boolean> = {};
   for (const binding of bindings) {
     if (ALARM_TARGET.test(binding.targetName)) continue;
+    // A converted value is the fill, not the reading; it says nothing the
+    // tag's own displays do not, and read back it would be the wrong number.
+    if (binding.converter) continue;
     const value = objectValues[binding.targetName];
     if (value !== undefined) out[binding.tag] = value;
   }
@@ -63,7 +67,9 @@ export function objectValues(
   for (const binding of bindings) {
     if (ALARM_TARGET.test(binding.targetName)) continue;
     const value = tags[binding.tag];
-    if (value !== undefined) out[binding.targetName] = value;
+    if (value === undefined) continue;
+    // Through its converter, as the runtime does: a bar gets its percentage.
+    out[binding.targetName] = binding.converter && typeof value === "number" ? applyScale(binding.converter, value) : value;
   }
   return out;
 }

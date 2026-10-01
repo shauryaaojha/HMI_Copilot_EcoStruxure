@@ -80,6 +80,47 @@ export function rectangle(
   };
 }
 
+/**
+ * A live bar: a Rectangle whose FillLevel animation fills it from the bottom
+ * (vertical) or the left (horizontal), the product's default start points.
+ * Drawn empty at design time - the binding fills it at runtime.
+ */
+export function fillBar(name: string, box: Box, opts: { fill: number; back: number; border: number; vertical: boolean }): Part {
+  return {
+    Type: "Rectangle",
+    UniqueId: gid(),
+    Name: name,
+    Fill: color(opts.fill),
+    Border: color(opts.border),
+    Thickness: 1,
+    Location: { Left: box.left, Top: box.top },
+    Width: box.width,
+    Height: box.height,
+    Animation: {
+      FillLevel: {
+        Enable: true,
+        ...(opts.vertical ? { VerticalFill: 0 } : { HorizontalFill: 0 }),
+        BackColor: { Value: opts.back },
+      },
+    },
+  };
+}
+
+/** A rectangle with no fill: a frame drawn over something, like a normal band on a bar. */
+export function outline(name: string, box: Box, border: number): Part {
+  return {
+    Type: "Rectangle",
+    UniqueId: gid(),
+    Name: name,
+    Fill: { Type: 0 },
+    Border: color(border),
+    Thickness: 1,
+    Location: { Left: box.left, Top: box.top },
+    Width: box.width,
+    Height: box.height,
+  };
+}
+
 /** A Lamp carries both faces; the bound tag chooses between them at runtime. */
 function face(text: string, fg: number, bg: number, bd: number) {
   return {

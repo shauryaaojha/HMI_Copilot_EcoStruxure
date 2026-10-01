@@ -19,14 +19,17 @@ import type { Part } from "@/lib/ote/schema";
 import {
   alarmLamp,
   barScale,
+  fillBar,
   lamp,
   numericDisplay,
+  outline,
   pathPart,
   rectangle,
   textBox,
   trendGraph,
   type Box,
 } from "@/lib/ote/parts";
+import type { Scale } from "@/lib/ote/converters";
 import { DEFAULT_PACK } from "@/lib/standard/pack";
 
 const T = DEFAULT_PACK.tokens;
@@ -40,8 +43,11 @@ export const isCompositeKind = (kind: string): kind is CompositeKind =>
 /** What an expansion produced: the parts in paint order, and which are bound. */
 export interface Expanded {
   parts: Part[];
-  /** Index into `parts`, the tag, and the property it drives. */
-  wires: { index: number; tag: string; property: string }[];
+  /**
+   * Index into `parts`, the tag, the property it drives, and the converter
+   * the value passes through on the way - a bar's range onto 0-100.
+   */
+  wires: { index: number; tag: string; property: string; converter?: Scale }[];
 }
 
 export interface CompositeDef<P extends Record<string, unknown>> {
@@ -78,12 +84,17 @@ export const AnalogIndicatorProps = z.object({
 export type AnalogIndicatorProps = z.infer<typeof AnalogIndicatorProps>;
 
 /**
- * A scale with the normal band beside it, the live value under it, and the
- * unit. The level itself is not drawn live: the product's bar part has not
- * been captured yet (reference/part_examples.json has BarScale, not the bar),
- * so an indicator today is a scale, a band and a number - which is already
- * what the handbook asks for first. When the bar part is captured it goes
- * between the scale and the band and nothing else here changes.
+ * The analogue indicator the handbook asks for: a live bar with the normal
+ * band marked on it, the value and its unit, and a scale where there is room.
+ *
+ * The bar is the product's own: a Rectangle with Animation.FillLevel, bound to
+ * the tag through a Scale converter from the indicator's range onto the 0-100
+ * the fill takes - the recipe in the product's help (bar_metergraph/fs01.htm).
+ * The band is an unfilled frame over the bar between normalLow and normalHigh,
+ * so the operator reads "inside the band" against the fill itself.
+ *
+ * When the box is short it gives up the scale first and keeps the bar, which
+ * is what says whether the value is normal.
  */
 export const AnalogIndicator: CompositeDef<AnalogIndicatorProps> = {
   kind: "AnalogIndicator",
@@ -117,52 +128,57 @@ export const AnalogIndicator: CompositeDef<AnalogIndicatorProps> = {
     // scale, the way the screen compiler gives up callouts - a composite that
     // does not fit says less rather than becoming unreadable.
     const SCALE = 24;
-    const BAND = 10;
+    const BAR = 12;
     const headerBottom = y + 4 + (vertical ? 20 : 24);
     const bottom = y + h - 8;
+    const scale: Scale = { min: p.min, max: p.max };
+    let bar: { property: string } | undefined;
 
     if (vertical) {
-      // Value and unit sit on the bottom row; the scale fills what is left
-      // between the label and them.
+      // Value and unit sit on the bottom row; the scale and the bar beside it
+      // fill what is left between the label and them.
       const valueTop = Math.max(headerBottom + GAP, bottom - 28);
       const scaleTop = headerBottom + GAP;
       const scaleH = valueTop - GAP - scaleTop;
       if (scaleH >= GRID) {
         parts.push(barScale(`${name}_Scale`, { left: x + 8, top: scaleTop, width: 40, height: scaleH }, p.max));
-        const bandTop = scaleTop + (1 - frac(p.normalHigh)) * scaleH;
-        const bandBottom = scaleTop + (1 - frac(p.normalLow)) * scaleH;
         if (w >= 80) {
-          parts.push(
-            rectangle(`${name}_Band`, { left: x + 56, top: Math.round(bandTop), width: 16, height: Math.max(2, Math.round(bandBottom - bandTop)) }, { fill: T.ground, border: T.line }),
-          );
+          const column = { left: x + 56, top: scaleTop, width: 16, height: scaleH };
+          parts.push(fillBar(`${name}_Bar`, column, { fill: T.muted, back: T.white, border: T.line, vertical: true }));
+          bar = { property: "Animation.FillLevel.VerticalFill" };
+          const bandTop = scaleTop + (1 - frac(p.normalHigh)) * scaleH;
+          const bandBottom = scaleTop + (1 - frac(p.normalLow)) * scaleH;
+          parts.push(outline(`${name}_Band`, { left: column.left, top: Math.round(bandTop), width: column.width, height: Math.max(2, Math.round(bandBottom - bandTop)) }, T.ink));
         }
       }
       parts.push(numericDisplay(`${name}_Val`, { left: x + 8, top: valueTop, width: Math.max(GRID, w - 16 - 40), height: 28 }, p.decimals));
       parts.push(textBox(`${name}_Unit`, p.units, { left: x + w - 44, top: valueTop + 2, width: 36, height: 24 }, { size: 12, colour: T.muted }));
     } else {
-      // The label, value and unit share the top row; the scale is bottom
-      // anchored and the band sits directly above it, marking the normal range.
-      const scaleLeft = x + 8;
-      const scaleW = Math.max(GRID, w - 16);
-      const scaleTop = bottom - SCALE;
-      const bandTop = scaleTop - BAND;
-      const roomForScale = scaleTop >= headerBottom + GAP;
-      const roomForBand = bandTop >= headerBottom + GAP;
-      if (roomForScale) {
-        parts.push(barScale(`${name}_Scale`, { left: scaleLeft, top: roomForBand ? scaleTop : Math.max(scaleTop, headerBottom + GAP), width: scaleW, height: SCALE }, p.max));
-      }
-      if (roomForBand) {
-        const bandLeft = scaleLeft + frac(p.normalLow) * scaleW;
-        const bandRight = scaleLeft + frac(p.normalHigh) * scaleW;
-        parts.push(
-          rectangle(`${name}_Band`, { left: Math.round(bandLeft), top: bandTop, width: Math.max(2, Math.round(bandRight - bandLeft)), height: BAND }, { fill: T.ground, border: T.line }),
-        );
+      // The label, value and unit share the top row; the bar runs under them
+      // with the band framed on it, and the scale goes under the bar when the
+      // box is tall enough to hold it.
+      const left = x + 8;
+      const width = Math.max(GRID, w - 16);
+      const barTop = headerBottom + GAP;
+      if (barTop + BAR <= bottom) {
+        parts.push(fillBar(`${name}_Bar`, { left, top: barTop, width, height: BAR }, { fill: T.muted, back: T.white, border: T.line, vertical: false }));
+        bar = { property: "Animation.FillLevel.HorizontalFill" };
+        const bandLeft = left + frac(p.normalLow) * width;
+        const bandRight = left + frac(p.normalHigh) * width;
+        parts.push(outline(`${name}_Band`, { left: Math.round(bandLeft), top: barTop, width: Math.max(2, Math.round(bandRight - bandLeft)), height: BAR }, T.ink));
+        const scaleTop = barTop + BAR + GAP;
+        if (scaleTop + SCALE <= bottom) {
+          parts.push(barScale(`${name}_Scale`, { left, top: scaleTop, width, height: SCALE }, p.max));
+        }
       }
       parts.push(numericDisplay(`${name}_Val`, { left: x + w - 8 - valueWidth - unitWidth, top: y + 4, width: valueWidth, height: 24 }, p.decimals));
       parts.push(textBox(`${name}_Unit`, p.units, { left: x + w - 8 - unitWidth + 4, top: y + 6, width: unitWidth - 4, height: 20 }, { size: 12, colour: T.muted }));
     }
 
-    if (p.tag) wires.push({ index: parts.findIndex((q) => q.Name === `${name}_Val`), tag: p.tag, property: "CurrentValue" });
+    if (p.tag) {
+      wires.push({ index: parts.findIndex((q) => q.Name === `${name}_Val`), tag: p.tag, property: "CurrentValue" });
+      if (bar) wires.push({ index: parts.findIndex((q) => q.Name === `${name}_Bar`), tag: p.tag, property: bar.property, converter: scale });
+    }
     return { parts, wires };
   },
 };

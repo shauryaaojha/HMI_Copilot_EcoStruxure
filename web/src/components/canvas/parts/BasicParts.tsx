@@ -8,10 +8,41 @@
  */
 
 import { fill, fontOf, insetStroke, type PartOf } from "./geometry";
+import { resolveColor } from "@/lib/ote/palette";
 import { PlacedText } from "./Text";
 
-export function RectanglePart({ part }: { part: PartOf<"Rectangle"> }) {
+/**
+ * A Rectangle, and a live bar when its FillLevel animation is on: BackColor is
+ * the unfilled remainder, Fill the bar, filled from the bottom or the left by
+ * the percentage the binding pushes (`value`, already through its converter)
+ * or, at design time, the static fill the JSON carries.
+ */
+export function RectanglePart({ part, value }: { part: PartOf<"Rectangle">; value?: number }) {
   const stroke = part.Thickness ?? 1;
+  const level = part.Animation?.FillLevel;
+  if (level?.Enable) {
+    const vertical = level.VerticalFill !== undefined || level.HorizontalFill === undefined;
+    const pct = Math.min(100, Math.max(0, value ?? (vertical ? level.VerticalFill : level.HorizontalFill) ?? 0)) / 100;
+    const { Left: x, Top: y } = part.Location;
+    const w = part.Width;
+    const h = part.Height;
+    const filled = vertical
+      ? { x, y: y + h * (1 - pct), width: w, height: h * pct }
+      : { x, y, width: w * pct, height: h };
+    const back = typeof level.BackColor?.Value === "number" ? resolveColor(level.BackColor.Value, "#ffffff") : "#ffffff";
+    return (
+      <g>
+        <rect x={x} y={y} width={w} height={h} fill={back} />
+        {pct > 0 && <rect {...filled} fill={fill(part, "Fill", "#474747")} />}
+        <rect
+          {...insetStroke(x, y, w, h, stroke)}
+          fill="none"
+          stroke={fill(part, "Border", "#515151")}
+          strokeWidth={stroke}
+        />
+      </g>
+    );
+  }
   return (
     <rect
       {...insetStroke(part.Location.Left, part.Location.Top, part.Width, part.Height, stroke)}

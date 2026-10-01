@@ -5,12 +5,15 @@
  */
 
 import type { Alarm, Part, Screen, Variable } from "@/lib/ote/schema";
+import type { Scale } from "@/lib/ote/converters";
 
 export interface Binding {
   tag: string;
   targetId: string;
   targetName: string;
   property: string;
+  /** The converter the value passes through: a bar's range onto 0-100. */
+  converter?: Scale;
 }
 
 /**

@@ -195,7 +195,7 @@ export class Placer {
     for (const part of parts) this.add(part);
     for (const w of wires) {
       const part = parts[w.index];
-      if (part) this.wires.push({ part, tag: w.tag, property: w.property });
+      if (part) this.wires.push({ part, tag: w.tag, property: w.property, ...(w.converter ? { converter: w.converter } : {}) });
     }
     const instance: CompositeInstance = {
       id: crypto.randomUUID(),

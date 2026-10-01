@@ -108,7 +108,10 @@ describe("the store keeps a composite an object", () => {
     expect(unionBox(children().filter((p) => instance.partIds.includes(p.UniqueId)))).toEqual(boxBefore);
     expect(children().find((p) => p.Name === "Ind_Flow_Unit")).toBeDefined();
     expect(children().some((p) => p.Name === "Ind_Flow_Unit_2")).toBe(false);
-    expect(store.getState().bindings.filter((b) => b.tag === "FT_101_PV")).toHaveLength(1);
+    // One value binding and one bar binding - re-expansion replaces, never adds.
+    const bound = store.getState().bindings.filter((b) => b.tag === "FT_101_PV");
+    expect(bound.map((b) => b.property).sort()).toEqual(["Animation.FillLevel.VerticalFill", "CurrentValue"]);
+    expect(bound.find((b) => b.converter)?.converter).toMatchObject({ min: 0, max: 100 });
   });
 
   it("stops being a composite when a part is deleted or it is ungrouped", () => {

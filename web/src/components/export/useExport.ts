@@ -54,6 +54,7 @@ export function packageInput(state: ReturnType<typeof useProject.getState>) {
             tag: binding.tag,
             property: binding.property,
             screenId: found.screenId,
+            ...(binding.converter ? { converter: binding.converter } : {}),
           },
         ]
       : [];

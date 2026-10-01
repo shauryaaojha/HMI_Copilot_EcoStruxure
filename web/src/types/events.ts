@@ -76,7 +76,7 @@ export type GenerationEvent =
   /** The Plant Model the tags were read into; the client keeps it for the Plant page. */
   | { type: "plant"; model: PlantModel }
   /** One resolved binding. */
-  | { type: "binding"; tag: string; target: string; property: string }
+  | { type: "binding"; tag: string; target: string; property: string; converter?: { min: number; max: number } }
   /** One configured alarm. */
   | { type: "alarm"; alarm: Alarm }
   /** A validation finding, clickable back to its object. */

@@ -39,6 +39,7 @@ export async function POST(request: Request) {
         targetId: w.part.UniqueId,
         targetName: w.part.Name,
         property: w.property,
+        ...(w.converter ? { converter: w.converter } : {}),
       })),
       warnings: read.warnings,
     });

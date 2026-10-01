@@ -17,6 +17,7 @@
 
 import type { AlarmTarget, VariableIds } from "./databases";
 import type { Part } from "./schema";
+import { scaleName, type Scale } from "./converters";
 
 /** ObjectType 4 = variable, 8 = screen part, 30 = alarm. */
 export const OBJECT_TYPE = { VARIABLE: 4, PART: 8, ALARM: 30 } as const;
@@ -42,7 +43,7 @@ export interface BindingRow {
   Type: number;
   Mode: number;
   BindingText: string;
-  /** Null for everything this writer produces; a read file may carry one. */
+  /** Set when the value passes through a converter - a bar's Scale. */
   ConverterId: string | null;
   ConverterName: string | null;
   Target: number;
@@ -70,6 +71,8 @@ export interface Wire {
    * default is used when it is absent, so a single-screen project is unchanged.
    */
   screenId?: string;
+  /** The converter the value passes through, written into Converters.db. */
+  converter?: Scale;
 }
 
 export function buildGraph(
@@ -78,6 +81,8 @@ export function buildGraph(
   wires: Wire[],
   variableIds: VariableIds,
   alarms: AlarmTarget[] = [],
+  /** Converter name -> UniqueId, as syncConverters wrote them. */
+  converterIds: Record<string, string> = {},
 ): BindingGraph {
   const Sources: Source[] = [];
   const Targets: Target[] = [];
@@ -106,8 +111,13 @@ export function buildGraph(
     return referenceId;
   };
 
-  for (const { part, tag, property, screenId: on } of wires) {
+  for (const { part, tag, property, screenId: on, converter } of wires) {
     const source = sourceFor(tag);
+    const converterName = converter ? scaleName(converter) : null;
+    const converterId = converterName ? (converterIds[converterName] ?? converter?.id ?? null) : null;
+    if (converterName && !converterId) {
+      throw new Error(`binding of ${part.Name} needs converter ${converterName}, which was not written`);
+    }
     const target = Targets.length;
     const owner = on ?? screenId;
     Targets.push({
@@ -121,10 +131,12 @@ export function buildGraph(
     });
     Bindings.push({
       Type: 2,
-      Mode: 2,
+      // Through a converter the value only flows to the object, as in every
+      // converted binding the template corpus carries.
+      Mode: converterId ? 1 : 2,
       BindingText: `${tag}.Value`,
-      ConverterId: null,
-      ConverterName: null,
+      ConverterId: converterId,
+      ConverterName: converterName,
       Target: target,
       TargetProperty: property,
       Sources: String(source),

@@ -103,6 +103,7 @@ export function useGeneration() {
               .find((part) => part.Name === event.target)?.UniqueId ?? "",
           targetName: event.target,
           property: event.property,
+          ...(event.converter ? { converter: event.converter } : {}),
         });
         break;
 

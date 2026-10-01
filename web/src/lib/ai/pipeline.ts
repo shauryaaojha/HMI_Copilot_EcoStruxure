@@ -379,6 +379,7 @@ export async function* runPipeline(
       tag: wire.tag,
       target: wire.part.Name,
       property: wire.property,
+      ...(wire.converter ? { converter: { min: wire.converter.min, max: wire.converter.max } } : {}),
     };
   }
   const total = wires.length + alarms.length;

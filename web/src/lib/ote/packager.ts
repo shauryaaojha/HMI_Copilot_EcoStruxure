@@ -29,6 +29,7 @@ import {
   type VariableIds,
 } from "./databases";
 import { buildGraph, type BindingGraph, type Wire } from "./bindings";
+import { syncConverters } from "./converters";
 import { gid } from "./parts";
 import type { Alarm, Screen, Variable } from "./schema";
 import type { PlantModel } from "@/lib/plant/model";
@@ -360,7 +361,20 @@ async function packagePreserved(input: PackageInput, kept: Preserved): Promise<U
   if (wiresChanged || alarmsChanged || variableIds !== kept.variableIds) {
     const first = input.screens[0];
     if (!first) throw new Error("a project needs at least one screen");
-    const graph = appendExtra(buildGraph(first.UniqueId, input.wires, variableIds, alarmTargets), kept.extra);
+    // A bar's converter is a row in Converters.db; written only when a scale
+    // has no row yet, so a file whose converters are all there keeps the
+    // database byte-identical.
+    let converterIds: Record<string, string> = {};
+    const scales = input.wires.flatMap((w) => (w.converter ? [w.converter] : []));
+    if (scales.length > 0) {
+      const name = nameOf("Converters.db");
+      const template = entries.get(name) ?? (await loadSkeleton()).entries.get("Converters.db");
+      if (!template) throw new Error("no Converters.db to write a bar's converter into");
+      const written = await editDatabase(template, (db) => syncConverters(db, scales));
+      if (written.result.inserted > 0 || !entries.has(name)) entries.set(name, written.bytes);
+      converterIds = written.result.ids;
+    }
+    const graph = appendExtra(buildGraph(first.UniqueId, input.wires, variableIds, alarmTargets, converterIds), kept.extra);
     entries.set(nameOf("Bindings.dat"), jsonEntry(graph));
     changed = true;
   }
@@ -440,12 +454,25 @@ export async function packageProject(
 
   entries.set(SCREENS_HIERARCHY, jsonEntry(hierarchy));
 
+  // --- converters ---------------------------------------------------------
+  // One Scale converter per range a bar is drawn on: the reading's range onto
+  // the 0-100 a FillLevel takes.
+  let converterIds: Record<string, string> = {};
+  const scales = input.wires.flatMap((w) => (w.converter ? [w.converter] : []));
+  if (scales.length > 0) {
+    const template = entries.get("Converters.db");
+    if (!template) throw new Error("skeleton has no Converters.db");
+    const written = await editDatabase(template, (db) => syncConverters(db, scales));
+    entries.set("Converters.db", written.bytes);
+    converterIds = written.result.ids;
+  }
+
   // --- bindings -----------------------------------------------------------
   const firstScreen = input.screens[0];
   if (!firstScreen) throw new Error("a project needs at least one screen");
   entries.set(
     "Bindings.dat",
-    jsonEntry(buildGraph(firstScreen.UniqueId, input.wires, variableIds, alarmTargets)),
+    jsonEntry(buildGraph(firstScreen.UniqueId, input.wires, variableIds, alarmTargets, converterIds)),
   );
 
   // Blank.eote carries neither of these, but every shipped sample project does,

@@ -514,7 +514,7 @@ export function createProjectStore() {
         for (const part of parts) (s.objectMeta[part.UniqueId] ??= {}).groupId = id;
         for (const w of wires) {
           const part = parts[w.index];
-          if (part) s.bindings.push({ tag: w.tag, targetId: part.UniqueId, targetName: part.Name, property: w.property });
+          if (part) s.bindings.push({ tag: w.tag, targetId: part.UniqueId, targetName: part.Name, property: w.property, ...(w.converter ? { converter: w.converter } : {}) });
         }
         s.composites[id] = { id, kind, name: stem, props: parsed, screenId, partIds: parts.map((p) => p.UniqueId) };
         s.selectedIds = parts.map((p) => p.UniqueId);
@@ -558,7 +558,7 @@ export function createProjectStore() {
         for (const part of parts) (s.objectMeta[part.UniqueId] ??= {}).groupId = id;
         for (const w of wires) {
           const part = parts[w.index];
-          if (part) s.bindings.push({ tag: w.tag, targetId: part.UniqueId, targetName: part.Name, property: w.property });
+          if (part) s.bindings.push({ tag: w.tag, targetId: part.UniqueId, targetName: part.Name, property: w.property, ...(w.converter ? { converter: w.converter } : {}) });
         }
         s.composites[id] = { ...instance, props, partIds: parts.map((p) => p.UniqueId) };
         s.selectedIds = parts.map((p) => p.UniqueId);
@@ -698,7 +698,7 @@ export function createProjectStore() {
             report.droppedBindings.push(`${part.Name} → ${b.tag}`);
             continue;
           }
-          s.bindings.push({ tag: b.tag, targetId, targetName: part.Name, property: b.property });
+          s.bindings.push({ tag: b.tag, targetId, targetName: part.Name, property: b.property, ...(b.converter ? { converter: b.converter } : {}) });
           report.bindings += 1;
         }
 
@@ -1180,7 +1180,8 @@ export function createProjectStore() {
         if ((had?.tag ?? null) === tag) return;
         remember(s, tag ? `Bind ${part.Name} to ${tag}` : `Unbind ${part.Name}`);
         s.bindings = s.bindings.filter((b) => !(b.targetId === targetId && b.property === property));
-        if (tag) s.bindings.push({ tag, targetId, targetName: part.Name, property });
+        // Rebinding a bar keeps its converter: the range is the indicator's.
+        if (tag) s.bindings.push({ tag, targetId, targetName: part.Name, property, ...(had?.converter ? { converter: had.converter } : {}) });
       }),
 
     addAlarm: (alarm) =>

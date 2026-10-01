@@ -134,6 +134,17 @@ export function validateProject(
       continue;
     }
 
+    // A bar's fill is a percentage: only a number can drive it.
+    if (wire.property.startsWith("Animation.FillLevel.") && !isNumeric(variable.DataType)) {
+      findings.push({
+        severity: "error",
+        rule: "type-mismatch",
+        objectId: wire.part.UniqueId,
+        tag: wire.tag,
+        message: `${wire.part.Name} is a bar but ${wire.tag} is ${variable.DataType}; a fill takes a number`,
+      });
+    }
+
     const accepts = ACCEPTS[wire.part.Type];
     if (accepts && !accepts.includes(variable.DataType)) {
       findings.push({

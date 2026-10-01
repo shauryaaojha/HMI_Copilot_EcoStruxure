@@ -18,6 +18,7 @@ import type { BindingGraph, BindingRow, Source, Target, Wire } from "./bindings"
 import { OBJECT_TYPE } from "./bindings";
 import type { AlarmTarget, VariableIds } from "./databases";
 import { openDatabase, readPanel, type Panel } from "./packager";
+import { readScales, scaleName, type Scale } from "./converters";
 
 /** A child of a screen the schema cannot model, kept where it was. */
 export interface OpaquePart {
@@ -114,7 +115,7 @@ export const fingerprintAlarms = (alarms: Alarm[]) =>
 export const fingerprintWires = (wires: Wire[]) =>
   JSON.stringify(
     wires
-      .map((w) => [w.part.UniqueId, w.tag, w.property, w.screenId ?? ""])
+      .map((w) => [w.part.UniqueId, w.tag, w.property, w.screenId ?? "", w.converter ? scaleName(w.converter) : ""])
       .sort((a, b) => String(a).localeCompare(String(b))),
   );
 
@@ -227,6 +228,20 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
   }
   const byVariableId = new Map(Object.entries(variableIds).map(([name, id]) => [id.toUpperCase(), name]));
 
+  // --- converters ---------------------------------------------------------
+  // Scale converters only: a binding through one is a bar we can model and
+  // write back as itself. Every other converter type stays opaque.
+  let scales = new Map<string, Scale>();
+  const convertersDb = get("Converters.db");
+  if (convertersDb) {
+    const db = await openDatabase(convertersDb);
+    try {
+      scales = readScales(db);
+    } finally {
+      db.close();
+    }
+  }
+
   // --- bindings -----------------------------------------------------------
   const graph = (json("Bindings.dat") as BindingGraph | undefined) ?? { Sources: [], Targets: [], Bindings: [] };
   const sourcesByRef = new Map(graph.Sources.map((s) => [s.ReferenceId, s]));
@@ -250,10 +265,13 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
     const source = sourceRefs.length === 1 ? sourcesByRef.get(sourceRefs[0]) : undefined;
     const tag = source && source.ObjectType === OBJECT_TYPE.VARIABLE ? byVariableId.get(source.ObjectId.toUpperCase()) : undefined;
 
-    if (target && target.ObjectType === OBJECT_TYPE.PART && tag && !row.ConverterId) {
+    // Through no converter, or a Scale converter we can read and write back
+    // as itself; any other converter keeps the row as it was.
+    const converter = row.ConverterId ? scales.get(String(row.ConverterId).toLowerCase()) : undefined;
+    if (target && target.ObjectType === OBJECT_TYPE.PART && tag && (!row.ConverterId || converter)) {
       const found = partsById.get(target.ObjectId.toLowerCase());
       if (found) {
-        wires.push({ part: found.part, tag, property: row.TargetProperty, screenId: found.screenId });
+        wires.push({ part: found.part, tag, property: row.TargetProperty, screenId: found.screenId, ...(converter ? { converter } : {}) });
         usedSources.add(sourceRefs[0]);
         usedTargets.add(row.Target);
         continue;
