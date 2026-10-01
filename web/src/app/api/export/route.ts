@@ -15,7 +15,7 @@
 import { panelOf, type PackageInput } from "@/lib/ote/packager";
 import { backendFor, unsupportedParts, type FormatId } from "@/lib/backend";
 import { readProject } from "@/lib/ote/reader";
-import { IMPORT_DIR } from "@/lib/ote/imports";
+import { getImport, importGoneMessage } from "@/lib/ote/imports";
 
 export const runtime = "nodejs";
 
@@ -66,16 +66,11 @@ export async function POST(request: Request) {
     let panelLabel: string | null = null;
 
     if (input.source && /^[0-9a-f-]{36}$/i.test(input.source)) {
-      const fs = await import("node:fs/promises");
-      const path = await import("node:path");
-      const original = await fs.readFile(path.join(process.cwd(), IMPORT_DIR, `${input.source}.eote`)).catch(() => null);
+      const original = await getImport(input.source);
       if (!original) {
-        return Response.json(
-          { error: "The file this project was opened from is no longer on this machine. Open it again to export into it." },
-          { status: 409 },
-        );
+        return Response.json({ error: importGoneMessage() }, { status: 409 });
       }
-      const read = await readProject(new Uint8Array(original));
+      const read = await readProject(original);
       bytes = await backend.write(input, read.preserved);
       panelLabel = `${read.target.model} ${read.target.width}x${read.target.height}`;
     } else {

@@ -1,16 +1,17 @@
 /**
  * Open an existing .eote.
  *
- * The bytes are kept on disk under .imports/<id>.eote, because the export of
- * an opened project starts from the file it came from, not from the skeleton
- * (docs/PLAN_PHASE1.md). The browser gets the modelled project plus a count
- * of what was carried rather than modelled, so the UI can say so.
+ * The bytes are kept by lib/ote/imports.ts - MongoDB when one is configured,
+ * the filesystem otherwise - because the export of an opened project starts
+ * from the file it came from, not from the skeleton (docs/PLAN_PHASE1.md).
+ * The browser gets the modelled project plus a count of what was carried
+ * rather than modelled, so the UI can say so.
  *
  * Node runtime: sql.js reads the databases.
  */
 
 import { readProject } from "@/lib/ote/reader";
-import { IMPORT_DIR } from "@/lib/ote/imports";
+import { importStore, putImport } from "@/lib/ote/imports";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -29,15 +30,12 @@ export async function POST(request: Request) {
 
   try {
     const read = await readProject(bytes, fileName);
-    const fs = await import("node:fs/promises");
-    const path = await import("node:path");
-    const id = crypto.randomUUID();
-    const dir = path.join(process.cwd(), IMPORT_DIR);
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, `${id}.eote`), bytes);
+    const id = await putImport(bytes, fileName);
 
     return Response.json({
       source: id,
+      /** Where the opened file is kept, so the UI can say how long it lasts. */
+      store: importStore(),
       name: read.name,
       target: read.target,
       screens: read.screens,
