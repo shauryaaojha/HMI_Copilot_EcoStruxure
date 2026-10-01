@@ -368,13 +368,108 @@ body {
   animation: breathe 1.8s ease-in-out infinite;
 }
 
+
+/* --- landing -------------------------------------------------------------
+   Motion that carries meaning: things arrive from where they come from, and
+   the screen the tool draws assembles itself the way the tool assembles it.
+   All of it is CSS, because a landing page for a tool that runs on a panel in
+   a plant should not ship a WebGL runtime to say so. */
+
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Set by the IntersectionObserver in components/landing/useReveal.ts. */
+.reveal {
+  opacity: 0;
+}
+.reveal.is-in {
+  animation: reveal-up 700ms var(--ease-out) both;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
+/* The engineering grid the whole product is laid out on, as a backdrop. */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--color-line) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-line) 55%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+.mask-fade {
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, #000 30%, transparent 75%);
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, #000 30%, transparent 75%);
+}
+
+/* A stroke drawing itself: pipes, outlines, the frame of a screen. */
+@keyframes draw {
+  to { stroke-dashoffset: 0; }
+}
+.draw {
+  stroke-dasharray: var(--len, 400);
+  stroke-dashoffset: var(--len, 400);
+  animation: draw 1100ms var(--ease-out) both;
+  animation-delay: var(--draw-delay, 0ms);
+}
+
+/* An object landing on the canvas, the way the build timeline lands one. */
+@keyframes place {
+  0% { opacity: 0; transform: scale(0.94); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: none; }
+}
+.place {
+  transform-origin: center;
+  animation: place 420ms var(--ease-out) both;
+  animation-delay: var(--place-delay, 0ms);
+}
+
+/* A value changing, so a screenshot does not look like a screenshot. */
+@keyframes tick {
+  0%, 45% { opacity: 1; }
+  50%, 95% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* A lamp at rest, breathing just enough to read as live. */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.pulse-soft {
+  animation: pulse-soft 2.4s ease-in-out infinite;
+  animation-delay: var(--pulse-delay, 0ms);
+}
+
+/* Cards and rows that lift under the cursor. */
+.lift {
+  transition: transform 220ms var(--ease-out), border-color 220ms var(--ease-out), background-color 220ms var(--ease-out);
+}
+.lift:hover {
+  transform: translateY(-3px);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .is-thinking,
   .copilot-aurora::before,
   .copilot-aurora::after,
   .animate-rise,
-  .animate-breathe {
+  .animate-breathe,
+  .reveal.is-in,
+  .draw,
+  .place,
+  .pulse-soft {
     animation: none;
+  }
+  .reveal,
+  .reveal.is-in {
+    opacity: 1;
+  }
+  .draw {
+    stroke-dashoffset: 0;
+  }
+  .lift:hover {
+    transform: none;
   }
   .is-thinking {
     -webkit-background-clip: border-box;
