@@ -19,6 +19,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { useNewProject } from "@/components/shell/useNewProject";
+import { useSpotlights } from "@/components/ui/interactions";
 import { useReveal, useRevealGroup } from "./useReveal";
 
 const STEPS = [
@@ -111,6 +112,7 @@ const ROUTES = [
 
 export function Routes() {
   const section = useReveal<HTMLElement>();
+  const cards = useSpotlights<HTMLDivElement>();
   const newProject = useNewProject();
 
   return (
@@ -121,13 +123,13 @@ export function Routes() {
           Pick one — the workspace asks the same question and takes the same three answers.
         </p>
 
-        <div className="mt-7 grid gap-3 sm:grid-cols-3">
+        <div ref={cards} className="mt-7 grid gap-3 sm:grid-cols-3">
           {ROUTES.map(({ icon: Icon, title, body }) => (
             <button
               key={title}
               type="button"
               onClick={() => newProject()}
-              className="focus-ring lift group rounded-xl border border-line-subtle bg-surface-base p-5 text-left hover:border-brand-500/50 hover:bg-surface-hover"
+              className="spotlight focus-ring lift group rounded-xl border border-line-subtle bg-surface-base p-5 text-left hover:border-brand-500/50 hover:bg-surface-hover"
             >
               <Icon size={17} aria-hidden className="text-brand-400" />
               <h3 className="mt-3 flex items-center gap-1.5 font-semibold">

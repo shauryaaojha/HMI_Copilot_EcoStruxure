@@ -5,19 +5,32 @@
  *
  * The workspace used to open on a fixture, so the first thing an engineer saw
  * was somebody else's pump station - a tool demonstrating itself rather than
- * helping. Now an empty project opens on one question and the three ways to
- * answer it: say what you need, bring a tag export, or open a project you
- * already have.
+ * helping. The first replacement was one input in the middle of a lot of
+ * nothing, which is a different way of saying nothing.
+ *
+ * This asks one question, offers the three ways to answer it as real choices,
+ * and then shows what will happen after the answer - because the hardest thing
+ * about an empty canvas is not knowing what the tool is going to do with what
+ * you give it.
  *
  * The reveal is a circle clipped out of this pane, collapsing into the point
  * that was clicked, so the canvas underneath is uncovered from exactly where
- * the engineer acted. Plain CSS: one transition on `clip-path`. Nothing here
- * is worth a animation dependency, and a dependency that ships to a panel in a
- * plant is worth avoiding twice.
+ * the engineer acted. Plain CSS: one transition on `clip-path`.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FileUp, FolderOpen, Loader2, Send, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  FileUp,
+  FolderOpen,
+  Loader2,
+  PenLine,
+  ScanEye,
+  Send,
+  Sparkles,
+  Workflow,
+} from "lucide-react";
 import { useProject } from "@/store/project";
 import { useChat } from "@/components/chat/useChat";
 import { SAMPLES, useTagImport } from "@/components/tags/useTagImport";
@@ -25,15 +38,26 @@ import { saveProject } from "@/store/persist";
 import { touchProject } from "@/store/projects";
 import { DEFAULT_STANDARDS } from "@/store/types";
 import { cn } from "@/components/ui";
+import { useCursorLight, useSpotlights } from "@/components/ui/interactions";
 
 /** How long the circle takes to open. Matches the CSS transition below. */
 const REVEAL_MS = 700;
+
+/** What happens after the question is answered, in the pipeline's own order. */
+const AFTER = [
+  { icon: Workflow, label: "Equipment inferred", note: "from ISA-5.1 tag names" },
+  { icon: PenLine, label: "Screens drawn", note: "ISA-101, in flow order" },
+  { icon: ScanEye, label: "Reviewed", note: "overlaps, contrast, labels" },
+  { icon: CheckCircle2, label: "Yours to approve", note: "nothing exported until you say" },
+];
+
+type Origin = { x: number; y: number };
 
 export function StartPane({ projectId, onDone }: { projectId: string; onDone: () => void }) {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [origin, setOrigin] = useState<{ x: number; y: number } | null>(null);
+  const [origin, setOrigin] = useState<Origin | null>(null);
   const [gone, setGone] = useState(false);
   const box = useRef<HTMLTextAreaElement>(null);
   const tagPicker = useRef<HTMLInputElement>(null);
@@ -43,14 +67,15 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
   const hydrate = useProject((s) => s.hydrate);
   const { send } = useChat();
   const { upload, useSample } = useTagImport();
+  const pane = useCursorLight<HTMLDivElement>();
+  const cards = useSpotlights<HTMLDivElement>();
 
   useEffect(() => {
     box.current?.focus();
   }, []);
 
-  /** Uncover the canvas from where the engineer clicked, then stand down. */
   const reveal = useCallback(
-    (from?: { x: number; y: number }) => {
+    (from?: Origin) => {
       setOrigin(from ?? { x: window.innerWidth / 2, y: window.innerHeight / 2 });
       setTimeout(() => {
         setGone(true);
@@ -60,21 +85,22 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
     [onDone],
   );
 
-  const originOf = (e: { currentTarget: HTMLElement }) => {
+  const originOf = (e: { currentTarget: HTMLElement }): Origin => {
     const r = e.currentTarget.getBoundingClientRect();
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   };
+  const centre = (): Origin => ({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
 
-  async function build(e: { currentTarget: HTMLElement }) {
+  function build(e: { currentTarget: HTMLElement }) {
     const text = draft.trim();
     if (!text) return;
     reveal(originOf(e));
-    // The run starts behind the reveal, so the first objects land as the
-    // canvas appears rather than after an empty pause.
+    // The run starts behind the reveal, so the first objects land as the canvas
+    // appears rather than after an empty pause.
     void send(text);
   }
 
-  async function withTags(file: File, from: { x: number; y: number }) {
+  async function withTags(file: File, from: Origin) {
     setBusy(file.name);
     setError(null);
     try {
@@ -91,7 +117,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
    * engineer asked for a project and is already standing in it. The bytes stay
    * on the server so the export can write back into them.
    */
-  async function openProject(file: File, from: { x: number; y: number }) {
+  async function openProject(file: File, from: Origin) {
     setBusy(file.name);
     setError(null);
     try {
@@ -142,28 +168,48 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
   }
 
   if (gone) return null;
-
   const working = busy !== null;
+  const hasTags = variables.length > 0;
 
   return (
     <div
-      className="absolute inset-0 z-30 flex items-center justify-center overflow-y-auto bg-surface-base px-6 py-10"
+      ref={pane}
+      className="absolute inset-0 z-30 overflow-y-auto bg-surface-base"
       style={{
         clipPath: origin ? `circle(0px at ${origin.x}px ${origin.y}px)` : undefined,
         transition: `clip-path ${REVEAL_MS}ms cubic-bezier(0.7, 0, 0.2, 1)`,
       }}
     >
+      <div aria-hidden className="pointer-events-none absolute inset-0 bg-grid mask-fade opacity-[0.3]" />
       <div aria-hidden className="copilot-aurora pointer-events-none absolute inset-0 overflow-hidden" />
+      <div aria-hidden className="cursor-light pointer-events-none absolute inset-0 hidden md:block" />
 
-      <div className="relative w-full max-w-2xl">
-        <div className="flex items-center justify-center gap-2 pb-5">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-500/15 text-brand-400">
-            <Sparkles size={15} aria-hidden />
+      <div className="relative mx-auto flex min-h-full max-w-3xl flex-col justify-center px-6 py-12">
+        {/* --- the question -------------------------------------------- */}
+        <div className="reveal is-in text-center">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-line-subtle bg-surface-raised/70 px-3 py-1 text-[11px] text-text-muted">
+            <Sparkles size={11} aria-hidden className="text-brand-400" />
+            New project
           </span>
-          <h1 className="text-[15px] font-medium text-text-primary">What are we building?</h1>
+          <h1 className="word-in mt-5 text-[clamp(1.75rem,4vw,2.5rem)] font-semibold leading-tight tracking-tight">
+            {"What are we building?".split(" ").map((w, i) => (
+              <span key={i} style={{ ["--i" as string]: i }} className="mr-[0.25em]">
+                {w}
+              </span>
+            ))}
+          </h1>
+          <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-text-muted">
+            {hasTags
+              ? `${variables.length} tags are loaded. Say which screens you need and the equipment is read from the names.`
+              : "Describe the plant, bring a tag export, or open a project you already have. Any of the three is a start."}
+          </p>
         </div>
 
-        <div className="rounded-2xl border border-line-subtle bg-surface-raised shadow-lg shadow-black/20 focus-within:border-brand-500/50">
+        {/* --- the input ------------------------------------------------ */}
+        <div
+          className="beam-border reveal is-in mt-7 rounded-2xl border border-line-subtle bg-surface-raised shadow-xl shadow-black/20"
+          style={{ ["--reveal-delay" as string]: "120ms" }}
+        >
           <textarea
             ref={box}
             rows={3}
@@ -173,38 +219,23 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                void build(e as unknown as { currentTarget: HTMLElement });
+                build(e as unknown as { currentTarget: HTMLElement });
               }
             }}
             placeholder={
-              variables.length > 0
-                ? `Describe the screens to build from these ${variables.length} tags…`
-                : "Describe the plant and the screens you need. Import a tag export first and the equipment is inferred from the names."
+              hasTags
+                ? "A process overview, a faceplate per pump, and an alarm screen…"
+                : "A transfer pump station with two duty pumps, a break tank and a discharge flow meter…"
             }
-            className="w-full resize-none bg-transparent px-4 py-3.5 text-[13px] leading-relaxed text-text-primary outline-none placeholder:text-text-faint disabled:opacity-60"
+            className="w-full resize-none bg-transparent px-4 py-4 text-[14px] leading-relaxed text-text-primary outline-none placeholder:text-text-faint disabled:opacity-60"
           />
-          <div className="flex items-center gap-2 border-t border-line-subtle px-3 py-2">
-            <button
-              type="button"
-              disabled={working}
-              onClick={() => tagPicker.current?.click()}
-              className="focus-ring inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-text-muted transition hover:bg-surface-hover hover:text-text-primary disabled:opacity-50"
-            >
-              <FileUp size={13} aria-hidden /> Tag export
-            </button>
-            <button
-              type="button"
-              disabled={working}
-              onClick={() => filePicker.current?.click()}
-              className="focus-ring inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-text-muted transition hover:bg-surface-hover hover:text-text-primary disabled:opacity-50"
-            >
-              <FolderOpen size={13} aria-hidden /> Open an .eote
-            </button>
+          <div className="flex items-center gap-1 border-t border-line-subtle px-2.5 py-2">
+            <span className="px-1.5 font-mono text-[10px] text-text-faint">⏎ to build</span>
             <button
               type="button"
               disabled={working || draft.trim().length === 0}
-              onClick={(e) => void build(e)}
-              className="focus-ring ml-auto inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-brand-400 disabled:opacity-40"
+              onClick={(e) => build(e)}
+              className="focus-ring ml-auto inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3.5 py-1.5 text-xs font-semibold text-text-onbrand transition hover:bg-brand-600 disabled:opacity-40"
             >
               {working ? <Loader2 size={13} className="animate-spin" aria-hidden /> : <Send size={13} aria-hidden />}
               Build it
@@ -219,17 +250,56 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
           </p>
         )}
 
-        {variables.length === 0 && (
-          <div className="pt-6">
-            <p className="label-eyebrow pb-2 text-center">Or start from a sample plant</p>
+        {/* --- the other two ways in ------------------------------------ */}
+        <div
+          ref={cards}
+          className="reveal is-in mt-4 grid gap-3 sm:grid-cols-2"
+          style={{ ["--reveal-delay" as string]: "200ms" }}
+        >
+          <button
+            type="button"
+            disabled={working}
+            onClick={() => tagPicker.current?.click()}
+            className="spotlight lift focus-ring group rounded-xl border border-line-subtle bg-surface-raised/60 p-4 text-left hover:border-brand-500/50 disabled:opacity-50"
+          >
+            <FileUp size={16} aria-hidden className="text-brand-400" />
+            <h2 className="mt-2.5 flex items-center gap-1.5 text-sm font-semibold">
+              Import a tag export
+              <ArrowRight size={13} aria-hidden className="opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
+            </h2>
+            <p className="mt-1 text-xs leading-relaxed text-text-muted">
+              CSV, TSV or XLSX. Equipment is inferred from the names, deterministically.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            disabled={working}
+            onClick={() => filePicker.current?.click()}
+            className="spotlight lift focus-ring group rounded-xl border border-line-subtle bg-surface-raised/60 p-4 text-left hover:border-brand-500/50 disabled:opacity-50"
+          >
+            <FolderOpen size={16} aria-hidden className="text-brand-400" />
+            <h2 className="mt-2.5 flex items-center gap-1.5 text-sm font-semibold">
+              Open an .eote
+              <ArrowRight size={13} aria-hidden className="opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
+            </h2>
+            <p className="mt-1 text-xs leading-relaxed text-text-muted">
+              Edit a project you already have. It exports back unchanged everywhere you did not touch.
+            </p>
+          </button>
+        </div>
+
+        {/* --- samples -------------------------------------------------- */}
+        {!hasTags && (
+          <div className="reveal is-in pt-6" style={{ ["--reveal-delay" as string]: "280ms" }}>
+            <p className="label-eyebrow pb-2 text-center">Or take a sample plant</p>
             <div className="flex flex-wrap justify-center gap-2">
               {SAMPLES.map((s) => (
                 <button
                   key={s.path}
                   type="button"
                   disabled={working}
-                  onClick={async (e) => {
-                    const from = originOf(e);
+                  onClick={async () => {
                     setBusy(s.label);
                     setError(null);
                     try {
@@ -239,7 +309,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
                         return;
                       }
                       setDraft(s.intent);
-                      reveal(from);
+                      reveal(centre());
                       void send(s.intent);
                     } finally {
                       setBusy(null);
@@ -251,16 +321,36 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
                   )}
                 >
                   {s.label}
-                  <span className="pl-1.5 text-text-faint">{s.tags} tags</span>
+                  <span className="pl-1.5 font-mono text-[10px] text-text-faint">{s.tags}</span>
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        <p className="pt-6 text-center text-[11px] text-text-faint">
-          Nothing is exported until you say so, and every change can be undone.
-        </p>
+        {/* --- what happens next ---------------------------------------- */}
+        <div
+          className="reveal is-in mt-9 border-t border-line-subtle pt-6"
+          style={{ ["--reveal-delay" as string]: "360ms" }}
+        >
+          <p className="label-eyebrow pb-3 text-center">Then, without being asked</p>
+          <ol className="grid gap-y-3 sm:grid-cols-4">
+            {AFTER.map(({ icon: Icon, label, note }, i) => (
+              <li key={label} className="flex items-start gap-2.5 sm:flex-col sm:items-center sm:gap-1.5 sm:text-center">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line-subtle bg-surface-raised text-brand-400">
+                  <Icon size={13} aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-text-secondary">{label}</p>
+                  <p className="text-[11px] leading-relaxed text-text-faint">{note}</p>
+                </div>
+                {i < AFTER.length - 1 && (
+                  <span aria-hidden className="hidden sm:block" />
+                )}
+              </li>
+            ))}
+          </ol>
+        </div>
       </div>
 
       <input
@@ -270,8 +360,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
-          const r = e.target.getBoundingClientRect();
-          if (file) void withTags(file, { x: r.left || window.innerWidth / 2, y: r.top || window.innerHeight / 2 });
+          if (file) void withTags(file, centre());
           e.target.value = "";
         }}
       />
@@ -282,7 +371,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file) void openProject(file, { x: window.innerWidth / 2, y: window.innerHeight / 2 });
+          if (file) void openProject(file, centre());
           e.target.value = "";
         }}
       />

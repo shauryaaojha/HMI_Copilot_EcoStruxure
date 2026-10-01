@@ -10,6 +10,7 @@ import { SchneiderMark } from "@/components/shell/SchneiderMark";
 import { StartButtons } from "@/components/landing/StartButtons";
 import { ScreenBuild } from "@/components/landing/ScreenBuild";
 import { Flow, Routes } from "@/components/landing/Sections";
+import { CursorLight } from "@/components/landing/CursorLight";
 
 /**
  * Landing page.
@@ -63,6 +64,7 @@ export default function Landing() {
       {/* the engineering grid the product lays everything out on */}
       <div aria-hidden className="pointer-events-none fixed inset-0 bg-grid mask-fade opacity-[0.35]" />
       <div aria-hidden className="copilot-aurora pointer-events-none fixed inset-0 overflow-hidden" />
+      <CursorLight />
 
       <div className="relative">
         <header className="mx-auto flex max-w-6xl items-center gap-4 px-8 py-5">
@@ -79,8 +81,12 @@ export default function Landing() {
               <p className="text-xs font-semibold tracking-[0.2em] text-brand-400">
                 ECOSTRUXURE OPERATOR TERMINAL EXPERT 4.4
               </p>
-              <h1 className="mt-4 text-[clamp(2.25rem,5vw,3.5rem)] font-semibold leading-[1.05] tracking-tight">
-                Turn engineering intent into industrial HMI screens.
+              <h1 className="word-in mt-4 text-[clamp(2.25rem,5vw,3.5rem)] font-semibold leading-[1.05] tracking-tight">
+                {"Turn engineering intent into industrial HMI screens.".split(" ").map((w, i) => (
+                  <span key={i} style={{ ["--i" as string]: i }} className="mr-[0.22em]">
+                    {w}
+                  </span>
+                ))}
               </h1>
               <p className="mt-5 max-w-xl text-lg leading-relaxed text-text-secondary">
                 Bring a PLC tag export and say what the plant does, or open a project
