@@ -143,6 +143,15 @@ export function syncVariables(
       );
       continue;
     }
+    // A name the reader carried but could not model - an array or a structure
+    // of the same name - is already a row. Inserting beside it would give the
+    // project two variables with one name; the carried row is left exactly as
+    // it was and a binding to the name resolves to it.
+    const carried = db.exec('SELECT "UniqueId" FROM Variables WHERE "Name" = ?', [variable.Name])[0]?.values[0]?.[0];
+    if (typeof carried === "string") {
+      ids[variable.Name] = carried;
+      continue;
+    }
     const unique = upperGuid();
     ids[variable.Name] = unique;
     insert(db, "Variables", columns, {

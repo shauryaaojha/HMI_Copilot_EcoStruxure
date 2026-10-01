@@ -53,10 +53,14 @@ function RangeRow({ equipment, tag }: { equipment: PlantEquipment; tag: string }
           className="h-7 w-14 rounded-md border border-line bg-surface-raised px-1.5 font-mono text-[11px] text-text-primary outline-none"
         />
         <span
-          title={range.source === "class" ? "Class default: the export stated no range" : range.source === "export" ? "From the tag export" : "Set by you"}
-          className={cn("text-[10px]", range.source === "class" ? "text-status-warn" : "text-text-faint")}
+          title={
+            (range.source === "class" ? "Class default: the export stated no range" : range.source === "export" ? "From the tag export" : "Set by you") +
+            (range.band === "assumed" ? ". The normal band (lo-hi) is assumed: nobody stated it." : "")
+          }
+          className={cn("text-[10px]", range.source === "class" || range.band === "assumed" ? "text-status-warn" : "text-text-faint")}
         >
           {range.source}
+          {range.band === "assumed" && range.source !== "class" ? " · band?" : ""}
         </span>
       </span>
     </li>

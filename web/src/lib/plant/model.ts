@@ -27,6 +27,7 @@ export const RangeSchema = z.object({
   normalHigh: z.number(),
   units: z.string(),
   source: z.enum(["export", "class", "engineer"]),
+  band: z.enum(["stated", "assumed"]).optional(),
 });
 
 export const PlantEquipment = z.object({
@@ -165,6 +166,15 @@ export function modelPlant(variables: Variable[], answers: Record<string, string
   if (classDefaults.length > 0) {
     assumptions.push(
       `${classDefaults.length} reading${classDefaults.length === 1 ? "" : "s"} use class-default ranges because the export states none: ${classDefaults.slice(0, 4).join(", ")}${classDefaults.length > 4 ? ", …" : ""}`,
+    );
+  }
+  // An export that states a range still never states the normal band, so a
+  // range "from the export" carries a band nobody gave. Said once, here, so
+  // the engineer does not read "export" on the Plant page as "all of it".
+  const assumedBands = equipment.flatMap((e) => Object.entries(e.ranges).filter(([, r]) => r.source === "export" && r.band === "assumed").map(([tag]) => tag));
+  if (assumedBands.length > 0) {
+    assumptions.push(
+      `${assumedBands.length} reading${assumedBands.length === 1 ? " has" : "s have"} a range from the export but an assumed normal band (20-90% of the span): ${assumedBands.slice(0, 4).join(", ")}${assumedBands.length > 4 ? ", …" : ""}`,
     );
   }
 

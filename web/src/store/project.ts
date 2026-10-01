@@ -598,7 +598,8 @@ export function createProjectStore() {
       set((s) => {
         const e = s.plant?.equipment.find((x) => x.id === equipmentId);
         if (!e || !e.ranges[tag]) return;
-        e.ranges[tag] = { ...e.ranges[tag], ...patch, source: "engineer" };
+        const band = "normalLow" in patch || "normalHigh" in patch ? "stated" : e.ranges[tag].band;
+        e.ranges[tag] = { ...e.ranges[tag], ...patch, source: "engineer", band };
       }),
 
     connect: (from, to) =>

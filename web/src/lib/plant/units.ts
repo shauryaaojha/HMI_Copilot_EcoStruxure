@@ -46,6 +46,13 @@ export interface Range {
   units: string;
   /** Where the numbers came from: the export, the class default, or the engineer. */
   source: "export" | "class" | "engineer";
+  /**
+   * Whether anyone stated the normal band. A tag export states a range at
+   * most, never the band an operator expects the value to sit in, so the band
+   * is drawn at a fixed share of the span and marked as such until the
+   * engineer sets it. Absent on a range written before this was recorded.
+   */
+  band?: "stated" | "assumed";
 }
 
 /** "0-150", "0..150", "0 to 150" in a comment, when an export bothers to say. */
@@ -102,7 +109,7 @@ export function rangeFor(comment: string, role: string): Range {
   const units = unitOf(comment, role);
   const stated = rangeInComment(comment);
   const base = defaultRange(units, role);
-  if (!stated) return { ...base, source: "class" };
+  if (!stated) return { ...base, source: "class", band: "assumed" };
   const span = stated.max - stated.min;
   return {
     min: stated.min,
@@ -111,5 +118,6 @@ export function rangeFor(comment: string, role: string): Range {
     normalHigh: stated.min + span * 0.9,
     units,
     source: "export",
+    band: "assumed",
   };
 }
