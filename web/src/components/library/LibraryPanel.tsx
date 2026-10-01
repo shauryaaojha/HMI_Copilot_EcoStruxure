@@ -16,6 +16,7 @@
  * the one rule in docs/BUILD_PLAN.md, enforced at the point of temptation.
  */
 
+import { rootBox } from "@/lib/ote/schema";
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { pathPart } from "@/lib/ote/parts";
@@ -58,7 +59,7 @@ export function LibraryPanel() {
   function place(symbol: Symbol) {
     if (!screen || !isPlaceable(symbol)) return;
     const view = screen.Children[0];
-    const size = Math.min(160, view.Width / 6);
+    const size = Math.min(160, rootBox(view).width / 6);
     // Nudge each placement so a second symbol does not land under the first.
     const placed = view.Children.filter((p) => p.Type === "Path").length;
     const part = pathPart(

@@ -303,6 +303,43 @@ describe("the encodings the product also writes", () => {
     );
   });
 
+  it("models a screen rooted in a Canvas, and keeps its size absent", async () => {
+    // 15 of the 33 screen roots in the corpus are a Canvas rather than a
+    // ViewBox, and only 3 of 33 carry a Width: a Canvas fills the panel.
+    const modified = await withScreen((raw) => {
+      const view = raw.Children[0];
+      delete view.Width;
+      delete view.Height;
+      view.Type = "Canvas";
+      view.ObjectAlignment = { Horizontal: 1, Vertical: 32 };
+    });
+
+    const read = await readProject(modified);
+    expect(read.warnings).toEqual([]);
+    const root = read.screens[0].Children[0];
+    expect(root.Type).toBe("Canvas");
+    expect(root.Width).toBeUndefined();
+    expect(root.Children.length).toBeGreaterThan(10);
+
+    const out = await packageProject(inputOf(read), undefined, read.preserved);
+    expect(await diff(modified, out)).toEqual([]);
+
+    // A size must not be invented on the way past: writing Width back into a
+    // root that never had one would change the file.
+    await expectSurvivesAnEdit(modified, () => {});
+    const read2 = await readProject(modified);
+    const input = inputOf(read2);
+    input.screens[0].Children[0].Children.push(
+      rectangle("Forces_A_Rewrite", { left: 600, top: 320, width: 10, height: 10 }, {}),
+    );
+    const edited = await packageProject(input, undefined, read2.preserved);
+    const written = await entriesOf(edited);
+    const name = [...written.keys()].find((n) => /Screen\.dat$/i.test(n))!;
+    const json = JSON.parse(new TextDecoder().decode(written.get(name)!));
+    expect(json.Children[0].Type).toBe("Canvas");
+    expect("Width" in json.Children[0]).toBe(false);
+  });
+
   it("still refuses a palette index outside the colour set", async () => {
     // The widening is conditional: without the flag, Value is an index, and an
     // index of 1548773 is a mistake rather than a colour.

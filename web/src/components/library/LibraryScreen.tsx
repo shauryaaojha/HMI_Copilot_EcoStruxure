@@ -20,6 +20,7 @@
  * Phase 2b / Phase 9 of docs/BUILD_PLAN.md.
  */
 
+import { rootBox } from "@/lib/ote/schema";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Info, Plus, Search } from "lucide-react";
@@ -77,7 +78,7 @@ export function LibraryScreen() {
     if (!screen || symbol.Commands === undefined || symbol.Points === undefined) return;
 
     const view = screen.Children[0];
-    const size = Math.min(160, view.Width / 6);
+    const size = Math.min(160, rootBox(view).width / 6);
     // Nudge each placement so a second symbol does not land under the first.
     const placed = view.Children.filter((p) => p.Type === "Path").length;
     const part = pathPart(

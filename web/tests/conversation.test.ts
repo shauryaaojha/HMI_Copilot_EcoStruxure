@@ -8,6 +8,7 @@
  * "no turn", never to a mangled project.
  */
 
+import { rootBox } from "@/lib/ote/schema";
 import { beforeEach, describe, expect, it } from "vitest";
 import { coerceTurn } from "@/lib/ai/ops";
 import { fallbackPlan } from "@/lib/ai/plan";
@@ -411,7 +412,7 @@ describe("where a conversational edit puts things", () => {
 
   it("cannot shift a full-width object sideways, because that would clip it", () => {
     const view = screenOf().Children[0];
-    const banner = parts().find((p) => p.Width === view.Width)!;
+    const banner = parts().find((p) => p.Width === rootBox(view).width)!;
     applyOps([{ op: "moveObject", target: banner.Name, left: 300, top: 0, note: "n" }]);
     const moved = parts().find((p) => p.UniqueId === banner.UniqueId)!;
     expect(moved.Location.Left).toBe(0);
@@ -426,8 +427,8 @@ describe("where a conversational edit puts things", () => {
     ]);
 
     const placed = boxes().at(-1)!;
-    expect(placed.left + placed.width).toBeLessThanOrEqual(view.Width);
-    expect(placed.top + placed.height).toBeLessThanOrEqual(view.Height);
+    expect(placed.left + placed.width).toBeLessThanOrEqual(rootBox(view).width);
+    expect(placed.top + placed.height).toBeLessThanOrEqual(rootBox(view).height);
   });
 
   it("respects a position the model did give when it only covers a panel", () => {
@@ -466,8 +467,8 @@ describe("where a conversational edit puts things", () => {
     applyOps([{ op: "moveObject", target: target.Name, left: 5000, top: 5000, note: "n" }]);
 
     const moved = screenOf().Children[0].Children.find((p) => p.UniqueId === target.UniqueId)!;
-    expect(moved.Location.Left + moved.Width).toBeLessThanOrEqual(view.Width);
-    expect(moved.Location.Top + moved.Height).toBeLessThanOrEqual(view.Height);
+    expect(moved.Location.Left + moved.Width).toBeLessThanOrEqual(rootBox(view).width);
+    expect(moved.Location.Top + moved.Height).toBeLessThanOrEqual(rootBox(view).height);
   });
 });
 
@@ -584,8 +585,8 @@ describe("adding a whole piece of equipment", () => {
       expect(part.Location.Top + part.Height).toBeLessThanOrEqual(
         container.Location.Top + container.Height,
       );
-      expect(part.Location.Left + part.Width).toBeLessThanOrEqual(view.Width);
-      expect(part.Location.Top + part.Height).toBeLessThanOrEqual(view.Height);
+      expect(part.Location.Left + part.Width).toBeLessThanOrEqual(rootBox(view).width);
+      expect(part.Location.Top + part.Height).toBeLessThanOrEqual(rootBox(view).height);
     }
   });
 

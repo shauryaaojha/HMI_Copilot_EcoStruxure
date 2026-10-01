@@ -10,6 +10,7 @@
  */
 
 import type { PackageInput } from "@/lib/ote/packager";
+import { rootBox } from "@/lib/ote/schema";
 import type { Part, Variable } from "@/lib/ote/schema";
 import { checkName } from "./naming";
 import { lintPack } from "@/lib/standard/lint";
@@ -264,20 +265,22 @@ export function validateProject(
 
   for (const screen of project.screens) {
     const view = screen.Children[0];
-    if (view.Width > project.target.width || view.Height > project.target.height) {
+    // A Canvas root fills the panel, so a root with no size is the target size.
+    const box = rootBox(view, project.target);
+    if (box.width > project.target.width || box.height > project.target.height) {
       findings.push({
         severity: "error",
         rule: "standards",
         message:
-          `Screen ${screen.Name} is ${view.Width}x${view.Height}, larger than the ` +
+          `Screen ${screen.Name} is ${box.width}x${box.height}, larger than the ` +
           `${project.target.model} panel at ${project.target.width}x${project.target.height}`,
       });
-    } else if (view.Width !== project.target.width || view.Height !== project.target.height) {
+    } else if (box.width !== project.target.width || box.height !== project.target.height) {
       findings.push({
         severity: "warning",
         rule: "standards",
         message:
-          `Screen ${screen.Name} is ${view.Width}x${view.Height} on a ` +
+          `Screen ${screen.Name} is ${box.width}x${box.height} on a ` +
           `${project.target.width}x${project.target.height} panel, leaving unused area`,
       });
     }
@@ -285,7 +288,7 @@ export function validateProject(
     for (const part of view.Children) {
       const right = part.Location.Left + part.Width;
       const bottom = part.Location.Top + part.Height;
-      if (part.Location.Left < 0 || part.Location.Top < 0 || right > view.Width || bottom > view.Height) {
+      if (part.Location.Left < 0 || part.Location.Top < 0 || right > box.width || bottom > box.height) {
         findings.push({
           severity: "warning",
           rule: "standards",

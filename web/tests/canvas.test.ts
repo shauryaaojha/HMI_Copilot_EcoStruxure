@@ -19,6 +19,7 @@ import { describe, expect, it } from "vitest";
 import { demoAlarms, demoBindings, demoLiveValues, demoScreen } from "@/fixtures";
 import { resolveColor } from "@/lib/ote/palette";
 import { ScreenRenderer } from "@/components/canvas/ScreenRenderer";
+import { rootBox } from "@/lib/ote/schema";
 import type { Part } from "@/lib/ote/schema";
 import {
   activeAlarms,
@@ -83,8 +84,8 @@ describe("the canvas draws what render_screen.py drew", () => {
       findRect(markup, {
         x: "0.5",
         y: "0.5",
-        width: String(view.Width - 1),
-        height: String(view.Height - 1),
+        width: String(rootBox(view).width - 1),
+        height: String(rootBox(view).height - 1),
         stroke: CHROME,
       }),
     ).toBeDefined();

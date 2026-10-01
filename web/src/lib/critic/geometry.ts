@@ -18,6 +18,7 @@
  */
 
 import type { Finding } from "@/lib/validation/rules";
+import { rootBox } from "@/lib/ote/schema";
 import type { Part, Screen } from "@/lib/ote/schema";
 import { DEFAULT_PACK, tokenHex, type StandardPack } from "@/lib/standard/pack";
 import { COLOR_SETS, resolveColor } from "@/lib/ote/palette";
@@ -329,7 +330,8 @@ export function critiqueGeometry(screen: Screen, pack: StandardPack = DEFAULT_PA
   // Ink is the area a part covers, counted once per part; a container is not
   // ink, because what is inside it is what the eye sees.
   const inked = body.filter((p) => !isRoute(p) && !containerSet.has(p.UniqueId));
-  const region: Box = { left: 0, top: 0, right: view.Width, bottom: view.Height };
+  const screenBox = rootBox(view);
+  const region: Box = { left: 0, top: 0, right: screenBox.width, bottom: screenBox.height };
   const mid = centreOf(region);
   const quadrants: Box[] = [
     { left: region.left, top: region.top, right: mid.x, bottom: mid.y },

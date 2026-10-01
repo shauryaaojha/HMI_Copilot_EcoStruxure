@@ -394,11 +394,63 @@ export const ViewBox = z.object({
   Children: z.array(Part),
 });
 
+/**
+ * The other root a screen can have.
+ *
+ * We write a `ViewBox`; the product also writes a `Canvas`, and in the corpus
+ * it is the more common of the two (15 of 33 screen roots). The difference
+ * that matters to a reader is size: a `ViewBox` always carries `Width` and
+ * `Height`, and a `Canvas` usually does not - 3 of 33 roots carry a width -
+ * because it fills the panel. So both are optional here and the panel
+ * resolution is the fallback.
+ *
+ * `Grid`, `ScrollCanvas` and `ZoomCanvas` are also screen roots in the corpus
+ * (9, 5 and 4 of 33). They are not added here: they are container types, they
+ * belong with the rest of item 5 in docs/VXDZ_FINDINGS.md §5, and a screen
+ * rooted in one still carries through unmodelled rather than being lost.
+ */
+export const Canvas = z.object({
+  Type: z.literal("Canvas"),
+  UniqueId: z.string().uuid(),
+  Name: z.string(),
+  Options: z.number().int().optional(),
+  ObjectAlignment: z
+    .object({
+      Horizontal: z.number().int().optional(),
+      Vertical: z.number().int().optional(),
+    })
+    .optional(),
+  Fill: Paint.optional(),
+  Width: z.number().positive().optional(),
+  Height: z.number().positive().optional(),
+  Children: z.array(Part),
+});
+
+export const ScreenRoot = z.union([ViewBox, Canvas]);
+
+/**
+ * The box a screen draws into.
+ *
+ * A `ViewBox` carries its own size. A `Canvas` usually does not, because it
+ * fills the panel, so the panel is the fallback. This is resolved at the point
+ * of drawing rather than filled in by the reader on the way past: writing a
+ * size back into a root that did not have one would change the file, and the
+ * round trip in tests/reader.test.ts is the thing that must not move.
+ */
+export const DEFAULT_PANEL = { width: 1024, height: 600 } as const;
+
+export function rootBox(
+  root: { Width?: number; Height?: number },
+  panel: { width: number; height: number } = DEFAULT_PANEL,
+): { width: number; height: number } {
+  return { width: root.Width ?? panel.width, height: root.Height ?? panel.height };
+}
+
 export const Screen = z.object({
   Type: z.literal("Screen"),
   UniqueId: z.string().uuid(),
   Name: z.string(),
-  Children: z.tuple([ViewBox]),
+  Children: z.tuple([ScreenRoot]),
 });
 
 export type ColorRef = z.infer<typeof ColorRef>;

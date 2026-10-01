@@ -23,6 +23,7 @@
  */
 
 import type Anthropic from "@anthropic-ai/sdk";
+import { rootBox } from "@/lib/ote/schema";
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
 import { regionOf, regionsOf, roomReport } from "@/lib/ote/regions";
 import { ALIGN_MODES, COLOR_NAMES, OP_NAMES, coerceTurn, type Op, type Turn } from "./ops";
@@ -139,7 +140,7 @@ export function digestOf(project: DigestSource, request = ""): ProjectDigest {
       equipment: placed,
     };
     if (isActive) {
-      const panel = { width: screen.Children[0].Width, height: screen.Children[0].Height };
+      const panel = rootBox(screen.Children[0]);
       const regions = regionsOf(parts, panel);
       digest.objects = parts.map((p) => ({
         handle: h(p.UniqueId),

@@ -13,6 +13,7 @@
  * Nothing here ever moves an existing object. docs/LLD.md F3.
  */
 
+import { rootBox } from "@/lib/ote/schema";
 import type { Part, Screen } from "./schema";
 import { ZONES } from "./layout";
 
@@ -338,6 +339,6 @@ export function roomReport(parts: Part[], panel: Panel): string {
   return lines.join("; ");
 }
 
-export function panelOf(screen: Screen): Panel {
-  return { width: screen.Children[0].Width, height: screen.Children[0].Height };
+export function panelOf(screen: Screen, fallback?: Panel): Panel {
+  return rootBox(screen.Children[0], fallback);
 }

@@ -26,7 +26,7 @@
  */
 
 import { useCallback, useRef, useState } from "react";
-import type { Part, Screen } from "@/lib/ote/schema";
+import { rootBox, type Part, type Screen } from "@/lib/ote/schema";
 import { COMPOSITES, isCompositeKind } from "@/lib/composites";
 import type { ToolType } from "./newPart";
 import { resolveColor } from "@/lib/ote/palette";
@@ -35,6 +35,9 @@ import { snapDelta, snapTargets, unionOf, type Box } from "@/store/edits";
 import { PartNode, type AlarmRow } from "./parts";
 
 /** Palette index 2 is the paper the product draws a screen on; 22 its frame. */
+/** When no panel is given: the most common ST6 size in the corpus. */
+const FALLBACK_PANEL = { width: 1024, height: 600 };
+
 const PAPER = resolveColor(2, "#f1f1f1");
 const FRAME = resolveColor(22, "#515151");
 
@@ -62,6 +65,11 @@ export type DrawTool = ToolType | null;
 
 export interface ScreenRendererProps {
   screen: Screen;
+  /**
+   * The panel the screen is drawn for. A ViewBox root carries its own size and
+   * ignores this; a Canvas root usually carries none and fills the panel.
+   */
+  panel?: { width: number; height: number };
   selectedIds: string[];
   hoveredId?: string;
   /** Lock and hide, which live beside the parts rather than inside them. */
@@ -183,6 +191,7 @@ interface Drag {
 
 export function ScreenRenderer({
   screen,
+  panel,
   selectedIds,
   hoveredId,
   objectMeta,
@@ -205,6 +214,7 @@ export function ScreenRenderer({
   onContextMenu,
 }: ScreenRendererProps) {
   const view = screen.Children[0];
+  const box = rootBox(view, panel ?? FALLBACK_PANEL);
   const svg = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   /** The guide lines that actually caught, so the engineer sees what snapped. */
@@ -223,11 +233,11 @@ export function ScreenRenderer({
       const rect = svg.current?.getBoundingClientRect();
       if (!rect) return { x: 0, y: 0 };
       return {
-        x: ((event.clientX - rect.left) / rect.width) * view.Width,
-        y: ((event.clientY - rect.top) / rect.height) * view.Height,
+        x: ((event.clientX - rect.left) / rect.width) * box.width,
+        y: ((event.clientY - rect.top) / rect.height) * box.height,
       };
     },
-    [view.Width, view.Height],
+    [box.width, box.height],
   );
 
   const round = useCallback(
@@ -365,7 +375,7 @@ export function ScreenRenderer({
   return (
     <svg
       ref={svg}
-      viewBox={`0 0 ${view.Width} ${view.Height}`}
+      viewBox={`0 0 ${box.width} ${box.height}`}
       width="100%"
       height="100%"
       role="img"
@@ -517,8 +527,8 @@ export function ScreenRenderer({
           objects but never exported - nothing here has a UniqueId. */}
       {showGrid && (
         <GridOverlay
-          width={view.Width}
-          height={view.Height}
+          width={box.width}
+          height={box.height}
           size={gridSize}
           strokeWidth={px(1)}
         />
@@ -581,7 +591,7 @@ export function ScreenRenderer({
           x1={shown.v}
           y1={0}
           x2={shown.v}
-          y2={view.Height}
+          y2={box.height}
           stroke="var(--color-status-warn, #d97706)"
           strokeWidth={px(1)}
           pointerEvents="none"
@@ -591,7 +601,7 @@ export function ScreenRenderer({
         <line
           x1={0}
           y1={shown.h}
-          x2={view.Width}
+          x2={box.width}
           y2={shown.h}
           stroke="var(--color-status-warn, #d97706)"
           strokeWidth={px(1)}
@@ -619,8 +629,8 @@ export function ScreenRenderer({
       <rect
         x={0.5}
         y={0.5}
-        width={view.Width - 1}
-        height={view.Height - 1}
+        width={box.width - 1}
+        height={box.height - 1}
         fill="none"
         stroke={FRAME}
         strokeWidth={1}
