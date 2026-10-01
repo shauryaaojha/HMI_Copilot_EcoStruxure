@@ -62,7 +62,12 @@ const capabilities: Capabilities = {
 export const VIJEO: Backend = {
   id: "vijeo",
   name: "Vijeo Designer",
-  extension: ".vdz",
+  // Unconfirmed, like everything else here. Our own research (REENGINEERING.md
+  // §1.5) records .zdat for a Vijeo Designer project; we have never held one.
+  // It is written down so the real answer replaces a stated guess rather than
+  // an invented fact - the first draft of this file said ".vdz", which came
+  // from nowhere at all.
+  extension: ".zdat",
   capabilities,
   unavailable:
     "Vijeo Designer export is declared but not implemented: we have never opened a Vijeo Designer project, " +

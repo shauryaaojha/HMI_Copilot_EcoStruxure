@@ -62,7 +62,7 @@ describe("the registry", () => {
       expect(b.name.length).toBeGreaterThan(3);
     }
     expect(OTE.extension).toBe(".eote");
-    expect(VIJEO.extension).toBe(".vdz");
+    expect(VIJEO.extension).toBe(".zdat");
   });
 
   it("lets only a backend that has read a real file claim to be non-provisional", () => {
