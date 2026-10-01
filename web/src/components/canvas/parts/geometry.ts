@@ -12,7 +12,7 @@
  */
 
 import type { Part } from "@/lib/ote/schema";
-import { colorIndexOf, resolveColor } from "@/lib/ote/palette";
+import { colorIndexOf, resolveColor, resolveColorNode } from "@/lib/ote/palette";
 
 /**
  * Resolve a {Fill|Border|TextColor} to "#rrggbb", or "none".
@@ -29,7 +29,9 @@ export function fill(node: unknown, key: string, fallback: string): string {
     const first = paint.Color1 as { Value?: number } | undefined;
     if (first && typeof first.Value === "number") return resolveColor(first.Value, fallback);
   }
-  return resolveColor(colorIndexOf(node, key), fallback);
+  // resolveColorNode rather than resolveColor, because a project without a
+  // palette writes the colour packed and an index lookup would miss it.
+  return resolveColorNode(node, key, fallback);
 }
 
 export interface FontSpec {

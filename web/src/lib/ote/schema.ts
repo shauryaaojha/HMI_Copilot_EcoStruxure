@@ -13,12 +13,54 @@
 
 import { z } from "zod";
 
-/** { Color: { Value: <palette index>, Transparency?: 0-100 } } */
+/**
+ * A colour, in the two encodings the product writes.
+ *
+ * `{ Color: { Value: 3 } }` is an index into the project's colour set, which is
+ * what a ColorSet-4 project uses and what we write. A project that does not use
+ * a palette writes `{ Color: { ColorIndexEnabled: false, Value: 1548773 } }`,
+ * and 1548773 is 0x17A1E5 - a packed 0xRRGGBB, not an index.
+ *
+ * The byte order is RGB rather than BGR, which was established from the corpus
+ * rather than assumed: among the twenty packed values Schneider writes,
+ * 0x40C4FF read as RGB is exactly Material Light Blue A200 and read as BGR is
+ * an orange, in a chilled-water HVAC library; 0xE51717 is a clean red one way
+ * and an odd blue the other. docs/VXDZ_FINDINGS.md §3.2.
+ *
+ * Modelling `ColorIndexEnabled` is a preservation fix, not only a parsing one.
+ * zod strips object keys it does not know, and `mergeScreen` writes the parsed
+ * part over the raw one, so before this an edited screen lost the flag and a
+ * packed colour silently became palette index 1548773 - a file that opens and
+ * is quietly the wrong colour, which is the failure this project most wants to
+ * avoid.
+ */
 export const ColorRef = z.object({
-  Color: z.object({
-    Value: z.number().int().min(1).max(60),
-    Transparency: z.number().min(0).max(100).optional(),
-  }),
+  Color: z
+    .object({
+      Value: z.number().int().nonnegative(),
+      /** Absent means indexed: every 4.4 file we write omits it. */
+      ColorIndexEnabled: z.boolean().optional(),
+      Transparency: z.number().min(0).max(100).optional(),
+    })
+    .superRefine((color, ctx) => {
+      // The range check is worth keeping where it applies: the generator writes
+      // indices, and an out-of-range index would otherwise render as nothing.
+      if (color.ColorIndexEnabled === false) {
+        if (color.Value > 0xffffff) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["Value"],
+            message: "packed colour must be 0x000000-0xFFFFFF",
+          });
+        }
+      } else if (color.Value < 1 || color.Value > 60) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["Value"],
+          message: "palette index must be 1-60",
+        });
+      }
+    }),
 });
 
 /**

@@ -65,3 +65,26 @@ export function colorIndexOf(
   const value = (color as Record<string, unknown> | null)?.["Value"];
   return typeof value === "number" ? value : undefined;
 }
+
+/** A packed 0xRRGGBB, as the product writes it when there is no palette. */
+export const packedHex = (value: number): string =>
+  "#" + (value & 0xffffff).toString(16).padStart(6, "0");
+
+/**
+ * Resolve a `{ Color: {...} }` to "#rrggbb", whichever encoding it is in.
+ *
+ * `ColorIndexEnabled: false` means `Value` is a packed colour rather than an
+ * index, so looking it up in the colour set would give the fallback and the
+ * object would render as though it had no colour at all.
+ * docs/VXDZ_FINDINGS.md §3.2.
+ */
+export function resolveColorNode(node: unknown, key: string, fallback: string): string {
+  const holder = (node as Record<string, unknown> | null)?.[key];
+  const color = (holder as Record<string, unknown> | null)?.["Color"] as
+    | { Value?: unknown; ColorIndexEnabled?: unknown }
+    | undefined;
+  if (!color || typeof color.Value !== "number") return fallback;
+  return color.ColorIndexEnabled === false
+    ? packedHex(color.Value)
+    : resolveColor(color.Value, fallback);
+}

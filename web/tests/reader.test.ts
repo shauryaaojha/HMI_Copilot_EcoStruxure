@@ -263,9 +263,10 @@ describe("the encodings the product also writes", () => {
     const read = await readProject(modified);
     expect(read.warnings).toEqual([]);
     const title = read.screens[0].Children[0].Children.find((p) => p.Name === "Title");
-    expect(title).toBeDefined();
-    expect(title && "Font" in title && title.Font?.Type.Value).toBe(0);
-    expect(title && "Font" in title && title.Font?.Type.DisplayValue).toBeUndefined();
+    expect(title?.Type).toBe("TextBox");
+    const font = (title as { Font?: { Type: { Value: unknown; DisplayValue?: unknown } } }).Font;
+    expect(font?.Type.Value).toBe(0);
+    expect(font?.Type.DisplayValue).toBeUndefined();
 
     const out = await packageProject(inputOf(read), undefined, read.preserved);
     expect(await diff(modified, out)).toEqual([]);
@@ -273,5 +274,44 @@ describe("the encodings the product also writes", () => {
     await expectSurvivesAnEdit(modified, (title) =>
       expect(title.Font).toEqual({ Type: { Type: 2, Value: 0 }, Size: 20 }),
     );
+  });
+
+  it("models a packed colour, and keeps the flag that says it is one", async () => {
+    // 0x17A1E5, the light blue Schneider's HVAC library uses for chilled water.
+    // Without ColorIndexEnabled this would be read as palette index 1548773.
+    const modified = await withScreen((raw) => {
+      const title = raw.Children[0].Children.find((p: any) => p.Name === "Title");
+      title.TextColor = { Color: { ColorIndexEnabled: false, Value: 1548773 } };
+    });
+
+    const read = await readProject(modified);
+    expect(read.warnings).toEqual([]);
+    const title = read.screens[0].Children[0].Children.find((p) => p.Name === "Title");
+    const colour = (title as { TextColor?: { Color: Record<string, unknown> } }).TextColor;
+    expect(colour?.Color.Value).toBe(1548773);
+    expect(colour?.Color.ColorIndexEnabled).toBe(false);
+
+    const out = await packageProject(inputOf(read), undefined, read.preserved);
+    expect(await diff(modified, out)).toEqual([]);
+
+    // The flag has to survive a rewrite, not only a no-op export. zod strips
+    // keys it does not model, so before ColorIndexEnabled was in the schema an
+    // edited screen wrote the colour back as a palette index - a file that
+    // opens and is the wrong colour.
+    await expectSurvivesAnEdit(modified, (title) =>
+      expect(title.TextColor).toEqual({ Color: { ColorIndexEnabled: false, Value: 1548773 } }),
+    );
+  });
+
+  it("still refuses a palette index outside the colour set", async () => {
+    // The widening is conditional: without the flag, Value is an index, and an
+    // index of 1548773 is a mistake rather than a colour.
+    const modified = await withScreen((raw) => {
+      const title = raw.Children[0].Children.find((p: any) => p.Name === "Title");
+      title.TextColor = { Color: { Value: 1548773 } };
+    });
+    const read = await readProject(modified);
+    expect(read.carried.opaqueParts).toBe(1);
+    expect(read.screens[0].Children[0].Children.some((p) => p.Name === "Title")).toBe(false);
   });
 });
