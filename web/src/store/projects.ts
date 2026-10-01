@@ -42,26 +42,6 @@ export interface ProjectRecord {
   starred?: boolean;
 }
 
-/**
- * The project the fixtures load into. It exists whether or not it was ever
- * saved, and it is the only id that opens on the demo screen rather than on an
- * empty canvas - see useProjectHydration.
- */
-export const DEMO_ID = "demo";
-
-export const DEMO: ProjectRecord = {
-  id: DEMO_ID,
-  name: "Pump_Station_Demo",
-  createdAt: 0,
-  openedAt: 0,
-  screens: 1,
-  objects: 19,
-  tags: 7,
-  alarms: 5,
-  bindings: 11,
-  target: "HMIGTO6310 · 1024 × 768",
-  intent: "The built-in demo, lifted from a file that opens in the product.",
-};
 
 export function loadProjects(): ProjectRecord[] {
   if (typeof window === "undefined") return [];
@@ -115,11 +95,9 @@ export function forgetProject(id: string) {
 
 /**
  * Keeps a card in step with the project behind it, so the Projects page does
- * not claim "0 screens" over a project with four. The demo is never written -
- * it is not in the list, it is prepended to it.
+ * not claim "0 screens" over a project with four.
  */
 export function touchProject(id: string, patch: Partial<ProjectRecord>) {
-  if (id === DEMO_ID) return;
   const list = loadProjects();
   const at = list.findIndex((p) => p.id === id);
   if (at === -1) return;

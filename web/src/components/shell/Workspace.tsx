@@ -18,6 +18,9 @@
  */
 
 import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
+import { useProject } from "@/store/project";
+import { StartPane } from "./StartPane";
 import { useProjectHydration } from "./useProjectHydration";
 import { CanvasPane } from "@/components/canvas/CanvasPane";
 import { Inspector } from "@/components/inspector/Inspector";
@@ -35,12 +38,34 @@ const WorkspaceShell = dynamic(
 export function Workspace({ projectId }: { projectId: string }) {
   useProjectHydration(projectId);
 
+  /**
+   * An empty project opens on the start pane rather than on an empty grid.
+   * Decided once, after hydration, and then latched: importing a tag export
+   * fills the store, so a live `empty` would tear the pane off the screen in
+   * the middle of its own reveal. The pane says when it is finished.
+   */
+  const [start, setStart] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (start !== null) return;
+    // Read through, not from a selector: the hydration effect above has run by
+    // now, but this component has not re-rendered on what it wrote.
+    const s = useProject.getState();
+    const empty =
+      s.screens.every((screen) => screen.Children[0].Children.length === 0) &&
+      s.variables.length === 0 &&
+      s.chat.length === 0;
+    setStart(empty);
+  }, [start, projectId]);
+
   return (
-    <WorkspaceShell
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      {start && <StartPane projectId={projectId} onDone={() => setStart(false)} />}
+      <WorkspaceShell
       projectId={projectId}
       intent={<ChatPanel />}
       canvas={<CanvasPane />}
       inspector={<Inspector />}
-    />
+      />
+    </div>
   );
 }

@@ -16,19 +16,20 @@
  * /project/x/validation has to find a project too, and two copies of this would
  * be two things to keep in step.
  *
- * One id is special. `demo` opens on the fixture lifted out of a real .eote,
- * because a landing page that opens on an empty grid demonstrates nothing.
- * Every other id opens blank - a new project that arrives carrying somebody
- * else's pump station is not a new project.
+ * Every project opens on what it actually contains. There used to be one
+ * special id that opened on a fixture, so that a first visit landed on a full
+ * canvas - but a tool that shows you somebody else's pump station before you
+ * have done anything is demonstrating itself, not helping. A new project opens
+ * empty, and the start pane asks what to build.
  */
 
 import { useEffect, useRef } from "react";
-import { demoAlarms, demoBindings, demoScreen, demoVariables } from "@/fixtures";
 import type { Screen } from "@/lib/ote/schema";
+import type { BindingGraph } from "@/lib/ote/bindings";
 import { useProject } from "@/store/project";
 import type { Binding } from "@/store/types";
 import { loadProject, saveProject } from "@/store/persist";
-import { DEMO_ID, loadProjects, touchProject } from "@/store/projects";
+import { loadProjects, touchProject } from "@/store/projects";
 
 /**
  * Which project id this module has already hydrated. Module scope, not state:
@@ -52,7 +53,7 @@ export function forgetHydration() {
  * binding map anchored to the object the engineer can actually see. Alarm
  * targets resolve to no object, which is correct: they are not on the screen.
  */
-export function flattenBindings(graph: typeof demoBindings, screen: Screen): Binding[] {
+export function flattenBindings(graph: BindingGraph, screen: Screen): Binding[] {
   const sourceById = new Map(graph.Sources.map((s) => [s.ReferenceId, s]));
   const targetById = new Map(graph.Targets.map((t) => [t.ReferenceId, t]));
   const objectByName = new Map(
@@ -141,22 +142,6 @@ export function useProjectHydration(projectId: string) {
       return;
     }
 
-    if (projectId === DEMO_ID) {
-      // The demo opens on our own output, lifted out of
-      // demo_project/HMICopilot_PumpStation.eote, which is a file the product
-      // opens. A blank canvas is a worse first screen than a real one.
-      hydrate({
-        id: projectId,
-        name: "Pump_Station_Demo",
-        target: { model: "HMIGTO6310", width: 1024, height: 768 },
-        screens: [demoScreen],
-        activeScreenId: demoScreen.UniqueId,
-        variables: demoVariables,
-        alarms: demoAlarms,
-        bindings: flattenBindings(demoBindings, demoScreen),
-      });
-      return;
-    }
 
     // A new project: one empty screen and nothing else. Not zero screens -
     // the canvas, the layers panel and the packager all need somewhere to put

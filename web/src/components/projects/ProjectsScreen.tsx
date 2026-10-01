@@ -16,8 +16,6 @@ import { useRouter } from "next/navigation";
 import { FolderOpen, Plus, Trash2, Upload } from "lucide-react";
 import { Badge, Button, Input, Tabs, cn, type TabItem } from "@/components/ui";
 import {
-  DEMO,
-  DEMO_ID,
   createProject,
   loadProjects,
   saveProjects,
@@ -160,7 +158,7 @@ export function ProjectsScreen() {
     clearProject(id);
   }
 
-  const all = [DEMO, ...projects];
+  const all = projects;
   const shown =
     filter === "starred"
       ? all.filter((p) => p.starred)
@@ -307,7 +305,7 @@ export function ProjectsScreen() {
               )}
             </Link>
 
-            {project.id !== DEMO_ID && (
+            {(
               <button
                 type="button"
                 aria-label={`Delete ${project.name}`}
