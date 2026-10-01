@@ -15,6 +15,7 @@ import { checkName } from "./naming";
 import { lintPack } from "@/lib/standard/lint";
 import { critiqueGeometry } from "@/lib/critic/geometry";
 import { critiqueNavigation, critiqueRoleCoverage } from "@/lib/critic/coverage";
+import { validateSemantics } from "./semantic";
 
 export type Severity = "error" | "warning" | "info";
 
@@ -307,6 +308,10 @@ export function validateProject(
   for (const screen of project.screens) findings.push(...critiqueGeometry(screen).findings);
   findings.push(...critiqueRoleCoverage(project.variables));
   findings.push(...critiqueNavigation(project.screens));
+  // --- semantics: whether the screen says what the plant is -----------------
+  // The engineer's corrected Plant Model when the client sends it, the
+  // deterministic one from the tags when it does not.
+  findings.push(...validateSemantics(project, project.plant));
 
   return findings.sort((a, b) => order[a.severity] - order[b.severity]);
 }

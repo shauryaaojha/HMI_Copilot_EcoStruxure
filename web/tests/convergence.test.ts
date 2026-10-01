@@ -207,4 +207,14 @@ describe("every screen is a program", () => {
     const overviews = new Set(objects.filter((o) => o.part.Type === "TextBox" && /PLANT OVERVIEW/.test((o.part as { Text: string }).Text)).map((o) => o.screenName));
     expect(overviews.size).toBe(1);
   });
+
+  it("puts the KPIs on a full overview and continues its tiles rather than dropping either", async () => {
+    const variables = sample("water-treatment");
+    const { objects } = await run("water treatment", variables, { model: "HMIST6500AWADI", width: 1024, height: 600 });
+    const on = (screen: string) => objects.filter((o) => o.screenName === screen).map((o) => o.part.Name);
+    expect(on("PlantOverview").some((n) => n.startsWith("Kpi_"))).toBe(true);
+    const tiles = (screen: string) => on(screen).filter((n) => /^Tile_[A-Za-z0-9]+$/.test(n));
+    expect(tiles("PlantOverview_2").length).toBeGreaterThan(0);
+    expect(tiles("PlantOverview").length + tiles("PlantOverview_2").length).toBe(12);
+  });
 });

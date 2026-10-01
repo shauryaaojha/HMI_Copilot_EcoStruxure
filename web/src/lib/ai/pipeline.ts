@@ -269,11 +269,26 @@ export async function* runPipeline(
     if (planned) {
       const wantsAlarms = planned.sections?.includes("alarms") ?? false;
       const below = HEADER + NAV + 16 + kpiBandHeight(kpiOverview.kpis.length, panel);
-      if (gridFor(1, panel, wantsAlarms, below).capacity >= (planned.faceplates?.length ?? 0)) {
-        planned.kpis = kpiOverview.kpis;
-        yield log(`Overview ${planned.name} leads with ${planned.kpis.length} KPI${planned.kpis.length === 1 ? "" : "s"}: ${kpiOverview.rationale}`);
-      } else {
-        yield log(`Overview ${planned.name} keeps its ${planned.faceplates?.length ?? 0} tiles; the KPIs would not fit above them`);
+      const room = gridFor(1, panel, wantsAlarms, below).capacity;
+      const tiles = planned.faceplates ?? [];
+      planned.kpis = kpiOverview.kpis;
+      yield log(`Overview ${planned.name} leads with ${planned.kpis.length} KPI${planned.kpis.length === 1 ? "" : "s"}: ${kpiOverview.rationale}`);
+      if (tiles.length > room) {
+        // The KPIs take a band the tiles had; the tiles that no longer fit go
+        // to a continuation of the same overview rather than off the panel.
+        planned.faceplates = tiles.slice(0, room);
+        let name = `${planned.name}_2`;
+        for (let n = 3; takenNames.has(name.toLowerCase()); n++) name = `${planned.name}_${n}`;
+        takenNames.add(name.toLowerCase());
+        programs.splice(programs.indexOf(planned) + 1, 0, {
+          ...planned,
+          name,
+          title: `${planned.title} (2)`,
+          kpis: [],
+          faceplates: tiles.slice(room),
+          rationale: `the rest of ${planned.name}'s tiles, below its KPIs`,
+        });
+        yield log(`${tiles.length - room} overview tile${tiles.length - room === 1 ? "" : "s"} continue on ${name}, below the KPIs' room on ${planned.name}`);
       }
     } else if (!hasOverview && !takenNames.has(kpiOverview.name.toLowerCase())) {
       programs.unshift(kpiOverview);

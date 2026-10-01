@@ -31,6 +31,7 @@ import {
 import { buildGraph, type BindingGraph, type Wire } from "./bindings";
 import { gid } from "./parts";
 import type { Alarm, Screen, Variable } from "./schema";
+import type { PlantModel } from "@/lib/plant/model";
 import { loadSkeleton, type Skeleton } from "./skeleton";
 import {
   fingerprintAlarms,
@@ -48,6 +49,12 @@ export interface PackageInput {
   alarms: Alarm[];
   /** Which tag drives which part property. */
   wires: Wire[];
+  /**
+   * The Plant Model as the engineer corrected it, for validation only - the
+   * packager writes nothing from it. Absent, validation derives one from the
+   * tags.
+   */
+  plant?: PlantModel;
 }
 
 /** The product writes its .dat files as UTF-8 JSON indented by two spaces. */
