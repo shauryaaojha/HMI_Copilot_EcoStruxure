@@ -8,3 +8,4 @@ export { Panel, type PanelProps } from "./Panel";
 export { Badge, type BadgeProps, type BadgeTone } from "./Badge";
 export { Toggle, type ToggleProps } from "./Toggle";
 export { Field, type FieldProps } from "./Field";
+export { EmptyState, type EmptyStateProps } from "./EmptyState";

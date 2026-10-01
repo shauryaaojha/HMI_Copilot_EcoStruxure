@@ -15,11 +15,11 @@
  */
 
 import { useState } from "react";
-import { Lock, Trash2, Unlock } from "lucide-react";
+import { BoxSelect, Lock, MousePointerSquareDashed, Trash2, Unlock } from "lucide-react";
 import { useProject } from "@/store/project";
 import { TagTable } from "@/components/tags";
 import { LibraryPanel } from "@/components/library/LibraryPanel";
-import { Button, Field, Panel, Tabs, type TabItem } from "@/components/ui";
+import { Button, EmptyState, Field, Panel, Tabs, type TabItem } from "@/components/ui";
 import { BindingEditor } from "./BindingEditor";
 import { CompositeEditor } from "./CompositeEditor";
 import { FieldEditor } from "./editors";
@@ -182,14 +182,29 @@ export function Inspector() {
         ) : composite ? (
           <CompositeEditor instance={composite} />
         ) : selectedIds.length > 1 ? (
-          <p className="p-4 text-sm text-text-muted">
-            {selectedIds.length} objects selected. The toolbar aligns and
-            distributes them; arrow keys nudge, shift-arrow moves by the grid.
-          </p>
+          <EmptyState
+            icon={BoxSelect}
+            title={`${selectedIds.length} objects selected`}
+            body="Properties are shown for one object at a time. These are the things that work on all of them."
+            hints={[
+              { key: "←→↑↓", label: "Nudge by a pixel" },
+              { key: "⇧ ←→↑↓", label: "Move by the grid" },
+              { key: "Toolbar", label: "Align and distribute the selection" },
+              { key: "⌘G", label: "Group them into one object" },
+            ]}
+          />
         ) : !part ? (
-          <p className="p-4 text-sm text-text-muted">
-            Select an object on the canvas to inspect its properties and bindings.
-          </p>
+          <EmptyState
+            icon={MousePointerSquareDashed}
+            title="Nothing selected"
+            body="Pick an object on the canvas and its properties, bindings and geometry appear here."
+            hints={[
+              { key: "Click", label: "Select one object" },
+              { key: "⇧ Click", label: "Add it to the selection" },
+              { key: "Drag", label: "Marquee everything inside" },
+              { key: "Layers", label: "Or pick it from the list in the next tab" },
+            ]}
+          />
         ) : (
           <>
             <div className="flex items-center gap-1 px-3 py-2.5">

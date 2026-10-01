@@ -14,10 +14,10 @@
  */
 
 import { useRef, useState } from "react";
-import { Eye, EyeOff, Lock, PackageOpen, Unlock } from "lucide-react";
+import { Eye, EyeOff, Layers, Lock, PackageOpen, Unlock } from "lucide-react";
 import { TOOL_ICON } from "@/components/canvas/toolIcons";
 import { useProject } from "@/store/project";
-import { cn } from "@/components/ui";
+import { cn, EmptyState } from "@/components/ui";
 
 export function LayersPanel() {
   const screens = useProject((s) => s.screens);
@@ -37,9 +37,15 @@ export function LayersPanel() {
   const screen = screens.find((x) => x.UniqueId === activeScreenId) ?? screens[0];
   if (!screen) {
     return (
-      <p className="p-4 text-sm text-text-muted">
-        No screen yet. Describe what you need and the objects will appear here.
-      </p>
+      <EmptyState
+        icon={Layers}
+        title="No screen yet"
+        body="Every object on the active screen is listed here, in drawing order, with what it is bound to."
+        hints={[
+          { key: "Copilot", label: "Describe what you need and objects appear" },
+          { key: "Insert", label: "Or place one by hand from the toolbar" },
+        ]}
+      />
     );
   }
 

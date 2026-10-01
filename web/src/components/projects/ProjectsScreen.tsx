@@ -13,8 +13,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FolderOpen, Plus, Trash2, Upload } from "lucide-react";
-import { Badge, Button, Input, Tabs, cn, type TabItem } from "@/components/ui";
+import { FolderOpen, Plus, Trash2, Upload, FolderPlus } from "lucide-react";
+import { Badge, Button, Input, Tabs, cn, type TabItem, EmptyState } from "@/components/ui";
 import {
   createProject,
   loadProjects,
@@ -320,8 +320,16 @@ export function ProjectsScreen() {
         ))}
 
         {shown.length === 0 && (
-          <li className="col-span-full rounded-panel border border-dashed border-line p-10 text-center text-sm text-text-muted">
-            Nothing here yet.
+          <li className="col-span-full rounded-panel border border-dashed border-line">
+            <EmptyState
+              icon={FolderPlus}
+              title="No projects yet"
+              body="A project is a tag list, a set of screens and the bindings between them. Start one and the workspace asks what to build."
+              hints={[
+                { key: "New", label: "Start from nothing, a tag export, or a plant you describe" },
+                { key: "Open", label: "Or bring an .eote you already have" },
+              ]}
+            />
           </li>
         )}
       </ul>

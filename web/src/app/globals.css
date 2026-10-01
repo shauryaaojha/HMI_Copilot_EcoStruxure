@@ -255,7 +255,23 @@ body {
 [data-separator] {
   background: var(--color-line-subtle);
   transition: background 120ms ease;
+  position: relative;
 }
+
+/* A one-pixel drag target is a one-pixel drag target. The line stays a
+ * hairline and the thing you have to hit is eleven pixels wide, centred on
+ * it - which is the difference between resizing a pane and selecting the text
+ * behind it by accident. */
+[data-separator]::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  z-index: 1;
+}
+[data-separator][aria-orientation="horizontal"]::after {
+  inset: -5px 0;
+}
+
 [data-separator]:hover,
 [data-separator][data-state="dragging"],
 [data-separator]:focus-visible {
