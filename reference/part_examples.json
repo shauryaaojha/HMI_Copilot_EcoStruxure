@@ -388,7 +388,50 @@
         "Top": 4,
         "Bottom": 4
       }
-    }
+    },
+    "corpus": [
+      {
+        "source": "GPS_LoggingDataDisplay01_WVGA.vxdz",
+        "entry": "Contents\\00c96d47-66a2-42fd-88ac-9e9902fae482\\Screen.dat",
+        "appVersion": "3.4.1",
+        "layout": "typed",
+        "parsesAs44": false,
+        "differences": [
+          "Font.Type.Value: Expected string, received number",
+          "Font.Type.DisplayValue: Required"
+        ],
+        "example": {
+          "Type": "DateTimeDisplay",
+          "UniqueId": "686dcfe6-5b7f-4408-8a31-861cc15d0cd1",
+          "Name": "DateTimeDisplay41",
+          "CurrentValue": 0,
+          "DateTimeFormat": "hh:nn:ss",
+          "IsInputModeEnabled": false,
+          "TextColor": {
+            "Color": {
+              "Value": 2
+            }
+          },
+          "Font": {
+            "Size": 12,
+            "Type": {
+              "Type": 2,
+              "Value": 0
+            }
+          },
+          "Fill": {
+            "Type": 0
+          },
+          "Border": {
+            "Type": 0
+          },
+          "Location": {
+            "Row": 1,
+            "Column": 2
+          }
+        }
+      }
+    ]
   },
   "DockPanel": {
     "source": "Demo 1.eote",
@@ -939,7 +982,115 @@
         "Top": 4,
         "Bottom": 4
       }
-    }
+    },
+    "corpus": [
+      {
+        "source": "HVAC_Symbol01.vxdz",
+        "entry": "Screens\\8780d5fb-9de9-40d3-9908-db76a08c9e95\\Screen.dat",
+        "appVersion": "3.4.1",
+        "layout": "typed",
+        "parsesAs44": false,
+        "differences": [
+          "TextColor.Color.Value: Number must be greater than or equal to 1",
+          "Font.Type.Value: Expected string, received number",
+          "Font.Type.DisplayValue: Required",
+          "Fill.Color.Value: Number must be less than or equal to 60"
+        ],
+        "example": {
+          "Type": "NumericDisplay",
+          "UniqueId": "2361117f-22ce-4e6f-9ae9-c9073f68919d",
+          "Name": "Num_HP",
+          "IntegerDigits": 3,
+          "FloatDigits": 1,
+          "Suffix": " Bar",
+          "TextColor": {
+            "Color": {
+              "ColorIndexEnabled": false,
+              "Value": 0
+            }
+          },
+          "Font": {
+            "Type": {
+              "Type": 2,
+              "Value": 0
+            }
+          },
+          "TextLayout": {
+            "HorizontalAlignment": 1,
+            "PaddingLeft": 10
+          },
+          "Fill": {
+            "Color": {
+              "ColorIndexEnabled": false,
+              "Value": 10083062
+            }
+          },
+          "Border": {
+            "Color": {
+              "ColorIndexEnabled": false,
+              "Value": 1548773
+            }
+          },
+          "Thickness": 1,
+          "HiHi": {
+            "Font": {
+              "Type": {
+                "Type": 2,
+                "Value": 0
+              }
+            }
+          },
+          "Hi": {
+            "Font": {
+              "Type": {
+                "Type": 2,
+                "Value": 0
+              }
+            }
+          },
+          "Normal": {
+            "Font": {
+              "Type": {
+                "Type": 2,
+                "Value": 0
+              }
+            }
+          },
+          "Lo": {
+            "Font": {
+              "Type": {
+                "Type": 2,
+                "Value": 0
+              }
+            }
+          },
+          "LoLo": {
+            "Font": {
+              "Type": {
+                "Type": 2,
+                "Value": 0
+              }
+            }
+          },
+          "InputOutOfRange": {
+            "Font": {
+              "Type": {
+                "Type": 2,
+                "Value": 0
+              }
+            }
+          },
+          "Shadow": {
+            "Enabled": true
+          },
+          "Location": {
+            "Left": 1410,
+            "Top": 190
+          },
+          "Width": 100
+        }
+      }
+    ]
   },
   "Path": {
     "source": "Demo 1.eote",
@@ -968,7 +1119,47 @@
       },
       "Width": 60,
       "Height": 70
-    }
+    },
+    "corpus": [
+      {
+        "source": "HVAC_Symbol01.vxdz",
+        "entry": "Screens\\ee1a1c36-7bcc-46c3-ad4f-4799b9c69975\\Screen.dat",
+        "appVersion": "3.4.1",
+        "layout": "typed",
+        "parsesAs44": false,
+        "differences": [
+          "Commands: Required",
+          "Points: Required"
+        ],
+        "example": {
+          "Type": "Path",
+          "UniqueId": "e571e4f5-c9e6-4564-b654-f705364c8eef",
+          "Name": "Liquide_receiver_H",
+          "Fill": {
+            "Color": {
+              "Value": 2
+            }
+          },
+          "Border": {
+            "Color": {
+              "Value": 1
+            }
+          },
+          "Thickness": 2,
+          "Path": {
+            "Commands": "MCCCLCCz",
+            "Data": "3072,219,3072,219,3072,2853,3072,2853,3072,2853,3072,3072,1536,3072,0,3072,0,2853,0,2853,0,219,0,219,0,0,1536,0,3072,0,3072,219,3072,219"
+          },
+          "Location": {
+            "Left": 660,
+            "Top": 220
+          },
+          "Width": 60,
+          "Height": 120,
+          "Angle": 90
+        }
+      }
+    ]
   },
   "PictureDisplay": {
     "source": "Demo 1.eote",
@@ -1079,7 +1270,133 @@
       },
       "Width": 1,
       "Height": 237
-    }
+    },
+    "corpus": [
+      {
+        "source": "HVAC_Symbol01.vxdz",
+        "entry": "Screens\\78aabe99-f03c-43f8-8f27-f772e190288f\\Screen.dat",
+        "appVersion": "3.4.1",
+        "layout": "typed",
+        "parsesAs44": false,
+        "differences": [
+          "States.0.Fill.Color.Value: Number must be less than or equal to 60",
+          "States.0.Border.Color.Value: Number must be greater than or equal to 1",
+          "Invalid.Fill.Color.Value: Number must be less than or equal to 60",
+          "Invalid.Border.Color.Value: Number must be greater than or equal to 1"
+        ],
+        "example": {
+          "Type": "Pipe",
+          "UniqueId": "7a9cc269-ba8b-492a-b31c-bb1a8b838018",
+          "Name": "Pipe12",
+          "CurrentValue": 1,
+          "States": [
+            {
+              "Fill": {
+                "Color": {
+                  "ColorIndexEnabled": false,
+                  "Value": 1548773
+                }
+              },
+              "Border": {
+                "Color": {
+                  "ColorIndexEnabled": false,
+                  "Value": 0
+                }
+              },
+              "FillThickness": 6,
+              "BorderThickness": 8
+            }
+          ],
+          "Invalid": {
+            "Fill": {
+              "Color": {
+                "ColorIndexEnabled": false,
+                "Value": 1548773
+              }
+            },
+            "Border": {
+              "Color": {
+                "ColorIndexEnabled": false,
+                "Value": 0
+              }
+            },
+            "FillThickness": 6,
+            "BorderThickness": 8
+          },
+          "Path": {
+            "Commands": "MLLMLMLML",
+            "Data": [
+              {
+                "Location": {
+                  "Left": 3072,
+                  "Top": 3012
+                }
+              },
+              {
+                "Location": {
+                  "Left": 2150,
+                  "Top": 3012
+                },
+                "Points": [
+                  {
+                    "Location": {
+                      "Left": 2150,
+                      "Top": 0
+                    }
+                  }
+                ]
+              },
+              {
+                "Location": {
+                  "Left": 1741,
+                  "Top": 3012
+                },
+                "Points": [
+                  {
+                    "Location": {
+                      "Left": 1741,
+                      "Top": 0
+                    }
+                  }
+                ]
+              },
+              {
+                "Location": {
+                  "Left": 1178,
+                  "Top": 3012
+                },
+                "Points": [
+                  {
+                    "Location": {
+                      "Left": 1178,
+                      "Top": 0
+                    }
+                  }
+                ]
+              },
+              {
+                "Location": {
+                  "Left": 512,
+                  "Top": 3012
+                }
+              },
+              {
+                "Location": {
+                  "Left": 0,
+                  "Top": 3072
+                }
+              }
+            ]
+          },
+          "Location": {
+            "Left": 330,
+            "Top": 620
+          },
+          "Width": 600,
+          "Height": 51
+        }
+      }
+    ]
   },
   "PolyLine": {
     "source": "Demo 1.eote",
@@ -1271,7 +1588,498 @@
       "Border": {
         "Type": 0
       }
-    }
+    },
+    "corpus": [
+      {
+        "source": "GPS_Slider01.vxdz",
+        "entry": "Contents\\05bf0739-4fab-407d-82b3-cdcc3575e823\\Screen.dat",
+        "appVersion": "3.4.100",
+        "layout": "typed",
+        "parsesAs44": true,
+        "example": {
+          "Type": "Rectangle",
+          "UniqueId": "bd4ffed2-8a5d-45d1-b154-00c9bd2e09fe",
+          "Name": "Rectangle1",
+          "Fill": {
+            "Color": {
+              "Value": 2
+            }
+          },
+          "Border": {
+            "Type": 0
+          },
+          "CornerRadius": {
+            "Style": 2,
+            "TopLeft": 5,
+            "TopRight": 5,
+            "BottomLeft": 5,
+            "BottomRight": 5
+          },
+          "Location": {
+            "Left": 21,
+            "Top": 25
+          },
+          "Width": 10,
+          "Height": 310,
+          "Animation": {
+            "FillLevel": {
+              "Enable": true,
+              "BackColor": {
+                "Value": 12
+              }
+            }
+          }
+        }
+      },
+      {
+        "source": "GPS_Tank01.vxdz",
+        "entry": "Contents\\panel2.dat",
+        "appVersion": "3.2.100",
+        "layout": "struct",
+        "parsesAs44": false,
+        "differences": [
+          "UniqueId: Required"
+        ],
+        "note": "The product has no bar-graph part. A live bar is a Rectangle with Animation.FillLevel, whose VerticalFill or HorizontalFill carries the value. In this layout the binding is inline in the property Value; in the typed layout it is a row in Bindings.dat with PropertyFullName Animation.FillLevel.VerticalFill. Answers docs/TASK_VXDZ.md 2.4.",
+        "example": {
+          "Type": "Rectangle",
+          "Name": "Rectangle5",
+          "Description": "",
+          "IsMovable": true,
+          "IsRemovable": true,
+          "IsSystem": false,
+          "Properties": [
+            {
+              "Name": "Location",
+              "FullName": "Location",
+              "Type": "Struct",
+              "Value": [
+                {
+                  "Bindable": 3,
+                  "Name": "Row",
+                  "FullName": "Location.Row",
+                  "Type": "Int",
+                  "Value": 1
+                },
+                {
+                  "Bindable": 3,
+                  "Name": "Column",
+                  "FullName": "Location.Column",
+                  "Type": "Int",
+                  "Value": 2
+                },
+                {
+                  "Bindable": 3,
+                  "Name": "RowSpan",
+                  "FullName": "Location.RowSpan",
+                  "Type": "Int",
+                  "Value": 12
+                },
+                {
+                  "Bindable": 3,
+                  "Name": "ColumnSpan",
+                  "FullName": "Location.ColumnSpan",
+                  "Type": "Int",
+                  "Value": 3
+                }
+              ]
+            },
+            {
+              "Name": "Border",
+              "FullName": "Border",
+              "Type": "Brush",
+              "Value": [
+                {
+                  "Name": "Color",
+                  "FullName": "Border.Color",
+                  "Type": "Color",
+                  "Value": [
+                    {
+                      "Bindable": 3,
+                      "Name": "Value",
+                      "FullName": "Border.Color.Value",
+                      "Type": "Int",
+                      "Value": 22
+                    },
+                    {
+                      "Bindable": 3,
+                      "Name": "Transparency",
+                      "FullName": "Border.Color.Transparency",
+                      "Type": "Int",
+                      "Value": 50
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Name": "Animation",
+              "FullName": "Animation",
+              "Type": "Struct",
+              "Value": [
+                {
+                  "Name": "FillLevel",
+                  "FullName": "Animation.FillLevel",
+                  "Type": "Struct",
+                  "Value": [
+                    {
+                      "Name": "Enable",
+                      "FullName": "Animation.FillLevel.Enable",
+                      "Type": "Bool",
+                      "Value": true
+                    },
+                    {
+                      "Bindable": 3,
+                      "Name": "VerticalFill",
+                      "FullName": "Animation.FillLevel.VerticalFill",
+                      "Type": "Int",
+                      "Value": {
+                        "Type": "Binding",
+                        "BindingType": "Variable",
+                        "Source": {
+                          "VariableName": "GPS_Tank01",
+                          "Expression": -1,
+                          "Property": "Value",
+                          "Type": "Content",
+                          "ObjectType": "Variable",
+                          "PanelId": 2,
+                          "PanelName": "GPS_Tank01_Color2"
+                        },
+                        "FallbackValue": 100,
+                        "Mode": "OneWay",
+                        "Converter": {
+                          "ConverterName": "GPS_Tank01",
+                          "Expression": -1
+                        }
+                      }
+                    },
+                    {
+                      "Name": "BackColor",
+                      "FullName": "Animation.FillLevel.BackColor",
+                      "Type": "Brush",
+                      "Value": [
+                        {
+                          "Name": "Color",
+                          "FullName": "Animation.FillLevel.BackColor.Color",
+                          "Type": "Color",
+                          "Value": [
+                            {
+                              "Bindable": 3,
+                              "Name": "Value",
+                              "FullName": "Animation.FillLevel.BackColor.Color.Value",
+                              "Type": "Int",
+                              "Value": 2
+                            },
+                            {
+                              "Bindable": 3,
+                              "Name": "Transparency",
+                              "FullName": "Animation.FillLevel.BackColor.Color.Transparency",
+                              "Type": "Int",
+                              "Value": 20
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Name": "Fill",
+              "FullName": "Fill",
+              "Type": "Brush",
+              "Value": [
+                {
+                  "Name": "Left",
+                  "FullName": "Fill.Left",
+                  "Type": "Int",
+                  "Value": 0
+                },
+                {
+                  "Name": "Top",
+                  "FullName": "Fill.Top",
+                  "Type": "Int",
+                  "Value": 0
+                },
+                {
+                  "Name": "Width",
+                  "FullName": "Fill.Width",
+                  "Type": "Int",
+                  "Value": 30
+                },
+                {
+                  "Name": "Height",
+                  "FullName": "Fill.Height",
+                  "Type": "Int",
+                  "Value": 75
+                },
+                {
+                  "Name": "IsLogicalMode",
+                  "FullName": "Fill.IsLogicalMode",
+                  "Type": "Bool",
+                  "Value": true
+                },
+                {
+                  "Name": "Angle",
+                  "FullName": "Fill.Angle",
+                  "Type": "Int",
+                  "Value": 90
+                },
+                {
+                  "Name": "StartPointX",
+                  "FullName": "Fill.StartPointX",
+                  "Type": "Int",
+                  "Value": 50
+                },
+                {
+                  "Name": "StartPointY",
+                  "FullName": "Fill.StartPointY",
+                  "Type": "Int",
+                  "Value": 100
+                },
+                {
+                  "Name": "EndPointX",
+                  "FullName": "Fill.EndPointX",
+                  "Type": "Int",
+                  "Value": 50
+                },
+                {
+                  "Name": "EndPointY",
+                  "FullName": "Fill.EndPointY",
+                  "Type": "Int",
+                  "Value": 0
+                },
+                {
+                  "Name": "ColorStops",
+                  "FullName": "Fill.ColorStops",
+                  "Type": "StructList",
+                  "SubType": "List",
+                  "Value": [
+                    {
+                      "Value": [
+                        {
+                          "Name": "Offset",
+                          "FullName": "Fill.ColorStops.0.Offset",
+                          "Type": "Int",
+                          "Value": 0
+                        },
+                        {
+                          "Name": "Color",
+                          "FullName": "Fill.ColorStops.0.Color",
+                          "Type": "Color",
+                          "Value": [
+                            {
+                              "Name": "ColorIndexEnabled",
+                              "FullName": "Fill.ColorStops.0.Color.ColorIndexEnabled",
+                              "Type": "Bool",
+                              "Value": true
+                            },
+                            {
+                              "Name": "Value",
+                              "FullName": "Fill.ColorStops.0.Color.Value",
+                              "Type": "Int",
+                              "Value": 3
+                            },
+                            {
+                              "Name": "Transparency",
+                              "FullName": "Fill.ColorStops.0.Color.Transparency",
+                              "Type": "Int",
+                              "Value": 0
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "Value": [
+                        {
+                          "Name": "Offset",
+                          "FullName": "Fill.ColorStops.1.Offset",
+                          "Type": "Int",
+                          "Value": 6000
+                        },
+                        {
+                          "Name": "Color",
+                          "FullName": "Fill.ColorStops.1.Color",
+                          "Type": "Color",
+                          "Value": [
+                            {
+                              "Name": "ColorIndexEnabled",
+                              "FullName": "Fill.ColorStops.1.Color.ColorIndexEnabled",
+                              "Type": "Bool",
+                              "Value": true
+                            },
+                            {
+                              "Name": "Value",
+                              "FullName": "Fill.ColorStops.1.Color.Value",
+                              "Type": "Int",
+                              "Value": 3
+                            },
+                            {
+                              "Name": "Transparency",
+                              "FullName": "Fill.ColorStops.1.Color.Transparency",
+                              "Type": "Int",
+                              "Value": 0
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "Value": [
+                        {
+                          "Name": "Offset",
+                          "FullName": "Fill.ColorStops.2.Offset",
+                          "Type": "Int",
+                          "Value": 6100
+                        },
+                        {
+                          "Name": "Color",
+                          "FullName": "Fill.ColorStops.2.Color",
+                          "Type": "Color",
+                          "Value": [
+                            {
+                              "Name": "ColorIndexEnabled",
+                              "FullName": "Fill.ColorStops.2.Color.ColorIndexEnabled",
+                              "Type": "Bool",
+                              "Value": true
+                            },
+                            {
+                              "Name": "Value",
+                              "FullName": "Fill.ColorStops.2.Color.Value",
+                              "Type": "Int",
+                              "Value": 4
+                            },
+                            {
+                              "Name": "Transparency",
+                              "FullName": "Fill.ColorStops.2.Color.Transparency",
+                              "Type": "Int",
+                              "Value": 0
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "Value": [
+                        {
+                          "Name": "Offset",
+                          "FullName": "Fill.ColorStops.3.Offset",
+                          "Type": "Int",
+                          "Value": 8000
+                        },
+                        {
+                          "Name": "Color",
+                          "FullName": "Fill.ColorStops.3.Color",
+                          "Type": "Color",
+                          "Value": [
+                            {
+                              "Name": "ColorIndexEnabled",
+                              "FullName": "Fill.ColorStops.3.Color.ColorIndexEnabled",
+                              "Type": "Bool",
+                              "Value": true
+                            },
+                            {
+                              "Name": "Value",
+                              "FullName": "Fill.ColorStops.3.Color.Value",
+                              "Type": "Int",
+                              "Value": 4
+                            },
+                            {
+                              "Name": "Transparency",
+                              "FullName": "Fill.ColorStops.3.Color.Transparency",
+                              "Type": "Int",
+                              "Value": 0
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "Value": [
+                        {
+                          "Name": "Offset",
+                          "FullName": "Fill.ColorStops.4.Offset",
+                          "Type": "Int",
+                          "Value": 8100
+                        },
+                        {
+                          "Name": "Color",
+                          "FullName": "Fill.ColorStops.4.Color",
+                          "Type": "Color",
+                          "Value": [
+                            {
+                              "Name": "ColorIndexEnabled",
+                              "FullName": "Fill.ColorStops.4.Color.ColorIndexEnabled",
+                              "Type": "Bool",
+                              "Value": true
+                            },
+                            {
+                              "Name": "Value",
+                              "FullName": "Fill.ColorStops.4.Color.Value",
+                              "Type": "Int",
+                              "Value": 55
+                            },
+                            {
+                              "Name": "Transparency",
+                              "FullName": "Fill.ColorStops.4.Color.Transparency",
+                              "Type": "Int",
+                              "Value": 0
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "Value": [
+                        {
+                          "Name": "Offset",
+                          "FullName": "Fill.ColorStops.5.Offset",
+                          "Type": "Int",
+                          "Value": 10000
+                        },
+                        {
+                          "Name": "Color",
+                          "FullName": "Fill.ColorStops.5.Color",
+                          "Type": "Color",
+                          "Value": [
+                            {
+                              "Name": "ColorIndexEnabled",
+                              "FullName": "Fill.ColorStops.5.Color.ColorIndexEnabled",
+                              "Type": "Bool",
+                              "Value": true
+                            },
+                            {
+                              "Name": "Value",
+                              "FullName": "Fill.ColorStops.5.Color.Value",
+                              "Type": "Int",
+                              "Value": 55
+                            },
+                            {
+                              "Name": "Transparency",
+                              "FullName": "Fill.ColorStops.5.Color.Transparency",
+                              "Type": "Int",
+                              "Value": 0
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "Name": "Type",
+                  "FullName": "Fill.Type",
+                  "Type": "Int",
+                  "Value": 4
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
   },
   "Screen": {
     "source": "Demo 1.eote",
@@ -1430,7 +2238,7 @@
         "Content": 1
       },
       "Release": {
-        "Text": "\u65e5\u672c\u8a9e",
+        "Text": "日本語",
         "Font": {
           "Type": {
             "Type": 2,
@@ -1443,7 +2251,7 @@
         }
       },
       "Press": {
-        "Text": "\u65e5\u672c\u8a9e",
+        "Text": "日本語",
         "Font": {
           "Type": {
             "Type": 2,
@@ -1464,7 +2272,102 @@
         "Top": 4,
         "Bottom": 4
       }
-    }
+    },
+    "corpus": [
+      {
+        "source": "Logging_AdjustableRate.vxdz",
+        "entry": "Screens\\439baff8-d35a-493c-b739-3d7ca54092d0\\Screen.dat",
+        "appVersion": "3.4.1",
+        "layout": "typed",
+        "parsesAs44": false,
+        "differences": [
+          "Release.Font.Type.Value: Expected string, received number",
+          "Release.Font.Type.DisplayValue: Required",
+          "Press.Font.Type.Value: Expected string, received number",
+          "Press.Font.Type.DisplayValue: Required"
+        ],
+        "example": {
+          "Type": "Switch",
+          "UniqueId": "a4397947-c0ce-4664-a201-3220b01f029e",
+          "Name": "Switch5",
+          "ClickTrigger": {
+            "OperationType": 1,
+            "Operation": 2,
+            "Destination": "",
+            "Screen": 1,
+            "Content": 1
+          },
+          "TouchBeepType": 0,
+          "PressState": {
+            "Shift": true
+          },
+          "Release": {
+            "TextColor": {
+              "Color": {
+                "Value": 2
+              }
+            },
+            "Text": "Set\nLogging Rate",
+            "Font": {
+              "Type": {
+                "Type": 2,
+                "Value": 0
+              }
+            },
+            "Fill": {
+              "Color": {
+                "Value": 42
+              }
+            },
+            "Border": {
+              "Color": {
+                "Value": 22
+              }
+            },
+            "Thickness": 1
+          },
+          "Press": {
+            "TextColor": {
+              "Color": {
+                "Value": 2
+              }
+            },
+            "Text": "Set\nLogging Rate",
+            "Font": {
+              "Type": {
+                "Type": 2,
+                "Value": 0
+              }
+            },
+            "Fill": {
+              "Color": {
+                "Value": 42
+              }
+            },
+            "Border": {
+              "Color": {
+                "Value": 22
+              }
+            },
+            "Thickness": 1
+          },
+          "Shadow": {
+            "HorizontalThickness": 2,
+            "VerticalThickness": 2,
+            "Shadow": 5,
+            "HorizontalAlignment": 4,
+            "Color": {
+              "Value": 52,
+              "Transparency": 0
+            }
+          },
+          "Location": {
+            "Column": 5,
+            "RowSpan": 2
+          }
+        }
+      }
+    ]
   },
   "SymPolygon": {
     "source": "Demo 1.eote",
@@ -1516,7 +2419,82 @@
         "Top": 4,
         "Bottom": 4
       }
-    }
+    },
+    "corpus": [
+      {
+        "source": "GPS_LoggingDataDisplay01_WVGA.vxdz",
+        "entry": "Screens\\8903d1db-c91c-4099-8568-9b7e0151e878\\Screen.dat",
+        "appVersion": "3.4.1",
+        "layout": "typed",
+        "parsesAs44": false,
+        "differences": [
+          "Font.Type.Value: Expected string, received number",
+          "Font.Type.DisplayValue: Required"
+        ],
+        "example": {
+          "Type": "TextBox",
+          "UniqueId": "0a226441-5109-41b4-8b78-337c7be5d615",
+          "Name": "Rectangle6",
+          "Text": "Trigger",
+          "TextColor": {
+            "Color": {
+              "Value": 1
+            }
+          },
+          "Font": {
+            "Size": 14,
+            "Type": {
+              "Type": 2,
+              "Value": 0
+            }
+          },
+          "Fill": {
+            "Type": 4,
+            "Width": 158,
+            "Height": 48,
+            "IsLogicalMode": false,
+            "Angle": 90,
+            "StartPointX": 50,
+            "StartPointY": 100,
+            "EndPointX": 50,
+            "EndPointY": 0,
+            "ColorStops": [
+              {
+                "Color": {
+                  "Value": 2,
+                  "Transparency": 25
+                }
+              },
+              {
+                "Color": {
+                  "Value": 2,
+                  "Transparency": 75
+                }
+              }
+            ]
+          },
+          "ClickTrigger": {
+            "OperationType": 1,
+            "Operation": 2,
+            "Destination": ""
+          },
+          "PressState": {
+            "Shift": true
+          },
+          "Shadow": {
+            "Enabled": true
+          },
+          "Location": {
+            "Row": 1,
+            "ColumnSpan": 2
+          },
+          "Margin": {
+            "Right": 8,
+            "Bottom": 8
+          }
+        }
+      }
+    ]
   },
   "TimeDisplay": {
     "source": "Demo 1.eote",
@@ -1581,7 +2559,75 @@
       },
       "Width": 200,
       "Height": 100
-    }
+    },
+    "corpus": [
+      {
+        "source": "HVAC_Symbol01.vxdz",
+        "entry": "Screens\\333b1cb0-53be-420c-a10c-5b60e5b75d31\\Screen.dat",
+        "appVersion": "3.4.1",
+        "layout": "typed",
+        "parsesAs44": false,
+        "differences": [
+          "Off.Font.Type.Value: Expected string, received number",
+          "Off.Font.Type.DisplayValue: Required",
+          "On.Font.Type.Value: Expected string, received number",
+          "On.Font.Type.DisplayValue: Required"
+        ],
+        "example": {
+          "Type": "ToggleSwitch",
+          "UniqueId": "ada9129f-4b6b-4ea1-92b1-59ff9579071d",
+          "Name": "ToggleSwitch_OnOff",
+          "Off": {
+            "TextColor": {
+              "Color": {
+                "Value": 1
+              }
+            },
+            "Font": {
+              "Type": {
+                "Type": 2,
+                "Value": 0
+              }
+            },
+            "Fill": {
+              "Color": {
+                "Value": 35
+              }
+            },
+            "Border": {
+              "Color": {
+                "Value": 1
+              }
+            }
+          },
+          "On": {
+            "Font": {
+              "Type": {
+                "Type": 2,
+                "Value": 0
+              }
+            },
+            "Fill": {
+              "Color": {
+                "ColorIndexEnabled": false,
+                "Value": 1300317
+              }
+            },
+            "Border": {
+              "Color": {
+                "Value": 1
+              }
+            }
+          },
+          "Location": {
+            "Left": 10,
+            "Top": 50
+          },
+          "Width": 100,
+          "Height": 40
+        }
+      }
+    ]
   },
   "TrendGraph": {
     "source": "Demo 1.eote",
@@ -1647,7 +2693,115 @@
       "Location": {
         "ColumnSpan": 2
       }
-    }
+    },
+    "corpus": [
+      {
+        "source": "Logging_AdjustableRate.vxdz",
+        "entry": "Screens\\439baff8-d35a-493c-b739-3d7ca54092d0\\Screen.dat",
+        "appVersion": "3.4.1",
+        "layout": "typed",
+        "parsesAs44": false,
+        "differences": [
+          "Channels.0.Fill.Color.Value: Required"
+        ],
+        "example": {
+          "Type": "TrendGraph",
+          "UniqueId": "fe6470d9-aad8-4ff2-aa45-b607c3282929",
+          "Name": "TrendGraph1",
+          "Options": 238,
+          "GroupName": "",
+          "Channels": [
+            {
+              "Variable": "",
+              "Stroke": {
+                "Color": {
+                  "Value": 43
+                }
+              },
+              "Fill": {
+                "Type": 1,
+                "Color": {
+                  "Transparency": 62
+                }
+              },
+              "Mark": 4
+            },
+            {
+              "Variable": "",
+              "Stroke": {
+                "Color": {
+                  "Value": 49
+                }
+              },
+              "Fill": {
+                "Type": 1,
+                "Color": {
+                  "Value": 49,
+                  "Transparency": 60
+                }
+              },
+              "Mark": 4
+            },
+            {
+              "Variable": "",
+              "Stroke": {
+                "Color": {
+                  "Value": 50
+                }
+              },
+              "Fill": {
+                "Type": 1,
+                "Color": {
+                  "Value": 50,
+                  "Transparency": 60
+                }
+              },
+              "Mark": 4
+            }
+          ],
+          "TimeRange": 60,
+          "Unit": 1,
+          "CursorEnabled": true,
+          "CursorLabelsEnabled": true,
+          "TimeScale": {
+            "MajorDivisions": 6,
+            "MinorDivisions": 10,
+            "ShowAxis": true
+          },
+          "DataScalesFullCommon": {
+            "DataLabelEnabled": true,
+            "ChannelNameEnabled": true
+          },
+          "DataScalesFull": [
+            {
+              "MajorDivisions": 5,
+              "ShowAxis": true,
+              "IntegerDigits": 3
+            }
+          ],
+          "DataScalesDivideCommon": {
+            "DataScaleEnabled": false,
+            "ShowAxis": true,
+            "ChannelNameEnabled": true
+          },
+          "DataScalesDivide": [
+            {
+              "DataSource": 1
+            },
+            {
+              "DataSource": 2
+            },
+            {
+              "DataSource": 3
+            }
+          ],
+          "HistoricalDataUnit": 1,
+          "Location": {
+            "Row": 1
+          }
+        }
+      }
+    ]
   },
   "UniformGrid": {
     "source": "Demo 1.eote",
@@ -1701,5 +2855,36 @@
         }
       }
     }
+  },
+  "ScrollCanvas": {
+    "source": "corpus only - no 4.4 capture",
+    "corpus": [
+      {
+        "source": "HVAC_Symbol01.vxdz",
+        "entry": "Screens\\237e9424-f0e3-4d7e-94ed-5685c15f28ca\\Screen.dat",
+        "appVersion": "3.4.1",
+        "layout": "typed",
+        "parsesAs44": false,
+        "differences": [
+          "Type: Invalid discriminator value. Expected 'Rectangle' | 'TextBox' | 'Lamp' | 'NumericDisplay' | 'AlarmSummary' | 'Path' | 'Switch' | 'N-StateLamp' | 'StringDisplay' | 'ToggleSwitch' | 'BarScale' | 'Pipe' | 'DateTimeDisplay' | 'TrendGraph' | 'BlockTrend'"
+        ],
+        "example": {
+          "Type": "ScrollCanvas",
+          "UniqueId": "b114b654-544c-480d-a7a3-544901ef0c89",
+          "Name": "Canvas",
+          "Options": 108,
+          "Height": 650,
+          "ObjectAlignment": {
+            "Horizontal": 1,
+            "Vertical": 32
+          },
+          "Fill": {
+            "Color": {
+              "Value": 31
+            }
+          }
+        }
+      }
+    ]
   }
 }
