@@ -26,7 +26,7 @@
  * Phase 4 of docs/BUILD_PLAN.md.
  */
 
-import type { ScreenSpec } from "@/lib/ote/layout";
+import { capacityOf, type ScreenSpec } from "@/lib/ote/layout";
 import type { InferredEquipment } from "./infer";
 
 export type { ScreenSpec } from "@/lib/ote/layout";
@@ -45,12 +45,31 @@ const UNITS_PER_SCREEN = 6;
 /** Beyond this many units, a plant overview earns its place above the rest. */
 const OVERVIEW_THRESHOLD = 4;
 
+/**
+ * How many units one screen of each level holds - on the panel being designed
+ * for, not on the one this file was first written against. A 800x480 panel
+ * holds four faceplates, not six, and a plan that does not know that lays the
+ * other two out below the bottom edge.
+ */
+export interface Limits {
+  1: number;
+  2: number;
+  3: number;
+}
+
+export const DEFAULT_LIMITS: Limits = { 1: 12, 2: UNITS_PER_SCREEN, 3: 2 };
+
+export function limitsFor(panel: { width: number; height: number }): Limits {
+  return { 1: capacityOf(1, panel), 2: capacityOf(2, panel), 3: capacityOf(3, panel) };
+}
+
 const SCREEN_FIELDS = [
   "screenName",
   "title",
   "level",
   "include",
   "sections",
+  "readings",
 ] as const;
 
 const DESCRIPTIONS = {
@@ -61,12 +80,14 @@ const DESCRIPTIONS = {
     "1 plant overview, 2 unit overview, 3 unit detail. ISA-101's display hierarchy",
   include: "Equipment ids on this screen, most operationally important first",
   sections: "Which panels this screen needs",
+  readings:
+    "Exact tag names from the list that the engineer asked to see on this screen, most important first. Empty when the request names no particular reading",
   screens: "The screens this application needs, overview first",
   rationale:
     "One sentence naming what was decided and why, in engineering language",
 } as const;
 
-const SYSTEM = `You lay out industrial HMI applications for EcoStruxure Operator Terminal Expert.
+const system = (limits: Limits) => `You lay out industrial HMI applications for EcoStruxure Operator Terminal Expert.
 
 You are given equipment already inferred from a PLC tag list, and one sentence
 of intent from an engineer. Decide what screens the application needs and what
@@ -76,9 +97,13 @@ Rules:
 - Only use equipment ids from the list you are given. Never invent one.
 - Follow ISA-101's display hierarchy. Level 1 is a plant overview: every unit,
   status only, no readings. Level 2 is a unit overview: a faceplate per unit
-  with running state, faults and up to two readings. Level 3 is unit detail.
-- At most ${UNITS_PER_SCREEN} units on a level 2 or 3 screen, and at most 12 on
-  a level 1 overview. Split into more screens rather than crowding one.
+  with running state, faults and up to two readings. Level 3 is unit detail:
+  every state, command and reading of one or two units, with a trend. Use
+  level 3 when the engineer asks for detail, a faceplate, controls or
+  diagnostics of particular equipment.
+- On the panel being designed for: at most ${limits[2]} units on a level 2
+  screen, ${limits[3]} on a level 3 screen, and ${limits[1]} on a level 1
+  overview. Split into more screens rather than crowding one.
 - Produce a level 1 overview only when there are more than ${OVERVIEW_THRESHOLD}
   units, or when the engineer asked for an overview or for a whole plant. One
   station with two pumps is one screen, not three.
@@ -86,6 +111,9 @@ Rules:
 - "status" shows running and fault lamps. "process" shows numeric readings.
   "alarms" is the active alarm summary along the bottom. Give the alarm section
   to every screen where any unit has a fault or a level reading.
+- When the engineer names readings ("speed, discharge pressure and motor
+  current"), put those exact tags in readings, in the order they were asked
+  for. Every screen leads with them. Never invent a tag.
 - rationale is one sentence naming what you decided and why, in the register an
   engineer would use. Never describe your own reasoning process.`;
 
@@ -115,6 +143,11 @@ const JSON_SCHEMA = {
             type: "array",
             items: { type: "string", enum: ["status", "process", "alarms"] },
             description: DESCRIPTIONS.sections,
+          },
+          readings: {
+            type: "array",
+            items: { type: "string" },
+            description: DESCRIPTIONS.readings,
           },
         },
         required: [...SCREEN_FIELDS],
@@ -156,6 +189,11 @@ function geminiSchema() {
               type: "ARRAY",
               items: { type: "STRING", enum: ["status", "process", "alarms"] },
               description: DESCRIPTIONS.sections,
+            },
+            readings: {
+              type: "ARRAY",
+              items: { type: "STRING" },
+              description: DESCRIPTIONS.readings,
             },
           },
           required: [...SCREEN_FIELDS],
@@ -207,6 +245,7 @@ function coerce(value: unknown): ScreenPlan | null {
     const level = Number(spec.level);
     const sections = Array.isArray(spec.sections) ? spec.sections : [];
     const include = Array.isArray(spec.include) ? spec.include : [];
+    const readings = Array.isArray(spec.readings) ? spec.readings : [];
 
     return [
       {
@@ -217,6 +256,7 @@ function coerce(value: unknown): ScreenPlan | null {
         sections: sections.filter((s): s is (typeof SECTIONS)[number] =>
           SECTIONS.includes(s as (typeof SECTIONS)[number]),
         ),
+        readings: readings.filter((r): r is string => typeof r === "string"),
       },
     ];
   });
@@ -232,6 +272,7 @@ function coerce(value: unknown): ScreenPlan | null {
 async function planWithGemini(
   intent: string,
   equipment: InferredEquipment[],
+  limits: Limits,
 ): Promise<ScreenPlan | null> {
   const { GoogleGenAI } = await import("@google/genai");
   const ai = new GoogleGenAI({ apiKey: env("GEMINI_API_KEY")! });
@@ -240,7 +281,7 @@ async function planWithGemini(
     model: resolveProvider().model ?? "gemini-flash-lite-latest",
     contents: prompt(intent, equipment),
     config: {
-      systemInstruction: SYSTEM,
+      systemInstruction: system(limits),
       responseMimeType: "application/json",
       responseSchema: geminiSchema(),
       temperature: 0.2,
@@ -261,6 +302,7 @@ async function planWithGemini(
 async function planWithClaude(
   intent: string,
   equipment: InferredEquipment[],
+  limits: Limits,
 ): Promise<ScreenPlan | null> {
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
   const { jsonSchemaOutputFormat } = await import(
@@ -272,7 +314,7 @@ async function planWithClaude(
     model: resolveProvider().model ?? "claude-opus-5",
     max_tokens: 8192,
     thinking: { type: "adaptive" },
-    system: SYSTEM,
+    system: system(limits),
     messages: [{ role: "user", content: prompt(intent, equipment) }],
     output_config: { format: jsonSchemaOutputFormat(JSON_SCHEMA) },
   });
@@ -291,7 +333,9 @@ async function planWithClaude(
 export function fallbackPlan(
   intent: string,
   equipment: InferredEquipment[],
+  limits: Limits = DEFAULT_LIMITS,
 ): ScreenPlan {
+  const readings = readingsFromIntent(intent, equipment);
   const hasFaults = equipment.some((e) => e.roles.some((r) => r.role === "fault"));
   const hasReadings = equipment.some((e) =>
     e.roles.some((r) => r.dataType !== "BOOL" && r.dataType !== "STRING"),
@@ -329,14 +373,15 @@ export function fallbackPlan(
       screenName: "PlantOverview",
       title: intent.trim().slice(0, 60) || "Plant Overview",
       level: 1,
-      include: equipment.slice(0, 12).map((e) => e.id),
+      include: equipment.slice(0, limits[1]).map((e) => e.id),
       sections: ["status", "alarms"],
     });
   }
 
-  for (let i = 0; i < equipment.length; i += UNITS_PER_SCREEN) {
-    const group = equipment.slice(i, i + UNITS_PER_SCREEN);
-    const index = Math.floor(i / UNITS_PER_SCREEN) + 1;
+  const perScreen = limits[2];
+  for (let i = 0; i < equipment.length; i += perScreen) {
+    const group = equipment.slice(i, i + perScreen);
+    const index = Math.floor(i / perScreen) + 1;
     screens.push({
       screenName: screens.length === 0 ? `${stem}${index}` : `${stem}${index}`,
       title:
@@ -346,6 +391,22 @@ export function fallbackPlan(
       level: 2,
       include: group.map((e) => e.id),
       sections,
+      readings,
+    });
+  }
+
+  // "Detail of pump 101", "faceplate for the boiler": the units the sentence
+  // names get a level 3 screen each pair, after the overviews.
+  const named = DETAIL_WORDS.test(intent) ? namedUnits(intent, equipment) : [];
+  for (let i = 0; i < named.length; i += limits[3]) {
+    const group = named.slice(i, i + limits[3]);
+    screens.push({
+      screenName: `${group.map((u) => u.id.replace(/[^A-Za-z0-9]/g, "")).join("_")}_Detail`.replace(/^(\d)/, "S$1"),
+      title: `${group.map((u) => u.label).join(" and ")} - detail`,
+      level: 3,
+      include: group.map((u) => u.id),
+      sections: ["status", "process", "alarms"],
+      readings,
     });
   }
 
@@ -373,20 +434,23 @@ export function fallbackPlan(
 export async function planScreen(
   intent: string,
   equipment: InferredEquipment[],
+  limits: Limits = DEFAULT_LIMITS,
 ): Promise<{ plan: ScreenPlan; provider: Provider } | null> {
   const provider = activeProvider();
   if (!provider) return null;
 
   const plan =
     provider === "gemini"
-      ? await planWithGemini(intent, equipment)
-      : await planWithClaude(intent, equipment);
+      ? await planWithGemini(intent, equipment, limits)
+      : await planWithClaude(intent, equipment, limits);
 
   if (!plan) return null;
 
   // No schema can express "must be one of these ids", so it is checked here
-  // rather than trusted. A hallucinated id would place an empty card.
+  // rather than trusted. A hallucinated id would place an empty card, and a
+  // hallucinated tag would be a reading nothing drives.
   const known = new Set(equipment.map((e) => e.id));
+  const tags = new Set(equipment.flatMap((e) => e.roles.map((r) => r.tag)));
   const seen = new Set<string>();
 
   const screens = plan.screens.map((spec, i) => {
@@ -401,14 +465,91 @@ export async function planScreen(
       ...spec,
       screenName: name,
       include: include.length > 0 || spec.level === 1 ? include : [...known],
-      sections: spec.sections.length > 0 ? spec.sections : (["status"] as const).slice(),
+      // No sections said is both halves of a faceplate, not the lamps alone.
+      sections: spec.sections.length > 0 ? spec.sections : (["status", "process"] as ScreenSpec["sections"]),
+      readings: (spec.readings ?? []).filter((t) => tags.has(t)),
     };
   });
 
   return {
     provider,
-    plan: { ...plan, screens: placeEveryUnit(screens, equipment, seen) },
+    plan: { ...plan, screens: placeEveryUnit(screens, equipment, seen, limits[2]) },
   };
+}
+
+/** Words that ask for a unit's detail display rather than its overview. */
+const DETAIL_WORDS = /\b(detail|details|faceplate|faceplates|diagnostic|diagnostics|controls?)\b/i;
+
+/** Role words an engineer says, and the role each one names. */
+const ROLE_WORDS: [RegExp, string][] = [
+  [/\bflows?\b/i, "flow"],
+  [/\blevels?\b/i, "level"],
+  [/\bpressures?\b/i, "pressure"],
+  [/\btemperatures?\b|\btemps?\b/i, "temperature"],
+  [/\bspeeds?\b|\brpm\b/i, "speed"],
+  [/\bcurrents?\b|\bamps?\b/i, "current"],
+  [/\bpositions?\b|\bopening\b/i, "position"],
+  [/\bhours\b|\brun ?time\b/i, "hours"],
+  [/\bpower\b|\bkw\b/i, "power"],
+  [/\bvolumes?\b/i, "volume"],
+  [/\bsetpoints?\b/i, "setpoint"],
+  [/\bfrequency\b|\bhz\b/i, "frequency"],
+];
+
+/**
+ * The readings a sentence names, without a model: every tag named outright,
+ * then every tag whose role the sentence names, in the order the sentence
+ * names them. "Pump speed, discharge pressure and motor current" leads every
+ * pump with its speed, its pressure, its current. The offline path reads the
+ * request too - a fallback that ignored it would be a different product.
+ */
+export function readingsFromIntent(intent: string, equipment: InferredEquipment[]): string[] {
+  const roles = equipment.flatMap((e) => e.roles).filter((r) => r.dataType !== "BOOL" && r.dataType !== "STRING");
+  const out: string[] = [];
+  const add = (tag: string) => {
+    if (!out.includes(tag)) out.push(tag);
+  };
+  const upper = intent.toUpperCase();
+  for (const r of roles) if (upper.includes(r.tag.toUpperCase())) add(r.tag);
+  const asked = ROLE_WORDS.map(([pattern, role]) => ({ role, at: intent.search(pattern) }))
+    .filter((x) => x.at >= 0)
+    .sort((a, b) => a.at - b.at);
+  for (const { role } of asked) for (const r of roles) if (r.role === role) add(r.tag);
+  return out;
+}
+
+/** Units the sentence names: by id (PMP_101, PMP 101) or by label (Pump 101). */
+export function namedUnits(intent: string, equipment: InferredEquipment[]): InferredEquipment[] {
+  const text = intent.toUpperCase().replace(/[_\s-]+/g, " ");
+  return equipment.filter((e) => {
+    const id = e.id.toUpperCase().replace(/[_\s-]+/g, " ");
+    const label = e.label.toUpperCase().replace(/[_\s-]+/g, " ");
+    return new RegExp(`\\b${id}\\b`).test(text) || new RegExp(`\\b${label}\\b`).test(text);
+  });
+}
+
+/**
+ * Splits any screen holding more units than its level holds on this panel,
+ * keeping its order and its name for the first part. Whatever the plan came
+ * from - a model, the fallback, an extension - no unit is laid out past the
+ * edge of the panel and silently lost.
+ */
+export function fitToLimits(screens: ScreenSpec[], limits: Limits, taken: Set<string> = new Set()): ScreenSpec[] {
+  for (const s of screens) taken.add(s.screenName.toLowerCase());
+  return screens.flatMap((spec) => {
+    const cap = limits[spec.level];
+    if (spec.include.length <= cap) return [spec];
+    const parts: ScreenSpec[] = [];
+    for (let i = 0; i < spec.include.length; i += cap) {
+      let name = spec.screenName;
+      if (i > 0) {
+        for (let n = Math.floor(i / cap) + 1; taken.has(name.toLowerCase()); n++) name = `${spec.screenName}_${n}`;
+        taken.add(name.toLowerCase());
+      }
+      parts.push({ ...spec, screenName: name, title: i === 0 ? spec.title : `${spec.title} (${Math.floor(i / cap) + 1})`, include: spec.include.slice(i, i + cap) });
+    }
+    return parts;
+  });
 }
 
 /**
@@ -430,6 +571,7 @@ export function placeEveryUnit(
   screens: ScreenSpec[],
   equipment: InferredEquipment[],
   takenNames: Set<string>,
+  perScreen = UNITS_PER_SCREEN,
 ): ScreenSpec[] {
   const placed = new Set(screens.flatMap((s) => s.include));
   const missing = equipment.filter((unit) => !placed.has(unit.id));
@@ -438,17 +580,17 @@ export function placeEveryUnit(
   const out = screens.map((s) => ({ ...s, include: [...s.include] }));
   // A level 1 overview is a summary, not an inventory - filling it to the cap
   // with leftovers is the opposite of what it is for.
-  const detail = out.filter((s) => s.level !== 1);
+  const detail = out.filter((s) => s.level === 2);
   const kindOf = new Map(equipment.map((e) => [e.id, e.kind]));
 
   const homeless: InferredEquipment[] = [];
   for (const unit of missing) {
     const sameKind = detail.find(
       (s) =>
-        s.include.length < UNITS_PER_SCREEN &&
+        s.include.length < perScreen &&
         s.include.some((id) => kindOf.get(id) === unit.kind),
     );
-    const anyRoom = detail.find((s) => s.include.length < UNITS_PER_SCREEN);
+    const anyRoom = detail.find((s) => s.include.length < perScreen);
     const home = sameKind ?? anyRoom;
     if (home) home.include.push(unit.id);
     else homeless.push(unit);
@@ -464,15 +606,15 @@ export function placeEveryUnit(
 
   for (const [kind, units] of byKind) {
     const stem = `${kind.charAt(0).toUpperCase()}${kind.slice(1)}`;
-    for (let i = 0; i < units.length; i += UNITS_PER_SCREEN) {
-      let name = `${stem}Area${Math.floor(i / UNITS_PER_SCREEN) + 1}`;
+    for (let i = 0; i < units.length; i += perScreen) {
+      let name = `${stem}Area${Math.floor(i / perScreen) + 1}`;
       for (let n = 2; takenNames.has(name.toLowerCase()); n++) name = `${stem}Area${n}`;
       takenNames.add(name.toLowerCase());
       out.push({
         screenName: name,
         title: `${stem} — ${units.length} unit${units.length === 1 ? "" : "s"}`,
         level: 2,
-        include: units.slice(i, i + UNITS_PER_SCREEN).map((u) => u.id),
+        include: units.slice(i, i + perScreen).map((u) => u.id),
         sections: ["status", "process", "alarms"],
       });
     }

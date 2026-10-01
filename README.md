@@ -4,7 +4,7 @@
 
 A PLC tag export plus one sentence of plain English becomes a complete, validated
 **EcoStruxure Operator Terminal Expert 4.4** project — screens drawn, tags declared,
-alarms configured, bindings wired — while the engineer watches every object being
+alarms proposed for the engineer to confirm, bindings wired — while the engineer watches every object being
 generated and approves it before export.
 
 Built for the Schneider Electric HMI hackathon, Problem Statement 3.

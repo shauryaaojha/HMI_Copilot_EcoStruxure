@@ -91,7 +91,7 @@ export default function Landing() {
               <p className="mt-5 max-w-xl text-lg leading-relaxed text-text-secondary">
                 Bring a PLC tag export and say what the plant does, or open a project
                 you already have. Screens drawn to ISA-101, tags declared, alarms
-                configured, bindings wired — reviewed before you export, and written
+                proposed, bindings wired — reviewed before you export, and written
                 into a file the product opens.
               </p>
 

@@ -2,16 +2,21 @@
  * The Screen Program: what a screen shows, in words, with no coordinates.
  * docs/ARCHITECTURE_SCREEN_QUALITY.md §3.4.
  *
- * The document between judgement and geometry. The architect (deterministic
- * here; agent A2 writes the same schema) decides which screens exist and what
- * belongs on each; the compiler turns a program into parts through the
- * layout engine. Nothing in a program is a box, so nothing an agent could
- * write here can put an object off the panel or on top of another.
+ * The document between judgement and geometry, and the only one: every screen
+ * the pipeline builds is a program first. The planner's screens (what the
+ * engineer asked for) become programs through `programOf`; the architect
+ * (deterministic here; agent A2 writes the same schema) adds the process
+ * views and the overview KPIs the Plant Model supports, reading the same
+ * requested readings the planner found. The compiler turns every program into
+ * parts through the layout engine. Nothing in a program is a box, so nothing
+ * an agent could write here can put an object off the panel or on top of
+ * another.
  */
 
 import { z } from "zod";
 import type { PlantModel } from "@/lib/plant/model";
 import { headlineRolesFor } from "@/lib/plant/classes";
+import type { ScreenSpec } from "@/lib/ote/layout";
 
 export const Kpi = z.object({
   label: z.string(),
@@ -35,14 +40,26 @@ export const ProcessBand = z.object({
   callouts: z.array(Callout),
 });
 
+export const Section = z.enum(["status", "process", "alarms"]);
+
 export const ScreenProgram = z.object({
   name: z.string(),
   title: z.string(),
-  level: z.union([z.literal(1), z.literal(2)]),
-  /** The unit an L2 screen is about; absent on an L1. */
+  /** ISA-101: 1 plant overview, 2 unit overview, 3 unit detail. */
+  level: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  /** The unit an L2 process screen is about; absent otherwise. */
   unit: z.string().optional(),
   kpis: z.array(Kpi),
   process: ProcessBand.optional(),
+  /**
+   * Equipment ids drawn as the level draws one: a status tile on L1, a
+   * faceplate card on L2, a full detail panel on L3.
+   */
+  faceplates: z.array(z.string()).optional(),
+  /** Which halves of a faceplate, and whether the alarm banner is there. */
+  sections: z.array(Section).optional(),
+  /** Tags the engineer asked for, which every reading on the screen leads with. */
+  readings: z.array(z.string()).optional(),
   /** Why this screen exists, one line, for the build log and the engineer. */
   rationale: z.string(),
 });
@@ -62,10 +79,21 @@ const isReading = (dataType: string) => dataType !== "BOOL" && dataType !== "STR
 const HEADLINE_ANY = ["flow", "level", "pressure", "temperature", "speed", "value"];
 
 
-function headline(model: PlantModel, equipmentId: string): { tag: string; role: string } | undefined {
+function headline(
+  model: PlantModel,
+  equipmentId: string,
+  preferred: readonly string[] = [],
+): { tag: string; role: string } | undefined {
   const e = model.equipment.find((x) => x.id === equipmentId);
   if (!e) return undefined;
   const readings = e.roles.filter((r) => isReading(r.dataType));
+  // What the engineer asked for outranks what the class leads with: "show
+  // pump speed" makes speed the pump's headline on the process view and the
+  // overview, not just on its faceplate.
+  for (const tag of preferred) {
+    const hit = readings.find((r) => r.tag === tag);
+    if (hit) return { tag: hit.tag, role: hit.role };
+  }
   for (const role of [...headlineRolesFor(e.class), ...HEADLINE_ANY]) {
     const hit = readings.find((r) => r.role === role);
     if (hit) return { tag: hit.tag, role: hit.role };
@@ -86,7 +114,12 @@ const safe = (s: string) => s.replace(/[^A-Za-z0-9]/g, "");
  * there is more than one unit worth a screen: the headline reading of each
  * as a KPI tile, at most eight.
  */
-export function architectPrograms(model: PlantModel): ScreenProgram[] {
+export function architectPrograms(
+  model: PlantModel,
+  /** What the request asked for: the tags it named, in order. */
+  intent: { readings?: readonly string[] } = {},
+): ScreenProgram[] {
+  const preferred = intent.readings ?? [];
   const programs: ScreenProgram[] = [];
   const byId = new Map(model.equipment.map((e) => [e.id, e]));
 
@@ -96,7 +129,7 @@ export function architectPrograms(model: PlantModel): ScreenProgram[] {
     if (members.length < 2 || edges.length === 0) continue;
     const callouts: Callout[] = [];
     for (const id of members) {
-      const h = headline(model, id);
+      const h = headline(model, id, preferred);
       const e = byId.get(id)!;
       if (h) callouts.push({ equipment: id, tag: h.tag, label: `${e.label} ${h.role}` });
     }
@@ -107,6 +140,7 @@ export function architectPrograms(model: PlantModel): ScreenProgram[] {
       unit: unit.id,
       kpis: [],
       process: { nodes: members, edges: edges.map(({ from, to }) => ({ from, to })), callouts },
+      readings: preferred.length > 0 ? [...preferred] : undefined,
       rationale: `${members.length} connected pieces of equipment in ${unit.name}: shown as a process, in flow order`,
     });
   }
@@ -116,7 +150,7 @@ export function architectPrograms(model: PlantModel): ScreenProgram[] {
     for (const program of programs) {
       const unit = model.units.find((u) => u.id === program.unit)!;
       for (const id of unit.equipment) {
-        const h = headline(model, id);
+        const h = headline(model, id, preferred);
         if (!h) continue;
         const e = byId.get(id)!;
         const range = e.ranges[h.tag];
@@ -136,4 +170,22 @@ export function architectPrograms(model: PlantModel): ScreenProgram[] {
   }
 
   return programs;
+}
+
+/**
+ * A planned screen as a program: the planner's decision - which equipment,
+ * at which level, with which sections and readings - in the one document every
+ * screen compiles from.
+ */
+export function programOf(spec: ScreenSpec, rationale = "planned from the request"): ScreenProgram {
+  return {
+    name: spec.screenName,
+    title: spec.title,
+    level: spec.level,
+    kpis: [],
+    faceplates: [...spec.include],
+    sections: [...spec.sections],
+    readings: spec.readings && spec.readings.length > 0 ? [...spec.readings] : undefined,
+    rationale,
+  };
 }

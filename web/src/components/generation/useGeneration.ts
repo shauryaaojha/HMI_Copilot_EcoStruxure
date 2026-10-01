@@ -163,6 +163,7 @@ export function useGeneration() {
               intent,
               variables: store.getState().variables,
               existing: options.existing,
+              target: store.getState().target,
             }),
           });
 

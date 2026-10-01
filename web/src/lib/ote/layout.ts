@@ -26,13 +26,17 @@ import {
   pathPart,
   rectangle,
   screenOf,
+  switchPart,
   textBox,
+  toggleSwitch,
+  trendGraph,
   type Box,
 } from "./parts";
 import { DARK_GREY, GREY } from "./palette";
 import { DEFAULT_PACK } from "../standard/pack";
 import { expandComposite, type CompositeKind } from "../composites";
 import { rangeFor, unitOf, type Range } from "../plant/units";
+import { orderReadings } from "../plant/classes";
 import type { CompositeInstance } from "@/store/types";
 
 /** The Standard in force: a grey ground, lighter panels, colour only for alarms. */
@@ -73,6 +77,12 @@ export interface ScreenSpec {
   /** Equipment ids, in the order they should appear. */
   include: string[];
   sections: ("status" | "process" | "alarms")[];
+  /**
+   * Tags the engineer asked to see, in the order they asked. Each unit's
+   * readings lead with these, ahead of what its class leads with. Absent when
+   * the request named none.
+   */
+  readings?: string[];
 }
 
 export interface LaidOutScreen {
@@ -93,10 +103,57 @@ export const FOOTER = 28;
 export const MARGIN = 12;
 export const GAP = 16;
 
-/** Level 2 and 3: three cards across, two rows down. */
+/** Level 2: three cards across on a 1024-wide panel. */
 const CARD = { width: 320, height: 162, columns: 3 };
-/** Level 1: four tiles across, three rows down. Status only, no readings. */
+/** Level 1: four tiles across on a 1024-wide panel. Status only, no readings. */
 const TILE = { width: 238, height: 100, columns: 4 };
+/** Level 3: one unit's detail, two across on a 1024-wide panel. */
+const DETAIL = { width: 496, height: 0, columns: 2 };
+
+/** The alarm banner's share of the body, when a screen has one. */
+const ALARM_BAND = 148;
+
+/**
+ * The grid a level lays out on, measured against the panel it is for.
+ *
+ * The column counts above are what fits 1024 across. On an 800-wide panel three
+ * 320 cards are 1016 wide and the third ran off the edge; on a 320-wide one a
+ * card was wider than the screen. The box keeps its design size while it fits
+ * and narrows to the panel when it does not; the column count is what fits.
+ */
+export function gridFor(
+  level: 1 | 2 | 3,
+  panel: { width: number; height: number },
+  wantsAlarms: boolean,
+  /** Where the body starts, when something (a KPI band) sits above the grid. */
+  from = HEADER + NAV + 8,
+): { width: number; height: number; columns: number; rows: number; capacity: number; top: number; bottom: number } {
+  const top = from;
+  const footerTop = panel.height - FOOTER;
+  const bottom = (wantsAlarms ? footerTop - ALARM_BAND : footerTop) - 8;
+  const usable = panel.width - MARGIN * 2;
+  const design = level === 1 ? TILE : level === 3 ? DETAIL : CARD;
+  const width = Math.min(design.width, usable);
+  const columns = Math.max(1, Math.min(design.columns, Math.floor((usable + GAP) / (width + GAP))));
+  // A detail panel takes the whole body height: one row of them.
+  const height = level === 3 ? Math.max(CARD.height, bottom - top) : design.height;
+  const rows = level === 3 ? 1 : Math.max(1, Math.floor((bottom - top + GAP) / (height + GAP)));
+  return { width, height, columns, rows, capacity: rows * columns, top, bottom };
+}
+
+/**
+ * How many units one screen of this level holds on this panel: the smaller of
+ * what ISA-101 allows and what physically fits. The planner splits by this,
+ * so a unit is never laid out past the bottom of the panel and dropped.
+ */
+export function capacityOf(
+  level: 1 | 2 | 3,
+  panel: { width: number; height: number },
+  wantsAlarms = true,
+): number {
+  const rule = level === 1 ? 12 : level === 3 ? 2 : 6;
+  return Math.max(1, Math.min(rule, gridFor(level, panel, wantsAlarms).capacity));
+}
 
 /**
  * The fixed zones, exported so lib/ote/regions.ts can name them for the
@@ -332,11 +389,15 @@ interface Adds {
   add(part: Part, tag?: string): Part;
 }
 
-function card(place: Placer, unit: LayoutUnit, box: Box) {
-  drawCard(place, unit, box);
+/** Which of a card's two halves a screen asked for: the state lamps, the readings. */
+type Show = { status: boolean; process: boolean };
+const ALL: Show = { status: true, process: true };
+
+function card(place: Placer, unit: LayoutUnit, box: Box, show: Show = ALL, preferred: string[] = []) {
+  drawCard(place, unit, box, show, preferred);
 }
 
-function drawCard(place: Adds, unit: LayoutUnit, box: Box) {
+function drawCard(place: Adds, unit: LayoutUnit, box: Box, show: Show = ALL, preferred: string[] = []) {
   const key = unit.id.replace(/[^A-Za-z0-9]/g, "");
   const { left: x, top: y } = box;
 
@@ -376,8 +437,8 @@ function drawCard(place: Adds, unit: LayoutUnit, box: Box) {
     ),
   );
 
-  const run = unit.roles.find((r) => r.role === "running");
-  const fault = unit.roles.find((r) => r.role === "fault");
+  const run = show.status ? unit.roles.find((r) => r.role === "running") : undefined;
+  const fault = show.status ? unit.roles.find((r) => r.role === "fault") : undefined;
   const lampsTop = y + 34;
   // The symbol occupies the top right down to y+8+SYMBOL, which the lamps row
   // runs through - so they give up its width rather than run under it.
@@ -407,7 +468,11 @@ function drawCard(place: Adds, unit: LayoutUnit, box: Box) {
   // them; a unit with more earns a detail screen, which is what the plan is
   // for. The range and the normal band are the class defaults until the tag
   // export or the engineer says otherwise, and the inspector shows them.
-  const readings = unit.roles.filter((r) => isReading(r.dataType)).slice(0, run || fault ? 1 : 2);
+  // Which readings: the ones the engineer named first, then the ones the
+  // class leads with - the same order the process view and the overview use.
+  const readings = show.process
+    ? orderReadings(unit.roles.filter((r) => isReading(r.dataType)), unit.kind, preferred).slice(0, run || fault ? 1 : 2)
+    : [];
   if ("composite" in place) {
     readings.forEach((role, i) => {
       const rowTop = y + (run || fault ? 86 : 40) + i * 60;
@@ -439,6 +504,121 @@ function drawCard(place: Adds, unit: LayoutUnit, box: Box) {
       );
     }
   });
+}
+
+/** BOOL roles that are a state an operator reads, abnormal ones first. */
+const ABNORMAL = new Set(["fault", "estop", "high", "low"]);
+const STATE_ROLES = ["fault", "estop", "running", "high", "low", "open", "closed", "ready", "available", "healthy", "active", "flame", "occupied"];
+/** INT roles that say what a sequence or selector is on, read as a number. */
+const POSITION_ROLES = new Set(["mode", "step", "selection"]);
+
+/**
+ * A level 3 unit detail: everything one piece of equipment has, in the order
+ * an operator works through it - what it is, what state it is in, what it can
+ * be told to do, every reading on its own analogue indicator, and a trend of
+ * what it leads with.
+ *
+ * Commands are the two controls the packager writes with a known behaviour:
+ * the momentary Switch for a start or stop bit, the ToggleSwitch for a single
+ * run command. A
+ * setpoint is shown, not entered - a numeric entry part is not modelled yet,
+ * and the note says so rather than drawing a box that looks editable.
+ */
+function detail(place: Placer, unit: LayoutUnit, box: Box, preferred: string[] = []): string[] {
+  const notes: string[] = [];
+  const key = unit.id.replace(/[^A-Za-z0-9]/g, "");
+  const { left: x, top: y, width: w, height: h } = box;
+  const inner = w - 24;
+  place.add(rectangle(`Detail_${key}`, box, { fill: T.panel, border: T.line }));
+
+  const symbolSize = unit.graphic ? SYMBOL : 0;
+  if (unit.graphic) {
+    place.add(pathPart(`DetailSym_${key}`, unit.graphic, { left: x + w - symbolSize - 12, top: y + 8, width: symbolSize, height: symbolSize }, { fill: GREY, border: DARK_GREY }));
+  }
+  place.add(textBox(`DetailName_${key}`, unit.label, { left: x + 12, top: y + 8, width: w - (symbolSize || 0) - 36, height: 22 }, { size: 14, bold: true }));
+  place.add(textBox(`DetailKind_${key}`, unit.kind.toUpperCase(), { left: x + 12, top: y + 32, width: 160, height: 18 }, { size: 12, colour: T.muted }));
+  let top = y + Math.max(56, symbolSize + 16);
+  const bottom = y + h - 8;
+
+  // --- state ---------------------------------------------------------------
+  const states = STATE_ROLES.flatMap((role) => unit.roles.filter((r) => r.role === role && r.dataType === "BOOL")).slice(0, 4);
+  if (states.length > 0) {
+    const width = Math.floor((inner - (states.length - 1) * 8) / states.length);
+    states.forEach((r, i) => {
+      const at = { left: x + 12 + i * (width + 8), top, width, height: 36 };
+      const word = r.role.toUpperCase();
+      place.add(
+        ABNORMAL.has(r.role) ? alarmLamp(`DetailLamp_${key}_${i}`, `NO ${word}`, word, at) : lamp(`DetailLamp_${key}_${i}`, `NOT ${word}`, word, at),
+        r.tag,
+      );
+    });
+    top += 36 + 8;
+  }
+
+  // --- commands --------------------------------------------------------------
+  // A separate _START and _STOP bit are pushbuttons - the momentary Switch,
+  // START first. A single _CMD bit is a maintained run command - a toggle.
+  const pushbutton = (tag: string) => (/_START$/i.test(tag) ? "START" : /_STOP$/i.test(tag) ? "STOP" : undefined);
+  const commands = unit.roles
+    .filter((r) => r.role === "command" && r.dataType === "BOOL")
+    .sort((a, b) => Number(pushbutton(a.tag) === "STOP") - Number(pushbutton(b.tag) === "STOP"))
+    .slice(0, 2);
+  if (commands.length > 0 && top + 36 <= bottom) {
+    const width = Math.floor((inner - (commands.length - 1) * 8) / commands.length);
+    commands.forEach((r, i) => {
+      const at = { left: x + 12 + i * (width + 8), top, width, height: 36 };
+      const word = pushbutton(r.tag);
+      place.add(word ? switchPart(`DetailCmd_${key}_${i}`, word, at) : toggleSwitch(`DetailCmd_${key}_${i}`, "STOP", "START", at), r.tag);
+    });
+    top += 36 + 8;
+  }
+
+  // --- what a sequence or selector is on --------------------------------------
+  const positions = unit.roles.filter((r) => POSITION_ROLES.has(r.role) && isReading(r.dataType)).slice(0, 2);
+  if (positions.length > 0 && top + 24 <= bottom) {
+    const width = Math.floor((inner - (positions.length - 1) * 8) / positions.length);
+    positions.forEach((r, i) => {
+      const left = x + 12 + i * (width + 8);
+      const tag = r.tag.replace(/[^A-Za-z0-9]/g, "");
+      place.add(textBox(`DetailLbl_${tag}`, titleCase(r.role), { left, top: top + 2, width: 72, height: 20 }, { size: 12 }));
+      place.add(numericDisplay(`DetailNum_${tag}`, { left: left + 76, top, width: Math.max(48, width - 76), height: 24 }, 0), r.tag);
+    });
+    top += 24 + 8;
+  }
+
+  // --- readings ----------------------------------------------------------------
+  const readings = orderReadings(
+    unit.roles.filter((r) => isReading(r.dataType) && !POSITION_ROLES.has(r.role)),
+    unit.kind,
+    preferred,
+  );
+  const TREND = 96;
+  const ROW = 56;
+  // Room for the trend is kept only when every reading still fits beside it.
+  const withTrend = readings.length > 0 && top + readings.length * (ROW + 8) + TREND <= bottom;
+  const fits = Math.max(0, Math.floor((bottom - top - (withTrend ? TREND : 0) + 8) / (ROW + 8)));
+  readings.slice(0, fits).forEach((role, i) => {
+    const range = unit.ranges?.[role.tag] ?? rangeFor(role.comment, role.role);
+    place.composite(
+      "AnalogIndicator",
+      { label: titleCase(role.role), tag: role.tag, units: range.units, min: range.min, max: range.max, normalLow: range.normalLow, normalHigh: range.normalHigh, decimals: 1 },
+      { left: x + 12, top: top + i * (ROW + 8), width: inner, height: ROW },
+      `DetailInd_${role.tag.replace(/[^A-Za-z0-9]/g, "")}`,
+    );
+  });
+  if (readings.length > fits) {
+    notes.push(`${unit.label}: ${readings.length - fits} of ${readings.length} readings do not fit its detail panel`);
+  }
+  top += Math.min(fits, readings.length) * (ROW + 8);
+
+  if (withTrend) {
+    const tags = readings.slice(0, 2).map((r) => r.tag);
+    place.add(trendGraph(`DetailTrend_${key}`, tags, { left: x + 12, top, width: inner, height: Math.min(TREND, bottom - top) }));
+  }
+  if (unit.roles.some((r) => r.role === "setpoint")) {
+    notes.push(`${unit.label}: setpoint shown, not entered - a numeric entry part is not modelled yet`);
+  }
+  return notes;
 }
 
 /** A plant-overview tile: the unit's name and one state. Deviation only. */
@@ -493,6 +673,78 @@ function tile(place: Placer, unit: LayoutUnit, box: Box) {
   }
 }
 
+/**
+ * The faceplates of one screen, on the grid its level and panel allow, and the
+ * alarm banner when the screen asks for it. Shared by the application layout
+ * and the program compiler, so a planned screen and a compiled one are the
+ * same screen. Returns what it had to leave off.
+ */
+export function faceplateBand(
+  place: Placer,
+  spec: ScreenSpec,
+  equipment: LayoutUnit[],
+  panel: { width: number; height: number },
+  from = HEADER + NAV + 8,
+): string[] {
+  const byId = new Map(equipment.map((e) => [e.id, e]));
+  const wantsAlarms = spec.sections.includes("alarms");
+  const footerTop = panel.height - FOOTER;
+  // The alarm banner sits in the same place on every screen that has one, so
+  // an operator's eye does not have to search for it after a screen change.
+  const alarmTop = footerTop - ALARM_BAND;
+  const grid = gridFor(spec.level, panel, wantsAlarms, from);
+
+  const units = spec.include
+    .map((id) => byId.get(id))
+    .filter((u): u is LayoutUnit => Boolean(u));
+
+  // The planner splits screens by capacityOf, so this only drops units when
+  // a caller laid out a spec by hand - and then it says so.
+  const notes: string[] = [];
+  if (units.length > grid.capacity) {
+    notes.push(`${spec.screenName}: ${units.length - grid.capacity} of ${units.length} units do not fit a ${panel.width}x${panel.height} panel at level ${spec.level} and were left off`);
+  }
+  const show = { status: spec.sections.length === 0 || spec.sections.includes("status"), process: spec.sections.length === 0 || spec.sections.includes("process") };
+
+  units.slice(0, grid.capacity).forEach((unit, i) => {
+    const column = i % grid.columns;
+    const row = Math.floor(i / grid.columns);
+    const at: Box = {
+      left: MARGIN + column * (grid.width + GAP),
+      top: grid.top + row * (grid.height + GAP),
+      width: grid.width,
+      height: grid.height,
+    };
+    if (spec.level === 1) tile(place, unit, at);
+    else if (spec.level === 3) notes.push(...detail(place, unit, at, spec.readings));
+    else card(place, unit, at, show, spec.readings);
+  });
+
+  if (units.length === 0) {
+    place.add(
+      textBox(`Empty_${spec.screenName}`, "No equipment on this screen yet.",
+        { left: MARGIN, top: grid.top + 8, width: 400, height: 24 }, { size: 13, colour: T.muted }),
+    );
+  }
+
+  if (wantsAlarms) {
+    place.add(
+      textBox(`AlarmsLbl_${spec.screenName}`, "ACTIVE ALARMS",
+        { left: MARGIN, top: alarmTop, width: 300, height: 20 }, { size: 12, colour: T.muted }),
+    );
+    place.add(
+      alarmSummary(`AlarmBanner_${spec.screenName}`, {
+        left: MARGIN,
+        top: alarmTop + 24,
+        width: panel.width - MARGIN * 2,
+        height: footerTop - alarmTop - 32,
+      }),
+    );
+  }
+
+  return notes;
+}
+
 /* --- the application -------------------------------------------------- */
 
 export function layoutApplication(
@@ -506,63 +758,11 @@ export function layoutApplication(
   navigation: ScreenSpec[] = specs,
 ): LaidOutScreen[] {
   const place = new Placer();
-  const byId = new Map(equipment.map((e) => [e.id, e]));
 
   return specs.map((spec) => {
     place.begin();
     chrome(place, spec, navigation, panel);
-
-    const wantsAlarms = spec.sections.includes("alarms");
-    const contentTop = HEADER + NAV + 8;
-    const footerTop = panel.height - FOOTER;
-    // The alarm banner sits in the same place on every screen that has one, so
-    // an operator's eye does not have to search for it after a screen change.
-    const alarmTop = footerTop - 148;
-    const contentBottom = (wantsAlarms ? alarmTop : footerTop) - 8;
-
-    const units = spec.include
-      .map((id) => byId.get(id))
-      .filter((u): u is LayoutUnit => Boolean(u));
-
-    const box = spec.level === 1 ? TILE : CARD;
-    const rows = Math.max(1, Math.floor((contentBottom - contentTop + GAP) / (box.height + GAP)));
-    const capacity = rows * box.columns;
-
-    units.slice(0, capacity).forEach((unit, i) => {
-      const column = i % box.columns;
-      const row = Math.floor(i / box.columns);
-      const at: Box = {
-        left: MARGIN + column * (box.width + GAP),
-        top: contentTop + row * (box.height + GAP),
-        width: box.width,
-        height: box.height,
-      };
-      if (spec.level === 1) tile(place, unit, at);
-      else card(place, unit, at);
-    });
-
-    if (units.length === 0) {
-      place.add(
-        textBox(`Empty_${spec.screenName}`, "No equipment on this screen yet.",
-          { left: MARGIN, top: contentTop + 8, width: 400, height: 24 }, { size: 13, colour: T.muted }),
-      );
-    }
-
-    if (wantsAlarms) {
-      place.add(
-        textBox(`AlarmsLbl_${spec.screenName}`, "ACTIVE ALARMS",
-          { left: MARGIN, top: alarmTop, width: 300, height: 20 }, { size: 12, colour: T.muted }),
-      );
-      place.add(
-        alarmSummary(`AlarmBanner_${spec.screenName}`, {
-          left: MARGIN,
-          top: alarmTop + 24,
-          width: panel.width - MARGIN * 2,
-          height: footerTop - alarmTop - 32,
-        }),
-      );
-    }
-
+    const notes = faceplateBand(place, spec, equipment, panel);
     const screen = screenOf(spec.screenName, place.parts, panel);
     // Every wire now knows its screen, which is what keeps a Target's ScreenId
     // right in an application with more than one.
@@ -572,6 +772,7 @@ export function layoutApplication(
       parts: place.parts,
       wires,
       composites: place.composites.map((c) => ({ ...c, screenId: screen.UniqueId })),
+      notes,
     };
   });
 }

@@ -170,7 +170,7 @@ export async function* mockGeneration({
     type: "step",
     step: "alarms",
     state: "done",
-    detail: `${alarms.length} alarms configured`,
+    detail: `${alarms.length} alarms proposed`,
   };
 
   /* ---- 6. bindings ---------------------------------------------------- */

@@ -11,13 +11,19 @@
 import { runPipeline, type ExistingScreen } from "@/lib/ai/pipeline";
 import type { GenerationEvent } from "@/types/events";
 import type { Variable } from "@/lib/ote/schema";
+import { panelOf } from "@/lib/ote/packager";
 
 export const runtime = "nodejs";
 /** A model call plus layout can outrun the default serverless window. */
 export const maxDuration = 120;
 
 export async function POST(request: Request) {
-  let body: { intent?: string; variables?: Variable[]; existing?: ExistingScreen[] };
+  let body: {
+    intent?: string;
+    variables?: Variable[];
+    existing?: ExistingScreen[];
+    target?: { model?: unknown; width?: unknown; height?: unknown };
+  };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -27,6 +33,13 @@ export async function POST(request: Request) {
   const intent = (body.intent ?? "").trim();
   const variables = body.variables ?? [];
   const existing = Array.isArray(body.existing) ? body.existing : undefined;
+  // The panel the project is designed for, as the client holds it; else the
+  // one the skeleton's Target.dat names; else the pipeline's default profile.
+  const t = body.target;
+  const panel =
+    t && typeof t.model === "string" && Number(t.width) > 0 && Number(t.height) > 0
+      ? { model: t.model, width: Number(t.width), height: Number(t.height) }
+      : ((await panelOf().catch(() => null)) ?? undefined);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -35,7 +48,7 @@ export async function POST(request: Request) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
 
       try {
-        for await (const event of runPipeline({ intent, variables, existing })) {
+        for await (const event of runPipeline({ intent, variables, existing, panel })) {
           send(event);
         }
       } catch (error) {

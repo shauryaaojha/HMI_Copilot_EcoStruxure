@@ -12,7 +12,7 @@
  */
 
 import type { PlantModel } from "@/lib/plant/model";
-import { Placer, chrome, FOOTER, GAP, HEADER, MARGIN, NAV, type LaidOutScreen, type ScreenSpec } from "@/lib/ote/layout";
+import { Placer, chrome, faceplateBand, FOOTER, GAP, HEADER, MARGIN, NAV, type LaidOutScreen, type LayoutUnit, type ScreenSpec } from "@/lib/ote/layout";
 import { pipeRun, screenOf } from "@/lib/ote/parts";
 import { orderLayers, placeGraph } from "./topology";
 import type { ScreenProgram } from "./program";
@@ -22,14 +22,22 @@ const NODE = { width: 120, height: 96 };
 const CALLOUT = { width: 232, height: 64 };
 const KPI = { width: 208, height: 104 };
 
+/** How much of the body a KPI band of `count` tiles takes on this panel. */
+export function kpiBandHeight(count: number, panel: { width: number }): number {
+  if (count === 0) return 0;
+  const perRow = Math.max(1, Math.floor((panel.width - MARGIN * 2 + GAP) / (KPI.width + GAP)));
+  return Math.ceil(count / perRow) * (KPI.height + GAP);
+}
+
 /** The program as the ScreenSpec the navigation strip lists it by. */
 export function specOf(program: ScreenProgram): ScreenSpec {
   return {
     screenName: program.name,
     title: program.title,
     level: program.level,
-    include: program.process?.nodes ?? [],
-    sections: [],
+    include: [...new Set([...(program.process?.nodes ?? []), ...(program.faceplates ?? [])])],
+    sections: program.sections ?? [],
+    readings: program.readings,
   };
 }
 
@@ -40,6 +48,8 @@ export function compileProgram(
   navigation: ScreenSpec[],
   graphics: Map<string, { Commands: string; Points: string }> = new Map(),
   place: Placer = new Placer(),
+  /** The equipment as the faceplate band draws it: roles, graphic, ranges. */
+  units: LayoutUnit[] = [],
 ): LaidOutScreen {
   place.begin();
   const spec = specOf(program);
@@ -157,6 +167,13 @@ export function compileProgram(
         );
       }
     }
+  }
+
+  // --- faceplate band ----------------------------------------------------------
+  // Tiles, cards or detail panels below whatever the KPI band took, with the
+  // alarm banner along the bottom when the program asks for one.
+  if ((program.faceplates?.length ?? 0) > 0 || program.sections?.includes("alarms")) {
+    notes.push(...faceplateBand(place, spec, units, panel, program.kpis.length > 0 ? top : undefined));
   }
 
   const screen = screenOf(program.name, place.parts, panel);

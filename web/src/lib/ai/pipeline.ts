@@ -17,30 +17,27 @@
  * Phase 4 of docs/BUILD_PLAN.md.
  */
 
-import { layoutApplication, type LayoutUnit } from "@/lib/ote/layout";
-import { modelPlant } from "@/lib/plant/model";
-import { architectPrograms } from "@/lib/program/program";
-import { compileProgram, specOf } from "@/lib/program/compile";
+import { gridFor, HEADER, NAV, Placer, type LayoutUnit } from "@/lib/ote/layout";
+import { modelPlant, rangeOf } from "@/lib/plant/model";
+import { architectPrograms, programOf, type ScreenProgram } from "@/lib/program/program";
+import { compileProgram, kpiBandHeight, specOf } from "@/lib/program/compile";
+import { DEFAULT_PANEL } from "@/lib/backend/panels";
 import { libraryAvailable, symbolsFor } from "@/lib/ote/symbols";
 import type { Wire } from "@/lib/ote/bindings";
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
 import { validateProject } from "@/lib/validation/rules";
 import type { GenerationEvent, PipelineStep } from "@/types/events";
-import { inferEquipment, proposeAlarms } from "./infer";
+import { inferEquipment, LEVEL_ALARM_SHARE, proposeAlarms } from "./infer";
 import {
   activeProvider,
   fallbackPlan,
+  fitToLimits,
   hasApiKey,
+  limitsFor,
   planScreen,
   type Provider,
   type ScreenPlan,
 } from "./plan";
-
-/**
- * The demo panel is 1024x600 - taken from the skeleton's own Target.dat, not
- * from a caption. Everything the layout places is measured against this.
- */
-const SCREEN = { width: 1024, height: 600 };
 
 const now = () => new Date().toLocaleTimeString("en-GB", { hour12: false });
 
@@ -69,6 +66,12 @@ export interface PipelineInput {
    * reused, and the navigation strip lists every screen. docs/LLD.md F5.
    */
   existing?: ExistingScreen[];
+  /**
+   * The panel being designed for. One object, from the request to the
+   * validation: the planner sizes screens by it, the layout measures against
+   * it, the project is validated as it. The default profile when absent.
+   */
+  panel?: { model: string; width: number; height: number };
 }
 
 const PROVIDER_NAME: Record<Provider, string> = {
@@ -82,6 +85,9 @@ export async function* runPipeline(
   const { intent, variables } = input;
   const existing = input.existing ?? [];
   const extending = existing.length > 0;
+  const panel = input.panel ?? { model: DEFAULT_PANEL.model, width: DEFAULT_PANEL.width, height: DEFAULT_PANEL.height };
+  const SCREEN = { width: panel.width, height: panel.height };
+  const limits = limitsFor(panel);
 
   // --- 1 ingest -----------------------------------------------------------
   yield step("ingest", "running");
@@ -96,7 +102,16 @@ export async function* runPipeline(
 
   // --- 2 infer ------------------------------------------------------------
   yield step("infer", "running");
-  const equipment = inferEquipment(variables);
+  // The Plant Model first: it reads a bare _PV by the equipment's class, so a
+  // tank's PV is a level and a valve's is a position everywhere downstream -
+  // the plan, the faceplates, the alarms - rather than a "Value" on one screen
+  // and a level on another.
+  const plant = modelPlant(variables);
+  const roleOf = new Map(plant.equipment.flatMap((e) => e.roles.map((r) => [r.tag, r.role] as const)));
+  const equipment = inferEquipment(variables).map((unit) => ({
+    ...unit,
+    roles: unit.roles.map((r) => ({ ...r, role: roleOf.get(r.tag) ?? r.role })),
+  }));
   const kinds = new Map<string, number>();
   for (const unit of equipment) kinds.set(unit.kind, (kinds.get(unit.kind) ?? 0) + 1);
   const summary = [...kinds.entries()].map(([k, n]) => `${n} ${k}${n === 1 ? "" : "s"}`).join(", ");
@@ -140,7 +155,7 @@ export async function* runPipeline(
     // what anything is thinking.
     yield log(`Asking ${waitingOn === "gemini" ? "Gemini" : "Claude"} to read the request`);
     try {
-      const planned = await planScreen(intent, toPlan);
+      const planned = await planScreen(intent, toPlan, limits);
       if (planned) {
         plan = planned.plan;
         provider = planned.provider;
@@ -152,7 +167,17 @@ export async function* runPipeline(
       );
     }
   }
-  plan ??= fallbackPlan(intent, toPlan);
+  plan ??= fallbackPlan(intent, toPlan, limits);
+  // Whatever wrote the plan, no screen holds more than its level holds on this
+  // panel: the overflow becomes the next screen rather than being laid out
+  // below the bottom edge and lost.
+  {
+    const before = plan.screens.length;
+    plan = { ...plan, screens: fitToLimits(plan.screens, limits, new Set(existing.map((s) => s.name.toLowerCase()))) };
+    if (plan.screens.length > before) {
+      yield log(`Split into ${plan.screens.length} screens: a ${panel.width}x${panel.height} panel holds ${limits[2]} faceplates per unit overview`);
+    }
+  }
 
   if (extending) {
     // A name the application already uses is never reused: the packager's
@@ -205,7 +230,6 @@ export async function* runPipeline(
   // The Plant Model: ranges for every indicator, and the structure the
   // process view will follow. Built from the same tags, stated as a document
   // the engineer corrects on the Plant page rather than on every screen.
-  const plant = modelPlant(variables);
   yield { type: "plant", model: plant };
   const drawn: LayoutUnit[] = equipment.map((unit) => ({
     ...unit,
@@ -224,35 +248,60 @@ export async function* runPipeline(
     );
   }
 
-  // The process views: one per unit the model can connect, from a Screen
-  // Program (docs/ARCHITECTURE_SCREEN_QUALITY.md §3.4). They join the
-  // navigation before anything is laid out, so every strip lists them.
-  const programs = architectPrograms(plant).filter((p) => p.process);
-  const takenNames = new Set([...existing.map((s) => s.name.toLowerCase()), ...plan.screens.map((s) => s.screenName.toLowerCase())]);
-  const processPrograms = programs.filter((p) => !takenNames.has(p.name.toLowerCase()));
-  const processSpecs = processPrograms.map(specOf);
+  // Every screen is a Screen Program (docs/ARCHITECTURE_SCREEN_QUALITY.md
+  // §3.4), and one: the planner's screens - what the engineer asked for - and
+  // the architect's process views and overview KPIs, which read the same
+  // requested readings, compiled by the one compiler on one placer so names
+  // stay unique across the application. The navigation lists them all before
+  // anything is laid out.
+  const readings = [...new Set(plan.screens.flatMap((s) => s.readings ?? []))];
+  const architected = architectPrograms(plant, { readings });
+  const programs: ScreenProgram[] = plan.screens.map((spec) => programOf(spec, plan!.rationale));
+  const takenNames = new Set([...existing.map((s) => s.name.toLowerCase()), ...programs.map((p) => p.name.toLowerCase())]);
 
-  const navigation = extending
-    ? [
-        ...existing.map((s) => ({
-          screenName: s.name,
-          title: s.name,
-          level: s.level,
-          include: s.include,
-          sections: [] as ("status" | "process" | "alarms")[],
-        })),
-        ...plan.screens,
-        ...processSpecs,
-      ]
-    : [...plan.screens, ...processSpecs];
-  const laidOut = [
-    ...layoutApplication(plan.screens, drawn, SCREEN, navigation),
-    ...processPrograms.map((program) => compileProgram(program, plant, SCREEN, navigation, graphics)),
+  // The overview KPIs: on the planned overview when there is one and its
+  // tiles still fit below them, as their own L1 screen when the plan made
+  // none. Never a second overview beside the engineer's.
+  const kpiOverview = architected.find((p) => p.level === 1 && p.kpis.length > 0);
+  if (kpiOverview) {
+    const planned = programs.find((p) => p.level === 1);
+    const hasOverview = planned || existing.some((s) => s.level === 1);
+    if (planned) {
+      const wantsAlarms = planned.sections?.includes("alarms") ?? false;
+      const below = HEADER + NAV + 16 + kpiBandHeight(kpiOverview.kpis.length, panel);
+      if (gridFor(1, panel, wantsAlarms, below).capacity >= (planned.faceplates?.length ?? 0)) {
+        planned.kpis = kpiOverview.kpis;
+        yield log(`Overview ${planned.name} leads with ${planned.kpis.length} KPI${planned.kpis.length === 1 ? "" : "s"}: ${kpiOverview.rationale}`);
+      } else {
+        yield log(`Overview ${planned.name} keeps its ${planned.faceplates?.length ?? 0} tiles; the KPIs would not fit above them`);
+      }
+    } else if (!hasOverview && !takenNames.has(kpiOverview.name.toLowerCase())) {
+      programs.unshift(kpiOverview);
+      takenNames.add(kpiOverview.name.toLowerCase());
+    }
+  }
+  const processPrograms = architected.filter((p) => p.process && !takenNames.has(p.name.toLowerCase()));
+  programs.push(...processPrograms);
+
+  const navigation = [
+    ...existing.map((s) => ({
+      screenName: s.name,
+      title: s.name,
+      level: s.level,
+      include: s.include,
+      sections: [] as ("status" | "process" | "alarms")[],
+    })),
+    ...programs.map(specOf),
   ];
+  const place = new Placer();
+  const laidOut = programs.map((program) => compileProgram(program, plant, SCREEN, navigation, graphics, place, drawn));
   if (processPrograms.length > 0) {
     yield log(`Process views from the Plant Model: ${processPrograms.map((p) => `${p.title} (${p.rationale})`).join("; ")}`);
-    for (const note of laidOut.flatMap((l) => l.notes ?? [])) yield log(note);
   }
+  if (readings.length > 0) {
+    yield log(`Every screen leads with the readings asked for: ${readings.slice(0, 6).join(", ")}${readings.length > 6 ? ", …" : ""}`);
+  }
+  for (const note of laidOut.flatMap((l) => l.notes ?? [])) yield log(note);
   const screens: Screen[] = [];
   const wires: Wire[] = [];
 
@@ -287,7 +336,7 @@ export async function* runPipeline(
   // `sections` decides.
   const wantsAlarms = plan.screens.some((s) => s.sections.includes("alarms"));
   const alarms: Alarm[] = wantsAlarms
-    ? proposeAlarms(equipment).map((p) => ({
+    ? proposeAlarms(equipment, (tag) => rangeOf(plant, tag)).map((p) => ({
         Message: p.message,
         Trigger: p.trigger,
         AlarmType: p.level,
@@ -297,10 +346,14 @@ export async function* runPipeline(
       }))
     : [];
   for (const alarm of alarms) yield { type: "alarm", alarm };
-  yield step("alarms", "done", `${alarms.length} configured`);
+  yield step("alarms", "done", `${alarms.length} proposed`);
   if (alarms.length > 0) {
     const bit = alarms.filter((a) => a.AlarmRecordType === 1).length;
-    yield log(`Configured ${alarms.length} alarms (${bit} bit, ${alarms.length - bit} level)`);
+    // Proposed, not configured: priority, deadband, delay and the operator's
+    // response are the engineer's to decide, and the log must not claim them.
+    yield log(
+      `Proposed ${alarms.length} alarms (${bit} bit, ${alarms.length - bit} level, thresholds at ${LEVEL_ALARM_SHARE.hi * 100}/${LEVEL_ALARM_SHARE.hihi * 100}% of range) - to be confirmed: no deadband, delay or rationalised priority yet`,
+    );
   }
 
   // --- 6 bindings ---------------------------------------------------------
@@ -321,7 +374,7 @@ export async function* runPipeline(
   yield step("validate", "running");
   const project = {
     name: screens[0]?.Name ?? "Project",
-    target: { model: "HMIST6500AWADI", width: SCREEN.width, height: SCREEN.height },
+    target: { model: panel.model, width: panel.width, height: panel.height },
     screens,
     variables,
     alarms,

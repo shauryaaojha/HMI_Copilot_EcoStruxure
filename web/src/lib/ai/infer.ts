@@ -250,8 +250,24 @@ export function inferEquipment(variables: Variable[]): InferredEquipment[] {
   return [...units.values()];
 }
 
-/** Which tags deserve an alarm, and of what kind. */
-export function proposeAlarms(equipment: InferredEquipment[]) {
+/** Where a threshold alarm sits, as a share of the reading's range. */
+export const LEVEL_ALARM_SHARE = { hi: 0.85, hihi: 0.95 } as const;
+
+/**
+ * Which tags deserve an alarm, and of what kind - as a proposal.
+ *
+ * This is not alarm configuration. Rationalisation (priority by consequence,
+ * deadband, on-delay, shelving, operator response) is an engineering decision
+ * the tag list cannot make, so every alarm here is a starting point the
+ * engineer confirms. What it can get right is the arithmetic: a level alarm
+ * sits at 85% and 95% of the reading's *range*, in the reading's own units,
+ * not at the numbers 85 and 95 - which on a level read in metres, 0-6 m,
+ * would be thresholds the value can never reach.
+ */
+export function proposeAlarms(
+  equipment: InferredEquipment[],
+  rangeOf: (tag: string) => { min: number; max: number } | undefined = () => undefined,
+) {
   const proposals: {
     trigger: string;
     message: string;
@@ -285,9 +301,11 @@ export function proposeAlarms(equipment: InferredEquipment[]) {
       }
       // A level reading gets the pair a tank always has: warn, then act.
       if (role.role === "level" && role.dataType !== "BOOL") {
+        const range = rangeOf(role.tag) ?? { min: 0, max: 100 };
+        const at = (share: number) => threshold(range.min + (range.max - range.min) * share);
         proposals.push(
-          { trigger: role.tag, message: `${unit.label} level high`, kind: "level", level: 2, severity: 3, value: "85" },
-          { trigger: role.tag, message: `${unit.label} level critically high`, kind: "level", level: 1, severity: 5, value: "95" },
+          { trigger: role.tag, message: `${unit.label} level high`, kind: "level", level: 2, severity: 3, value: at(LEVEL_ALARM_SHARE.hi) },
+          { trigger: role.tag, message: `${unit.label} level critically high`, kind: "level", level: 1, severity: 5, value: at(LEVEL_ALARM_SHARE.hihi) },
         );
       }
     }
@@ -295,3 +313,6 @@ export function proposeAlarms(equipment: InferredEquipment[]) {
 
   return proposals;
 }
+
+/** A threshold as the alarm table stores it: no float noise, no trailing zeros. */
+const threshold = (n: number) => String(Number(n.toPrecision(6)));

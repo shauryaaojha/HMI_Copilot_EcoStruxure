@@ -41,3 +41,33 @@ export const headlineRolesFor = (klass: string): string[] => HEADLINE_BY_CLASS[k
  * reading. Undefined when the class does not say, and then "value" stands.
  */
 export const measuredByClass = (klass: string): string | undefined => HEADLINE_BY_CLASS[klass]?.[0];
+
+/**
+ * A unit's readings in the order a screen should show them: the tags the
+ * engineer asked for first, in the order they asked, then what the class leads
+ * with, then the rest as declared.
+ *
+ * One ordering for every place a reading is chosen - the faceplate card, the
+ * process callout, the overview KPI - so the card and the process view cannot
+ * lead with different readings for the same pump, and the engineer's sentence
+ * outranks the class table everywhere at once.
+ */
+export function orderReadings<R extends { tag: string; role: string }>(
+  readings: R[],
+  klass: string,
+  preferred: readonly string[] = [],
+): R[] {
+  const asked = (r: R) => {
+    const i = preferred.indexOf(r.tag);
+    return i === -1 ? Infinity : i;
+  };
+  const lead = headlineRolesFor(klass);
+  const byClass = (r: R) => {
+    const i = lead.indexOf(r.role);
+    return i === -1 ? Infinity : i;
+  };
+  return readings
+    .map((r, i) => ({ r, i }))
+    .sort((a, b) => asked(a.r) - asked(b.r) || byClass(a.r) - byClass(b.r) || a.i - b.i)
+    .map(({ r }) => r);
+}
