@@ -13,6 +13,13 @@ import type { GraphicObject } from "@/lib/ote/graphics";
 
 export const runtime = "nodejs";
 
+/**
+ * Read at request time: the graphics index is on the running machine's disk,
+ * not the build machine's.
+ */
+export const dynamic = "force-dynamic";
+
+
 let cached: GraphicObject[] | null | undefined;
 
 async function load(): Promise<GraphicObject[] | null> {

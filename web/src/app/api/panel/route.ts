@@ -13,6 +13,14 @@ import { panelOf } from "@/lib/ote/packager";
 
 export const runtime = "nodejs";
 
+/**
+ * Read at request time: the skeleton is on the running machine's disk, not the
+ * build machine's, and a prerendered answer would bake in whatever the builder
+ * happened to have.
+ */
+export const dynamic = "force-dynamic";
+
+
 export async function GET() {
   const panel = await panelOf().catch(() => null);
 
