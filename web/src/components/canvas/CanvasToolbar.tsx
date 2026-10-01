@@ -397,7 +397,7 @@ export function CanvasToolbar({
           </Badge>
         )}
         <Badge tone={simulating ? "ok" : "neutral"} dot={simulating}>
-          {simulating ? `Live · ${elapsed.toFixed(0)}s` : "Design"}
+          {simulating ? `Simulated · ${elapsed.toFixed(0)}s` : "Design"}
         </Badge>
         {simulating && activeAlarms > 0 && (
           <Badge tone="alarm" dot>
@@ -415,7 +415,7 @@ export function CanvasToolbar({
           title={
             simulating
               ? "Return the screen to its design state"
-              : "Drive the screen from tag values"
+              : "Drive the screen from synthetic tag values: it exercises the HMI - lamps, bars, alarms - not the PLC's logic"
           }
         >
           {simulating ? "Stop" : "Simulate"}

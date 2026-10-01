@@ -440,6 +440,18 @@ product before anything is written** — it is the difference between a bar that
 fills correctly and one that is quietly wrong, which is the failure this
 project cares most about avoiding.
 
+> **Answered, 2 October 2026, from the product's own help** (`Buildtime/Help/en/
+> featureguide/`, read locally). `property/Properties_(Rectangle).htm`: Vertical
+> and Horizontal Fill are a **percentage, 0-100**. `bar_metergraph/fs01.htm`,
+> "Displaying Variable Values in Bar Graphs": a Rectangle with Fill Level on, its
+> Vertical Fill bound to the variable **through a Scale converter** (Minimum and
+> Maximum Source to Minimum and Maximum Output, 0 and 100). The range lives on
+> the converter, which is why it is never beside `FillLevel`. The corpus has the
+> row shapes: six `Scale` converters in `Converters.db` (`ConverterType` "Scale",
+> `Data` `{"Type":"Converter","SubType":"Scale",…,"FromMax","ToMin","ToMax"}`),
+> and bindings that name theirs by `ConverterId` and `ConverterName`. Built in
+> `lib/ote/converters.ts` and the `AnalogIndicator`; see `docs/PLAN_PHASE5.md` §5.
+
 ---
 
 ## 7 · What a reader would cost

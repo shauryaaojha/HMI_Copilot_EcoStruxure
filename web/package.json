@@ -15,6 +15,7 @@
     "index:graphics": "node scripts/index-graphics.mjs",
     "build:demo": "tsx scripts/build-demo.mts",
     "build:symbols": "tsx scripts/build-symbol-demo.mts",
+    "build:bars": "tsx --tsconfig scripts/tsconfig.json scripts/build-bar-demo.mts",
     "skeleton:upload": "tsx --tsconfig scripts/tsconfig.json scripts/upload-skeleton.mts"
   },
   "dependencies": {

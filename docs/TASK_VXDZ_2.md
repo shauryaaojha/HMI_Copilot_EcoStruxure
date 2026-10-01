@@ -59,6 +59,12 @@ them, and add any you need the same way: separate key, tagged with `appVersion`.
 
 ## 2 · The bar, in the composite
 
+> **Done** - commit 3c9242c, `docs/PLAN_PHASE5.md` §5. One thing changed beyond
+> "between the scale and the band": the band is now an unfilled frame drawn *on*
+> the bar, so the operator reads the fill against it, and a short box keeps the
+> bar and drops the scale. The value reaches the fill through a Scale converter,
+> which the product's help names as the way a bar graph is built.
+
 This is the part your §6 unlocked, and it closes a `TODO` that has been open for
 weeks.
 
