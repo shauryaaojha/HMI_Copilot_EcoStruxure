@@ -333,3 +333,71 @@ describe("a Rectangle with a fill level", () => {
     expect(plain).not.toContain(resolveColor(12));
   });
 });
+
+/**
+ * The drawing half of the three encodings in docs/TASK_VXDZ_2.md §1.
+ *
+ * Each of those items has two halves - a shape that parses, and a canvas that
+ * draws it - and the reader tests only cover the first. A colour that parses
+ * and then renders as the fallback is still a screen that lies.
+ */
+describe("the canvas draws what the wider schema now accepts", () => {
+  it("renders a packed colour as that colour, not as a palette lookup", () => {
+    const part = {
+      Type: "Rectangle",
+      UniqueId: "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+      Name: "Packed",
+      Location: { Left: 10, Top: 10 },
+      Width: 50,
+      Height: 50,
+      // 0x17A1E5, the light blue the HVAC library uses for chilled water.
+      Fill: { Color: { ColorIndexEnabled: false, Value: 1548773 } },
+    } as Part;
+    const markup = render({
+      screen: { ...demoScreen, Children: [{ ...demoScreen.Children[0], Children: [part] }] } as typeof demoScreen,
+      selectedIds: [],
+      alarms: [],
+    });
+    expect(markup).toContain("#17a1e5");
+    // Palette index 1548773 does not exist, so the old path gave the fallback.
+    expect(markup).not.toContain('fill="#ffffff"');
+  });
+
+  it("draws a screen rooted in a Canvas, at the panel it is given", () => {
+    const canvasRooted = {
+      Type: "Screen",
+      UniqueId: demoScreen.UniqueId,
+      Name: "CanvasRooted",
+      Children: [
+        {
+          Type: "Canvas",
+          UniqueId: "cccccccc-dddd-eeee-ffff-000000000000",
+          Name: "Canvas",
+          Options: 104,
+          // No Width or Height: a Canvas fills the panel.
+          Children: [
+            {
+              Type: "Rectangle",
+              UniqueId: "dddddddd-eeee-ffff-0000-111111111111",
+              Name: "OnACanvas",
+              Location: { Left: 4, Top: 4 },
+              Width: 20,
+              Height: 20,
+              Fill: { Color: { Value: 3 } },
+            },
+          ],
+        },
+      ],
+    } as unknown as typeof demoScreen;
+
+    const markup = render({
+      screen: canvasRooted,
+      selectedIds: [],
+      alarms: [],
+      panel: { width: 800, height: 480 },
+    });
+    expect(markup).toContain('viewBox="0 0 800 480"');
+    expect(markup).toContain('data-object-name="OnACanvas"');
+    expect(markup).toContain(resolveColor(3));
+  });
+});

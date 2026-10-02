@@ -40,6 +40,8 @@ interface Imported {
   bindings: Binding[];
   carried: { entries: number; opaqueParts: number; variableRows: number; bindingRows: number };
   warnings: string[];
+  /** Which generation of the format the file turned out to be. */
+  layout?: "typed" | "struct";
 }
 
 type Filter = "all" | "recent" | "starred";
@@ -128,6 +130,11 @@ export function ProjectsScreen() {
         target: `${data.target.model} · ${data.target.width} × ${data.target.height}`,
         intent:
           `Opened ${file.name}` +
+          // Only worth saying for a .vxdz: an .eote is always the modern
+          // layout, and an engineer who opened one does not need telling.
+          (/\.vxdz$/i.test(file.name) && data.layout === "typed"
+            ? " — modern layout, and it exports as an .eote"
+            : "") +
           (carried.length ? ` — carrying ${carried.join(", ")} the editor does not model` : ""),
       });
       useProject.getState().reset();

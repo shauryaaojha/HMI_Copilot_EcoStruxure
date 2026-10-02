@@ -157,7 +157,9 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
         ),
         tags: data.variables.length,
         target: `${data.target.model} · ${data.target.width} × ${data.target.height}`,
-        intent: `Opened ${file.name}`,
+        intent:
+          `Opened ${file.name}` +
+          (/\.vxdz$/i.test(file.name) ? " — exports as an .eote" : ""),
       });
       reveal(from);
     } catch (caught) {

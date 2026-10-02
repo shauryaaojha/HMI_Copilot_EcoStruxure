@@ -120,7 +120,16 @@ export function LayersPanel() {
 
                 {/* A part placed in a grid cell carries no size of its own.
                     Saying so is the point: the inspector would otherwise show
-                    0 x 0 and read as a part that is there but invisible. */}
+                    0 x 0 and read as a part that is there but invisible.
+
+                    Not covered by a test, and worth knowing why. This panel
+                    reads the store, and a store-connected component cannot be
+                    render-tested here: under renderToStaticMarkup zustand
+                    serves its server snapshot, so getState() returns the
+                    seeded project and the component still renders the empty
+                    state. ScreenRenderer is the only component any test
+                    renders and it takes everything as props. The decision
+                    itself, isSizedByParent, is covered in reader.test.ts. */}
                 {isSizedByParent(part) && (
                   <span
                     aria-label="sized by its parent"
