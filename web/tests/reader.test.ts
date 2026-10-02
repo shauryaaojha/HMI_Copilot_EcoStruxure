@@ -372,6 +372,28 @@ describe("the encodings the product also writes", () => {
     });
   });
 
+  it("models the bar, which is a Rectangle that fills to a level", async () => {
+    // There is no bar part. All 120 objects in the corpus carrying
+    // Animation.FillLevel are Rectangles. docs/VXDZ_FINDINGS.md §6.
+    const modified = await withScreen((raw) => {
+      const banner = raw.Children[0].Children.find((p: any) => p.Name === "Banner");
+      banner.Animation = {
+        FillLevel: { Enable: true, BackColor: { Value: 12 }, VerticalFill: 0 },
+      };
+    });
+
+    const read = await readProject(modified);
+    expect(read.warnings).toEqual([]);
+    const banner = read.screens[0].Children[0].Children.find((p) => p.Name === "Banner");
+    expect(banner?.Type).toBe("Rectangle");
+    const level = (banner as { Animation?: { FillLevel?: Record<string, unknown> } }).Animation?.FillLevel;
+    expect(level?.Enable).toBe(true);
+    expect(level?.BackColor).toEqual({ Value: 12 });
+
+    const out = await packageProject(inputOf(read), undefined, read.preserved);
+    expect(await diff(modified, out)).toEqual([]);
+  });
+
   it("still refuses a palette index outside the colour set", async () => {
     // The widening is conditional: without the flag, Value is an index, and an
     // index of 1548773 is a mistake rather than a colour.

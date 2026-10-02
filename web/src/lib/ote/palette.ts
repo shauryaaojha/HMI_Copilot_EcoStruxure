@@ -71,6 +71,25 @@ export const packedHex = (value: number): string =>
   "#" + (value & 0xffffff).toString(16).padStart(6, "0");
 
 /**
+ * Resolve a bare colour - `{ Value, ColorIndexEnabled? }` with no `Color`
+ * wrapper around it.
+ *
+ * `Animation.FillLevel.BackColor` is written this way in both captured
+ * examples: `{Value: 12}` in the corpus and `{Transparency: 80}` in our own
+ * 4.4 Polygon. Passing it to the wrapped resolver returns the fallback, which
+ * is how the bar first drew its remainder as "none".
+ */
+export function resolveBareColor(
+  color: { Value?: unknown; ColorIndexEnabled?: unknown } | undefined,
+  fallback: string,
+): string {
+  if (!color || typeof color.Value !== "number") return fallback;
+  return color.ColorIndexEnabled === false
+    ? packedHex(color.Value)
+    : resolveColor(color.Value, fallback);
+}
+
+/**
  * Resolve a `{ Color: {...} }` to "#rrggbb", whichever encoding it is in.
  *
  * `ColorIndexEnabled: false` means `Value` is a packed colour rather than an

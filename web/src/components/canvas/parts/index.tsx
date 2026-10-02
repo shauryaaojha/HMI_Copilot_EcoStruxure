@@ -44,8 +44,11 @@ export interface PartNodeProps {
 
 export function PartNode({ part, values, alarms }: PartNodeProps) {
   switch (part.Type) {
-    case "Rectangle":
-      return <RectanglePart part={part} />;
+    case "Rectangle": {
+      // Only a bar reads a value; a plain rectangle ignores it.
+      const raw = values?.[part.Name];
+      return <RectanglePart part={part} value={typeof raw === "number" ? raw : undefined} />;
+    }
 
     case "TextBox":
       return <TextBoxPart part={part} />;

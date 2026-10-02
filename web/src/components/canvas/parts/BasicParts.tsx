@@ -8,17 +8,57 @@
  */
 
 import { fill, fontOf, insetStroke, type PartOf } from "./geometry";
+import { resolveBareColor } from "@/lib/ote/palette";
 import { PlacedText } from "./Text";
 
-export function RectanglePart({ part }: { part: PartOf<"Rectangle"> }) {
+/** Half full, when nothing is driving it. A bar drawn empty reads as broken. */
+export const DESIGN_TIME_FILL = 50;
+
+export function RectanglePart({
+  part,
+  value,
+}: {
+  part: PartOf<"Rectangle">;
+  /** The bound value, 0-100, when the screen is live. */
+  value?: number;
+}) {
   const stroke = part.Thickness ?? 1;
+  const box = insetStroke(part.Location.Left, part.Location.Top, part.Width ?? 0, part.Height ?? 0, stroke);
+  const level = part.Animation?.FillLevel;
+
+  // A plain rectangle, which is all but 120 of them in the corpus.
+  if (!level?.Enable) {
+    return (
+      <rect
+        {...box}
+        fill={fill(part, "Fill", "#ffffff")}
+        stroke={fill(part, "Border", "#515151")}
+        strokeWidth={stroke}
+      />
+    );
+  }
+
+  // A bar. The product has no bar part: a filled Rectangle is the bar, and
+  // which axis it fills along is whichever of the two properties it carries.
+  // docs/VXDZ_FINDINGS.md §6.
+  const horizontal = level.HorizontalFill !== undefined && level.VerticalFill === undefined;
+  const pct = Math.min(100, Math.max(0, value ?? level.VerticalFill ?? level.HorizontalFill ?? DESIGN_TIME_FILL));
+  const filled = horizontal ? (box.width * pct) / 100 : (box.height * pct) / 100;
+  const back = resolveBareColor(level.BackColor, "none");
+
   return (
-    <rect
-      {...insetStroke(part.Location.Left, part.Location.Top, (part.Width ?? 0), (part.Height ?? 0), stroke)}
-      fill={fill(part, "Fill", "#ffffff")}
-      stroke={fill(part, "Border", "#515151")}
-      strokeWidth={stroke}
-    />
+    <>
+      {/* The remainder first, so the fill is drawn over it. */}
+      <rect {...box} fill={back} />
+      <rect
+        x={box.x}
+        y={horizontal ? box.y : box.y + box.height - filled}
+        width={horizontal ? filled : box.width}
+        height={horizontal ? box.height : filled}
+        fill={fill(part, "Fill", "#ffffff")}
+      />
+      <rect {...box} fill="none" stroke={fill(part, "Border", "#515151")} strokeWidth={stroke} />
+    </>
   );
 }
 

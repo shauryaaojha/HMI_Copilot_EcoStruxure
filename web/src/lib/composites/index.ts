@@ -78,12 +78,21 @@ export const AnalogIndicatorProps = z.object({
 export type AnalogIndicatorProps = z.infer<typeof AnalogIndicatorProps>;
 
 /**
- * A scale with the normal band beside it, the live value under it, and the
- * unit. The level itself is not drawn live: the product's bar part has not
- * been captured yet (reference/part_examples.json has BarScale, not the bar),
- * so an indicator today is a scale, a band and a number - which is already
- * what the handbook asks for first. When the bar part is captured it goes
- * between the scale and the band and nothing else here changes.
+ * A scale, the live bar beside it, the normal band beside that, the value and
+ * the unit.
+ *
+ * The bar was open for weeks on a false premise: that the product had a bar
+ * part nobody had captured. It has none. A bar is a Rectangle carrying
+ * Animation.FillLevel, and of the 120 objects in Schneider's own template
+ * corpus that carry one, all 120 are Rectangles - GPS_Tank01.vxdz is a tank
+ * level built exactly this way. docs/VXDZ_FINDINGS.md §6.
+ *
+ * The old comment promised the bar would slot in with nothing else changing.
+ * That held for the vertical layout, where the 8px between the scale and the
+ * band was already the right place for it. It did not hold horizontally: the
+ * band sat directly on top of the scale with no gap, so the band now starts
+ * BAR higher up. Nothing else moved, and an indicator too short for all three
+ * still gives up the band and then the scale, as before.
  */
 export const AnalogIndicator: CompositeDef<AnalogIndicatorProps> = {
   kind: "AnalogIndicator",
@@ -118,6 +127,10 @@ export const AnalogIndicator: CompositeDef<AnalogIndicatorProps> = {
     // does not fit says less rather than becoming unreadable.
     const SCALE = 24;
     const BAND = 10;
+    // The live bar: narrow, because it reads as a level and not as a shape,
+    // and drawn in ink on ground rather than in a colour - ISA-101 keeps
+    // colour for alarms, so a process level is a grey that fills.
+    const BAR = 8;
     const headerBottom = y + 4 + (vertical ? 20 : 24);
     const bottom = y + h - 8;
 
@@ -129,6 +142,9 @@ export const AnalogIndicator: CompositeDef<AnalogIndicatorProps> = {
       const scaleH = valueTop - GAP - scaleTop;
       if (scaleH >= GRID) {
         parts.push(barScale(`${name}_Scale`, { left: x + 8, top: scaleTop, width: 40, height: scaleH }, p.max));
+        parts.push(
+          rectangle(`${name}_Bar`, { left: x + 48, top: scaleTop, width: BAR, height: scaleH }, { fill: T.ink, border: T.line, fillLevel: { back: T.ground } }),
+        );
         const bandTop = scaleTop + (1 - frac(p.normalHigh)) * scaleH;
         const bandBottom = scaleTop + (1 - frac(p.normalLow)) * scaleH;
         if (w >= 80) {
@@ -145,11 +161,17 @@ export const AnalogIndicator: CompositeDef<AnalogIndicatorProps> = {
       const scaleLeft = x + 8;
       const scaleW = Math.max(GRID, w - 16);
       const scaleTop = bottom - SCALE;
-      const bandTop = scaleTop - BAND;
+      const barTop = scaleTop - BAR;
+      const bandTop = barTop - BAND;
       const roomForScale = scaleTop >= headerBottom + GAP;
       const roomForBand = bandTop >= headerBottom + GAP;
       if (roomForScale) {
         parts.push(barScale(`${name}_Scale`, { left: scaleLeft, top: roomForBand ? scaleTop : Math.max(scaleTop, headerBottom + GAP), width: scaleW, height: SCALE }, p.max));
+      }
+      if (roomForScale) {
+        parts.push(
+          rectangle(`${name}_Bar`, { left: scaleLeft, top: barTop, width: scaleW, height: BAR }, { fill: T.ink, border: T.line, fillLevel: { back: T.ground, vertical: false } }),
+        );
       }
       if (roomForBand) {
         const bandLeft = scaleLeft + frac(p.normalLow) * scaleW;
@@ -162,7 +184,15 @@ export const AnalogIndicator: CompositeDef<AnalogIndicatorProps> = {
       parts.push(textBox(`${name}_Unit`, p.units, { left: x + w - 8 - unitWidth + 4, top: y + 6, width: unitWidth - 4, height: 20 }, { size: 12, colour: T.muted }));
     }
 
-    if (p.tag) wires.push({ index: parts.findIndex((q) => q.Name === `${name}_Val`), tag: p.tag, property: "CurrentValue" });
+    if (p.tag) {
+      wires.push({ index: parts.findIndex((q) => q.Name === `${name}_Val`), tag: p.tag, property: "CurrentValue" });
+      // The bar is driven by the same tag, on the property the product uses
+      // for a fill level rather than on CurrentValue.
+      const bar = parts.findIndex((q) => q.Name === `${name}_Bar`);
+      if (bar >= 0) {
+        wires.push({ index: bar, tag: p.tag, property: vertical ? "Animation.FillLevel.VerticalFill" : "Animation.FillLevel.HorizontalFill" });
+      }
+    }
     return { parts, wires };
   },
 };

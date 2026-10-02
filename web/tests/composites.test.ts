@@ -108,7 +108,15 @@ describe("the store keeps a composite an object", () => {
     expect(unionBox(children().filter((p) => instance.partIds.includes(p.UniqueId)))).toEqual(boxBefore);
     expect(children().find((p) => p.Name === "Ind_Flow_Unit")).toBeDefined();
     expect(children().some((p) => p.Name === "Ind_Flow_Unit_2")).toBe(false);
-    expect(store.getState().bindings.filter((b) => b.tag === "FT_101_PV")).toHaveLength(1);
+    // Two, not one: the indicator drives its value display and its bar from
+    // the same tag. The check here is that re-expanding does not duplicate
+    // them, so the count matters more than the number.
+    const wires = store.getState().bindings.filter((b) => b.tag === "FT_101_PV");
+    expect(wires).toHaveLength(2);
+    expect(wires.map((w) => w.property).sort()).toEqual([
+      "Animation.FillLevel.VerticalFill",
+      "CurrentValue",
+    ]);
   });
 
   it("stops being a composite when a part is deleted or it is ungrouped", () => {

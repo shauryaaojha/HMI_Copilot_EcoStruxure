@@ -135,12 +135,48 @@ const base = {
   Height: z.number().nonnegative().optional(),
 };
 
+/**
+ * The level a filled shape is drawn to, as a fraction of its own box.
+ *
+ * This is how the product draws a bar. There is no bar-graph part and never
+ * was: of the 120 objects in the corpus carrying Animation.FillLevel, all 120
+ * are Rectangles. GPS_Tank01.vxdz is the worked example - a tank whose level
+ * is a Rectangle with VerticalFill bound to a variable.
+ * docs/VXDZ_FINDINGS.md §6.
+ *
+ * `BackColor` is a bare colour here rather than our `{Color: {...}}` wrapper,
+ * which is what both captured examples show: `{Value: 12}` in the corpus and
+ * `{Transparency: 80}` in our own 4.4 Polygon. `ColorIndexEnabled` is carried
+ * for the same reason it is on ColorRef - the struct layout shows BackColor
+ * holds an ordinary Color, and a flag zod stripped would be a colour silently
+ * rewritten.
+ *
+ * `VerticalFill` and `HorizontalFill` hold the value. In a 4.4 file the live
+ * value is a binding row rather than a number on the part, exactly as every
+ * other bound property is, so the number here is only the design-time level.
+ */
+export const FillLevel = z.object({
+  Enable: z.boolean().optional(),
+  BackColor: z
+    .object({
+      Value: z.number().int().nonnegative().optional(),
+      ColorIndexEnabled: z.boolean().optional(),
+      Transparency: z.number().min(0).max(100).optional(),
+    })
+    .optional(),
+  VerticalFill: z.number().optional(),
+  HorizontalFill: z.number().optional(),
+});
+
+export const Animation = z.object({ FillLevel: FillLevel.optional() });
+
 export const Rectangle = z.object({
   Type: z.literal("Rectangle"),
   ...base,
   Fill: Paint.optional(),
   Border: Paint.optional(),
   Thickness: z.number().optional(),
+  Animation: Animation.optional(),
 });
 
 export const TextBox = z.object({

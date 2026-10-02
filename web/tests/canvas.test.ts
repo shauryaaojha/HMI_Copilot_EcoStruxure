@@ -21,6 +21,7 @@ import { resolveColor } from "@/lib/ote/palette";
 import { ScreenRenderer } from "@/components/canvas/ScreenRenderer";
 import { rootBox } from "@/lib/ote/schema";
 import type { Part } from "@/lib/ote/schema";
+import type { PartOf } from "@/components/canvas/parts/geometry";
 import {
   activeAlarms,
   alarmTriggers,
@@ -267,3 +268,68 @@ function flattenForTest() {
     ];
   });
 }
+
+/**
+ * The bar, drawn.
+ *
+ * A filled Rectangle is three rects: the remainder, the fill over it, and the
+ * border last. What is worth asserting is the arithmetic - a vertical bar
+ * grows from the bottom, so its y moves as it fills and its height is the
+ * fraction of the box.
+ */
+describe("a Rectangle with a fill level", () => {
+  const bar = (over: Partial<PartOf<"Rectangle">> = {}): Part => ({
+    Type: "Rectangle",
+    UniqueId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    Name: "Bar",
+    Location: { Left: 10, Top: 20 },
+    Width: 40,
+    Height: 100,
+    Thickness: 1,
+    Fill: { Color: { Value: 1 } },
+    Border: { Color: { Value: 11 } },
+    Animation: { FillLevel: { Enable: true, BackColor: { Value: 12 }, VerticalFill: 0 } },
+    ...over,
+  } as Part);
+
+  const screenWith = (part: Part) => ({
+    ...demoScreen,
+    Children: [{ ...demoScreen.Children[0], Children: [part] }],
+  }) as typeof demoScreen;
+
+  it("fills from the bottom, by the bound value", () => {
+    const markup = render({
+      screen: screenWith(bar()),
+      selectedIds: [],
+      values: { Bar: 25 },
+      alarms: [],
+    });
+    // The 1px stroke insets the box to 99 high starting at 20.5, so a quarter
+    // of it is 24.75 and the fill starts at 20.5 + 99 - 24.75.
+    expect(markup).toContain('height="24.75"');
+    expect(markup).toContain('y="94.75"');
+  });
+
+  it("draws the remainder in BackColor, under the fill", () => {
+    const markup = render({
+      screen: screenWith(bar()),
+      selectedIds: [],
+      values: { Bar: 10 },
+      alarms: [],
+    });
+    const back = markup.indexOf(resolveColor(12));
+    const front = markup.indexOf(resolveColor(1));
+    expect(back).toBeGreaterThan(-1);
+    expect(front).toBeGreaterThan(back);
+  });
+
+  it("is an ordinary rectangle when the level is not enabled", () => {
+    const plain = render({
+      screen: screenWith(bar({ Animation: undefined })),
+      selectedIds: [],
+      values: {},
+      alarms: [],
+    });
+    expect(plain).not.toContain(resolveColor(12));
+  });
+});

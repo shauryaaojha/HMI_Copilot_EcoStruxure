@@ -64,9 +64,9 @@ export function textBox(
 export function rectangle(
   name: string,
   box: Box,
-  opts: { fill?: number; border?: number } = {},
+  opts: { fill?: number; border?: number; fillLevel?: { back: number; vertical?: boolean } } = {},
 ): Part {
-  const { fill = PAPER, border = GREY } = opts;
+  const { fill = PAPER, border = GREY, fillLevel } = opts;
   return {
     Type: "Rectangle",
     UniqueId: gid(),
@@ -77,6 +77,20 @@ export function rectangle(
     Location: { Left: box.left, Top: box.top },
     Width: box.width,
     Height: box.height,
+    // The product's bar: a Rectangle that fills to a level, with BackColor as
+    // the part not yet filled. The axis is named by which property is present,
+    // which is how the shipped templates distinguish them.
+    ...(fillLevel
+      ? {
+          Animation: {
+            FillLevel: {
+              Enable: true,
+              BackColor: { Value: fillLevel.back },
+              ...(fillLevel.vertical === false ? { HorizontalFill: 0 } : { VerticalFill: 0 }),
+            },
+          },
+        }
+      : {}),
   };
 }
 
