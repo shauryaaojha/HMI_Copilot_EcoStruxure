@@ -286,8 +286,8 @@ export function validateProject(
     }
 
     for (const part of view.Children) {
-      const right = part.Location.Left + part.Width;
-      const bottom = part.Location.Top + part.Height;
+      const right = part.Location.Left + (part.Width ?? 0);
+      const bottom = part.Location.Top + (part.Height ?? 0);
       if (part.Location.Left < 0 || part.Location.Top < 0 || right > box.width || bottom > box.height) {
         findings.push({
           severity: "warning",

@@ -14,7 +14,7 @@ export function RectanglePart({ part }: { part: PartOf<"Rectangle"> }) {
   const stroke = part.Thickness ?? 1;
   return (
     <rect
-      {...insetStroke(part.Location.Left, part.Location.Top, part.Width, part.Height, stroke)}
+      {...insetStroke(part.Location.Left, part.Location.Top, (part.Width ?? 0), (part.Height ?? 0), stroke)}
       fill={fill(part, "Fill", "#ffffff")}
       stroke={fill(part, "Border", "#515151")}
       strokeWidth={stroke}
@@ -28,8 +28,8 @@ export function TextBoxPart({ part }: { part: PartOf<"TextBox"> }) {
       text={part.Text}
       left={part.Location.Left}
       top={part.Location.Top}
-      width={part.Width}
-      height={part.Height}
+      width={(part.Width ?? 0)}
+      height={(part.Height ?? 0)}
       color={fill(part, "TextColor", "#030303")}
       align={part.TextLayout?.HorizontalAlignment}
       {...fontOf(part)}
@@ -50,7 +50,7 @@ export function LampPart({ part, on }: { part: PartOf<"Lamp">; on: boolean }) {
   return (
     <>
       <rect
-        {...insetStroke(x, y, part.Width, part.Height, stroke)}
+        {...insetStroke(x, y, (part.Width ?? 0), (part.Height ?? 0), stroke)}
         fill={fill(state, "Fill", "#d9d9d9")}
         stroke={fill(state, "Border", "#515151")}
         strokeWidth={stroke}
@@ -59,8 +59,8 @@ export function LampPart({ part, on }: { part: PartOf<"Lamp">; on: boolean }) {
         text={state.Text ?? ""}
         left={x}
         top={y}
-        width={part.Width}
-        height={part.Height}
+        width={(part.Width ?? 0)}
+        height={(part.Height ?? 0)}
         color={fill(state, "TextColor", "#030303")}
         align={2}
         {...fontOf(state, 13)}
@@ -120,8 +120,8 @@ export function SwitchPart({ part, pressed }: { part: PartOf<"Switch">; pressed:
       state={pressed ? part.Press : part.Release}
       x={part.Location.Left}
       y={part.Location.Top}
-      width={part.Width}
-      height={part.Height}
+      width={(part.Width ?? 0)}
+      height={(part.Height ?? 0)}
       fallbackFill="#ffffff"
     />
   );
@@ -143,8 +143,8 @@ export function NStateLampPart({ part, value }: { part: PartOf<"N-StateLamp">; v
       state={state}
       x={part.Location.Left}
       y={part.Location.Top}
-      width={part.Width}
-      height={part.Height}
+      width={(part.Width ?? 0)}
+      height={(part.Height ?? 0)}
       fallbackFill="#d9d9d9"
     />
   );
@@ -156,7 +156,7 @@ export function StringDisplayPart({ part, value }: { part: PartOf<"StringDisplay
   return (
     <>
       <rect
-        {...insetStroke(part.Location.Left, part.Location.Top, part.Width, part.Height, stroke)}
+        {...insetStroke(part.Location.Left, part.Location.Top, (part.Width ?? 0), (part.Height ?? 0), stroke)}
         fill={fill(part, "Fill", "#ffffff")}
         stroke={fill(part, "Border", "#515151")}
         strokeWidth={stroke}
@@ -165,8 +165,8 @@ export function StringDisplayPart({ part, value }: { part: PartOf<"StringDisplay
         text={shown}
         left={part.Location.Left}
         top={part.Location.Top}
-        width={part.Width}
-        height={part.Height}
+        width={(part.Width ?? 0)}
+        height={(part.Height ?? 0)}
         color={fill(part, "TextColor", "#030303")}
         align={part.TextLayout?.HorizontalAlignment ?? 1}
         mono
@@ -189,7 +189,7 @@ export function NumericDisplayPart({
   return (
     <>
       <rect
-        {...insetStroke(part.Location.Left, part.Location.Top, part.Width, part.Height, stroke)}
+        {...insetStroke(part.Location.Left, part.Location.Top, (part.Width ?? 0), (part.Height ?? 0), stroke)}
         fill={fill(part, "Fill", "#ffffff")}
         stroke={fill(part, "Border", "#515151")}
         strokeWidth={stroke}
@@ -198,8 +198,8 @@ export function NumericDisplayPart({
         text={shown.toFixed(part.DecimalDigits ?? 0)}
         left={part.Location.Left}
         top={part.Location.Top}
-        width={part.Width}
-        height={part.Height}
+        width={(part.Width ?? 0)}
+        height={(part.Height ?? 0)}
         color={fill(part, "TextColor", "#030303")}
         align={part.TextLayout?.HorizontalAlignment ?? 4}
         mono

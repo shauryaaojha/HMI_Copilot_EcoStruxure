@@ -83,8 +83,8 @@ export function PathPartNode({ part }: { part: PartOf<"Path"> }) {
       source={part}
       x={part.Location.Left}
       y={part.Location.Top}
-      width={part.Width}
-      height={part.Height}
+      width={(part.Width ?? 0)}
+      height={(part.Height ?? 0)}
       fillColor={fill(part, "Fill", "#2b7fd4")}
       strokeColor={fill(part, "Border", "#0d3f6e")}
       strokeWidth={part.Thickness ?? 1}

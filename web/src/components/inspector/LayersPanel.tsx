@@ -13,6 +13,7 @@
  * the export that the product would not recognise.
  */
 
+import { isSizedByParent } from "@/lib/ote/schema";
 import { useRef, useState } from "react";
 import { Eye, EyeOff, Layers, Lock, PackageOpen, Unlock } from "lucide-react";
 import { TOOL_ICON } from "@/components/canvas/toolIcons";
@@ -116,6 +117,19 @@ export function LayersPanel() {
                 >
                   {part.Name}
                 </button>
+
+                {/* A part placed in a grid cell carries no size of its own.
+                    Saying so is the point: the inspector would otherwise show
+                    0 x 0 and read as a part that is there but invisible. */}
+                {isSizedByParent(part) && (
+                  <span
+                    aria-label="sized by its parent"
+                    title="Sized by its parent, not by its own width and height"
+                    className="shrink-0 text-[9px] text-text-faint"
+                  >
+                    auto
+                  </span>
+                )}
 
                 {bound.has(part.UniqueId) && (
                   <span

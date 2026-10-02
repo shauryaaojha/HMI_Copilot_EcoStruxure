@@ -43,8 +43,8 @@ const units = [unit("P101"), unit("P102"), unit("P103"), unit("P104"), unit("P10
 const boxOf = (p: Part) => ({
   left: p.Location.Left,
   top: p.Location.Top,
-  right: p.Location.Left + p.Width,
-  bottom: p.Location.Top + p.Height,
+  right: p.Location.Left + (p.Width ?? 0),
+  bottom: p.Location.Top + (p.Height ?? 0),
 });
 
 describe("one screen", () => {

@@ -49,6 +49,7 @@ import {
   RED,
   WHITE,
 } from "@/lib/ote/palette";
+import { sizeOf } from "@/lib/ote/schema";
 import type { Alarm, Part, Screen } from "@/lib/ote/schema";
 import { clampToPanel } from "@/lib/ote/place";
 import { boxOf, panelOf, resolveSlot, type Box, type Slot } from "@/lib/ote/regions";
@@ -541,7 +542,7 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
           reject(op, unresolved(s, op.target!));
           break;
         }
-        const size = { width: found.part.Width, height: found.part.Height };
+        const size = sizeOf(found.part);
         let box: Box;
         if (op.left !== undefined || op.top !== undefined) {
           box = clampToPanel(
@@ -587,8 +588,8 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
             {
               left: found.part.Location.Left,
               top: found.part.Location.Top,
-              width: op.width ?? found.part.Width,
-              height: op.height ?? found.part.Height,
+              width: op.width ?? (found.part.Width ?? 0),
+              height: op.height ?? (found.part.Height ?? 0),
             },
             panelOf(found.screen),
           ),
@@ -888,7 +889,7 @@ export function commit(run: DryRun, label: string, live: ProjectStore = useProje
 export function previewOf(run: DryRun, live: ProjectStore = useProject): Record<string, ScreenPreview> {
   const before = new Map(live.getState().screens.map((s) => [s.UniqueId, s]));
   const out: Record<string, ScreenPreview> = {};
-  const box = (p: Part) => ({ left: p.Location.Left, top: p.Location.Top, width: p.Width, height: p.Height });
+  const box = (p: Part) => ({ left: p.Location.Left, top: p.Location.Top, ...sizeOf(p) });
 
   for (const screen of run.patch.screens) {
     const was = before.get(screen.UniqueId);

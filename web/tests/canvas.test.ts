@@ -53,13 +53,13 @@ function rects(markup: string) {
  * PIL draws a rectangle's outline inside the box; SVG straddles the path. The
  * canvas insets by half the stroke so the two land on the same pixels.
  */
-function expectedBox(part: { Location: { Left: number; Top: number }; Width: number; Height: number }, stroke: number) {
+function expectedBox(part: { Location: { Left: number; Top: number }; Width?: number; Height?: number }, stroke: number) {
   const half = stroke / 2;
   return {
     x: String(part.Location.Left + half),
     y: String(part.Location.Top + half),
-    width: String(part.Width - stroke),
-    height: String(part.Height - stroke),
+    width: String((part.Width ?? 0) - stroke),
+    height: String((part.Height ?? 0) - stroke),
   };
 }
 

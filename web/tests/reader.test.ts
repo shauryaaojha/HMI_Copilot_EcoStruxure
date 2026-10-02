@@ -18,6 +18,7 @@ import { describe, expect, it } from "vitest";
 import { readProject } from "@/lib/ote/reader";
 import { packageProject, type PackageInput } from "@/lib/ote/packager";
 import { rectangle } from "@/lib/ote/parts";
+import { isSizedByParent } from "@/lib/ote/schema";
 
 const FILE = path.join(__dirname, "..", "..", "demo_project", "HMICopilot_PumpStation.eote");
 const bytes = () => new Uint8Array(fs.readFileSync(FILE));
@@ -187,7 +188,7 @@ describe("the round trip", () => {
 
     const read = await readProject(modified);
     const input = inputOf(read);
-    input.screens[0].Children[0].Children[0].Width += 1;
+    input.screens[0].Children[0].Children[0].Width = (input.screens[0].Children[0].Children[0].Width ?? 0) + 1;
     const out = await packageProject(input, undefined, read.preserved);
     const written = await entriesOf(out);
     const name = [...written.keys()].find((n) => /Screen\.dat$/i.test(n))!;
@@ -338,6 +339,37 @@ describe("the encodings the product also writes", () => {
     const json = JSON.parse(new TextDecoder().decode(written.get(name)!));
     expect(json.Children[0].Type).toBe("Canvas");
     expect("Width" in json.Children[0]).toBe(false);
+  });
+
+  it("models a part sized by its parent, and does not invent a size", async () => {
+    // A part in a grid cell carries no Width: its size comes from the parent's
+    // row and column definitions. 6% of the corpus's struct Rectangles have
+    // one. docs/VXDZ_FINDINGS.md §2.4.
+    const modified = await withScreen((raw) => {
+      const title = raw.Children[0].Children.find((p: any) => p.Name === "Title");
+      delete title.Width;
+      delete title.Height;
+    });
+
+    const read = await readProject(modified);
+    expect(read.warnings).toEqual([]);
+    const title = read.screens[0].Children[0].Children.find((p) => p.Name === "Title");
+    expect(title).toBeDefined();
+    expect(title!.Width).toBeUndefined();
+    expect(isSizedByParent(title!)).toBe(true);
+    // A part that really is zero wide is a different thing, and still reads as one.
+    const banner = read.screens[0].Children[0].Children.find((p) => p.Name === "Banner");
+    expect(isSizedByParent(banner!)).toBe(false);
+
+    const out = await packageProject(inputOf(read), undefined, read.preserved);
+    expect(await diff(modified, out)).toEqual([]);
+
+    // Writing a Width back into a part that never had one would change the
+    // file, and would be a size the product did not ask for.
+    await expectSurvivesAnEdit(modified, (title) => {
+      expect("Width" in title).toBe(false);
+      expect("Height" in title).toBe(false);
+    });
   });
 
   it("still refuses a palette index outside the colour set", async () => {

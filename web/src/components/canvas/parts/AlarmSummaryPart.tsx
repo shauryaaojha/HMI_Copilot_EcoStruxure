@@ -11,6 +11,7 @@
  * renderer produce the same grid from the same file.
  */
 
+import { sizeOf } from "@/lib/ote/schema";
 import { useId } from "react";
 import { resolveColor } from "@/lib/ote/palette";
 import { insetStroke, type PartOf } from "./geometry";
@@ -51,8 +52,7 @@ export function AlarmSummaryPart({
 }) {
   const clipId = useId();
   const { Left: x, Top: y } = part.Location;
-  const w = part.Width;
-  const h = part.Height;
+  const { width: w, height: h } = sizeOf(part);
 
   const visible = Math.max(0, Math.floor((h - HEADER_HEIGHT) / ROW_HEIGHT));
   const shown = rows.slice(0, visible);

@@ -114,8 +114,8 @@ function boxOf(part: Part): Box {
   return {
     left: part.Location.Left,
     top: part.Location.Top,
-    width: part.Width,
-    height: part.Height,
+    width: (part.Width ?? 0),
+    height: (part.Height ?? 0),
   };
 }
 
@@ -702,8 +702,8 @@ function Outline({
     <rect
       x={part.Location.Left - strokeWidth}
       y={part.Location.Top - strokeWidth}
-      width={part.Width + strokeWidth * 2}
-      height={part.Height + strokeWidth * 2}
+      width={(part.Width ?? 0) + strokeWidth * 2}
+      height={(part.Height ?? 0) + strokeWidth * 2}
       fill="none"
       stroke={stroke}
       strokeWidth={strokeWidth}

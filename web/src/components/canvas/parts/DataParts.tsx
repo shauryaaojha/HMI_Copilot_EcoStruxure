@@ -70,13 +70,13 @@ function Face({
 export function ToggleSwitchPart({ part, on }: { part: PartOf<"ToggleSwitch">; on: boolean }) {
   const { Left: x, Top: y } = part.Location;
   const state = on ? part.On : part.Off;
-  const knob = Math.max(4, Math.min(10, part.Height / 6));
+  const knob = Math.max(4, Math.min(10, (part.Height ?? 0) / 6));
   return (
     <>
-      <Face state={state} x={x} y={y} width={part.Width} height={part.Height} fallbackFill="#d9d9d9" />
+      <Face state={state} x={x} y={y} width={(part.Width ?? 0)} height={(part.Height ?? 0)} fallbackFill="#d9d9d9" />
       <rect
-        x={on ? x + part.Width - knob * 2 - 4 : x + 4}
-        y={y + part.Height - knob - 4}
+        x={on ? x + (part.Width ?? 0) - knob * 2 - 4 : x + 4}
+        y={y + (part.Height ?? 0) - knob - 4}
         width={knob * 2}
         height={knob}
         rx={knob / 2}
@@ -95,14 +95,14 @@ export function ToggleSwitchPart({ part, on }: { part: PartOf<"ToggleSwitch">; o
  */
 export function BarScalePart({ part }: { part: PartOf<"BarScale"> }) {
   const { Left: x, Top: y } = part.Location;
-  const vertical = part.Height >= part.Width;
+  const vertical = (part.Height ?? 0) >= (part.Width ?? 0);
   const stroke = fill(part, "Stroke", "#030303");
   const label = part.LabelAttribute ?? {};
   const max = typeof label.Max === "number" ? label.Max : 100;
   const digits = typeof label.FloatDigits === "number" ? label.FloatDigits : 0;
   const font = fontOf(label as { Font?: { Size?: number } }, 10);
   const labelColor = fill(label, "TextColor", stroke);
-  const showLabels = part.ScaleLabel !== false && (vertical ? part.Width >= 28 : part.Height >= 22);
+  const showLabels = part.ScaleLabel !== false && (vertical ? (part.Width ?? 0) >= 28 : (part.Height ?? 0) >= 22);
   const major = 5;
   const ticks: ReactNode[] = [];
 
@@ -111,7 +111,7 @@ export function BarScalePart({ part }: { part: PartOf<"BarScale"> }) {
     const t = i / (major * 2);
     const len = isMajor ? 8 : 4;
     if (vertical) {
-      const ty = y + t * part.Height;
+      const ty = y + t * (part.Height ?? 0);
       ticks.push(<line key={i} x1={x} y1={ty} x2={x + len} y2={ty} stroke={stroke} strokeWidth={1} />);
       if (isMajor && showLabels)
         ticks.push(
@@ -128,7 +128,7 @@ export function BarScalePart({ part }: { part: PartOf<"BarScale"> }) {
           </text>,
         );
     } else {
-      const tx = x + t * part.Width;
+      const tx = x + t * (part.Width ?? 0);
       ticks.push(<line key={i} x1={tx} y1={y} x2={tx} y2={y + len} stroke={stroke} strokeWidth={1} />);
       if (isMajor && showLabels)
         ticks.push(
@@ -151,9 +151,9 @@ export function BarScalePart({ part }: { part: PartOf<"BarScale"> }) {
   return (
     <g pointerEvents="none">
       {vertical ? (
-        <line x1={x} y1={y} x2={x} y2={y + part.Height} stroke={stroke} strokeWidth={1} />
+        <line x1={x} y1={y} x2={x} y2={y + (part.Height ?? 0)} stroke={stroke} strokeWidth={1} />
       ) : (
-        <line x1={x} y1={y} x2={x + part.Width} y2={y} stroke={stroke} strokeWidth={1} />
+        <line x1={x} y1={y} x2={x + (part.Width ?? 0)} y2={y} stroke={stroke} strokeWidth={1} />
       )}
       {ticks}
     </g>
@@ -174,7 +174,7 @@ export function PipePart({ part, value }: { part: PartOf<"Pipe">; value?: number
       : (part.Invalid ?? part.States[part.States.length - 1]);
   const points = part.Path.Data.map(
     ({ Location }) =>
-      `${x + (Location.Left / UNIT) * part.Width},${y + (Location.Top / UNIT) * part.Height}`,
+      `${x + (Location.Left / UNIT) * (part.Width ?? 0)},${y + (Location.Top / UNIT) * (part.Height ?? 0)}`,
   ).join(" ");
   const border = state.BorderThickness ?? 7;
   const inner = state.FillThickness ?? 3;
@@ -205,7 +205,7 @@ export function DateTimeDisplayPart({
   return (
     <>
       <rect
-        {...insetStroke(part.Location.Left, part.Location.Top, part.Width, part.Height, stroke)}
+        {...insetStroke(part.Location.Left, part.Location.Top, (part.Width ?? 0), (part.Height ?? 0), stroke)}
         fill={fill(part, "Fill", "#ffffff")}
         stroke={fill(part, "Border", "#515151")}
         strokeWidth={stroke}
@@ -214,8 +214,8 @@ export function DateTimeDisplayPart({
         text={value ?? DESIGN_TIME}
         left={part.Location.Left}
         top={part.Location.Top}
-        width={part.Width}
-        height={part.Height}
+        width={(part.Width ?? 0)}
+        height={(part.Height ?? 0)}
         color={fill(part, "TextColor", "#030303")}
         align={part.TextLayout?.HorizontalAlignment ?? 2}
         mono
@@ -258,14 +258,14 @@ function TrendFrame({ part, children }: { part: Trend; children: (plot: Plot) =>
   const plot: Plot = {
     x: x + pad.left,
     y: y + pad.top,
-    w: Math.max(0, part.Width - pad.left - pad.right),
-    h: Math.max(0, part.Height - pad.top - pad.bottom),
+    w: Math.max(0, (part.Width ?? 0) - pad.left - pad.right),
+    h: Math.max(0, (part.Height ?? 0) - pad.top - pad.bottom),
   };
   const axis = "#7d8b99";
   return (
     <g pointerEvents="none">
       <rect
-        {...insetStroke(x, y, part.Width, part.Height, 1)}
+        {...insetStroke(x, y, (part.Width ?? 0), (part.Height ?? 0), 1)}
         fill={fill(part, "Fill", "#ffffff")}
         stroke={fill(part, "Border", "#515151")}
         strokeWidth={1}

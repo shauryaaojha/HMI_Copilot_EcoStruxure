@@ -51,7 +51,7 @@ describe("a part asked for in a region takes the region's size", () => {
     expect(applied).toHaveLength(1);
     const lamp = parts().at(-1)!;
     expect(parts().length).toBe(before + 1);
-    expect(lamp.Location.Top + lamp.Height).toBeLessThanOrEqual(44);
+    expect(lamp.Location.Top + (lamp.Height ?? 0)).toBeLessThanOrEqual(44);
     expect(lamp.Type === "Lamp" && lamp.On.Text).toBe("STANDBY");
   });
 });

@@ -49,8 +49,8 @@ const { HEADER, NAV, FOOTER, MARGIN, GAP, CARD } = ZONES;
 export const boxOf = (part: Part): Box => ({
   left: part.Location.Left,
   top: part.Location.Top,
-  width: part.Width,
-  height: part.Height,
+  width: (part.Width ?? 0),
+  height: (part.Height ?? 0),
 });
 
 const overlaps = (a: Box, b: Box, gap = 0) =>
@@ -98,8 +98,8 @@ export function regionsOf(parts: Part[], panel: Panel): Record<Region, Box | nul
 
 /** Which region a part sits in, by where its centre falls. */
 export function regionOf(part: Part, regions: Record<Region, Box | null>): Region {
-  const cx = part.Location.Left + part.Width / 2;
-  const cy = part.Location.Top + part.Height / 2;
+  const cx = part.Location.Left + (part.Width ?? 0) / 2;
+  const cy = part.Location.Top + (part.Height ?? 0) / 2;
   for (const name of REGIONS) {
     const box = regions[name];
     if (!box) continue;

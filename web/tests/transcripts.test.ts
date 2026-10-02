@@ -60,10 +60,10 @@ type Store = ReturnType<typeof seeded>;
 const isBackground = (p: Part) => p.Type === "Rectangle";
 
 const overlap = (a: Part, b: Part) =>
-  a.Location.Left < b.Location.Left + b.Width &&
-  a.Location.Left + a.Width > b.Location.Left &&
-  a.Location.Top < b.Location.Top + b.Height &&
-  a.Location.Top + a.Height > b.Location.Top;
+  a.Location.Left < b.Location.Left + (b.Width ?? 0) &&
+  a.Location.Left + (a.Width ?? 0) > b.Location.Left &&
+  a.Location.Top < b.Location.Top + (b.Height ?? 0) &&
+  a.Location.Top + (a.Height ?? 0) > b.Location.Top;
 
 function checkInvariants(store: Store, label: string) {
   const s = store.getState();
@@ -75,8 +75,8 @@ function checkInvariants(store: Store, label: string) {
     for (const p of parts) {
       expect(p.Location.Left, `${label}: ${p.Name} left`).toBeGreaterThanOrEqual(0);
       expect(p.Location.Top, `${label}: ${p.Name} top`).toBeGreaterThanOrEqual(0);
-      expect(p.Location.Left + p.Width, `${label}: ${p.Name} right edge`).toBeLessThanOrEqual(rootBox(view).width);
-      expect(p.Location.Top + p.Height, `${label}: ${p.Name} bottom edge`).toBeLessThanOrEqual(rootBox(view).height);
+      expect(p.Location.Left + (p.Width ?? 0), `${label}: ${p.Name} right edge`).toBeLessThanOrEqual(rootBox(view).width);
+      expect(p.Location.Top + (p.Height ?? 0), `${label}: ${p.Name} bottom edge`).toBeLessThanOrEqual(rootBox(view).height);
       expect(names.has(p.Name), `${label}: duplicate name ${p.Name}`).toBe(false);
       names.add(p.Name);
       ids.add(p.UniqueId);

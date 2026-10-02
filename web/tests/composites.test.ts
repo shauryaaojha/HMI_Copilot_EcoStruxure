@@ -66,7 +66,7 @@ describe("every composite expands to parts the product accepts", () => {
     const band = parts.find((p) => p.Name === "I_Band")!;
     // Top half of the scale: the band starts at the scale's top and ends at its middle.
     expect(band.Location.Top).toBe(scale.Location.Top);
-    expect(band.Height).toBeCloseTo(scale.Height / 2, 0);
+    expect((band.Height ?? 0)).toBeCloseTo((scale.Height ?? 0) / 2, 0);
   });
 
   it("props fill from the defaults and refuse nonsense", () => {

@@ -114,12 +114,25 @@ export const TextLayout = z.object({
   Wrap: z.boolean().optional(),
 });
 
+/**
+ * What every part carries.
+ *
+ * `Width` and `Height` are optional because a part placed in a grid cell does
+ * not have them: its size comes from the parent's row and column definitions,
+ * and the product writes neither. On the 519 struct-layout Rectangles in the
+ * corpus a Width appears on 6% of them, and `Location` is `{Row, Column}`
+ * rather than `{Left, Top}` on half. docs/VXDZ_FINDINGS.md §2.4.
+ *
+ * Optional rather than defaulted to zero: a part sized by its parent is a
+ * different thing from a part that is zero wide, and the editor has to be able
+ * to say so. `sizeOf` is how a renderer asks for a box.
+ */
 const base = {
   UniqueId: z.string().uuid(),
   Name: z.string(),
   Location: Location,
-  Width: z.number().nonnegative(),
-  Height: z.number().nonnegative(),
+  Width: z.number().nonnegative().optional(),
+  Height: z.number().nonnegative().optional(),
 };
 
 export const Rectangle = z.object({
@@ -437,6 +450,25 @@ export const ScreenRoot = z.union([ViewBox, Canvas]);
  * size back into a root that did not have one would change the file, and the
  * round trip in tests/reader.test.ts is the thing that must not move.
  */
+/**
+ * A part's drawn box.
+ *
+ * A part sized by its parent has no Width of its own, and until the reader
+ * models grid containers (docs/PLAN_PHASE2.md, "Grid containers") there is
+ * nothing to resolve it against - so zero is what it draws as, which is the
+ * honest reading of "unknown" on an absolute canvas. The editor says so in
+ * words instead, via `isSizedByParent`; a part that is genuinely zero wide and
+ * one whose size lives in its parent are different things and the UI must not
+ * show them the same way.
+ */
+export function sizeOf(part: { Width?: number; Height?: number }): { width: number; height: number } {
+  return { width: part.Width ?? 0, height: part.Height ?? 0 };
+}
+
+/** True when the product left the size to the parent grid. */
+export const isSizedByParent = (part: { Width?: number; Height?: number }): boolean =>
+  part.Width === undefined || part.Height === undefined;
+
 export const DEFAULT_PANEL = { width: 1024, height: 600 } as const;
 
 export function rootBox(

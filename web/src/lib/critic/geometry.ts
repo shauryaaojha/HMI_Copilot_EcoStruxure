@@ -35,8 +35,8 @@ interface Box {
 const boxOf = (p: Part): Box => ({
   left: p.Location.Left,
   top: p.Location.Top,
-  right: p.Location.Left + p.Width,
-  bottom: p.Location.Top + p.Height,
+  right: p.Location.Left + (p.Width ?? 0),
+  bottom: p.Location.Top + (p.Height ?? 0),
 });
 
 const areaOf = (b: Box) => Math.max(0, b.right - b.left) * Math.max(0, b.bottom - b.top);

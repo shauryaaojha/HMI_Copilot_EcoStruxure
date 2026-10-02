@@ -136,7 +136,7 @@ export function applyPack(
     const isGround =
       part.Type === "Rectangle" &&
       screen !== undefined &&
-      part.Width * part.Height >= 0.9 * screen.width * screen.height;
+      (part.Width ?? 0) * (part.Height ?? 0) >= 0.9 * screen.width * screen.height;
 
     for (const { face, label, normal } of facesOf(part)) {
       const where = label ? `${part.Name} ${label}` : part.Name;
