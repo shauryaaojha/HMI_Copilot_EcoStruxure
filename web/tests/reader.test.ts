@@ -15,7 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
-import { readProject } from "@/lib/ote/reader";
+import { layoutOf, readProject } from "@/lib/ote/reader";
 import { packageProject, type PackageInput } from "@/lib/ote/packager";
 import { rectangle } from "@/lib/ote/parts";
 import { isSizedByParent } from "@/lib/ote/schema";
@@ -404,5 +404,30 @@ describe("the encodings the product also writes", () => {
     const read = await readProject(modified);
     expect(read.carried.opaqueParts).toBe(1);
     expect(read.screens[0].Children[0].Children.some((p) => p.Name === "Title")).toBe(false);
+  });
+});
+
+/**
+ * Which layout a file is, before trying to read it.
+ *
+ * Schneider ships both generations in one template pack. The older one fails
+ * deep inside the reader on "no such table: Variables", which is true and
+ * useless, so the import route asks this first and refuses by name with the
+ * reason. docs/VXDZ_FINDINGS.md §7.2.
+ */
+describe("telling the two project layouts apart", () => {
+  it("calls our own .eote the modern layout", async () => {
+    expect(await layoutOf(bytes())).toBe("typed");
+  });
+
+  it("calls a Contents\\panelN.dat project the older one", async () => {
+    // The shape of a 3.1 archive: screens as numbered panels at the root of
+    // Contents, and no folder-per-screen anywhere.
+    const zip = new JSZip();
+    zip.file("Project.dat", JSON.stringify({ Brand: "Schneider", AppVersion: "3.1.100" }));
+    zip.file("contents.inf", "{}");
+    zip.file("Contents\\panel1.dat", JSON.stringify({ Type: "Content", GraphicalObjects: {} }));
+    zip.file("Screens\\panel1.dat", JSON.stringify({ Type: "Screen", GraphicalObjects: {} }));
+    expect(await layoutOf(await zip.generateAsync({ type: "uint8array" }))).toBe("struct");
   });
 });

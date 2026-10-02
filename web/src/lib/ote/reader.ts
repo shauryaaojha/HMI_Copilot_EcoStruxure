@@ -146,6 +146,28 @@ function modelScreen(raw: Record<string, unknown>): { screen: Screen | null; par
   return { screen: parsed.success ? parsed.data : null, parts, opaque };
 }
 
+/**
+ * Which generation of the format a file is, decided on its entry names.
+ *
+ * Schneider's own template packs ship both. The modern one - 4.4, and `.vxdz`
+ * at AppVersion 3.4.1 and later - keeps a screen at `Screens\<guid>\Screen.dat`
+ * and a `Variables` table in `Variables.db`, which is what this reader models.
+ * The older one keeps screens at `Contents\panelN.dat`, models an object as a
+ * `{Type, Properties[]}` node, and names its database tables differently.
+ *
+ * Reading it is a separate piece of work and docs/VXDZ_FINDINGS.md §7.2 is the
+ * argument for not starting it. What matters here is that a file we cannot
+ * read is refused by name rather than part way through, with the reason.
+ */
+export type ProjectLayout = "typed" | "struct";
+
+export async function layoutOf(bytes: Uint8Array): Promise<ProjectLayout> {
+  const zip = await JSZip.loadAsync(bytes);
+  const names = Object.keys(zip.files).filter((n) => !zip.files[n].dir);
+  const typed = names.some((n) => /Screens[\\/][0-9a-f-]{36}[\\/]Screen\.dat$/i.test(n));
+  return typed ? "typed" : "struct";
+}
+
 export async function readProject(bytes: Uint8Array, fileName = "project.eote"): Promise<ReadProject> {
   const zip = await JSZip.loadAsync(bytes);
   const entries = new Map<string, Uint8Array>();

@@ -280,11 +280,12 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
           >
             <FolderOpen size={16} aria-hidden className="text-brand-400" />
             <h2 className="mt-2.5 flex items-center gap-1.5 text-sm font-semibold">
-              Open an .eote
+              Open a project
               <ArrowRight size={13} aria-hidden className="opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
             </h2>
             <p className="mt-1 text-xs leading-relaxed text-text-muted">
-              Edit a project you already have. It exports back unchanged everywhere you did not touch.
+              An .eote, or a .vxdz from 3.4.1 on. It exports back unchanged everywhere
+              you did not touch — always as an .eote, which is the format we write.
             </p>
           </button>
         </div>
@@ -367,7 +368,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
       <input
         ref={filePicker}
         type="file"
-        accept=".eote"
+        accept=".eote,.vxdz"
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];

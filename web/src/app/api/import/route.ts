@@ -1,5 +1,5 @@
 /**
- * Open an existing .eote.
+ * Open an existing .eote, or a .vxdz the reader can model.
  *
  * The bytes are kept by lib/ote/imports.ts - MongoDB when one is configured,
  * the filesystem otherwise - because the export of an opened project starts
@@ -10,7 +10,7 @@
  * Node runtime: sql.js reads the databases.
  */
 
-import { readProject } from "@/lib/ote/reader";
+import { layoutOf, readProject } from "@/lib/ote/reader";
 import { importStore, putImport } from "@/lib/ote/imports";
 
 export const runtime = "nodejs";
@@ -25,7 +25,31 @@ export async function POST(request: Request) {
     return Response.json({ error: "expected the .eote bytes as the body" }, { status: 400 });
   }
   if (bytes.length < 22) {
-    return Response.json({ error: "that is not a .eote file" }, { status: 400 });
+    return Response.json({ error: "that is not a project file" }, { status: 400 });
+  }
+
+  // Refuse the older layout by name rather than part way through. Without this
+  // a .vxdz at 3.1 to 3.3 fails on "no such table: Variables", which is true
+  // and tells the engineer nothing. docs/VXDZ_FINDINGS.md §7.2.
+  let layout: Awaited<ReturnType<typeof layoutOf>>;
+  try {
+    layout = await layoutOf(bytes);
+  } catch {
+    return Response.json({ error: "that file is not a project archive" }, { status: 400 });
+  }
+  if (layout === "struct") {
+    return Response.json(
+      {
+        error:
+          `${fileName} is an older project layout, which this tool cannot open yet. ` +
+          "It keeps its screens as Contents\\panelN.dat rather than one folder per screen, " +
+          "and its objects and databases are shaped differently throughout. " +
+          "Projects saved by EcoStruxure Operator Terminal Expert 4.4, and .vxdz files at " +
+          "application version 3.4.1 or later, open normally.",
+        layout,
+      },
+      { status: 422 },
+    );
   }
 
   try {
@@ -50,6 +74,8 @@ export async function POST(request: Request) {
       })),
       carried: read.carried,
       warnings: read.warnings,
+      /** So the UI can say what it opened, and that an export is an .eote. */
+      layout,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "could not read the file";
