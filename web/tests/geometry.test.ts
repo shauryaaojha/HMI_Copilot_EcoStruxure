@@ -15,6 +15,7 @@ import { describe, expect, it } from "vitest";
 import { contrastRatio, critiqueGeometry, critiqueScreens, scoreOf } from "@/lib/critic/geometry";
 import { critiqueHeadlines, critiqueNavigation, critiqueRoleCoverage } from "@/lib/critic/coverage";
 import { ISA101, tokenHex } from "@/lib/standard/pack";
+import { lintPack } from "@/lib/standard/lint";
 import { lamp, numericDisplay, pathPart, rectangle, screenOf, textBox } from "@/lib/ote/parts";
 import { modelPlant } from "@/lib/plant/model";
 import { inferEquipment } from "@/lib/ai/infer";
@@ -257,4 +258,27 @@ describe("our own output, on every sample", () => {
       expect(generic.map((f) => f.message)).toEqual([]);
     });
   }
+});
+
+describe("a packed colour, from a project with no palette", () => {
+  const packed = (rgb: number) => ({ Color: { Value: rgb, ColorIndexEnabled: false } });
+
+  it("is read as the colour it is, not as a palette index", () => {
+    const back = rectangle("Back", { left: 0, top: 0, width: 400, height: 200 });
+    (back as unknown as Record<string, unknown>).Fill = packed(0xffffff);
+    const text = textBox("Words", "Pump 101", { left: 16, top: 16, width: 200, height: 24 }, { size: 14 });
+    (text as unknown as Record<string, unknown>).TextColor = packed(0x000000);
+    const findings = critiqueGeometry(screenOf("S", [back, text], { width: 1024, height: 768 })).findings;
+    // Black on white: read as indices both would be "no colour", and one on
+    // the other a contrast of 1:1.
+    expect(findings.filter((f) => f.rule === "geom.textContrast")).toEqual([]);
+  });
+
+  it("is not judged against the pack's palette by the lint", () => {
+    // 55 is the P1 alarm token as an index; as a packed colour it is #000037.
+    const off = lamp("Lamp_X", "STOPPED", "RUNNING", { left: 16, top: 16, width: 120, height: 40 });
+    ((off as unknown as { Off: Record<string, unknown> }).Off).Fill = packed(55);
+    const project = { name: "t", target: { model: "HMIGTO6310", width: 1024, height: 768 }, screens: [screenOf("S", [off], { width: 1024, height: 768 })], variables: [], alarms: [], wires: [] };
+    expect(lintPack(project).filter((f) => f.rule === "colour.abnormalOnly")).toEqual([]);
+  });
 });

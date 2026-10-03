@@ -21,7 +21,7 @@ import type { Finding } from "@/lib/validation/rules";
 import { rootBox } from "@/lib/ote/schema";
 import type { Part, Screen } from "@/lib/ote/schema";
 import { DEFAULT_PACK, tokenHex, type StandardPack } from "@/lib/standard/pack";
-import { COLOR_SETS, resolveColor } from "@/lib/ote/palette";
+import { COLOR_SETS, packedHex, resolveColor } from "@/lib/ote/palette";
 
 /* --- geometry ---------------------------------------------------------- */
 
@@ -82,9 +82,12 @@ export function contrastRatio(a: string, b: string): number {
 
 /** A part's colour for one property, as hex, or undefined when it has none. */
 function hexOf(part: Part, key: "Fill" | "Border" | "TextColor", pack: StandardPack): string | undefined {
-  const paint = (part as unknown as Record<string, unknown>)[key] as { Color?: { Value?: number } } | undefined;
+  const paint = (part as unknown as Record<string, unknown>)[key] as { Color?: { Value?: number; ColorIndexEnabled?: boolean } } | undefined;
   const index = paint?.Color?.Value;
   if (typeof index !== "number") return undefined;
+  // A project with no palette writes the colour itself, 0xRRGGBB; read as an
+  // index it is no colour at all, and every contrast check on it is noise.
+  if (paint?.Color?.ColorIndexEnabled === false) return packedHex(index);
   return resolveColor(index, "#000000", pack.colorSet as keyof typeof COLOR_SETS);
 }
 

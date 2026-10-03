@@ -19,8 +19,15 @@ import { DEFAULT_PACK, fontFloor, neutralSet, signalSet, type StandardPack } fro
 
 type Face = Record<string, unknown>;
 
+/**
+ * The palette index a face uses. A packed colour (ColorIndexEnabled false, from
+ * a project with no palette) is not one: the pack's rules are written in this
+ * colour set's indices, and reading 0x17A1E5 as index 1548773 would judge a
+ * colour that does not exist. It is left to the engineer, not misjudged.
+ */
 const colourOf = (holder: Face | undefined, key: string): number | undefined => {
-  const paint = holder?.[key] as { Color?: { Value?: number } } | undefined;
+  const paint = holder?.[key] as { Color?: { Value?: number; ColorIndexEnabled?: boolean } } | undefined;
+  if (paint?.Color?.ColorIndexEnabled === false) return undefined;
   const v = paint?.Color?.Value;
   return typeof v === "number" ? v : undefined;
 };
