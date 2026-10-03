@@ -7,6 +7,7 @@
  * a pixel. Tested directly in tests/edits.test.ts.
  */
 
+import { sizeOf } from "@/lib/ote/schema";
 import type { Part } from "@/lib/ote/schema";
 
 export interface Box {
@@ -19,8 +20,8 @@ export interface Box {
 export const boxOf = (part: Part): Box => ({
   left: part.Location.Left,
   top: part.Location.Top,
-  width: part.Width,
-  height: part.Height,
+  width: (part.Width ?? 0),
+  height: (part.Height ?? 0),
 });
 
 /** The smallest box containing all of them. Empty input has no bounds. */
@@ -110,9 +111,9 @@ export function distribute(
   );
 
   const span = horizontal
-    ? sorted.at(-1)!.Location.Left + sorted.at(-1)!.Width - sorted[0].Location.Left
-    : sorted.at(-1)!.Location.Top + sorted.at(-1)!.Height - sorted[0].Location.Top;
-  const occupied = sorted.reduce((sum, p) => sum + (horizontal ? p.Width : p.Height), 0);
+    ? sorted.at(-1)!.Location.Left + sizeOf(sorted.at(-1)!).width - sorted[0].Location.Left
+    : sorted.at(-1)!.Location.Top + sizeOf(sorted.at(-1)!).height - sorted[0].Location.Top;
+  const occupied = sorted.reduce((sum, p) => sum + (horizontal ? sizeOf(p).width : sizeOf(p).height), 0);
   const gap = (span - occupied) / (sorted.length - 1);
 
   let cursor = horizontal ? sorted[0].Location.Left : sorted[0].Location.Top;
@@ -121,7 +122,7 @@ export function distribute(
       left: horizontal ? Math.round(cursor) : part.Location.Left,
       top: horizontal ? part.Location.Top : Math.round(cursor),
     });
-    cursor += (horizontal ? part.Width : part.Height) + gap;
+    cursor += (horizontal ? sizeOf(part).width : sizeOf(part).height) + gap;
   }
   return moves;
 }

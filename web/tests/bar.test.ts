@@ -42,7 +42,7 @@ describe("the indicator's bar", () => {
     // The band sits on the bar, from normalLow to normalHigh of its width.
     expect(band.Location.Top).toBe(bar.Location.Top);
     expect(band.Location.Left).toBeGreaterThan(bar.Location.Left);
-    expect(band.Location.Left + band.Width).toBeLessThan(bar.Location.Left + bar.Width);
+    expect(band.Location.Left + band.Width!).toBeLessThan(bar.Location.Left + bar.Width!);
   });
 
   it("binds the value and the fill, the fill through a scale over the indicator's range", () => {

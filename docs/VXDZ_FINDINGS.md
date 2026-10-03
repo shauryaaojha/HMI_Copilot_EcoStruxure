@@ -478,11 +478,21 @@ Measured on `HVAC_Symbol01.vxdz`, 737 top-level parts:
 |---|---:|---|
 | today | 58 | 8% |
 | ceiling for items 1–4 | 314 | 43% |
+| **actual, after items 1–4** | **276** | **37%** |
 | ceiling after item 5 | 714 | **97%** |
 
 The ceilings are counted as "the part's `Type` is one we model" — items 1–4
 remove the encoding reasons a known type fails, item 5 adds the seven types.
 The last 23 parts are `PolyLine`, `DropdownList` and the long tail of §5.
+
+> **Measured afterwards, 2 October 2026.** Items 1–4 landed and the real figure
+> is 37%, not the 43% forecast here. The 38-part gap is entirely non-type
+> blockers this table did not account for: 27 parts want `Path: {Commands,
+> Data}` where our schema wants `Commands` and `Points` at the top level —
+> which §4.2 of this document had already listed as needing a translation and
+> which was never in items 1–4 — plus 5 on `ClickTrigger.OperationType`, 4 on
+> `States` and 1 on `TextColor.Color`. The ceiling was a count of type names
+> and should have been described as an upper bound rather than a prediction.
 
 **Items 1–4 are small and bounded; item 5 is the same per-part work this project
 has done eleven times already.** The jump from 43% to 97% is almost entirely

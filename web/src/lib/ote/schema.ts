@@ -13,12 +13,54 @@
 
 import { z } from "zod";
 
-/** { Color: { Value: <palette index>, Transparency?: 0-100 } } */
+/**
+ * A colour, in the two encodings the product writes.
+ *
+ * `{ Color: { Value: 3 } }` is an index into the project's colour set, which is
+ * what a ColorSet-4 project uses and what we write. A project that does not use
+ * a palette writes `{ Color: { ColorIndexEnabled: false, Value: 1548773 } }`,
+ * and 1548773 is 0x17A1E5 - a packed 0xRRGGBB, not an index.
+ *
+ * The byte order is RGB rather than BGR, which was established from the corpus
+ * rather than assumed: among the twenty packed values Schneider writes,
+ * 0x40C4FF read as RGB is exactly Material Light Blue A200 and read as BGR is
+ * an orange, in a chilled-water HVAC library; 0xE51717 is a clean red one way
+ * and an odd blue the other. docs/VXDZ_FINDINGS.md §3.2.
+ *
+ * Modelling `ColorIndexEnabled` is a preservation fix, not only a parsing one.
+ * zod strips object keys it does not know, and `mergeScreen` writes the parsed
+ * part over the raw one, so before this an edited screen lost the flag and a
+ * packed colour silently became palette index 1548773 - a file that opens and
+ * is quietly the wrong colour, which is the failure this project most wants to
+ * avoid.
+ */
 export const ColorRef = z.object({
-  Color: z.object({
-    Value: z.number().int().min(1).max(60),
-    Transparency: z.number().min(0).max(100).optional(),
-  }),
+  Color: z
+    .object({
+      Value: z.number().int().nonnegative(),
+      /** Absent means indexed: every 4.4 file we write omits it. */
+      ColorIndexEnabled: z.boolean().optional(),
+      Transparency: z.number().min(0).max(100).optional(),
+    })
+    .superRefine((color, ctx) => {
+      // The range check is worth keeping where it applies: the generator writes
+      // indices, and an out-of-range index would otherwise render as nothing.
+      if (color.ColorIndexEnabled === false) {
+        if (color.Value > 0xffffff) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["Value"],
+            message: "packed colour must be 0x000000-0xFFFFFF",
+          });
+        }
+      } else if (color.Value < 1 || color.Value > 60) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["Value"],
+          message: "palette index must be 1-60",
+        });
+      }
+    }),
 });
 
 /**
@@ -33,11 +75,27 @@ export const Paint = z.union([
   z.object({ Type: z.number().int() }).passthrough(),
 ]);
 
+/**
+ * A font reference, in both the encodings the product writes.
+ *
+ * 4.4 writes `{Type: 2, Value: "0", DisplayValue: "0"}` - the id as a string,
+ * twice. 3.4 writes `{Type: 2, Value: 0}` - the same id as a number, with no
+ * DisplayValue at all. Both are the product's own output; neither is more
+ * correct than the other, so both parse.
+ *
+ * `Value` is a union rather than a coercion on purpose. The writer merges the
+ * parsed part over the raw one (`mergeScreen` in packager.ts), so a value
+ * coerced on the way in would be written back in the coerced form and the
+ * round trip would stop being byte-identical. Validate, never transform.
+ *
+ * docs/VXDZ_FINDINGS.md §3.1 counts 420 parts in one corpus file blocked on
+ * this alone.
+ */
 export const FontRef = z.object({
   Type: z.object({
     Type: z.literal(2),
-    Value: z.string(),
-    DisplayValue: z.string(),
+    Value: z.union([z.string(), z.number()]),
+    DisplayValue: z.string().optional(),
   }),
   Size: z.number().positive().optional(),
   Bold: z.boolean().optional(),
@@ -56,34 +114,62 @@ export const TextLayout = z.object({
   Wrap: z.boolean().optional(),
 });
 
+/**
+ * What every part carries.
+ *
+ * `Width` and `Height` are optional because a part placed in a grid cell does
+ * not have them: its size comes from the parent's row and column definitions,
+ * and the product writes neither. On the 519 struct-layout Rectangles in the
+ * corpus a Width appears on 6% of them, and `Location` is `{Row, Column}`
+ * rather than `{Left, Top}` on half. docs/VXDZ_FINDINGS.md §2.4.
+ *
+ * Optional rather than defaulted to zero: a part sized by its parent is a
+ * different thing from a part that is zero wide, and the editor has to be able
+ * to say so. `sizeOf` is how a renderer asks for a box.
+ */
 const base = {
   UniqueId: z.string().uuid(),
   Name: z.string(),
   Location: Location,
-  Width: z.number().nonnegative(),
-  Height: z.number().nonnegative(),
+  Width: z.number().nonnegative().optional(),
+  Height: z.number().nonnegative().optional(),
 };
 
 /**
  * A Rectangle filled to a percentage: the product's live bar. There is no
- * bar-graph part - docs/VXDZ_FINDINGS.md §6 - and the help's own recipe for a
- * bar graph is this property on a Rectangle with a Scale converter on its
- * binding. Fill is the bar, BackColor the unfilled remainder; HorizontalFill
- * and VerticalFill take 0-100. Shapes from the 4.4 Polygon capture and the
- * typed corpus Rectangles ({Enable, BackColor: {Value}}); the rest of the
- * struct (start points) is carried through.
+ * bar-graph part and never was: of the 120 objects in the corpus carrying
+ * Animation.FillLevel, all 120 are Rectangles (docs/VXDZ_FINDINGS.md §6).
+ * Fill is the bar, BackColor the unfilled remainder; HorizontalFill and
+ * VerticalFill take 0-100, and the help's own recipe for a bar graph binds
+ * them through a Scale converter (lib/ote/converters.ts).
+ *
+ * `BackColor` is a bare colour rather than our `{Color: {...}}` wrapper, which
+ * is what both captured examples show: `{Value: 12}` in the corpus and
+ * `{Transparency: 80}` in our own 4.4 Polygon. `ColorIndexEnabled` is modelled
+ * for the same reason it is on ColorRef.
+ *
+ * Both objects pass through what they do not model. mergeScreen writes the
+ * parsed part over the raw one at the top level only, so a nested key zod
+ * stripped - a fill's start point - would be lost from any edited screen and
+ * the bar would fill from the wrong side.
  */
 export const FillLevel = z
   .object({
-    Enable: z.boolean(),
+    Enable: z.boolean().optional(),
     HorizontalFill: z.number().min(-100).max(100).optional(),
     VerticalFill: z.number().min(-100).max(100).optional(),
     BackColor: z
-      .object({ Value: z.number().int().min(1).max(60).optional(), Transparency: z.number().min(0).max(100).optional() })
+      .object({
+        Value: z.number().int().nonnegative().optional(),
+        ColorIndexEnabled: z.boolean().optional(),
+        Transparency: z.number().min(0).max(100).optional(),
+      })
       .passthrough()
       .optional(),
   })
   .passthrough();
+
+export const Animation = z.object({ FillLevel: FillLevel.optional() }).passthrough();
 
 export const Rectangle = z.object({
   Type: z.literal("Rectangle"),
@@ -91,7 +177,7 @@ export const Rectangle = z.object({
   Fill: Paint.optional(),
   Border: Paint.optional(),
   Thickness: z.number().optional(),
-  Animation: z.object({ FillLevel: FillLevel.optional() }).passthrough().optional(),
+  Animation: Animation.optional(),
 });
 
 export const TextBox = z.object({
@@ -358,11 +444,82 @@ export const ViewBox = z.object({
   Children: z.array(Part),
 });
 
+/**
+ * The other root a screen can have.
+ *
+ * We write a `ViewBox`; the product also writes a `Canvas`, and in the corpus
+ * it is the more common of the two (15 of 33 screen roots). The difference
+ * that matters to a reader is size: a `ViewBox` always carries `Width` and
+ * `Height`, and a `Canvas` usually does not - 3 of 33 roots carry a width -
+ * because it fills the panel. So both are optional here and the panel
+ * resolution is the fallback.
+ *
+ * `Grid`, `ScrollCanvas` and `ZoomCanvas` are also screen roots in the corpus
+ * (9, 5 and 4 of 33). They are not added here: they are container types, they
+ * belong with the rest of item 5 in docs/VXDZ_FINDINGS.md §5, and a screen
+ * rooted in one still carries through unmodelled rather than being lost.
+ */
+export const Canvas = z.object({
+  Type: z.literal("Canvas"),
+  UniqueId: z.string().uuid(),
+  Name: z.string(),
+  Options: z.number().int().optional(),
+  ObjectAlignment: z
+    .object({
+      Horizontal: z.number().int().optional(),
+      Vertical: z.number().int().optional(),
+    })
+    .optional(),
+  Fill: Paint.optional(),
+  Width: z.number().positive().optional(),
+  Height: z.number().positive().optional(),
+  Children: z.array(Part),
+});
+
+export const ScreenRoot = z.union([ViewBox, Canvas]);
+
+/**
+ * The box a screen draws into.
+ *
+ * A `ViewBox` carries its own size. A `Canvas` usually does not, because it
+ * fills the panel, so the panel is the fallback. This is resolved at the point
+ * of drawing rather than filled in by the reader on the way past: writing a
+ * size back into a root that did not have one would change the file, and the
+ * round trip in tests/reader.test.ts is the thing that must not move.
+ */
+/**
+ * A part's drawn box.
+ *
+ * A part sized by its parent has no Width of its own, and until the reader
+ * models grid containers (docs/PLAN_PHASE2.md, "Grid containers") there is
+ * nothing to resolve it against - so zero is what it draws as, which is the
+ * honest reading of "unknown" on an absolute canvas. The editor says so in
+ * words instead, via `isSizedByParent`; a part that is genuinely zero wide and
+ * one whose size lives in its parent are different things and the UI must not
+ * show them the same way.
+ */
+export function sizeOf(part: { Width?: number; Height?: number }): { width: number; height: number } {
+  return { width: part.Width ?? 0, height: part.Height ?? 0 };
+}
+
+/** True when the product left the size to the parent grid. */
+export const isSizedByParent = (part: { Width?: number; Height?: number }): boolean =>
+  part.Width === undefined || part.Height === undefined;
+
+export const DEFAULT_PANEL = { width: 1024, height: 600 } as const;
+
+export function rootBox(
+  root: { Width?: number; Height?: number },
+  panel: { width: number; height: number } = DEFAULT_PANEL,
+): { width: number; height: number } {
+  return { width: root.Width ?? panel.width, height: root.Height ?? panel.height };
+}
+
 export const Screen = z.object({
   Type: z.literal("Screen"),
   UniqueId: z.string().uuid(),
   Name: z.string(),
-  Children: z.tuple([ViewBox]),
+  Children: z.tuple([ScreenRoot]),
 });
 
 export type ColorRef = z.infer<typeof ColorRef>;

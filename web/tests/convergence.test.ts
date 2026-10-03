@@ -150,8 +150,8 @@ describe("the panel is one object, request to validation", () => {
   it("builds every screen at the panel's size and validates as that panel", async () => {
     const { events, objects } = await run("transfer pump station", sample("transfer-pump-station"), small);
     for (const o of objects) {
-      expect(o.part.Location.Left + o.part.Width).toBeLessThanOrEqual(small.width);
-      expect(o.part.Location.Top + o.part.Height).toBeLessThanOrEqual(small.height);
+      expect(o.part.Location.Left + (o.part.Width ?? 0)).toBeLessThanOrEqual(small.width);
+      expect(o.part.Location.Top + (o.part.Height ?? 0)).toBeLessThanOrEqual(small.height);
     }
     const findings = events.filter((e) => e.type === "finding").map((e) => (e.type === "finding" ? e.message : ""));
     expect(findings.some((m) => /falls outside the screen area|larger than the/.test(m))).toBe(false);

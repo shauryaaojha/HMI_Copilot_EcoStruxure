@@ -21,6 +21,7 @@
  */
 
 import { useMemo, useRef } from "react";
+import { rootBox } from "@/lib/ote/schema";
 import type { Screen } from "@/lib/ote/schema";
 import type { ForeignPart, ObjectMeta, ScreenPreview } from "@/store/types";
 import { cn } from "@/components/ui";
@@ -236,8 +237,8 @@ export function ScreenBoard({
             style={{
               left: (at.x - extent.originX) * scale,
               top: (at.y - extent.originY) * scale,
-              width: view.Width * scale,
-              height: (view.Height + BOARD_LABEL) * scale,
+              width: rootBox(view).width * scale,
+              height: (rootBox(view).height + BOARD_LABEL) * scale,
             }}
           >
             {/* The frame's name, above it, the way a Figma frame carries one.
@@ -312,7 +313,7 @@ export function ScreenBoard({
                 "canvas-screen relative overflow-hidden ring-1 transition",
                 live ? "ring-brand-500/70" : "ring-line hover:ring-line-strong",
               )}
-              style={{ width: view.Width * scale, height: view.Height * scale }}
+              style={{ width: rootBox(view).width * scale, height: rootBox(view).height * scale }}
             >
               <ScreenRenderer
                 screen={screen}

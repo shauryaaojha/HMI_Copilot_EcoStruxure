@@ -19,7 +19,9 @@ import { describe, expect, it } from "vitest";
 import { demoAlarms, demoBindings, demoLiveValues, demoScreen } from "@/fixtures";
 import { resolveColor } from "@/lib/ote/palette";
 import { ScreenRenderer } from "@/components/canvas/ScreenRenderer";
+import { rootBox } from "@/lib/ote/schema";
 import type { Part } from "@/lib/ote/schema";
+import type { PartOf } from "@/components/canvas/parts/geometry";
 import {
   activeAlarms,
   alarmTriggers,
@@ -52,13 +54,13 @@ function rects(markup: string) {
  * PIL draws a rectangle's outline inside the box; SVG straddles the path. The
  * canvas insets by half the stroke so the two land on the same pixels.
  */
-function expectedBox(part: { Location: { Left: number; Top: number }; Width: number; Height: number }, stroke: number) {
+function expectedBox(part: { Location: { Left: number; Top: number }; Width?: number; Height?: number }, stroke: number) {
   const half = stroke / 2;
   return {
     x: String(part.Location.Left + half),
     y: String(part.Location.Top + half),
-    width: String(part.Width - stroke),
-    height: String(part.Height - stroke),
+    width: String((part.Width ?? 0) - stroke),
+    height: String((part.Height ?? 0) - stroke),
   };
 }
 
@@ -83,8 +85,8 @@ describe("the canvas draws what render_screen.py drew", () => {
       findRect(markup, {
         x: "0.5",
         y: "0.5",
-        width: String(view.Width - 1),
-        height: String(view.Height - 1),
+        width: String(rootBox(view).width - 1),
+        height: String(rootBox(view).height - 1),
         stroke: CHROME,
       }),
     ).toBeDefined();
@@ -266,3 +268,136 @@ function flattenForTest() {
     ];
   });
 }
+
+/**
+ * The bar, drawn.
+ *
+ * A filled Rectangle is three rects: the remainder, the fill over it, and the
+ * border last. What is worth asserting is the arithmetic - a vertical bar
+ * grows from the bottom, so its y moves as it fills and its height is the
+ * fraction of the box.
+ */
+describe("a Rectangle with a fill level", () => {
+  const bar = (over: Partial<PartOf<"Rectangle">> = {}): Part => ({
+    Type: "Rectangle",
+    UniqueId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    Name: "Bar",
+    Location: { Left: 10, Top: 20 },
+    Width: 40,
+    Height: 100,
+    Thickness: 1,
+    Fill: { Color: { Value: 1 } },
+    Border: { Color: { Value: 11 } },
+    Animation: { FillLevel: { Enable: true, BackColor: { Value: 12 }, VerticalFill: 0 } },
+    ...over,
+  } as Part);
+
+  const screenWith = (part: Part) => ({
+    ...demoScreen,
+    Children: [{ ...demoScreen.Children[0], Children: [part] }],
+  }) as typeof demoScreen;
+
+  it("fills from the bottom, by the bound value", () => {
+    const markup = render({
+      screen: screenWith(bar()),
+      selectedIds: [],
+      values: { Bar: 25 },
+      alarms: [],
+    });
+    // The 1px stroke insets the box to 99 high starting at 20.5, so a quarter
+    // of it is 24.75 and the fill starts at 20.5 + 99 - 24.75.
+    expect(markup).toContain('height="24.75"');
+    expect(markup).toContain('y="94.75"');
+  });
+
+  it("draws the remainder in BackColor, under the fill", () => {
+    const markup = render({
+      screen: screenWith(bar()),
+      selectedIds: [],
+      values: { Bar: 10 },
+      alarms: [],
+    });
+    const back = markup.indexOf(resolveColor(12));
+    const front = markup.indexOf(resolveColor(1));
+    expect(back).toBeGreaterThan(-1);
+    expect(front).toBeGreaterThan(back);
+  });
+
+  it("is an ordinary rectangle when the level is not enabled", () => {
+    const plain = render({
+      screen: screenWith(bar({ Animation: undefined })),
+      selectedIds: [],
+      values: {},
+      alarms: [],
+    });
+    expect(plain).not.toContain(resolveColor(12));
+  });
+});
+
+/**
+ * The drawing half of the three encodings in docs/TASK_VXDZ_2.md §1.
+ *
+ * Each of those items has two halves - a shape that parses, and a canvas that
+ * draws it - and the reader tests only cover the first. A colour that parses
+ * and then renders as the fallback is still a screen that lies.
+ */
+describe("the canvas draws what the wider schema now accepts", () => {
+  it("renders a packed colour as that colour, not as a palette lookup", () => {
+    const part = {
+      Type: "Rectangle",
+      UniqueId: "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+      Name: "Packed",
+      Location: { Left: 10, Top: 10 },
+      Width: 50,
+      Height: 50,
+      // 0x17A1E5, the light blue the HVAC library uses for chilled water.
+      Fill: { Color: { ColorIndexEnabled: false, Value: 1548773 } },
+    } as Part;
+    const markup = render({
+      screen: { ...demoScreen, Children: [{ ...demoScreen.Children[0], Children: [part] }] } as typeof demoScreen,
+      selectedIds: [],
+      alarms: [],
+    });
+    expect(markup).toContain("#17a1e5");
+    // Palette index 1548773 does not exist, so the old path gave the fallback.
+    expect(markup).not.toContain('fill="#ffffff"');
+  });
+
+  it("draws a screen rooted in a Canvas, at the panel it is given", () => {
+    const canvasRooted = {
+      Type: "Screen",
+      UniqueId: demoScreen.UniqueId,
+      Name: "CanvasRooted",
+      Children: [
+        {
+          Type: "Canvas",
+          UniqueId: "cccccccc-dddd-eeee-ffff-000000000000",
+          Name: "Canvas",
+          Options: 104,
+          // No Width or Height: a Canvas fills the panel.
+          Children: [
+            {
+              Type: "Rectangle",
+              UniqueId: "dddddddd-eeee-ffff-0000-111111111111",
+              Name: "OnACanvas",
+              Location: { Left: 4, Top: 4 },
+              Width: 20,
+              Height: 20,
+              Fill: { Color: { Value: 3 } },
+            },
+          ],
+        },
+      ],
+    } as unknown as typeof demoScreen;
+
+    const markup = render({
+      screen: canvasRooted,
+      selectedIds: [],
+      alarms: [],
+      panel: { width: 800, height: 480 },
+    });
+    expect(markup).toContain('viewBox="0 0 800 480"');
+    expect(markup).toContain('data-object-name="OnACanvas"');
+    expect(markup).toContain(resolveColor(3));
+  });
+});

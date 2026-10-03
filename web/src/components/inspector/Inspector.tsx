@@ -16,6 +16,7 @@
 
 import { useState } from "react";
 import { BoxSelect, Lock, MousePointerSquareDashed, Trash2, Unlock } from "lucide-react";
+import { isSizedByParent } from "@/lib/ote/schema";
 import { useProject } from "@/store/project";
 import { TagTable } from "@/components/tags";
 import { LibraryPanel } from "@/components/library/LibraryPanel";
@@ -244,6 +245,14 @@ export function Inspector() {
                 thirty pixels for the number - which is why X and Y read as
                 empty and W and H were cut off at the edge. */}
             <Panel title="Geometry">
+              {/* A grid-placed part has no width of its own, and an editor that
+                  shows 0 invites someone to "fix" it by typing a number the
+                  product would ignore. */}
+              {isSizedByParent(part) && (
+                <p className="mb-1.5 text-[10px] leading-snug text-text-faint">
+                  Sized by its parent, not by its own width and height.
+                </p>
+              )}
               <div className="grid grid-cols-2 gap-1.5">
                 {(
                   [
@@ -276,8 +285,8 @@ export function Inspector() {
                         setBox(part.UniqueId, {
                           left: part.Location.Left,
                           top: part.Location.Top,
-                          width: part.Width,
-                          height: part.Height,
+                          width: (part.Width ?? 0),
+                          height: (part.Height ?? 0),
                           [key]: key === "width" || key === "height"
                             ? Math.max(1, next)
                             : next,

@@ -10,6 +10,7 @@
 import { create } from "zustand";
 import { current } from "immer";
 import { immer } from "zustand/middleware/immer";
+import { rootBox } from "@/lib/ote/schema";
 import type { Alarm, Part, Screen, Variable } from "@/lib/ote/schema";
 import type { Equipment, PipelineStep, StepState } from "@/types/events";
 import {
@@ -626,7 +627,7 @@ export function createProjectStore() {
       if (!target) return [];
       const view = viewOf(target);
       // get() hands back plain state, not a draft; applyPack clones what it is given.
-      const { parts, changes } = applyPack(view.Children, undefined, { width: view.Width, height: view.Height });
+      const { parts, changes } = applyPack(view.Children, undefined, rootBox(view, get().target));
       if (changes.length === 0) return [];
       set((s) => {
         remember(s, `Apply the Standard to ${target.Name}`);
@@ -957,10 +958,7 @@ export function createProjectStore() {
         const screen = activeScreen(s);
         if (parts.length === 0 || !screen) return;
         remember(s, `Align ${mode}`);
-        const moves = alignTo(detachedPartsByIds(s, wanted), mode, {
-          width: viewOf(screen).Width,
-          height: viewOf(screen).Height,
-        });
+        const moves = alignTo(detachedPartsByIds(s, wanted), mode, rootBox(viewOf(screen), s.target));
         for (const part of parts) {
           const to = moves.get(part.UniqueId);
           if (!to) continue;

@@ -135,8 +135,8 @@ describe("every sample project folder", () => {
         expect(new Set(names).size).toBe(names.length);
         for (const part of built.flatMap((b) => b.parts)) {
           expect(part.Location.Left).toBeGreaterThanOrEqual(0);
-          expect(part.Location.Left + part.Width).toBeLessThanOrEqual(1024);
-          expect(part.Location.Top + part.Height).toBeLessThanOrEqual(600);
+          expect(part.Location.Left + (part.Width ?? 0)).toBeLessThanOrEqual(1024);
+          expect(part.Location.Top + (part.Height ?? 0)).toBeLessThanOrEqual(600);
         }
       });
 

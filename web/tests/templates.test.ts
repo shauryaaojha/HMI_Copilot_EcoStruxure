@@ -54,10 +54,10 @@ describe("every template builds parts the packager can emit", () => {
         for (const part of parts) {
           expect(part.Location.Left).toBeGreaterThanOrEqual(40);
           expect(part.Location.Top).toBeGreaterThanOrEqual(80);
-          expect(part.Location.Left + part.Width).toBeLessThanOrEqual(
+          expect(part.Location.Left + (part.Width ?? 0)).toBeLessThanOrEqual(
             40 + template.size.width,
           );
-          expect(part.Location.Top + part.Height).toBeLessThanOrEqual(
+          expect(part.Location.Top + (part.Height ?? 0)).toBeLessThanOrEqual(
             80 + template.size.height,
           );
         }

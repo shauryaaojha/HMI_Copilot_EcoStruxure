@@ -99,8 +99,8 @@ describe("the compiler", () => {
       expect(Part.safeParse(p).success, p.Name).toBe(true);
       expect(p.Location.Left).toBeGreaterThanOrEqual(0);
       expect(p.Location.Top).toBeGreaterThanOrEqual(0);
-      expect(p.Location.Left + p.Width).toBeLessThanOrEqual(PANEL.width);
-      expect(p.Location.Top + p.Height).toBeLessThanOrEqual(PANEL.height);
+      expect(p.Location.Left + (p.Width ?? 0)).toBeLessThanOrEqual(PANEL.width);
+      expect(p.Location.Top + (p.Height ?? 0)).toBeLessThanOrEqual(PANEL.height);
     }
     const symbols = laid.composites.filter((c) => c.kind === "EquipmentSymbol");
     const indicators = laid.composites.filter((c) => c.kind === "AnalogIndicator");
@@ -126,8 +126,8 @@ describe("the compiler", () => {
     const b = partOf(to.partIds[0]);
     const pipe = laid.parts.find((p) => p.Type === "Pipe" && p.Name.includes(edge.from.replace(/[^A-Za-z0-9]/g, "")))!;
     expect(a.Location.Left).toBeLessThan(b.Location.Left);
-    expect(pipe.Location.Left).toBeGreaterThanOrEqual(a.Location.Left + a.Width - 1);
-    expect(pipe.Location.Left + pipe.Width).toBeLessThanOrEqual(b.Location.Left + 1);
+    expect(pipe.Location.Left).toBeGreaterThanOrEqual(a.Location.Left + (a.Width ?? 0) - 1);
+    expect(pipe.Location.Left + (pipe.Width ?? 0)).toBeLessThanOrEqual(b.Location.Left + 1);
   });
 
   it("lints clean on the pack and shares the frame", () => {

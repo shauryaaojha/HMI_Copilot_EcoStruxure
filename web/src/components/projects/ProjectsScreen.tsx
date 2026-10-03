@@ -40,6 +40,8 @@ interface Imported {
   bindings: Binding[];
   carried: { entries: number; opaqueParts: number; variableRows: number; bindingRows: number };
   warnings: string[];
+  /** Which generation of the format the file turned out to be. */
+  layout?: "typed" | "struct";
 }
 
 type Filter = "all" | "recent" | "starred";
@@ -128,6 +130,11 @@ export function ProjectsScreen() {
         target: `${data.target.model} · ${data.target.width} × ${data.target.height}`,
         intent:
           `Opened ${file.name}` +
+          // Only worth saying for a .vxdz: an .eote is always the modern
+          // layout, and an engineer who opened one does not need telling.
+          (/\.vxdz$/i.test(file.name) && data.layout === "typed"
+            ? " — modern layout, and it exports as an .eote"
+            : "") +
           (carried.length ? ` — carrying ${carried.join(", ")} the editor does not model` : ""),
       });
       useProject.getState().reset();
@@ -182,7 +189,7 @@ export function ProjectsScreen() {
         <input
           ref={picker}
           type="file"
-          accept=".eote"
+          accept=".eote,.vxdz"
           className="hidden"
           aria-label="Open a project file"
           onChange={(e) => {
@@ -197,9 +204,9 @@ export function ProjectsScreen() {
           onClick={() => picker.current?.click()}
           disabled={opening !== null}
           icon={<Upload size={16} />}
-          title="Open an existing EcoStruxure Operator Terminal Expert project. Everything the editor does not model is carried through unchanged."
+          title="Open an existing EcoStruxure Operator Terminal Expert project: an .eote, or a .vxdz at application version 3.4.1 or later. Everything the editor does not model is carried through unchanged."
         >
-          {opening ? `Opening ${opening}…` : "Open .eote"}
+          {opening ? `Opening ${opening}…` : "Open project"}
         </Button>
         <Button
           variant="primary"
@@ -327,7 +334,7 @@ export function ProjectsScreen() {
               body="A project is a tag list, a set of screens and the bindings between them. Start one and the workspace asks what to build."
               hints={[
                 { key: "New", label: "Start from nothing, a tag export, or a plant you describe" },
-                { key: "Open", label: "Or bring an .eote you already have" },
+                { key: "Open", label: "Or bring an .eote or .vxdz you already have" },
               ]}
             />
           </li>
@@ -335,8 +342,9 @@ export function ProjectsScreen() {
       </ul>
 
       <p className="text-xs text-text-faint">
-        Projects are stored in this browser. A generated project is exported as an
-        .eote from the Export screen; nothing is uploaded anywhere.
+        Projects are stored in this browser. Export writes an .eote, whichever
+        format the project was opened from, because .eote is what we write;
+        nothing is uploaded anywhere.
       </p>
     </div>
   );

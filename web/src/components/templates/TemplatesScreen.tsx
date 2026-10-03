@@ -70,7 +70,7 @@ function previewScreen(template: Template): Screen {
  */
 function freeSpotBelow(parts: Part[], gridSize: number) {
   const bottom = parts.reduce(
-    (lowest, part) => Math.max(lowest, part.Location.Top + part.Height),
+    (lowest, part) => Math.max(lowest, part.Location.Top + (part.Height ?? 0)),
     0,
   );
   const top = Math.ceil((bottom + 16) / gridSize) * gridSize;

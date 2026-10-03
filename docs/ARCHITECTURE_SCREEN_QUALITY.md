@@ -434,7 +434,7 @@ and 5 are the agents proper. Nothing in the list asks a model to draw.
 | 5 (open) | | Findings are proposals in the Validation page, not yet ghosts on the canvas with accept and discard. Gemini Flash Lite's JSON is checked structurally and coerced; a stricter model gets the full schema. The two-pass loop (re-render after accepted changes) is not automated |
 | 4 (open) | | The agents A2 and A3: the architect and composer are deterministic; a model would decide what belongs on which screen and choose variants. The L1 KPI program is written but not yet compiled into the application (the plan's tile overview stands in). Programs are not kept in the store, only what they compiled to |
 | 3 (open) | | The agent pass (A1): the modeller is naming conventions and class defaults today; a model with tools would read comments and DDTs for classes and connections the names do not carry. The `.xvm` ingest. Chat ops on the model (`setRange`, `connect`) |
-| 2 (open) | | The live bar itself: the product's bar-graph part is not in `reference/part_examples.json`, so an indicator is scale, band and number until it is captured. PipeRun, AlarmTile and Faceplate as composites. Composite records do not survive an `.eote` round trip (they are ours, not the file's); an opened project's indicators come back as grouped parts |
+| 2 (open) | | ~~The live bar itself~~ — done: there is no bar-graph part, and a bar is a `Rectangle` with `Animation.FillLevel` (`docs/VXDZ_FINDINGS.md` §6). The indicator draws one beside its scale. PipeRun, AlarmTile and Faceplate as composites. Composite records do not survive an `.eote` round trip (they are ours, not the file's); an opened project's indicators come back as grouped parts |
 
 ---
 

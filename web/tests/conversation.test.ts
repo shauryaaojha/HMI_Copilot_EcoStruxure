@@ -8,6 +8,8 @@
  * "no turn", never to a mangled project.
  */
 
+import { sizeOf } from "@/lib/ote/schema";
+import { rootBox } from "@/lib/ote/schema";
 import { beforeEach, describe, expect, it } from "vitest";
 import { coerceTurn } from "@/lib/ai/ops";
 import { fallbackPlan } from "@/lib/ai/plan";
@@ -115,7 +117,7 @@ describe("applyOps", () => {
     // Not parts()[0] - that is the full-width banner, and a move is clamped
     // into the panel, so a 1024-wide object on a 1024-wide screen cannot shift
     // sideways at all. See the clamping test further down.
-    const target = parts().find((p) => p.Width < 400)!;
+    const target = parts().find((p) => (p.Width ?? 0) < 400)!;
     applyOps([{ op: "moveObject", target: target.Name, left: 33, top: 44, note: "n" }]);
     const moved = parts().find((p) => p.UniqueId === target.UniqueId)!;
     expect(moved.Location).toEqual({ Left: 33, Top: 44 });
@@ -313,8 +315,7 @@ describe("where a conversational edit puts things", () => {
     screenOf().Children[0].Children.map((p) => ({
       left: p.Location.Left,
       top: p.Location.Top,
-      width: p.Width,
-      height: p.Height,
+      ...sizeOf(p),
     }));
   const clash = (a: ReturnType<typeof boxes>[number], b: ReturnType<typeof boxes>[number]) =>
     a.left < b.left + b.width &&
@@ -411,7 +412,7 @@ describe("where a conversational edit puts things", () => {
 
   it("cannot shift a full-width object sideways, because that would clip it", () => {
     const view = screenOf().Children[0];
-    const banner = parts().find((p) => p.Width === view.Width)!;
+    const banner = parts().find((p) => p.Width === rootBox(view).width)!;
     applyOps([{ op: "moveObject", target: banner.Name, left: 300, top: 0, note: "n" }]);
     const moved = parts().find((p) => p.UniqueId === banner.UniqueId)!;
     expect(moved.Location.Left).toBe(0);
@@ -426,8 +427,8 @@ describe("where a conversational edit puts things", () => {
     ]);
 
     const placed = boxes().at(-1)!;
-    expect(placed.left + placed.width).toBeLessThanOrEqual(view.Width);
-    expect(placed.top + placed.height).toBeLessThanOrEqual(view.Height);
+    expect(placed.left + placed.width).toBeLessThanOrEqual(rootBox(view).width);
+    expect(placed.top + placed.height).toBeLessThanOrEqual(rootBox(view).height);
   });
 
   it("respects a position the model did give when it only covers a panel", () => {
@@ -466,8 +467,8 @@ describe("where a conversational edit puts things", () => {
     applyOps([{ op: "moveObject", target: target.Name, left: 5000, top: 5000, note: "n" }]);
 
     const moved = screenOf().Children[0].Children.find((p) => p.UniqueId === target.UniqueId)!;
-    expect(moved.Location.Left + moved.Width).toBeLessThanOrEqual(view.Width);
-    expect(moved.Location.Top + moved.Height).toBeLessThanOrEqual(view.Height);
+    expect(moved.Location.Left + (moved.Width ?? 0)).toBeLessThanOrEqual(rootBox(view).width);
+    expect(moved.Location.Top + (moved.Height ?? 0)).toBeLessThanOrEqual(rootBox(view).height);
   });
 });
 
@@ -578,14 +579,14 @@ describe("adding a whole piece of equipment", () => {
     for (const part of added) {
       expect(part.Location.Left).toBeGreaterThanOrEqual(container.Location.Left);
       expect(part.Location.Top).toBeGreaterThanOrEqual(container.Location.Top);
-      expect(part.Location.Left + part.Width).toBeLessThanOrEqual(
-        container.Location.Left + container.Width,
+      expect(part.Location.Left + (part.Width ?? 0)).toBeLessThanOrEqual(
+        container.Location.Left + (container.Width ?? 0),
       );
-      expect(part.Location.Top + part.Height).toBeLessThanOrEqual(
-        container.Location.Top + container.Height,
+      expect(part.Location.Top + (part.Height ?? 0)).toBeLessThanOrEqual(
+        container.Location.Top + (container.Height ?? 0),
       );
-      expect(part.Location.Left + part.Width).toBeLessThanOrEqual(view.Width);
-      expect(part.Location.Top + part.Height).toBeLessThanOrEqual(view.Height);
+      expect(part.Location.Left + (part.Width ?? 0)).toBeLessThanOrEqual(rootBox(view).width);
+      expect(part.Location.Top + (part.Height ?? 0)).toBeLessThanOrEqual(rootBox(view).height);
     }
   });
 
@@ -606,8 +607,7 @@ describe("adding a whole piece of equipment", () => {
     const [a, b] = cards.map((p) => ({
       left: p.Location.Left,
       top: p.Location.Top,
-      width: p.Width,
-      height: p.Height,
+      ...sizeOf(p),
     }));
     const clash =
       a.left < b.left + b.width &&

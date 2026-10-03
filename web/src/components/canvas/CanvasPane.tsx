@@ -18,7 +18,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useProject } from "@/store/project";
 import { activeAlarms } from "@/lib/sim/alarms";
-import type { Screen } from "@/lib/ote/schema";
+import { rootBox, type Screen } from "@/lib/ote/schema";
 import { isCompositeKind, propsFor } from "@/lib/composites";
 import type { ToolType } from "./newPart";
 import { useSimulation } from "./useSimulation";
@@ -125,6 +125,8 @@ export function CanvasPane() {
   const screen =
     screens.find((s) => s.UniqueId === activeScreenId) ?? screens[0] ?? placeholder;
   const viewBox = screen.Children[0];
+  // A Canvas root carries no size of its own; the panel is the fallback.
+  const panel = rootBox(viewBox, target);
   // One screen is not a board. Below that the board's frame and label are pure
   // overhead, so a single-screen project just shows the screen.
   const showBoard = view === "board" && screens.length > 1;
@@ -139,25 +141,25 @@ export function CanvasPane() {
   const board = useMemo(
     () =>
       boardExtent(
-        { width: viewBox.Width, height: viewBox.Height },
+        { width: panel.width, height: panel.height },
         screens.map((x) => x.UniqueId),
         screenPlacement,
       ),
-    [screens, viewBox.Width, viewBox.Height, screenPlacement],
+    [screens, panel.width, panel.height, screenPlacement],
   );
 
   const fit = useCallback(() => {
     const box = viewport.current?.getBoundingClientRect();
     if (!box) return;
     // Whatever is on screen: one panel, or the whole board of them.
-    const wide = showBoard ? board.width : viewBox.Width;
-    const tall = showBoard ? board.height : viewBox.Height;
+    const wide = showBoard ? board.width : panel.width;
+    const tall = showBoard ? board.height : panel.height;
     const scale = Math.min(
       (box.width - FIT_PADDING) / wide,
       (box.height - FIT_PADDING) / tall,
     );
     setZoom(Math.max(5, Math.min(400, Math.round(scale * 100))));
-  }, [showBoard, board.width, board.height, viewBox.Width, viewBox.Height]);
+  }, [showBoard, board.width, board.height, panel.width, panel.height]);
 
   // Fit once when a screen first appears, so the demo opens on a whole screen
   // rather than on the top-left corner of one.
@@ -204,8 +206,8 @@ export function CanvasPane() {
           400,
           Math.round(
             Math.min(
-              (box.width - FIT_PADDING) / viewBox.Width,
-              (box.height - FIT_PADDING) / viewBox.Height,
+              (box.width - FIT_PADDING) / panel.width,
+              (box.height - FIT_PADDING) / panel.height,
             ) * 100,
           ),
         ),
@@ -227,7 +229,7 @@ export function CanvasPane() {
         });
       });
     },
-    [screens, screenPlacement, board, viewBox.Width, viewBox.Height, fit, setActiveScreen],
+    [screens, screenPlacement, board, panel.width, panel.height, fit, setActiveScreen],
   );
 
   const zoomStep = useCallback((direction: 1 | -1) => {
@@ -479,11 +481,11 @@ export function CanvasPane() {
               style={{ marginLeft: rulers ? RULER : 0, marginTop: rulers ? RULER : 0 }}
             >
               {rulers && (
-                <Rulers width={viewBox.Width} height={viewBox.Height} scale={scale} />
+                <Rulers width={panel.width} height={panel.height} scale={scale} />
               )}
               <div
                 className="canvas-screen"
-                style={{ width: viewBox.Width * scale, height: viewBox.Height * scale }}
+                style={{ width: panel.width * scale, height: panel.height * scale }}
               >
                 <ScreenRenderer
                   screen={screen}

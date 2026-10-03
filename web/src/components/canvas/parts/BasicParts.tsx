@@ -8,48 +8,57 @@
  */
 
 import { fill, fontOf, insetStroke, type PartOf } from "./geometry";
-import { resolveColor } from "@/lib/ote/palette";
+import { resolveBareColor } from "@/lib/ote/palette";
 import { PlacedText } from "./Text";
 
-/**
- * A Rectangle, and a live bar when its FillLevel animation is on: BackColor is
- * the unfilled remainder, Fill the bar, filled from the bottom or the left by
- * the percentage the binding pushes (`value`, already through its converter)
- * or, at design time, the static fill the JSON carries.
- */
-export function RectanglePart({ part, value }: { part: PartOf<"Rectangle">; value?: number }) {
+/** Half full, when nothing is driving it. A bar drawn empty reads as broken. */
+export const DESIGN_TIME_FILL = 50;
+
+export function RectanglePart({
+  part,
+  value,
+}: {
+  part: PartOf<"Rectangle">;
+  /** The bound value, 0-100, when the screen is live. */
+  value?: number;
+}) {
   const stroke = part.Thickness ?? 1;
+  const box = insetStroke(part.Location.Left, part.Location.Top, part.Width ?? 0, part.Height ?? 0, stroke);
   const level = part.Animation?.FillLevel;
-  if (level?.Enable) {
-    const vertical = level.VerticalFill !== undefined || level.HorizontalFill === undefined;
-    const pct = Math.min(100, Math.max(0, value ?? (vertical ? level.VerticalFill : level.HorizontalFill) ?? 0)) / 100;
-    const { Left: x, Top: y } = part.Location;
-    const w = part.Width;
-    const h = part.Height;
-    const filled = vertical
-      ? { x, y: y + h * (1 - pct), width: w, height: h * pct }
-      : { x, y, width: w * pct, height: h };
-    const back = typeof level.BackColor?.Value === "number" ? resolveColor(level.BackColor.Value, "#ffffff") : "#ffffff";
+
+  // A plain rectangle, which is all but 120 of them in the corpus.
+  if (!level?.Enable) {
     return (
-      <g>
-        <rect x={x} y={y} width={w} height={h} fill={back} />
-        {pct > 0 && <rect {...filled} fill={fill(part, "Fill", "#474747")} />}
-        <rect
-          {...insetStroke(x, y, w, h, stroke)}
-          fill="none"
-          stroke={fill(part, "Border", "#515151")}
-          strokeWidth={stroke}
-        />
-      </g>
+      <rect
+        {...box}
+        fill={fill(part, "Fill", "#ffffff")}
+        stroke={fill(part, "Border", "#515151")}
+        strokeWidth={stroke}
+      />
     );
   }
+
+  // A bar. The product has no bar part: a filled Rectangle is the bar, and
+  // which axis it fills along is whichever of the two properties it carries.
+  // docs/VXDZ_FINDINGS.md §6.
+  const horizontal = level.HorizontalFill !== undefined && level.VerticalFill === undefined;
+  const pct = Math.min(100, Math.max(0, value ?? level.VerticalFill ?? level.HorizontalFill ?? DESIGN_TIME_FILL));
+  const filled = horizontal ? (box.width * pct) / 100 : (box.height * pct) / 100;
+  const back = resolveBareColor(level.BackColor, "none");
+
   return (
-    <rect
-      {...insetStroke(part.Location.Left, part.Location.Top, part.Width, part.Height, stroke)}
-      fill={fill(part, "Fill", "#ffffff")}
-      stroke={fill(part, "Border", "#515151")}
-      strokeWidth={stroke}
-    />
+    <>
+      {/* The remainder first, so the fill is drawn over it. */}
+      <rect {...box} fill={back} />
+      <rect
+        x={box.x}
+        y={horizontal ? box.y : box.y + box.height - filled}
+        width={horizontal ? filled : box.width}
+        height={horizontal ? box.height : filled}
+        fill={fill(part, "Fill", "#ffffff")}
+      />
+      <rect {...box} fill="none" stroke={fill(part, "Border", "#515151")} strokeWidth={stroke} />
+    </>
   );
 }
 
@@ -59,8 +68,8 @@ export function TextBoxPart({ part }: { part: PartOf<"TextBox"> }) {
       text={part.Text}
       left={part.Location.Left}
       top={part.Location.Top}
-      width={part.Width}
-      height={part.Height}
+      width={(part.Width ?? 0)}
+      height={(part.Height ?? 0)}
       color={fill(part, "TextColor", "#030303")}
       align={part.TextLayout?.HorizontalAlignment}
       {...fontOf(part)}
@@ -81,7 +90,7 @@ export function LampPart({ part, on }: { part: PartOf<"Lamp">; on: boolean }) {
   return (
     <>
       <rect
-        {...insetStroke(x, y, part.Width, part.Height, stroke)}
+        {...insetStroke(x, y, (part.Width ?? 0), (part.Height ?? 0), stroke)}
         fill={fill(state, "Fill", "#d9d9d9")}
         stroke={fill(state, "Border", "#515151")}
         strokeWidth={stroke}
@@ -90,8 +99,8 @@ export function LampPart({ part, on }: { part: PartOf<"Lamp">; on: boolean }) {
         text={state.Text ?? ""}
         left={x}
         top={y}
-        width={part.Width}
-        height={part.Height}
+        width={(part.Width ?? 0)}
+        height={(part.Height ?? 0)}
         color={fill(state, "TextColor", "#030303")}
         align={2}
         {...fontOf(state, 13)}
@@ -151,8 +160,8 @@ export function SwitchPart({ part, pressed }: { part: PartOf<"Switch">; pressed:
       state={pressed ? part.Press : part.Release}
       x={part.Location.Left}
       y={part.Location.Top}
-      width={part.Width}
-      height={part.Height}
+      width={(part.Width ?? 0)}
+      height={(part.Height ?? 0)}
       fallbackFill="#ffffff"
     />
   );
@@ -174,8 +183,8 @@ export function NStateLampPart({ part, value }: { part: PartOf<"N-StateLamp">; v
       state={state}
       x={part.Location.Left}
       y={part.Location.Top}
-      width={part.Width}
-      height={part.Height}
+      width={(part.Width ?? 0)}
+      height={(part.Height ?? 0)}
       fallbackFill="#d9d9d9"
     />
   );
@@ -187,7 +196,7 @@ export function StringDisplayPart({ part, value }: { part: PartOf<"StringDisplay
   return (
     <>
       <rect
-        {...insetStroke(part.Location.Left, part.Location.Top, part.Width, part.Height, stroke)}
+        {...insetStroke(part.Location.Left, part.Location.Top, (part.Width ?? 0), (part.Height ?? 0), stroke)}
         fill={fill(part, "Fill", "#ffffff")}
         stroke={fill(part, "Border", "#515151")}
         strokeWidth={stroke}
@@ -196,8 +205,8 @@ export function StringDisplayPart({ part, value }: { part: PartOf<"StringDisplay
         text={shown}
         left={part.Location.Left}
         top={part.Location.Top}
-        width={part.Width}
-        height={part.Height}
+        width={(part.Width ?? 0)}
+        height={(part.Height ?? 0)}
         color={fill(part, "TextColor", "#030303")}
         align={part.TextLayout?.HorizontalAlignment ?? 1}
         mono
@@ -220,7 +229,7 @@ export function NumericDisplayPart({
   return (
     <>
       <rect
-        {...insetStroke(part.Location.Left, part.Location.Top, part.Width, part.Height, stroke)}
+        {...insetStroke(part.Location.Left, part.Location.Top, (part.Width ?? 0), (part.Height ?? 0), stroke)}
         fill={fill(part, "Fill", "#ffffff")}
         stroke={fill(part, "Border", "#515151")}
         strokeWidth={stroke}
@@ -229,8 +238,8 @@ export function NumericDisplayPart({
         text={shown.toFixed(part.DecimalDigits ?? 0)}
         left={part.Location.Left}
         top={part.Location.Top}
-        width={part.Width}
-        height={part.Height}
+        width={(part.Width ?? 0)}
+        height={(part.Height ?? 0)}
         color={fill(part, "TextColor", "#030303")}
         align={part.TextLayout?.HorizontalAlignment ?? 4}
         mono

@@ -310,8 +310,8 @@ export function unionBox(parts: Part[]): Box | null {
   for (const p of parts) {
     left = Math.min(left, p.Location.Left);
     top = Math.min(top, p.Location.Top);
-    right = Math.max(right, p.Location.Left + p.Width);
-    bottom = Math.max(bottom, p.Location.Top + p.Height);
+    right = Math.max(right, p.Location.Left + (p.Width ?? 0));
+    bottom = Math.max(bottom, p.Location.Top + (p.Height ?? 0));
   }
   return { left, top, width: right - left, height: bottom - top };
 }
