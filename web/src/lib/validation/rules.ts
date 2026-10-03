@@ -279,7 +279,13 @@ export function validateProject(
     const view = screen.Children[0];
     // A Canvas root fills the panel, so a root with no size is the target size.
     const box = rootBox(view, project.target);
-    if (box.width > project.target.width || box.height > project.target.height) {
+    // A content screen is sized for the display it is embedded in, and a
+    // scrolling or zooming root is bigger than the panel on purpose: neither
+    // is measured against the panel.
+    const measured = screen.Type !== "Content" && view.Type !== "ScrollCanvas" && view.Type !== "ZoomCanvas";
+    if (!measured) {
+      // nothing to compare
+    } else if (box.width > project.target.width || box.height > project.target.height) {
       findings.push({
         severity: "error",
         rule: "standards",

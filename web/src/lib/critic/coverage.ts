@@ -22,7 +22,9 @@ import { headlineRolesFor } from "@/lib/plant/classes";
  * screen through those names - and a screen nobody can reach is worse than a
  * screen with a defect on it, because nobody will ever see the defect.
  */
-export function critiqueNavigation(screens: Screen[]): Finding[] {
+export function critiqueNavigation(all: Screen[]): Finding[] {
+  // A content screen is shown inside another, never navigated to.
+  const screens = all.filter((s) => s.Type !== "Content");
   if (screens.length === 0) return [];
   const byName = new Map(screens.map((s) => [s.Name, s]));
   const linksFrom = (screen: Screen) =>

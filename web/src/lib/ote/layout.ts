@@ -310,7 +310,9 @@ export function refreshNavigation(
   panel: { width: number; height: number },
 ): { screens: Screen[]; changed: boolean } {
   const isChip = (name: string) => /^NavChip_|^NavLbl_/.test(name);
-  const chipWidth = Math.min(150, Math.floor((panel.width - MARGIN * 2) / Math.max(screens.length, 1)) - 6);
+  // A content screen is embedded, not navigated to: it is never a chip.
+  const listed = screens.filter((s) => s.Type !== "Content");
+  const chipWidth = Math.min(150, Math.floor((panel.width - MARGIN * 2) / Math.max(listed.length, 1)) - 6);
   let changed = false;
 
   const out = screens.map((screen) => {
@@ -322,7 +324,7 @@ export function refreshNavigation(
 
     const key = screen.Name.replace(/[^A-Za-z0-9_]/g, "_");
     const chips: Part[] = [];
-    screens.forEach((other, i) => {
+    listed.forEach((other, i) => {
       const here = other.UniqueId === screen.UniqueId;
       const left = MARGIN + i * (chipWidth + 6);
       if (left + chipWidth > panel.width - MARGIN) return;

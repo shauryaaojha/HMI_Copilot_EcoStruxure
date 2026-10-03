@@ -100,9 +100,10 @@ export function ScreenStrip() {
                     setEditing(screen.UniqueId);
                     setDraft(screen.Name);
                   }}
-                  title={`${screen.Name} - ${count} object${count === 1 ? "" : "s"}. Double-click to rename.`}
+                  title={`${screen.Name}${screen.Type === "Content" ? " (content screen: embedded in a screen, not navigated to)" : ""} - ${count} object${count === 1 ? "" : "s"}. Double-click to rename.`}
                   className="focus-ring max-w-[11rem] truncate font-medium"
                 >
+                  {screen.Type === "Content" && <span className="mr-1 text-[9px] uppercase tracking-wide opacity-60">content</span>}
                   {screen.Name}
                 </button>
               )}

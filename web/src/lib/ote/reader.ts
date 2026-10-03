@@ -35,14 +35,24 @@ export interface PreservedScreen {
   /** The original Metadata.dat, parsed. */
   metadata: Record<string, unknown>;
   fingerprint: string;
+  /** Where it lives: a screen under Screens\, a content screen under Contents\. */
+  area: "Screens" | "Contents";
 }
 
 export interface Preserved {
   /** Every entry of the file, by its exact (backslash) name. */
   entries: Map<string, Uint8Array>;
   screens: Map<string, PreservedScreen>;
-  /** Screen ids in hierarchy order, as read. */
+  /** Modelled screen ids in hierarchy order, as read. */
   order: string[];
+  /** Modelled content screen ids, as read. */
+  contentOrder: string[];
+  /**
+   * Screens\Hierarchy.dat as read, every entry - the screens we could not
+   * model too. A rewrite starts from this, so a carried screen keeps its place
+   * instead of falling out of the project when another screen is added.
+   */
+  hierarchy: { ObjectId: string; [key: string]: unknown }[];
   variableIds: VariableIds;
   alarms: { groupId: string | null; groupName: string; uids: string[]; startId: number };
   alarmTargets: AlarmTarget[];
@@ -88,7 +98,16 @@ export interface ReadProject {
   wires: Wire[];
   preserved: Preserved;
   /** What was carried rather than modelled, for the UI to say so. */
-  carried: { entries: number; opaqueParts: number; variableRows: number; bindingRows: number };
+  carried: {
+    entries: number;
+    opaqueParts: number;
+    variableRows: number;
+    bindingRows: number;
+    /** Screens and content screens carried whole: their layout is not modelled. */
+    screens: number;
+    /** Their root types, e.g. { Grid: 54 }, so the UI can say why. */
+    roots: Record<string, number>;
+  };
   warnings: string[];
 }
 
@@ -195,26 +214,56 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
     if (m && !order.includes(m[1])) order.push(m[1]);
   }
 
+  // --- content screens ------------------------------------------------------
+  // Contents\Hierarchy.dat is a tree: ContentFolders holding content screens.
+  // A folder has a Folder.dat, a content screen a Screen.dat; only the second
+  // is a screen. Ones on disk the tree forgot are listed after.
+  const contentOrder: string[] = [];
+  const walkContents = (nodes: unknown) => {
+    for (const node of Array.isArray(nodes) ? (nodes as { ObjectId?: unknown; Children?: unknown }[]) : []) {
+      if (typeof node?.ObjectId === "string" && get(`Contents/${node.ObjectId}/Screen.dat`)) contentOrder.push(node.ObjectId);
+      walkContents(node?.Children);
+    }
+  };
+  walkContents(json("Contents/Hierarchy.dat"));
+  for (const name of entries.keys()) {
+    const m = name.replace(/\\/g, "/").match(/^Contents\/([^/]+)\/Screen\.dat$/i);
+    if (m && !contentOrder.includes(m[1])) contentOrder.push(m[1]);
+  }
+
   const screens: Screen[] = [];
   const preservedScreens = new Map<string, PreservedScreen>();
   const foreign: Record<string, ForeignSummary[]> = {};
   let opaqueParts = 0;
-  for (const id of order) {
-    const raw = json(`Screens/${id}/Screen.dat`) as Record<string, unknown> | undefined;
+  const carriedRoots: Record<string, number> = {};
+  const read = (id: string, area: "Screens" | "Contents") => {
+    const raw = json(`${area}/${id}/Screen.dat`) as Record<string, unknown> | undefined;
     if (!raw) {
       warnings.push(`Hierarchy lists screen ${id} but it has no Screen.dat`);
-      continue;
+      return;
     }
-    const metadata = (json(`Screens/${id}/Metadata.dat`) as Record<string, unknown> | undefined) ?? {};
+    const metadata = (json(`${area}/${id}/Metadata.dat`) as Record<string, unknown> | undefined) ?? {};
     const { screen, parts, opaque } = modelScreen(raw);
     if (!screen) {
-      warnings.push(`Screen ${id} could not be modelled; it is carried through unchanged`);
-      continue;
+      const rootType = String(((raw.Children as Record<string, unknown>[] | undefined)?.[0]?.Type) ?? "unknown");
+      carriedRoots[rootType] = (carriedRoots[rootType] ?? 0) + 1;
+      return;
     }
     opaqueParts += opaque.length;
     if (opaque.length > 0) foreign[screen.UniqueId] = opaque.map((o) => summariseOpaque(o.raw));
     screens.push(screen);
-    preservedScreens.set(id, { raw, parts, opaque, metadata, fingerprint: fingerprintScreen(screen) });
+    preservedScreens.set(id, { raw, parts, opaque, metadata, fingerprint: fingerprintScreen(screen), area });
+  };
+  for (const id of order) read(id, "Screens");
+  for (const id of contentOrder) read(id, "Contents");
+  const carriedScreens = Object.values(carriedRoots).reduce((n, c) => n + c, 0);
+  if (carriedScreens > 0) {
+    // One sentence, not one per screen: why, and that nothing was lost.
+    const why = Object.entries(carriedRoots).map(([type, n]) => `${n} ${type}`).join(", ");
+    warnings.push(
+      `${carriedScreens} screen${carriedScreens === 1 ? "" : "s"} could not be modelled (root: ${why}) and ${carriedScreens === 1 ? "is" : "are"} carried through unchanged.` +
+        (carriedRoots.Grid ? " A Grid places its children by row and column, which the editor does not lay out yet." : ""),
+    );
   }
 
   // --- variables ----------------------------------------------------------
@@ -378,7 +427,9 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
     preserved: {
       entries,
       screens: preservedScreens,
-      order: screens.map((s) => s.UniqueId),
+      order: screens.filter((s) => preservedScreens.get(s.UniqueId)?.area === "Screens").map((s) => s.UniqueId),
+      contentOrder: screens.filter((s) => preservedScreens.get(s.UniqueId)?.area === "Contents").map((s) => s.UniqueId),
+      hierarchy: (Array.isArray(hierarchy) ? hierarchy : []) as Preserved["hierarchy"],
       variableIds,
       alarms: alarmMeta,
       alarmTargets,
@@ -394,6 +445,8 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
       opaqueParts,
       variableRows,
       bindingRows: extra.bindings.length,
+      screens: carriedScreens,
+      roots: carriedRoots,
     },
     warnings,
   };

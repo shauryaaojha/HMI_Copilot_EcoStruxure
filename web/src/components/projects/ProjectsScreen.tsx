@@ -38,7 +38,7 @@ interface Imported {
   variables: Variable[];
   alarms: Alarm[];
   bindings: Binding[];
-  carried: { entries: number; opaqueParts: number; variableRows: number; bindingRows: number };
+  carried: { entries: number; opaqueParts: number; variableRows: number; bindingRows: number; screens?: number; roots?: Record<string, number> };
   warnings: string[];
   /** Which generation of the format the file turned out to be. */
   layout?: "typed" | "struct";
@@ -116,7 +116,11 @@ export function ProjectsScreen() {
         source: data.source,
         foreign: data.foreign ?? {},
       });
+      const grid = data.carried.roots?.Grid ?? 0;
       const carried = [
+        data.carried.screens
+          ? `${data.carried.screens} screen${data.carried.screens === 1 ? "" : "s"}${grid ? ` (${grid} on a Grid layout)` : ""}`
+          : "",
         data.carried.opaqueParts ? `${data.carried.opaqueParts} objects` : "",
         data.carried.variableRows ? `${data.carried.variableRows} variables` : "",
         data.carried.bindingRows ? `${data.carried.bindingRows} bindings` : "",
@@ -135,7 +139,10 @@ export function ProjectsScreen() {
           (/\.vxdz$/i.test(file.name) && data.layout === "typed"
             ? " — modern layout, and it exports as an .eote"
             : "") +
-          (carried.length ? ` — carrying ${carried.join(", ")} the editor does not model` : ""),
+          (carried.length ? ` — carrying ${carried.join(", ")} the editor does not model` : "") +
+          (data.screens.some((s) => s.Type === "Content") ? ` — ${data.screens.filter((s) => s.Type === "Content").length} of its screens are content screens` : "") +
+          // Nothing to show is said, rather than left as an empty canvas.
+          (data.screens.length === 0 ? " — nothing it holds can be drawn yet, but it all exports back unchanged" : ""),
       });
       useProject.getState().reset();
       router.push(`/project/${record.id}`);

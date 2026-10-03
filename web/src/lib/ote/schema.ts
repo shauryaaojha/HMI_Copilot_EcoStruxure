@@ -454,13 +454,20 @@ export const ViewBox = z.object({
  * because it fills the panel. So both are optional here and the panel
  * resolution is the fallback.
  *
- * `Grid`, `ScrollCanvas` and `ZoomCanvas` are also screen roots in the corpus
- * (9, 5 and 4 of 33). They are not added here: they are container types, they
- * belong with the rest of item 5 in docs/VXDZ_FINDINGS.md §5, and a screen
- * rooted in one still carries through unmodelled rather than being lost.
+ * `ScrollCanvas` and `ZoomCanvas` are the same container with a viewport: their
+ * children sit at Left/Top with a Width, exactly as on a Canvas (every child
+ * of the 9 such screen roots in the corpus does), and what they add - a
+ * scroll direction, a zoom - is carried through by the merge on export. A
+ * ScrollCanvas may be taller than the panel; that is what it scrolls.
+ *
+ * `Grid` is a screen root too (9 screens and 45 content screens in the
+ * corpus) and is not one of these: its children are placed by Row and Column
+ * against star-sized tracks. It needs a layout model of its own (item 5 in
+ * docs/VXDZ_FINDINGS.md §5), and a screen rooted in one is carried through
+ * unmodelled rather than being lost.
  */
 export const Canvas = z.object({
-  Type: z.literal("Canvas"),
+  Type: z.enum(["Canvas", "ScrollCanvas", "ZoomCanvas"]),
   UniqueId: z.string().uuid(),
   Name: z.string(),
   Options: z.number().int().optional(),
@@ -515,12 +522,27 @@ export function rootBox(
   return { width: root.Width ?? panel.width, height: root.Height ?? panel.height };
 }
 
+/**
+ * A screen, or a content screen.
+ *
+ * A content screen is a screen-sized piece the product embeds elsewhere - in a
+ * ContentDisplay on a screen, or as a popup - rather than one an operator
+ * navigates to. It lives in `Contents\<guid>\Screen.dat`, under folders in
+ * `Contents\Hierarchy.dat`, with `Type: "Content"` and a `ContentID` the
+ * displays refer to it by. Schneider's gadget templates keep almost all their
+ * work there: GPS_Slider01 has one screen and eighteen content screens.
+ */
 export const Screen = z.object({
-  Type: z.literal("Screen"),
+  Type: z.enum(["Screen", "Content"]),
   UniqueId: z.string().uuid(),
   Name: z.string(),
+  /** A content screen's number, which a ContentDisplay names it by. */
+  ContentID: z.number().int().optional(),
   Children: z.tuple([ScreenRoot]),
 });
+
+/** A screen an operator navigates to, as opposed to a content screen embedded in one. */
+export const isMainScreen = (screen: { Type: string }) => screen.Type !== "Content";
 
 export type ColorRef = z.infer<typeof ColorRef>;
 export type Part = z.infer<typeof Part>;

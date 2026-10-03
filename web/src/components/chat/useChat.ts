@@ -49,7 +49,7 @@ const cardKey = (unitId: string) => unitId.replace(/[^A-Za-z0-9]/g, "");
 function existingScreens(): ExistingScreen[] {
   const s = useProject.getState();
   const equipment = inferEquipment(s.variables);
-  return s.screens.map((screen) => {
+  return s.screens.filter((screen) => screen.Type !== "Content").map((screen) => {
     const names = new Set(screen.Children[0].Children.map((p) => p.Name));
     const include = equipment
       .filter((u) => names.has(`Card_${cardKey(u.id)}`) || names.has(`Tile_${cardKey(u.id)}`))

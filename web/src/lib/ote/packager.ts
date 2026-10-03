@@ -317,17 +317,45 @@ async function packagePreserved(input: PackageInput, kept: Preserved): Promise<U
   }
 
   // --- screens ------------------------------------------------------------
-  const ids = input.screens.map((s) => s.UniqueId);
+  // A content screen goes back under Contents\ and never into the screen
+  // hierarchy; its index and metadata are its own.
+  const areaOf = (screen: Screen) => kept.screens.get(screen.UniqueId)?.area ?? (screen.Type === "Content" ? "Contents" : "Screens");
+  const mains = input.screens.filter((s) => areaOf(s) === "Screens");
+  const ids = mains.map((s) => s.UniqueId);
+  const contentIds = input.screens.filter((s) => areaOf(s) === "Contents").map((s) => s.UniqueId);
   for (const id of kept.order) {
     if (!ids.includes(id)) {
-      for (const file of ["Screen.dat", "Metadata.dat", "LocalVariables.db"]) entries.delete(nameOf(`Screens/${id}/${file}`));
+      for (const file of ["Screen.dat", "Metadata.dat", "LocalVariables.db", "Scripts.dat"]) entries.delete(nameOf(`Screens/${id}/${file}`));
       changed = true;
     }
   }
+  const removedContents = kept.contentOrder.filter((id) => !contentIds.includes(id));
+  for (const id of removedContents) {
+    for (const file of ["Screen.dat", "Metadata.dat", "LocalVariables.db", "Scripts.dat"]) entries.delete(nameOf(`Contents/${id}/${file}`));
+    changed = true;
+  }
   const localVariables = [...entries.entries()].find(([n]) => /LocalVariables\.db$/i.test(n))?.[1];
-  input.screens.forEach((screen, index) => {
+  input.screens.forEach((screen) => {
     const id = screen.UniqueId;
     const was = kept.screens.get(id);
+    const area = areaOf(screen);
+    if (area === "Contents") {
+      if (was && was.fingerprint === fingerprintScreen(screen)) {
+        if (was.metadata.Name !== screen.Name) {
+          entries.set(nameOf(`Contents/${id}/Metadata.dat`), jsonEntry({ ...was.metadata, Name: screen.Name }));
+          changed = true;
+        }
+        return;
+      }
+      changed = true;
+      entries.set(nameOf(`Contents/${id}/Screen.dat`), jsonEntry(was ? mergeScreen(screen, was) : screen));
+      if (!was || was.metadata.Name !== screen.Name) {
+        entries.set(nameOf(`Contents/${id}/Metadata.dat`), jsonEntry({ LayoutType: 8, ObjectType: 10, ...(was?.metadata ?? {}), Name: screen.Name }));
+      }
+      if (!entries.has(nameOf(`Contents/${id}/LocalVariables.db`)) && localVariables) entries.set(nameOf(`Contents/${id}/LocalVariables.db`), localVariables);
+      return;
+    }
+    const index = ids.indexOf(id);
     if (was && was.fingerprint === fingerprintScreen(screen)) {
       // Untouched, but the order or name may still have moved.
       if (was.metadata.Name !== screen.Name || was.metadata.Order !== index) {
@@ -352,7 +380,35 @@ async function packagePreserved(input: PackageInput, kept: Preserved): Promise<U
     }
   });
   if (JSON.stringify(ids) !== JSON.stringify(kept.order)) {
-    entries.set(nameOf(SCREENS_HIERARCHY), jsonEntry(ids.map((id) => ({ ObjectId: id, Children: [] }))));
+    // From the hierarchy as read, so a screen the reader carried rather than
+    // modelled keeps its entry and its place: the modelled screens fill their
+    // old slots in their new order, deleted ones leave, new ones go last.
+    const modelled = new Set(kept.order);
+    const queue = ids.filter((id) => modelled.has(id));
+    const rebuilt: Preserved["hierarchy"] = [];
+    for (const entry of kept.hierarchy) {
+      if (!modelled.has(entry.ObjectId)) rebuilt.push(entry);
+      else if (queue.length > 0) {
+        const id = queue.shift()!;
+        rebuilt.push(kept.hierarchy.find((e) => e.ObjectId === id) ?? { ObjectId: id, Children: [] });
+      }
+    }
+    for (const id of ids) if (!modelled.has(id)) rebuilt.push({ ObjectId: id, Children: [] });
+    entries.set(nameOf(SCREENS_HIERARCHY), jsonEntry(rebuilt));
+    changed = true;
+  }
+  if (removedContents.length > 0 || contentIds.some((id) => !kept.contentOrder.includes(id))) {
+    // The content tree keeps its folders; a removed content screen leaves it
+    // and a new one goes at the top level.
+    const name = nameOf("Contents/Hierarchy.dat");
+    const raw = entries.get(name);
+    const prune = (nodes: unknown): unknown[] =>
+      (Array.isArray(nodes) ? nodes : [])
+        .filter((n: { ObjectId?: string }) => !removedContents.includes(String(n?.ObjectId)))
+        .map((n: Record<string, unknown>) => (Array.isArray(n.Children) ? { ...n, Children: prune(n.Children) } : n));
+    const tree = prune(raw ? JSON.parse(new TextDecoder().decode(raw).replace(/^\uFEFF/, "")) : []);
+    for (const id of contentIds) if (!kept.contentOrder.includes(id)) tree.push({ ObjectId: id });
+    entries.set(name, jsonEntry(tree));
     changed = true;
   }
 
@@ -434,8 +490,22 @@ export async function packageProject(
 
   // --- screens ------------------------------------------------------------
   const hierarchy: { ObjectId: string; Children: [] }[] = [];
+  const contents: { ObjectId: string }[] = [];
 
-  input.screens.forEach((screen, index) => {
+  // A content screen goes under Contents\, listed in its own hierarchy and
+  // never in the screens': it is embedded in a screen, not navigated to.
+  input.screens
+    .filter((screen) => screen.Type === "Content")
+    .forEach((screen, index) => {
+      const id = screen.UniqueId;
+      contents.push({ ObjectId: id });
+      entries.set(`Contents\\${id}\\Screen.dat`, jsonEntry(screen));
+      entries.set(`Contents\\${id}\\Metadata.dat`, jsonEntry({ LayoutType: 8, Id: index + 1, ObjectType: 10, Name: screen.Name, Order: index }));
+      entries.set(`Contents\\${id}\\LocalVariables.db`, base.localVariables);
+    });
+  if (contents.length > 0) entries.set(CONTENTS_HIERARCHY, jsonEntry(contents));
+
+  input.screens.filter((screen) => screen.Type !== "Content").forEach((screen, index) => {
     const id = screen.UniqueId;
     hierarchy.push({ ObjectId: id, Children: [] });
     entries.set(screenEntry(id, "Screen.dat"), jsonEntry(screen));
