@@ -89,7 +89,7 @@ export function PlantScreen() {
             : "The model is built from the tag list; it has not been built for this project yet."}
         </p>
         {variables.length > 0 && (
-          <Button className="mt-3" variant="primary" icon={<RefreshCw size={14} />} onClick={() => setPlant(modelPlant(variables))}>
+          <Button className="mt-3" variant="primary" icon={<RefreshCw size={14} />} onClick={() => setPlant(modelPlant(variables, {}, useProject.getState().tagImport?.structure))}>
             Build the model from {variables.length} tags
           </Button>
         )}
@@ -114,7 +114,7 @@ export function PlantScreen() {
           className="ml-auto"
           icon={<RefreshCw size={13} />}
           title="Rebuild from the tag list, keeping your answers and your ranges"
-          onClick={() => setPlant(modelPlant(variables, plant.answers))}
+          onClick={() => setPlant(modelPlant(variables, plant.answers, useProject.getState().tagImport?.structure))}
         >
           Rebuild from tags
         </Button>

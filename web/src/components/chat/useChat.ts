@@ -48,7 +48,7 @@ const cardKey = (unitId: string) => unitId.replace(/[^A-Za-z0-9]/g, "");
 /** The screens the application has, as the pipeline needs them for an extension. */
 function existingScreens(): ExistingScreen[] {
   const s = useProject.getState();
-  const equipment = inferEquipment(s.variables);
+  const equipment = inferEquipment(s.variables, s.tagImport?.structure);
   return s.screens.filter((screen) => screen.Type !== "Content").map((screen) => {
     const names = new Set(screen.Children[0].Children.map((p) => p.Name));
     const include = equipment
@@ -122,6 +122,7 @@ export function useChat() {
             bindings: s.bindings,
             selectedIds: s.selectedIds,
             handles: s.handles,
+            structure: s.tagImport?.structure,
           },
           request,
         ),

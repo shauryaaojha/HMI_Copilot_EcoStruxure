@@ -204,6 +204,7 @@ interface ParseResponse {
   corrections: TagImport["corrections"];
   skipped: TagImport["skipped"];
   summary: TagImport["summary"];
+  structure?: TagImport["structure"];
   error?: string;
 }
 
@@ -244,6 +245,7 @@ export function useTagImport() {
           corrections: data.corrections ?? [],
           skipped: data.skipped ?? [],
           summary: data.summary ?? { total: data.variables.length },
+          ...(data.structure?.length ? { structure: data.structure } : {}),
         });
 
         setState({ status: "done", fileName: file.name, count: data.variables.length });

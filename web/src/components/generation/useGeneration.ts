@@ -165,6 +165,7 @@ export function useGeneration() {
               variables: store.getState().variables,
               existing: options.existing,
               target: store.getState().target,
+              structure: store.getState().tagImport?.structure,
             }),
           });
 

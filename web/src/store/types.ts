@@ -102,6 +102,12 @@ export interface TagImport {
   corrections: { from: string; to: string; reason: string }[];
   skipped: { row: number; value: string; reason: string }[];
   summary: { total: number } & Partial<Record<string, number>>;
+  /**
+   * DDT instances, when the file carried types (a Control Expert export).
+   * Equipment inference groups and classifies these before it reads names;
+   * every caller passes it, so the generator and the editor agree on units.
+   */
+  structure?: import("@/lib/ai/infer").StructureHint[];
 }
 
 /* ---------------------------------------------------------------------- */

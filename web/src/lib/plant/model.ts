@@ -16,7 +16,7 @@
 
 import { z } from "zod";
 import type { Variable } from "@/lib/ote/schema";
-import { inferEquipment, type InferredEquipment } from "@/lib/ai/infer";
+import { inferEquipment, type InferredEquipment, type StructureHint } from "@/lib/ai/infer";
 import { rangeFor, type Range } from "./units";
 import { measuredByClass } from "./classes";
 
@@ -122,8 +122,8 @@ function confidenceOf(unit: InferredEquipment): number {
   return unit.loop ? 0.9 : 0.7;
 }
 
-export function modelPlant(variables: Variable[], answers: Record<string, string> = {}): PlantModel {
-  const inferred = inferEquipment(variables);
+export function modelPlant(variables: Variable[], answers: Record<string, string> = {}, structure?: StructureHint[]): PlantModel {
+  const inferred = inferEquipment(variables, structure);
   const assumptions: string[] = [];
 
   // --- equipment -----------------------------------------------------------
