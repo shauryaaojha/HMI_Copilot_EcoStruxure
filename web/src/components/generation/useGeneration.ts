@@ -205,7 +205,7 @@ export function useGeneration() {
         if (used === "local") {
           store
             .getState()
-            .log("/api/generate did not answer — running the local pipeline.");
+            .log("/api/generate did not answer — replaying the bundled demo screen, which needs the demo tags.");
           for await (const event of mockGeneration({
             intent,
             variables: store.getState().variables,

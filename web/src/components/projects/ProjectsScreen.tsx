@@ -10,6 +10,7 @@
  * Phase 9 of docs/BUILD_PLAN.md.
  */
 
+import { expectJson } from "@/lib/ingest/client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -29,7 +30,7 @@ import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
 import type { Binding, ForeignPart } from "@/store/types";
 
 /** What /api/import answers with. */
-interface Imported {
+export interface Imported {
   source: string;
   name: string;
   target: { model: string; width: number; height: number };
@@ -42,6 +43,10 @@ interface Imported {
   warnings: string[];
   /** Which generation of the format the file turned out to be. */
   layout?: "typed" | "struct";
+  /** The product and version that wrote it, e.g. "EcoStruxure Operator Terminal Expert 3.4.1 (.vxdz)". */
+  product?: string;
+  /** Set when the open also added the project to the knowledge base. */
+  knowledge?: { id: string; isNew: boolean };
 }
 
 type Filter = "all" | "recent" | "starred";
@@ -94,8 +99,7 @@ export function ProjectsScreen() {
         },
         body: await file.arrayBuffer(),
       });
-      const data = (await response.json()) as Imported & { error?: string };
-      if (!response.ok || data.error) throw new Error(data.error ?? `import failed (${response.status})`);
+      const data = await expectJson<Imported>(response, "Opening the project");
 
       const record = createProject(data.name);
       const objects = data.screens.reduce((n, s) => n + s.Children[0].Children.length, 0);

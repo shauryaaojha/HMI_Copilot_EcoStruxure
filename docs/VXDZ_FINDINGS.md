@@ -558,6 +558,18 @@ Written down rather than guessed, per `docs/TASK_VXDZ.md` §4.
   `web/src/lib/backend/vijeo.ts` records `.zdat` for Vijeo from separate
   research, and nothing in this corpus confirms or contradicts it.
 
+  > **Answered, 6 October 2026: it is not.** `.vxdz` is Operator Terminal
+  > Expert's own extension before 4.0 - the installed help, What's New 4.0:
+  > *"the project file extension ... has changed from vxdz to eote"* - and OTE
+  > was called **Vijeo XD** until 3.0, which is where the "V" comes from. The
+  > `Pro-face` files are the same editor sold as Pro-face BLUE. Vijeo
+  > *Designer* is a different product whose project archive is a **`.vdz`**
+  > (Schneider FAQ FA268436); a **`.zdat`** is what Vijeo Designer exports for
+  > the on-hold VJD-to-OTE migration tool (FAQ FAQ000273797). `vijeo.ts` has
+  > been corrected to `.vdz`, and `web/src/lib/ingest/sniff.ts` tells all
+  > three apart from their bytes. So this corpus says nothing about Vijeo
+  > Designer's format, and the Vijeo backend still needs one real `.vdz`.
+
 ---
 
 ## Appendix · Reproducing this

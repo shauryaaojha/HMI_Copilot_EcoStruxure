@@ -6,27 +6,32 @@
  * has a source of its own (or none). What the reader could not model on those
  * screens is counted per screen so the picker can say what will not come.
  *
+ * Refusals come from lib/ingest, the same as /api/import: the archive is
+ * checked before it is inflated, and a file that is not a typed-layout project
+ * is refused by name.
+ *
  * Node runtime: sql.js reads the databases. docs/PLAN_PHASE2.md item 2.
  */
 
 import { readProject } from "@/lib/ote/reader";
+import { IngestError, fileNameFrom, ingestResponse } from "@/lib/ingest/errors";
+import { readBody } from "@/lib/ingest/body";
+import { refuse, sniff } from "@/lib/ingest/sniff";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
-  const fileName = decodeURIComponent(request.headers.get("x-file-name") ?? "project.eote");
-  let bytes: Uint8Array;
+  const fileName = fileNameFrom(request, "project.eote");
   try {
-    bytes = new Uint8Array(await request.arrayBuffer());
-  } catch {
-    return Response.json({ error: "expected the .eote bytes as the body" }, { status: 400 });
-  }
-  if (bytes.length < 22) {
-    return Response.json({ error: "that is not a .eote file" }, { status: 400 });
-  }
+    const bytes = await readBody(request);
+    const kind = await sniff(bytes, fileName);
+    const refused = refuse(kind, fileName);
+    if (refused) throw refused;
+    if (kind.kind !== "ote-project") {
+      throw new IngestError("unsupported-format", `${fileName} is not an Operator Terminal Expert project, so it has no screens to take.`);
+    }
 
-  try {
     const read = await readProject(bytes, fileName);
     return Response.json({
       name: read.name,
@@ -44,7 +49,6 @@ export async function POST(request: Request) {
       warnings: read.warnings,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "could not read the file";
-    return Response.json({ error: message }, { status: 422 });
+    return ingestResponse(error, "could not read the project");
   }
 }

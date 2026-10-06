@@ -15,8 +15,9 @@
 import { useCallback, useState } from "react";
 import type { Variable } from "@/lib/ote/schema";
 import { useProject, type TagImport } from "@/store/project";
+import { failureMessage, jsonOrNull } from "@/lib/ingest/client";
 
-export const ACCEPTED = ".csv,.txt,.xlsx,.xls";
+export const ACCEPTED = ".csv,.txt,.tsv,.xlsx,.xsy,.xvm,.xef,.xml";
 
 export interface Sample {
   path: string;
@@ -227,15 +228,16 @@ export function useTagImport() {
 
       try {
         const response = await fetch("/api/tags/parse", { method: "POST", body });
-        const data = (await response.json()) as ParseResponse;
+        const parsed = await jsonOrNull<ParseResponse>(response);
 
-        if (!response.ok) {
-          const message = data.error ?? `parse failed (${response.status})`;
+        if (!response.ok || !parsed) {
+          const message = failureMessage(response, parsed, "Reading the tag file");
           setState({ status: "failed", fileName: file.name, message });
           log(`Import failed: ${message}`);
           return null;
         }
 
+        const data = parsed;
         importTags(data.variables, {
           fileName: file.name,
           at: Date.now(),

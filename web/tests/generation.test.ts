@@ -121,6 +121,21 @@ describe("the local pipeline honours the frozen event contract", () => {
     expect(events.some((e) => e.type === "error")).toBe(false);
   });
 
+  it("refuses to replay the demo screen over somebody else's tags", async () => {
+    // The fallback replays a fixture. Over a real plant's tags it used to draw
+    // the demo pump station wired to tags the project did not have.
+    const events = await collect(
+      mockGeneration({
+        intent: "conveyor line",
+        variables: [{ Name: "CNV_101_RUN", DataType: "BOOL", Comments: "", DeviceAddress: "" }],
+        pace: 0,
+      }),
+    );
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ type: "error", message: expect.stringMatching(/nothing was generated/) });
+    expect(events.some((e) => e.type === "object")).toBe(false);
+  });
+
   it("describes each step by what it produced, not by what it is thinking", async () => {
     const events = await run();
     const details = events

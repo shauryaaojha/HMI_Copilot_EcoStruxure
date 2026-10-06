@@ -62,12 +62,16 @@ const capabilities: Capabilities = {
 export const VIJEO: Backend = {
   id: "vijeo",
   name: "Vijeo Designer",
-  // Unconfirmed, like everything else here. Our own research (REENGINEERING.md
-  // §1.5) records .zdat for a Vijeo Designer project; we have never held one.
-  // It is written down so the real answer replaces a stated guess rather than
-  // an invented fact - the first draft of this file said ".vdz", which came
-  // from nowhere at all.
-  extension: ".zdat",
+  // Corrected 6 October 2026. A Vijeo Designer project archive is a .vdz,
+  // exported from Vijeo Manager: Schneider FAQ FA268436 ("What software opens
+  // a .vdz file?") and the Machine Expert help, "Import / Export Vijeo-Designer
+  // Project". The first draft of this file had it right; the correction to
+  // .zdat was the mistake. A .zdat is something else: what Vijeo Designer
+  // exports *for* the VJD-to-OTE migration tool (FAQ FAQ000273797), which
+  // Schneider has put on hold. And a .vxdz is not Vijeo Designer at all - it is
+  // Operator Terminal Expert's own extension before 4.0, from when OTE was
+  // called Vijeo XD. lib/ingest/sniff.ts tells the three apart.
+  extension: ".vdz",
   capabilities,
   unavailable:
     "Vijeo Designer export is declared but not implemented: we have never opened a Vijeo Designer project, " +
