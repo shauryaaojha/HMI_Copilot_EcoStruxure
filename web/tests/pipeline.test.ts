@@ -188,7 +188,7 @@ describe("provider selection", () => {
 
   it("takes the model id from AI_MODEL, else the provider default", () => {
     withKeys({ ANTHROPIC_API_KEY: "y" }, () => {
-      expect(resolveProvider().model).toBe("claude-opus-5");
+      expect(resolveProvider().model).toBe("claude-opus-5-5");
     });
     withKeys({ ANTHROPIC_API_KEY: "y", AI_MODEL: "claude-sonnet-5" }, () => {
       expect(resolveProvider().model).toBe("claude-sonnet-5");

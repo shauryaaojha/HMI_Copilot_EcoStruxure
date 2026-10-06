@@ -98,6 +98,8 @@ export function useChat() {
       body: JSON.stringify({
         history,
         repair,
+        // DDT instances, so the tools see the same equipment the generator does.
+        structure: s.tagImport?.structure,
         // What the lookup tools can search. Compact, never in the prompt.
         catalog: {
           tags: s.variables.map((v) => ({ name: v.Name, dataType: v.DataType, comment: v.Comments ?? "" })),
