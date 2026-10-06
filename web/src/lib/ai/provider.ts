@@ -28,7 +28,9 @@ export interface ProviderChoice {
 }
 
 const DEFAULT_MODEL: Record<Provider, string> = {
-  claude: "claude-opus-5",
+  // Claude Opus 5.5, the current Opus. Its effort defaults to medium rather
+  // than Opus 5's high, so every call site states its effort explicitly.
+  claude: "claude-opus-5-5",
   gemini: "gemini-flash-lite-latest",
 };
 

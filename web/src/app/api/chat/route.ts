@@ -14,6 +14,9 @@
 import { converse, type Catalog, type HistoryItem, type ProjectDigest } from "@/lib/ai/converse";
 import { resolveProvider } from "@/lib/ai/provider";
 import type { Turn } from "@/lib/ai/ops";
+import type { StructureHint } from "@/lib/ai/infer";
+import { backendFor } from "@/lib/backend";
+import { allKnowledge } from "@/lib/knowledge/store";
 
 export const runtime = "nodejs";
 /** A model call with the whole project in context can outrun the default. */
@@ -24,6 +27,7 @@ interface Body {
   digest?: ProjectDigest;
   repair?: boolean;
   catalog?: Catalog;
+  structure?: StructureHint[];
 }
 
 export async function POST(request: Request) {
@@ -68,7 +72,19 @@ export async function POST(request: Request) {
       body.catalog && Array.isArray(body.catalog.tags) && Array.isArray(body.catalog.objects)
         ? body.catalog
         : undefined;
-    const result = await converse({ history, digest, repair: body.repair === true, catalog });
+    // The knowledge base informs the tools; a store that cannot be read
+    // costs the turn its precedents, never the turn itself.
+    const knowledge = await allKnowledge().catch(() => []);
+    const target = backendFor();
+    const result = await converse({
+      history,
+      digest,
+      repair: body.repair === true,
+      catalog,
+      structure: Array.isArray(body.structure) ? body.structure : undefined,
+      knowledge,
+      target: { name: target.name, parts: target.capabilities.parts },
+    });
     if (!result) {
       return Response.json(
         {
