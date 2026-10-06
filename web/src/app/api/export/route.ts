@@ -16,6 +16,8 @@ import { panelOf, type PackageInput } from "@/lib/ote/packager";
 import { backendFor, unsupportedParts, type FormatId } from "@/lib/backend";
 import { readProject } from "@/lib/ote/reader";
 import { getImport, importGoneMessage } from "@/lib/ote/imports";
+import { preflight, selfCheck } from "@/lib/ote/preflight";
+import { isIngestError } from "@/lib/ingest/errors";
 
 export const runtime = "nodejs";
 
@@ -35,6 +37,21 @@ export async function POST(request: Request) {
 
   if (!input?.screens?.length) {
     return Response.json({ error: "a project needs at least one screen" }, { status: 400 });
+  }
+
+  // Every defect in the project at once, before anything is written: a
+  // malformed screen or a binding to an undeclared tag is the project's
+  // problem (422), not the server's (500).
+  const problems = preflight(input);
+  if (problems.length > 0) {
+    return Response.json(
+      {
+        error: `The project has ${problems.length}${problems.length >= 25 ? "+" : ""} problem${problems.length === 1 ? "" : "s"} to fix before it can be exported.`,
+        code: "preflight",
+        problems,
+      },
+      { status: 422 },
+    );
   }
 
   // The format is asked for rather than assumed: the writer is one
@@ -79,6 +96,23 @@ export async function POST(request: Request) {
       if (panel) panelLabel = `${panel.model} ${panel.width}x${panel.height}`;
     }
 
+    // The file is read back before it is handed over. An export that would
+    // not reopen as what was exported is a defect to report, never a download.
+    if (backend.id === "eote") {
+      try {
+        await selfCheck(bytes, input);
+      } catch (error) {
+        return Response.json(
+          {
+            error: `The exported file failed its read-back check: ${error instanceof Error ? error.message : String(error)}. Nothing was downloaded.`,
+            code: "self-check",
+            hint: "This is a fault in HMI Copilot, not in your project. Export the variables as CSV meanwhile, and report it.",
+          },
+          { status: 500 },
+        );
+      }
+    }
+
     const headers: Record<string, string> = {
       "Content-Type": "application/octet-stream",
       "Content-Disposition": `attachment; filename="${safeName(input.name)}${backend.extension}"`,
@@ -87,6 +121,8 @@ export async function POST(request: Request) {
     if (panelLabel) headers["X-OTE-Panel"] = panelLabel;
     return new Response(bytes as unknown as BodyInit, { headers });
   } catch (error) {
+    // The stored original turned out unreadable: say so as the reader does.
+    if (isIngestError(error)) return Response.json(error.toJSON(), { status: error.status });
     const message = error instanceof Error ? error.message : "export failed";
     // A missing skeleton is a setup problem, not a bad request.
     const status = message.includes("setup:skeleton") ? 503 : 500;
