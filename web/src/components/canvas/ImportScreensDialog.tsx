@@ -12,6 +12,7 @@
  * on site. docs/PLAN_PHASE2.md item 2.
  */
 
+import { expectJson } from "@/lib/ingest/client";
 import { useEffect, useState } from "react";
 import { AlertTriangle, Check, X } from "lucide-react";
 import type { Screen, Variable } from "@/lib/ote/schema";
@@ -47,8 +48,7 @@ export function ImportScreensDialog({ file, onClose }: { file: File; onClose: ()
           },
           body: await file.arrayBuffer(),
         });
-        const data = (await response.json()) as Read & { error?: string };
-        if (!response.ok || data.error) throw new Error(data.error ?? `import failed (${response.status})`);
+        const data = await expectJson<Read>(response, "Reading that project");
         if (!live) return;
         setRead(data);
         setPicked(new Set(data.screens.map((s) => s.UniqueId)));

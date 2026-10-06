@@ -10,6 +10,7 @@
  */
 
 import { parseTagsFile } from "@/lib/tags/parse";
+import { ingestResponse } from "@/lib/ingest/errors";
 
 export const runtime = "nodejs";
 
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
       return Response.json(
         {
           error:
-            "no tags found. Expected a column named Name, TagName, Symbol or Variable.",
+            "no tags found. Expected a column named Name, TagName, Symbol or Variable, or a Control Expert variable export.",
           skipped: result.skipped,
         },
         { status: 422 },
@@ -47,9 +48,6 @@ export async function POST(request: Request) {
     }
     return Response.json(result);
   } catch (error) {
-    return Response.json(
-      { error: error instanceof Error ? error.message : "could not parse the file" },
-      { status: 422 },
-    );
+    return ingestResponse(error, "could not parse the tag file");
   }
 }

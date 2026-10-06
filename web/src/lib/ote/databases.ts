@@ -274,7 +274,14 @@ export function writeAlarms(db: Database, alarms: Alarm[]): AlarmTarget[] {
 export function syncAlarms(
   db: Database,
   alarms: Alarm[],
-  previous: { groupId: string | null; groupName: string; uids: string[]; startId: number },
+  previous: {
+    groupId: string | null;
+    groupName: string;
+    uids: string[];
+    startId: number;
+    rows?: Record<string, unknown>[];
+    keys?: string[];
+  },
 ): AlarmTarget[] {
   for (const uid of previous.uids) db.run('DELETE FROM Alarm WHERE "UniqueId" = ?', [uid]);
 
@@ -309,11 +316,26 @@ export function syncAlarms(
 
   const columns = columnsOf(db, "Alarm");
   const targets: AlarmTarget[] = [];
+  // An alarm the engineer still has keeps the row it was read from - its
+  // UniqueId, Deadband, Parameter and every column we do not model - with the
+  // modelled fields laid over it. Matched once each, in order.
+  const used = new Set<number>();
+  const original = (alarm: Alarm): Record<string, SqlValue> | undefined => {
+    const key = `${alarm.Trigger.toLowerCase()}|${alarm.AlarmType}|${alarm.AlarmRecordType}`;
+    const i = (previous.keys ?? []).findIndex((k, n) => k === key && !used.has(n));
+    if (i < 0 || !previous.rows?.[i]) return undefined;
+    used.add(i);
+    return previous.rows[i] as Record<string, SqlValue>;
+  };
   alarms.forEach((alarm, index) => {
-    const uid = upperGuid();
+    const kept = original(alarm);
+    const uid = kept && typeof kept.UniqueId === "string" ? kept.UniqueId : upperGuid();
     const isBit = alarm.AlarmRecordType === 1;
     const id = previous.startId + index;
     insert(db, "Alarm", columns, {
+      Deadband: 0,
+      Parameter: 0,
+      ...(kept ?? {}),
       UniqueId: uid,
       AlarmGroupId: groupId,
       AlarmType: alarm.AlarmType,
@@ -322,10 +344,8 @@ export function syncAlarms(
       IsOnTrigger: isBit ? 1 : 0,
       Message: alarm.Message,
       Order: index,
-      Parameter: 0,
       Severity: alarm.Severity,
       Value: alarm.Value,
-      Deadband: 0,
     });
     targets.push({
       uid,

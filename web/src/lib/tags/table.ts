@@ -45,11 +45,26 @@ function plain(value: ExcelJS.CellValue): unknown {
   return value;
 }
 
+/**
+ * Which sheet holds the tags.
+ *
+ * Operator Terminal Expert 4.4 exports variables to Excel as eight sheets -
+ * Summary, VariableTypes, Variables, ScanRates, AlarmGroups, Alarms,
+ * LoggingGroups, LoggingRecords - and "sheets and columns can be in any order"
+ * (featureguide, Exporting and Importing Variables). Reading the first sheet
+ * read Summary, whose "Project Name" row became a tag. So: a sheet called
+ * Variables, else one called Tags or Symbols, else the first.
+ */
+export function pickSheet<T extends { name: string }>(sheets: T[]): T | undefined {
+  const by = (re: RegExp) => sheets.find((s) => re.test(s.name.trim()));
+  return by(/^variables$/i) ?? by(/^(tags?|symbols?|variable ?list|tag ?list)$/i) ?? sheets[0];
+}
+
 async function readSheet(bytes: Uint8Array): Promise<unknown[][]> {
   const book = new ExcelJS.Workbook();
   // exceljs wants a Node Buffer; a Uint8Array view over the same bytes is one.
   await book.xlsx.load(Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength) as unknown as ArrayBuffer);
-  const sheet = book.worksheets[0];
+  const sheet = pickSheet(book.worksheets);
   if (!sheet) return [];
   const rows: unknown[][] = [];
   sheet.eachRow({ includeEmpty: false }, (row) => {

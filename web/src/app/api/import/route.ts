@@ -7,54 +7,56 @@
  * The browser gets the modelled project plus a count of what was carried
  * rather than modelled, so the UI can say so.
  *
+ * Every refusal is an IngestError with a code and a hint (lib/ingest): the
+ * file is sniffed and its ZIP directory checked before anything is inflated,
+ * so a crafted archive, a Vijeo Designer file or an older .vxdz is refused by
+ * name rather than part way through a parse.
+ *
+ * Opening a project also scans it into the knowledge base (lib/knowledge),
+ * which keeps its structure - never its bytes - for retrieval. A scan that
+ * fails never fails the open.
+ *
  * Node runtime: sql.js reads the databases.
  */
 
-import { layoutOf, readProject } from "@/lib/ote/reader";
+import { readProject } from "@/lib/ote/reader";
 import { importStore, putImport } from "@/lib/ote/imports";
+import { IngestError, fileNameFrom, ingestResponse } from "@/lib/ingest/errors";
+import { readBody } from "@/lib/ingest/body";
+import { refuse, sniff } from "@/lib/ingest/sniff";
+import { learnFromProject } from "@/lib/knowledge/learn";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
-  const fileName = decodeURIComponent(request.headers.get("x-file-name") ?? "project.eote");
-  let bytes: Uint8Array;
+  const fileName = fileNameFrom(request, "project.eote");
   try {
-    bytes = new Uint8Array(await request.arrayBuffer());
-  } catch {
-    return Response.json({ error: "expected the .eote bytes as the body" }, { status: 400 });
-  }
-  if (bytes.length < 22) {
-    return Response.json({ error: "that is not a project file" }, { status: 400 });
-  }
+    const bytes = await readBody(request);
+    const kind = await sniff(bytes, fileName);
+    const refused = refuse(kind, fileName);
+    if (refused) {
+      // An older .vxdz cannot be opened, but it can still teach: scan it.
+      if (kind.kind === "ote-project") await learnFromProject(bytes, fileName).catch(() => undefined);
+      throw refused;
+    }
+    if (kind.kind !== "ote-project") {
+      throw new IngestError(
+        "unsupported-format",
+        kind.kind === "compound-object"
+          ? `${fileName} is a compound object (.co), not a project.`
+          : kind.kind === "spreadsheet" || kind.kind === "text-table" || kind.kind === "control-expert-xml"
+            ? `${fileName} is a tag list, not a project.`
+            : `${fileName} is not an Operator Terminal Expert project.`,
+        kind.kind === "spreadsheet" || kind.kind === "text-table" || kind.kind === "control-expert-xml"
+          ? "Start a new project and import it as tags."
+          : "Open a .eote, or a .vxdz saved by version 3.4.1 or later.",
+      );
+    }
 
-  // Refuse the older layout by name rather than part way through. Without this
-  // a .vxdz at 3.1 to 3.3 fails on "no such table: Variables", which is true
-  // and tells the engineer nothing. docs/VXDZ_FINDINGS.md §7.2.
-  let layout: Awaited<ReturnType<typeof layoutOf>>;
-  try {
-    layout = await layoutOf(bytes);
-  } catch {
-    return Response.json({ error: "that file is not a project archive" }, { status: 400 });
-  }
-  if (layout === "struct") {
-    return Response.json(
-      {
-        error:
-          `${fileName} is an older project layout, which this tool cannot open yet. ` +
-          "It keeps its screens as Contents\\panelN.dat rather than one folder per screen, " +
-          "and its objects and databases are shaped differently throughout. " +
-          "Projects saved by EcoStruxure Operator Terminal Expert 4.4, and .vxdz files at " +
-          "application version 3.4.1 or later, open normally.",
-        layout,
-      },
-      { status: 422 },
-    );
-  }
-
-  try {
     const read = await readProject(bytes, fileName);
     const id = await putImport(bytes, fileName);
+    const learned = await learnFromProject(bytes, fileName).catch(() => null);
 
     return Response.json({
       source: id,
@@ -76,10 +78,11 @@ export async function POST(request: Request) {
       carried: read.carried,
       warnings: read.warnings,
       /** So the UI can say what it opened, and that an export is an .eote. */
-      layout,
+      layout: kind.layout,
+      product: kind.product,
+      ...(learned ? { knowledge: { id: learned.id, isNew: learned.isNew } } : {}),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "could not read the file";
-    return Response.json({ error: message }, { status: 422 });
+    return ingestResponse(error, "could not open the project");
   }
 }
