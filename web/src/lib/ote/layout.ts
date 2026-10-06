@@ -88,6 +88,13 @@ export interface ScreenSpec {
 export interface LaidOutScreen {
   screen: Screen;
   parts: Part[];
+  /**
+   * Each part's stable key, by UniqueId: the name the compiler asked for,
+   * before the Placer made it unique across the application. "Title" on the
+   * third screen is named Title_3 but keyed Title, so a regeneration of that
+   * screen alone finds it again. lib/program/regenerate.ts matches on this.
+   */
+  keys?: Record<string, string>;
   wires: Wire[];
   /** Composite instances among the parts, for the store to adopt. */
   composites: CompositeInstance[];
@@ -180,19 +187,37 @@ export class Placer {
   parts: Part[] = [];
   wires: Wire[] = [];
   composites: CompositeInstance[] = [];
+  /** UniqueId -> stable key for this screen's parts (see LaidOutScreen.keys). */
+  keys: Record<string, string> = {};
+  private keyCount = new Map<string, number>();
 
   /** Fresh part list per screen; the name set carries across all of them. */
   begin() {
     this.parts = [];
     this.wires = [];
     this.composites = [];
+    this.keys = {};
+    this.keyCount = new Map();
+  }
+
+  /** A key unique within the screen: a second "Lbl" on one screen is "Lbl#2". */
+  private keyFor(id: string, wanted: string) {
+    const n = (this.keyCount.get(wanted) ?? 0) + 1;
+    this.keyCount.set(wanted, n);
+    this.keys[id] = n === 1 ? wanted : `${wanted}#${n}`;
   }
 
   /** Expand a composite here: its parts are placed, its wires kept, its instance recorded. */
   composite(kind: CompositeKind, props: Record<string, unknown>, box: Box, name: string): CompositeInstance {
     const stem = this.unique(name);
     const { parts, wires } = expandComposite(kind, props, box, stem);
-    for (const part of parts) this.add(part);
+    // A composite's parts are named stem, stem_Lbl, stem_Val...; their keys use
+    // the stem that was asked for, so Card_PMP101_2_Val is keyed Card_PMP101_Val.
+    const wantedStem = name.replace(/[^A-Za-z0-9_]/g, "_").replace(/^(\d)/, "N$1");
+    for (const part of parts) {
+      const key = part.Name.startsWith(stem) ? wantedStem + part.Name.slice(stem.length) : part.Name;
+      this.add(part, undefined, key);
+    }
     for (const w of wires) {
       const part = parts[w.index];
       if (part) this.wires.push({ part, tag: w.tag, property: w.property, ...(w.converter ? { converter: w.converter } : {}) });
@@ -225,7 +250,8 @@ export class Placer {
   }
 
   /** Renames the part before placing it, then records the wire if there is one. */
-  add(part: Part, tag?: string): Part {
+  add(part: Part, tag?: string, key?: string): Part {
+    this.keyFor(part.UniqueId, key ?? part.Name.replace(/[^A-Za-z0-9_]/g, "_").replace(/^(\d)/, "N$1"));
     part.Name = this.unique(part.Name);
     this.parts.push(part);
     if (tag) this.wires.push({ part, tag, property: "CurrentValue" });
@@ -772,6 +798,7 @@ export function layoutApplication(
     return {
       screen,
       parts: place.parts,
+      keys: { ...place.keys },
       wires,
       composites: place.composites.map((c) => ({ ...c, screenId: screen.UniqueId })),
       notes,

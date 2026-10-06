@@ -46,7 +46,32 @@ export interface ObjectMeta {
   hidden?: boolean;
   /** Members of one group share this id. Groups are flat - no nesting. */
   groupId?: string;
+  /**
+   * Where the object came from, which decides what a regeneration may do to
+   * it (lib/program/regenerate.ts):
+   *
+   *   generated  placed by the generator and untouched since; may be replaced
+   *   edited     placed by the generator, then changed by hand; kept unless
+   *              the engineer ticks it
+   *   manual     placed by hand; never touched
+   *   imported   lifted from another project; never touched
+   *
+   * Absent means unknown - an object from before provenance existed - and is
+   * treated as protected, like `edited`.
+   */
+  origin?: ObjectOrigin;
+  /**
+   * The generator's stable key for the object on its screen (the name the
+   * compiler asked for, before it was made unique). What a regeneration
+   * matches on, so the object keeps its UniqueId, its name and its bindings.
+   */
+  key?: string;
 }
+
+export type ObjectOrigin = "generated" | "edited" | "manual" | "imported";
+
+/** A meta record that carries nothing, and can be dropped from the save. */
+export const isEmptyMeta = (m: ObjectMeta) => !m.locked && !m.hidden && !m.groupId && !m.origin && !m.key;
 
 /** Canvas grid, snapping and the colour set every part resolves through. */
 export interface Standards {

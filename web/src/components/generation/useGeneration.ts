@@ -74,9 +74,15 @@ export function useGeneration() {
           event.screenName || store.getState().name || "Screen1",
         );
         s.appendToView(event.parentId, event.part);
+        if (event.key) s.markGenerated(event.part.UniqueId, event.key);
         s.attribute("layout", event.part.UniqueId);
         break;
       }
+
+      case "program":
+        s.ensureScreen(event.parentId, event.screenName);
+        s.setProgram(event.parentId, event.program);
+        break;
 
       case "plant":
         s.setPlant(event.model);
