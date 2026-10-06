@@ -56,11 +56,12 @@ engineer sees.
 | **9** | Supporting screens | — | ✅ done |
 | **10** | Rehearsal | — | 🟡 script done, live run-through pending |
 
-**337 tests.** 324 of them run anywhere; the other 13 — the Phase 1 packager gate and
-the symbol round-trip — need a local EcoStruxure installation to extract a skeleton
-from, and skip without one. So the number a run prints depends on the machine: 324 on
-a Mac, 337 on the Windows laptop. Measured with the app running, since the Phase 10
-rehearsal calls the routes.
+**869 tests** (6 October 2026). 13 of them, the Phase 1 packager gate and the
+symbol round-trip, need a local EcoStruxure installation to extract a skeleton from;
+19 more are the Phase 10 rehearsal, which calls the routes of a running app. Each
+group skips without what it needs. So a run prints 837 with neither, 850 with the
+skeleton, and 869 with the app running too. What changed in the October audit, and
+why, is in [`docs/AUDIT_2026-10.md`](docs/AUDIT_2026-10.md).
 
 ```bash
 cd web && npm test
