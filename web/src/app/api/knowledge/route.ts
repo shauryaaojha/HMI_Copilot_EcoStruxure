@@ -15,7 +15,7 @@
 import { fileNameFrom, ingestResponse, IngestError } from "@/lib/ingest/errors";
 import { readBody } from "@/lib/ingest/body";
 import { refuse, sniff } from "@/lib/ingest/sniff";
-import { scanProject } from "@/lib/knowledge/scan";
+import { scanProject, scanVijeo } from "@/lib/knowledge/scan";
 import { aggregate } from "@/lib/knowledge/conventions";
 import { allKnowledge, deleteKnowledge, getKnowledge, knowledgeStore, putKnowledge, summarise } from "@/lib/knowledge/store";
 
@@ -54,10 +54,11 @@ export async function POST(request: Request) {
     const kind = await sniff(bytes, fileName);
     // The older layout cannot be opened, but it can be learned from: only
     // non-projects are refused here.
-    if (kind.kind !== "ote-project") {
-      throw refuse(kind, fileName) ?? new IngestError("unsupported-format", `${fileName} is not an Operator Terminal Expert project.`);
+    const vdz = kind.kind === "vijeo-designer" && kind.variant === "vdz";
+    if (kind.kind !== "ote-project" && !vdz) {
+      throw refuse(kind, fileName) ?? new IngestError("unsupported-format", `${fileName} is not an Operator Terminal Expert or Vijeo Designer project.`);
     }
-    const knowledge = await scanProject(bytes, fileName);
+    const knowledge = vdz ? await scanVijeo(bytes, fileName) : await scanProject(bytes, fileName);
     const kept = await putKnowledge(knowledge);
     return Response.json({ ...kept, summary: summarise(knowledge), problems: knowledge.problems });
   } catch (error) {

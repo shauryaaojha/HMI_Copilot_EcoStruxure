@@ -25,6 +25,7 @@ import { IngestError, fileNameFrom, ingestResponse } from "@/lib/ingest/errors";
 import { readBody } from "@/lib/ingest/body";
 import { refuse, sniff } from "@/lib/ingest/sniff";
 import { learnFromProject } from "@/lib/knowledge/learn";
+import { inventoryVdz } from "@/lib/vijeo/vdz";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -36,8 +37,29 @@ export async function POST(request: Request) {
     const kind = await sniff(bytes, fileName);
     const refused = refuse(kind, fileName);
     if (refused) {
-      // An older .vxdz cannot be opened, but it can still teach: scan it.
-      if (kind.kind === "ote-project") await learnFromProject(bytes, fileName).catch(() => undefined);
+      // An older .vxdz or a Vijeo backup cannot be opened, but it can still
+      // teach: scan it, and tell the engineer what it holds.
+      const learned =
+        kind.kind === "ote-project" || (kind.kind === "vijeo-designer" && kind.variant === "vdz")
+          ? await learnFromProject(bytes, fileName).catch(() => null)
+          : null;
+      if (kind.kind === "vijeo-designer" && kind.variant === "vdz") {
+        const inv = await inventoryVdz(bytes).catch(() => null);
+        if (inv) {
+          return Response.json(
+            {
+              ...refused.toJSON(),
+              error:
+                `${refused.message} It holds ${inv.panels.length} panel${inv.panels.length === 1 ? "" : "s"} referencing ` +
+                `${inv.variables.length} variable${inv.variables.length === 1 ? "" : "s"}` +
+                (learned ? "; its structure has been added to the knowledge base." : "."),
+              inventory: { panels: inv.panels.length, targets: inv.targets, variablesReferenced: inv.variables.length },
+              ...(learned ? { knowledge: learned } : {}),
+            },
+            { status: refused.status },
+          );
+        }
+      }
       throw refused;
     }
     if (kind.kind !== "ote-project") {

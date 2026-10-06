@@ -86,15 +86,37 @@ export function normaliseDataType(raw: string): DataType | null {
 
 /** Finds which spreadsheet column holds which field. */
 function mapHeader(header: string[]): Partial<Record<keyof ParsedRow, number>> {
+  // The most specific alias wins, not the leftmost column: Vijeo Designer's
+  // export starts "Type,Name,Data Type,..." where Type is the row kind
+  // (Variable, Folder), and taking it as the data type skipped every row.
   const mapping: Partial<Record<keyof ParsedRow, number>> = {};
+  const rank: Partial<Record<keyof ParsedRow, number>> = {};
   header.forEach((cell, index) => {
     const k = key(String(cell ?? ""));
     for (const [field, aliases] of Object.entries(COLUMNS) as [keyof ParsedRow, string[]][]) {
-      if (mapping[field] === undefined && aliases.includes(k)) mapping[field] = index;
+      const r = aliases.indexOf(k);
+      if (r >= 0 && (rank[field] === undefined || r < rank[field]!)) {
+        mapping[field] = index;
+        rank[field] = r;
+      }
     }
   });
   return mapping;
 }
+
+/**
+ * Vijeo Designer's variable export marks every row with its kind in the first
+ * column (folder, variable, structure instance, structure element, array).
+ * When the header's first column is that, the kind decides what is a tag.
+ */
+const VIJEO_ROWS: Record<string, "tag" | "skip-folder" | "skip-structure" | "skip-array"> = {
+  variable: "tag",
+  subvariable: "tag",
+  folder: "skip-folder",
+  ddtvariable: "skip-structure",
+  structurevariable: "skip-structure",
+  arrayvariable: "skip-array",
+};
 
 /**
  * A file with no recognisable header - a bare list of names, one per line, or
@@ -219,6 +241,14 @@ export function parseGrid(grid: unknown[][], filename = ""): ParseResult {
   const body = hasHeader ? grid.slice(headerRow + 1) : grid;
   const firstBodyRow = hasHeader ? headerRow + 2 : 1;
 
+  // Vijeo Designer: first column "Type" holding row kinds, and the data type
+  // somewhere else. Recognised by the rows, not by the header alone.
+  const kindColumn =
+    hasHeader && key(String(grid[headerRow][0] ?? "")) === "type" && mapping.dataType !== 0 &&
+    body.slice(0, 50).some((r) => VIJEO_ROWS[key(String(r[0] ?? ""))] !== undefined)
+      ? 0
+      : -1;
+
   const cell = (row: unknown[], field: keyof ParsedRow): string => {
     const index = mapping[field];
     return index === undefined ? "" : String(row[index] ?? "").trim();
@@ -230,6 +260,18 @@ export function parseGrid(grid: unknown[][], filename = ""): ParseResult {
   body.forEach((row, i) => {
     const name = cell(row, "name");
     if (name.length === 0) return; // blank line, not an error worth reporting
+    if (kindColumn >= 0) {
+      const kind = VIJEO_ROWS[key(String(row[kindColumn] ?? ""))];
+      if (kind === "skip-folder") return; // a folder is not a tag
+      if (kind === "skip-structure" || kind === "skip-array") {
+        skipped.push({
+          row: i + firstBodyRow,
+          value: name,
+          reason: kind === "skip-array" ? "array variable: its elements are imported where the export lists them" : "structure instance: its elements are imported as their own rows",
+        });
+        return;
+      }
+    }
 
     const rawType = cell(row, "dataType");
     const dataType = normaliseDataType(rawType);

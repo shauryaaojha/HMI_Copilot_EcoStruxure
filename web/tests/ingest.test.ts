@@ -280,3 +280,31 @@ describe("tag files OTE and Control Expert actually write", () => {
     expect(e.hint).toMatch(/xsy/);
   });
 });
+
+describe("Vijeo Designer's own variable export", () => {
+  // Shaped on what is publicly documented of the format: a preamble line,
+  // then a header starting "Type,Name", rows marked by kind, structure
+  // elements as dotted names, Latin-1, CRLF. The plant is ours.
+  const csv = [
+    "Vijeo-Designer variable export",
+    'Type,Name,Data Type,Source,Description,Scan Group,Device Address',
+    "Folder,PUMPS,,,,,",
+    'Variable,PMP_101_RUN,BOOL,External,"Pump 1 running",SG1,%MW100:X0',
+    'Variable,TANK_LVL,REAL,Internal,"Tank level",,',
+    "DDTVariable,PUMPS.P5,PumpType,External,,SG1,",
+    'SubVariable,PUMPS.P5.Running,BOOL,External,"P5 running",SG1,%MW200:X0',
+    "ArrayVariable,LAMPS01,BOOL,Internal,,,",
+  ].join("\r\n");
+
+  it("takes variables and structure elements, skips folders, reports structures and arrays", async () => {
+    const r = await parseTagsFile(new TextEncoder().encode(csv), "vijeo.csv");
+    expect(r.variables.map((v) => [v.DataType, v.Comments, v.DeviceAddress])).toEqual([
+      ["BOOL", "Pump 1 running", "%MW100:X0"],
+      ["REAL", "Tank level", ""],
+      ["BOOL", "P5 running", "%MW200:X0"],
+    ]);
+    expect(r.variables[2].Name).toMatch(/^PUMPS_P5_Running$/);
+    expect(r.corrections.some((c) => c.from === "PUMPS.P5.Running")).toBe(true);
+    expect(r.skipped.map((s) => s.value)).toEqual(["PUMPS.P5", "LAMPS01"]);
+  });
+});
