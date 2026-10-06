@@ -9,6 +9,7 @@
  */
 
 import { runPipeline, type ExistingScreen } from "@/lib/ai/pipeline";
+import type { StructureHint } from "@/lib/ai/infer";
 import type { GenerationEvent } from "@/types/events";
 import type { Variable } from "@/lib/ote/schema";
 import { panelOf } from "@/lib/ote/packager";
@@ -23,6 +24,7 @@ export async function POST(request: Request) {
     variables?: Variable[];
     existing?: ExistingScreen[];
     target?: { model?: unknown; width?: unknown; height?: unknown };
+    structure?: StructureHint[];
   };
   try {
     body = (await request.json()) as typeof body;
@@ -33,6 +35,7 @@ export async function POST(request: Request) {
   const intent = (body.intent ?? "").trim();
   const variables = body.variables ?? [];
   const existing = Array.isArray(body.existing) ? body.existing : undefined;
+  const structure = Array.isArray(body.structure) ? body.structure : undefined;
   // The panel the project is designed for, as the client holds it; else the
   // one the skeleton's Target.dat names; else the pipeline's default profile.
   const t = body.target;
@@ -48,7 +51,7 @@ export async function POST(request: Request) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
 
       try {
-        for await (const event of runPipeline({ intent, variables, existing, panel })) {
+        for await (const event of runPipeline({ intent, variables, existing, panel, structure })) {
           send(event);
         }
       } catch (error) {

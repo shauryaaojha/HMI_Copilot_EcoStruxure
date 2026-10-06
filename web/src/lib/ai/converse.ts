@@ -29,7 +29,7 @@ import { regionOf, regionsOf, roomReport } from "@/lib/ote/regions";
 import { ALIGN_MODES, COLOR_NAMES, OP_NAMES, coerceTurn, type Op, type Turn } from "./ops";
 import { PART_TYPES } from "@/lib/ote/schema";
 import { REGIONS, SIDES } from "@/lib/ote/regions";
-import { inferEquipment } from "./infer";
+import { inferEquipment, type StructureHint } from "./infer";
 import { findObjects, findTags, relevantTags, type ObjectEntry } from "./retrieve";
 import { resolveProvider, type Provider } from "./provider";
 import { isUnnamed } from "./name";
@@ -115,6 +115,7 @@ export interface DigestSource {
   bindings: { tag: string; targetId: string; targetName: string; property: string }[];
   selectedIds: string[];
   handles: Record<string, string>;
+  structure?: StructureHint[];
 }
 
 /** Built from the store. `request` steers which tags are retrieved. */
@@ -123,7 +124,7 @@ export function digestOf(project: DigestSource, request = ""): ProjectDigest {
   const active =
     project.screens.find((s) => s.UniqueId === project.activeScreenId) ?? project.screens[0];
   const boundTo = new Map(project.bindings.map((b) => [b.targetId, b.tag]));
-  const equipment = inferEquipment(project.variables);
+  const equipment = inferEquipment(project.variables, project.structure);
 
   const screens: ScreenDigest[] = project.screens.map((screen) => {
     const parts = screen.Children[0].Children;

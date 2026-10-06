@@ -584,7 +584,7 @@ export function createProjectStore() {
         const engineerRanges = s.plant.equipment.flatMap((e) =>
           Object.entries(e.ranges).filter(([, r]) => r.source === "engineer").map(([tag, r]) => [e.id, tag, r] as const),
         );
-        const rebuilt = modelPlant(s.variables, answers);
+        const rebuilt = modelPlant(s.variables, answers, s.tagImport?.structure);
         // Ranges the engineer typed survive a rebuild; class defaults do not need to.
         for (const [eid, tag, r] of engineerRanges) {
           const e = rebuilt.equipment.find((x) => x.id === eid);

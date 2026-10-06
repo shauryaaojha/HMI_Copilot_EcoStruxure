@@ -15,6 +15,20 @@
 
 import type { Variable } from "@/lib/ote/schema";
 import type { Equipment } from "@/types/events";
+import { classify, machineClass, MACHINE_CLASSES, roleIn } from "@/lib/library/machines";
+
+/**
+ * A DDT instance as the tag import reported it (lib/tags/controlExpert.ts):
+ * equipment the PLC's type system declares, with the OTE variable each member
+ * became. Optional everywhere - a flat CSV has none, and then inference is
+ * exactly the name parse it always was.
+ */
+export interface StructureHint {
+  instance: string;
+  ddt: string;
+  comment?: string;
+  members: { path: string; variable: string }[];
+}
 
 /** ISA-5.1 first letter -> what is measured. */
 const MEASURED: Record<string, string> = {
@@ -58,6 +72,22 @@ const MACHINES: Record<string, { kind: string; symbol: string }> = {
   REA: { kind: "reactor", symbol: "Tanks/Tank01" },
   DOS: { kind: "doser", symbol: "Pumps/Pump01" },
 };
+
+/**
+ * Machine prefixes the library knows and the table above does not: MIX, AGT,
+ * HEX, AHU, CNC... Only prefixes of three letters or more that cannot be read
+ * as an ISA-5.1 instrument code (FIT, LIC, TSH) are taken, so the library
+ * widens what is recognised without changing how any existing tag is read.
+ */
+const ISA_LIKE = /^[FLPTAS](I?T|IC|I|S[HL]{1,2})$/;
+const LIBRARY_PREFIXES: Record<string, { kind: string; symbol?: string }> = {};
+for (const c of MACHINE_CLASSES) {
+  for (const p of c.prefixes) {
+    if (p.length < 3 || ISA_LIKE.test(p) || MACHINES[p] || LIBRARY_PREFIXES[p]) continue;
+    LIBRARY_PREFIXES[p] = { kind: c.id, symbol: c.symbol };
+  }
+}
+const machineFor = (prefix: string): { kind: string; symbol?: string } | undefined => MACHINES[prefix] ?? LIBRARY_PREFIXES[prefix];
 
 /** Role suffixes, longest first so _FAULT wins over _F. */
 const ROLES: [RegExp, string][] = [
@@ -122,6 +152,11 @@ export interface InferredEquipment extends Equipment {
   /** The loop number the tags share, when they share one. */
   loop?: string;
   roles: TaggedRole[];
+  /** The DDT this unit was declared as, when the tag import carried types. */
+  ddt?: string;
+  /** How sure the classification is, 0..1, and why (lib/library/machines.ts). */
+  confidence?: number;
+  evidence?: string[];
 }
 
 /**
@@ -148,9 +183,34 @@ function roleOf(name: string): string {
  */
 function split(name: string): { prefix: string; loop?: string } {
   const parts = name.split("_");
+  // PMP101_RUN: the loop glued to the prefix is as common as PMP_101_RUN in
+  // older panels. Read it as the same thing rather than as a prefix "PMP101"
+  // nobody recognises.
+  const glued = parts[0].match(/^([A-Za-z]{2,})(\d+[A-Za-z]?)$/);
+  if (glued && (machineFor(glued[1].toUpperCase()) || MEASURED[glued[1][0].toUpperCase()])) {
+    return { prefix: glued[1].toUpperCase(), loop: glued[2] };
+  }
   if (parts.length === 1) return { prefix: parts[0] };
   const loop = parts.find((p) => /^\d+[A-Z]?$/i.test(p));
   return { prefix: parts[0].toUpperCase(), loop };
+}
+
+/** Role names the rest of the pipeline understands: the table's, plus "value". */
+const KNOWN_ROLES = new Set([...ROLES.map(([, role]) => role), "value"]);
+
+/**
+ * A tag's role, with the class's own spellings as the fallback when the
+ * suffix table says only "value": PMP_101_StartCmd is a command on a pump even
+ * though no generic table lists STARTCMD. Only roles the pipeline already
+ * knows are taken, so a library role never reaches a layout that has no slot
+ * for it.
+ */
+function roleFor(name: string, klass?: string, memberPath?: string): string {
+  const generic = roleOf(name);
+  if (generic !== "value" || !klass) return generic;
+  const c = machineClass(klass);
+  const spec = c ? (roleIn(c, memberPath ?? name) ?? roleIn(c, name)) : null;
+  return spec && KNOWN_ROLES.has(spec.role) ? spec.role : generic;
 }
 
 function label(kind: string, prefix: string, loop?: string): string {
@@ -165,8 +225,42 @@ function label(kind: string, prefix: string, loop?: string): string {
  * loop are folded into it, because FT_101_PV measures what PMP_101 does.
  * Anything left over is grouped by prefix so nothing is silently dropped.
  */
-export function inferEquipment(variables: Variable[]): InferredEquipment[] {
+export function inferEquipment(variables: Variable[], structure: StructureHint[] = []): InferredEquipment[] {
   const units = new Map<string, InferredEquipment>();
+
+  // --- declared equipment first ---------------------------------------------
+  // A DDT instance is one unit by construction, whatever its tags are called.
+  // Its class comes from the type name, the member names and the comment,
+  // scored by the library; the name parse below never sees its tags.
+  const byName = new Map(variables.map((v) => [v.Name, v]));
+  const claimed = new Set<string>();
+  for (const s of structure) {
+    const members = s.members.filter((m) => byName.has(m.variable));
+    if (members.length === 0) continue;
+    const [best] = classify({ name: s.instance, typeName: s.ddt, members: members.map((m) => m.path), comments: s.comment ? [s.comment] : [] });
+    const klass = best && best.confidence >= 0.5 ? machineClass(best.classId) : undefined;
+    const { prefix, loop } = split(s.instance);
+    const number = loop ?? s.instance.match(/(\d+)/)?.[1];
+    const kind = klass?.id ?? "instrument";
+    const unit: InferredEquipment = {
+      id: s.instance,
+      kind,
+      label: klass ? label(kind, prefix, number) : s.instance,
+      tags: [],
+      symbol: klass?.symbol,
+      loop: number,
+      roles: [],
+      ddt: s.ddt,
+      ...(best ? { confidence: best.confidence, evidence: best.evidence } : {}),
+    };
+    for (const m of members) {
+      const v = byName.get(m.variable)!;
+      unit.tags.push(v.Name);
+      unit.roles.push({ tag: v.Name, role: roleFor(v.Name, klass?.id, m.path), dataType: v.DataType, comment: v.Comments });
+      claimed.add(v.Name);
+    }
+    units.set(unit.id, unit);
+  }
 
   const put = (key: string, kind: string, prefix: string, loop: string | undefined, tag: TaggedRole, symbol?: string) => {
     let unit = units.get(key);
@@ -193,15 +287,16 @@ export function inferEquipment(variables: Variable[]): InferredEquipment[] {
   };
 
   for (const variable of variables) {
+    if (claimed.has(variable.Name)) continue;
     const { prefix, loop } = split(variable.Name);
+    const machine = machineFor(prefix);
     const tagged: TaggedRole = {
       tag: variable.Name,
-      role: roleOf(variable.Name),
+      role: roleFor(variable.Name, machine?.kind),
       dataType: variable.DataType,
       comment: variable.Comments,
     };
 
-    const machine = MACHINES[prefix];
     if (machine && loop) {
       put(`${prefix}_${loop}`, machine.kind, prefix, loop, tagged, machine.symbol);
       continue;
@@ -220,7 +315,7 @@ export function inferEquipment(variables: Variable[]): InferredEquipment[] {
       // the alarm it should raise, and our own validator would then flag the
       // gap we created.
       const role = tagged.role === "value" ? measured : tagged.role;
-      const owner = [...units.keys()].find((k) => k.endsWith(`_${loop}`));
+      const owner = [...units.keys()].find((k) => k.endsWith(`_${loop}`) && !units.get(k)!.ddt);
       if (owner) {
         const unit = units.get(owner)!;
         unit.tags.push(tagged.tag);
@@ -236,9 +331,9 @@ export function inferEquipment(variables: Variable[]): InferredEquipment[] {
 
   // A second pass, because an instrument may have been seen before its machine.
   for (const [key, unit] of units) {
-    if (unit.kind !== "instrument" || !unit.loop) continue;
+    if (unit.kind !== "instrument" || !unit.loop || unit.ddt) continue;
     const owner = [...units.values()].find(
-      (u) => u !== unit && u.loop === unit.loop && u.kind !== "instrument",
+      (u) => u !== unit && u.loop === unit.loop && u.kind !== "instrument" && !u.ddt,
     );
     if (owner) {
       owner.tags.push(...unit.tags);
@@ -303,15 +398,33 @@ export function proposeAlarms(
       if (role.role === "level" && role.dataType !== "BOOL") {
         const range = rangeOf(role.tag) ?? { min: 0, max: 100 };
         const at = (share: number) => threshold(range.min + (range.max - range.min) * share);
+        const what = levelSubject(unit, role);
         proposals.push(
-          { trigger: role.tag, message: `${unit.label} level high`, kind: "level", level: 2, severity: 3, value: at(LEVEL_ALARM_SHARE.hi) },
-          { trigger: role.tag, message: `${unit.label} level critically high`, kind: "level", level: 1, severity: 5, value: at(LEVEL_ALARM_SHARE.hihi) },
+          { trigger: role.tag, message: `${what} high`, kind: "level", level: 2, severity: 3, value: at(LEVEL_ALARM_SHARE.hi) },
+          { trigger: role.tag, message: `${what} critically high`, kind: "level", level: 1, severity: 5, value: at(LEVEL_ALARM_SHARE.hihi) },
         );
       }
     }
   }
 
   return proposals;
+}
+
+/** Classes whose own level is the thing a level alarm is about. */
+const VESSELS = new Set(["tank", "silo", "reactor", "boiler"]);
+
+/**
+ * What a level alarm names. On a vessel, the vessel: "Tank 101 level". On a
+ * pump that an LT on its loop was folded into, not the pump - "Pump 101 level
+ * high" names a machine that has no level. The transmitter's own comment says
+ * what it measures ("Break tank level"); failing that, its tag does.
+ */
+function levelSubject(unit: InferredEquipment, role: TaggedRole): string {
+  if (VESSELS.has(unit.kind)) return `${unit.label} level`;
+  const comment = role.comment.trim();
+  if (comment) return /level/i.test(comment) ? comment : `${comment} level`;
+  const { prefix, loop } = split(role.tag);
+  return `${prefix}${loop ? ` ${loop}` : ""} level`;
 }
 
 /** A threshold as the alarm table stores it: no float noise, no trailing zeros. */

@@ -27,7 +27,7 @@ import type { Wire } from "@/lib/ote/bindings";
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
 import { validateProject } from "@/lib/validation/rules";
 import type { GenerationEvent, PipelineStep } from "@/types/events";
-import { inferEquipment, LEVEL_ALARM_SHARE, proposeAlarms } from "./infer";
+import { inferEquipment, LEVEL_ALARM_SHARE, proposeAlarms, type StructureHint } from "./infer";
 import {
   activeProvider,
   fallbackPlan,
@@ -72,6 +72,8 @@ export interface PipelineInput {
    * it, the project is validated as it. The default profile when absent.
    */
   panel?: { model: string; width: number; height: number };
+  /** DDT instances from a typed tag import; inference groups these first. */
+  structure?: StructureHint[];
 }
 
 const PROVIDER_NAME: Record<Provider, string> = {
@@ -106,9 +108,9 @@ export async function* runPipeline(
   // tank's PV is a level and a valve's is a position everywhere downstream -
   // the plan, the faceplates, the alarms - rather than a "Value" on one screen
   // and a level on another.
-  const plant = modelPlant(variables);
+  const plant = modelPlant(variables, {}, input.structure);
   const roleOf = new Map(plant.equipment.flatMap((e) => e.roles.map((r) => [r.tag, r.role] as const)));
-  const equipment = inferEquipment(variables).map((unit) => ({
+  const equipment = inferEquipment(variables, input.structure).map((unit) => ({
     ...unit,
     roles: unit.roles.map((r) => ({ ...r, role: roleOf.get(r.tag) ?? r.role })),
   }));

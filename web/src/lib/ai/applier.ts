@@ -410,7 +410,7 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
         // Re-inferred from the variables rather than read off the store's
         // equipment list: inference is deterministic and always available.
         const wanted = (op.equipment ?? op.target ?? "").trim().toLowerCase();
-        const units = inferEquipment(s.variables) as unknown as LayoutUnit[];
+        const units = inferEquipment(s.variables, s.tagImport?.structure) as unknown as LayoutUnit[];
         const unit = units.find(
           (u) =>
             u.id.toLowerCase() === wanted ||
