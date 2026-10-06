@@ -371,7 +371,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
       <input
         ref={filePicker}
         type="file"
-        accept=".eote,.vxdz"
+        accept=".eote,.vxdz,.vdz"
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];

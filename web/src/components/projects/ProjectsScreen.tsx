@@ -200,7 +200,7 @@ export function ProjectsScreen() {
         <input
           ref={picker}
           type="file"
-          accept=".eote,.vxdz"
+          accept=".eote,.vxdz,.vdz"
           className="hidden"
           aria-label="Open a project file"
           onChange={(e) => {

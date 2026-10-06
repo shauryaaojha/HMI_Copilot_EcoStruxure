@@ -112,6 +112,8 @@ export async function sniff(bytes: Uint8Array, fileName = ""): Promise<FileKind>
     if (files.length === 0) throw new IngestError("no-content", "The archive is empty.");
 
     if (has(files, /^CompoundObject\.objdef$/i)) return { kind: "compound-object", entries };
+    // A Vijeo Designer backup: one OLE compound file, <name>.SwxCF.
+    if (has(files, /\.swxcf$/i)) return { kind: "vijeo-designer", variant: "vdz", entries };
     if (has(files, /^\[Content_Types\]\.xml$/) && has(files, /^xl[\\/]workbook\.xml$/i)) return { kind: "spreadsheet", entries };
 
     const typed = has(files, /^Screens[\\/][0-9a-f-]{36}[\\/]Screen\.dat$/i);

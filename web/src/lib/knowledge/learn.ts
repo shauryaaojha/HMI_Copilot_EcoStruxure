@@ -6,11 +6,13 @@
  * failing to learn from a project must never stop an engineer opening it.
  */
 
-import { scanProject } from "./scan";
+import { scanProject, scanVijeo } from "./scan";
+import { sniff } from "@/lib/ingest/sniff";
 import { knowledgeStore, putKnowledge } from "./store";
 
 export async function learnFromProject(bytes: Uint8Array, fileName: string): Promise<{ id: string; isNew: boolean } | null> {
   if (knowledgeStore() === "off") return null;
-  const knowledge = await scanProject(bytes, fileName);
+  const kind = await sniff(bytes, fileName);
+  const knowledge = kind.kind === "vijeo-designer" && kind.variant === "vdz" ? await scanVijeo(bytes, fileName) : await scanProject(bytes, fileName);
   return putKnowledge(knowledge);
 }

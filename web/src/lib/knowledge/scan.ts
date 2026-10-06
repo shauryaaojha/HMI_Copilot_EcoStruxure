@@ -38,6 +38,7 @@ import { OBJECT_TYPE } from "@/lib/ote/bindings";
 import { inferEquipment } from "@/lib/ai/infer";
 import { normaliseDataType } from "@/lib/tags/parse";
 import type { Variable } from "@/lib/ote/schema";
+import { inventoryVdz } from "@/lib/vijeo/vdz";
 
 export const KNOWLEDGE_VERSION = 1;
 
@@ -116,7 +117,7 @@ export interface ProjectKnowledge {
   id: string;
   fileName: string;
   scannedAt: string;
-  source: { product: string; layout: "typed" | "struct"; appVersion?: string; brand?: string };
+  source: { product: string; layout: "typed" | "struct" | "vijeo"; appVersion?: string; brand?: string };
   target: { model: string; width: number; height: number } | null;
   counts: {
     entries: number;
@@ -568,5 +569,57 @@ export async function scanProject(bytes: Uint8Array, fileName = "project.eote"):
     equipment,
     tables,
     problems,
+  };
+}
+
+/**
+ * A Vijeo Designer backup, scanned for what can be read reliably: its panels
+ * and the variables each references (lib/vijeo/vdz.ts). Objects, data types
+ * and the binding properties live in binary streams nobody has published, so
+ * they are absent rather than guessed, and `problems` says so.
+ */
+export async function scanVijeo(bytes: Uint8Array, fileName = "project.vdz"): Promise<ProjectKnowledge> {
+  const inv = await inventoryVdz(bytes);
+  const screens: KnownScreen[] = inv.panels.map((p) => ({
+    id: p.id,
+    name: p.id,
+    area: p.kind === "popup" ? "Contents" : "Screens",
+    rootType: `Vijeo ${p.kind} panel`,
+    objects: [],
+    types: {},
+    bound: p.references.length,
+  }));
+  const bindings: KnownBinding[] = inv.panels.flatMap((p) =>
+    p.references.map((tag) => ({ tag, objectType: "VijeoPanel", objectName: p.id, property: "reference", screen: p.id, via: "inline" as const })),
+  );
+  return {
+    v: KNOWLEDGE_VERSION,
+    id: await sha256(bytes),
+    fileName,
+    scannedAt: new Date().toISOString(),
+    source: { product: "Vijeo Designer", layout: "vijeo" },
+    target: null,
+    counts: {
+      entries: inv.streams,
+      screens: screens.filter((s) => s.area === "Screens").length,
+      contentScreens: screens.filter((s) => s.area === "Contents").length,
+      objects: 0,
+      variables: inv.variables.length,
+      alarms: 0,
+      alarmGroups: 0,
+      bindings: bindings.length,
+    },
+    screens,
+    partTypes: {},
+    variables: inv.variables.map((name) => ({ name, dataType: "", comment: "", address: "" })),
+    bindings,
+    alarms: [],
+    naming: namingStats(inv.variables.map((n) => n.split(".").pop() ?? n)),
+    equipment: [],
+    tables: {},
+    problems: [
+      "Vijeo Designer panels are a binary format: objects, their properties and data types are not read; variables are those the panels reference by TagDB expression.",
+      ...(inv.hasTagDatabase ? [] : ["no Services/TagDatabase stream was found"]),
+    ],
   };
 }
