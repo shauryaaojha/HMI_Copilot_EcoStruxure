@@ -15,6 +15,8 @@
 import type { PackageInput } from "@/lib/ote/packager";
 import type { Finding, Severity } from "./rules";
 import { summarise } from "./rules";
+import { rationalise } from "@/lib/alarms/rationalise";
+import { inferEquipment } from "@/lib/ai/infer";
 
 export interface ReportInput {
   project: PackageInput;
@@ -84,6 +86,36 @@ function findingRow(finding: Finding): string {
       <td class="msg">${esc(finding.message)}${suggestion}</td>
       <td class="where">${where}</td>
     </tr>`;
+}
+
+/**
+ * The ISA-18.2 rationalisation table (lib/alarms/rationalise.ts): every alarm
+ * with its drafted priority, consequence and operator action, and the
+ * distribution. Drafted for sign-off, and labelled as a draft.
+ */
+function alarmTable(project: PackageInput): string {
+  if (project.alarms.length === 0) return "";
+  const r = rationalise(project.alarms, inferEquipment(project.variables));
+  const d = r.distribution;
+  const pct = (n: number) => `${Math.round(n * 100)}%`;
+  const rows = r.rows
+    .map(
+      (x) =>
+        `    <tr><td>${esc(x.message)}</td><td>${esc(x.trigger)}</td><td>${esc(x.priority)}</td><td>${esc(x.consequence || "not yet defined")}</td><td>${esc(x.action || "not yet defined")}</td></tr>`,
+    )
+    .join("\n");
+  const notes = r.findings.map((f) => `  <li>${esc(f.message)}</li>`).join("\n");
+  return `<h2>Alarm rationalisation (draft for sign-off)</h2>
+<p>Priority distribution: ${d.high} high (${pct(d.shares.high)}), ${d.medium} medium (${pct(d.shares.medium)}), ${d.low} low (${pct(d.shares.low)}). ISA-18.2 practice is about 5 / 15 / 80. Consequence and action are drafted from each machine class's standard alarm, for the plant to confirm.</p>
+<table>
+  <thead><tr><th>Alarm</th><th>Trigger</th><th>Priority</th><th>Consequence</th><th>Operator action</th></tr></thead>
+  <tbody>
+${rows}
+  </tbody>
+</table>
+${notes ? `<ul class="scope">
+${notes}
+</ul>` : ""}`;
 }
 
 export function renderReport(input: ReportInput): string {
@@ -247,6 +279,8 @@ ${partTypes
   .map(([type, n]) => `  <div class="cell"><dt>${esc(type)}</dt><dd>${n}</dd></div>`)
   .join("\n")}
 </dl>
+
+${alarmTable(project)}
 
 <h2>What was checked</h2>
 <ul class="scope">
