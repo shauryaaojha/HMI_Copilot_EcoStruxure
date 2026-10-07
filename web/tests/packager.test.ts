@@ -215,3 +215,21 @@ gate("packager (Phase 1)", () => {
     );
   });
 });
+
+gate("the cached skeleton", () => {
+  it("is not changed by an export, so the next export on a warm instance is sound", async () => {
+    // sql.js takes ownership of the array it opens, and a Node Buffer's
+    // slice() is a view: an export that wrote variables and alarms used to
+    // write them into the cached skeleton, and the next export failed with
+    // "database disk image is malformed".
+    const skeleton = await loadSkeleton();
+    const before = Buffer.from(skeleton.entries.get("Variables.db")!).toString("base64");
+    const big = buildDemoProject();
+    big.variables = [...big.variables, ...Array.from({ length: 400 }, (_, i) => ({ Name: `Tag${i}`, DataType: "INT" as const, Comments: "", DeviceAddress: "" }))];
+    await packageProject(big, skeleton);
+    expect(Buffer.from(skeleton.entries.get("Variables.db")!).toString("base64")).toBe(before);
+    const small = buildDemoProject();
+    small.alarms = [];
+    await expect(packageProject(small, skeleton)).resolves.toBeInstanceOf(Uint8Array);
+  }, 60_000);
+});

@@ -131,9 +131,17 @@ async function sql(): Promise<SqlJsStatic> {
 }
 
 /** A database opened from bytes, for the reader. Caller closes it. */
+/**
+ * Always on a copy. sql.js hands the array it is given to its in-memory file
+ * system, which then owns it: writes to the database land in the caller's
+ * bytes. With the skeleton cached per process, one export that wrote alarms
+ * left a half-written Alarm.db in the cache, and the next export on the same
+ * instance shipped it - "database disk image is malformed".
+ */
 export async function openDatabase(bytes: Uint8Array): Promise<import("sql.js").Database> {
   const SQL = await sql();
-  return new SQL.Database(bytes);
+  // new Uint8Array(...) copies; a Node Buffer's slice() would only be a view.
+  return new SQL.Database(new Uint8Array(bytes));
 }
 
 /** Runs `mutate` against a template database and returns the modified bytes. */
@@ -142,7 +150,8 @@ async function editDatabase<T>(
   mutate: (db: import("sql.js").Database) => T,
 ): Promise<{ bytes: Uint8Array; result: T }> {
   const SQL = await sql();
-  const db = new SQL.Database(template);
+  // A copy, for the reason on openDatabase: the template is the cached skeleton's.
+  const db = new SQL.Database(new Uint8Array(template));
   try {
     const result = mutate(db);
     return { bytes: db.export(), result };
@@ -608,11 +617,12 @@ export async function packageProject(
   assertEntriesPresent(entries, [
     SCREENS_HIERARCHY,
     CONTENTS_HIERARCHY,
-    ...input.screens.flatMap((screen) => [
-      screenEntry(screen.UniqueId, "Screen.dat"),
-      screenEntry(screen.UniqueId, "Metadata.dat"),
-      screenEntry(screen.UniqueId, "LocalVariables.db"),
-    ]),
+    // A content screen is written under Contents\, not Screens\.
+    ...input.screens.flatMap((screen) =>
+      ["Screen.dat", "Metadata.dat", "LocalVariables.db"].map((file) =>
+        screen.Type === "Content" ? `Contents\\${screen.UniqueId}\\${file}` : screenEntry(screen.UniqueId, file),
+      ),
+    ),
   ]);
 
   const zip = new JSZip();

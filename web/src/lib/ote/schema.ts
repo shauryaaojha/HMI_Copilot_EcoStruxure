@@ -37,7 +37,9 @@ import { z } from "zod";
 export const ColorRef = z.object({
   Color: z
     .object({
-      Value: z.number().int().nonnegative(),
+      // Optional: the product leaves a default colour's index out and writes
+      // only what differs, e.g. `{Transparency: 80}` (docs in withOrigin).
+      Value: z.number().int().nonnegative().optional(),
       /** Absent means indexed: every 4.4 file we write omits it. */
       ColorIndexEnabled: z.boolean().optional(),
       Transparency: z.number().min(0).max(100).optional(),
@@ -45,6 +47,7 @@ export const ColorRef = z.object({
     .superRefine((color, ctx) => {
       // The range check is worth keeping where it applies: the generator writes
       // indices, and an out-of-range index would otherwise render as nothing.
+      if (color.Value === undefined) return;
       if (color.ColorIndexEnabled === false) {
         if (color.Value > 0xffffff) {
           ctx.addIssue({
@@ -73,6 +76,9 @@ export const ColorRef = z.object({
 export const Paint = z.union([
   ColorRef,
   z.object({ Type: z.number().int() }).passthrough(),
+  // `{}`: every key at its default, which is how the product writes a
+  // TextColor nobody changed (76 TextBoxes in the struct corpus).
+  z.object({}).strict(),
 ]);
 
 /**
@@ -210,7 +216,7 @@ export const TextBox = z.object({
   Type: z.literal("TextBox"),
   ...base,
   Text: z.string(),
-  TextColor: ColorRef.optional(),
+  TextColor: Paint.optional(),
   Font: FontRef.optional(),
   TextLayout: TextLayout.optional(),
 });
@@ -218,7 +224,7 @@ export const TextBox = z.object({
 /** A Lamp carries both states in the JSON; the bound tag chooses between them. */
 const LampState = z.object({
   Text: z.string().optional(),
-  TextColor: ColorRef.optional(),
+  TextColor: Paint.optional(),
   Font: FontRef.optional(),
   TextLayout: TextLayout.optional(),
   Fill: Paint.optional(),
@@ -238,7 +244,7 @@ export const NumericDisplay = z.object({
   ...base,
   CurrentValue: z.number().default(0),
   DecimalDigits: z.number().int().min(0).max(6).optional(),
-  TextColor: ColorRef.optional(),
+  TextColor: Paint.optional(),
   Font: FontRef.optional(),
   Fill: Paint.optional(),
   Border: Paint.optional(),
@@ -390,7 +396,8 @@ export function pathGeometry(part: { Commands?: string; Points?: string; Path?: 
  * for every part placed on a canvas rather than in a grid.
  */
 export const ClickTrigger = z.object({
-  OperationType: z.number().int(),
+  // Left out when it is the default, as every value is (14 Switches in the corpus).
+  OperationType: z.number().int().optional(),
   Operation: z.number().int().optional(),
   Source: z.string().optional(),
   Screen: z.number().int().optional(),
@@ -409,7 +416,8 @@ export const Switch = z.object({
 export const NStateLamp = z.object({
   Type: z.literal("N-StateLamp"),
   ...base,
-  NumberOfStates: z.number().int().min(2).max(16),
+  /** Left out by the 3.x layout; States.length is the count then. */
+  NumberOfStates: z.number().int().min(2).max(16).optional(),
   States: z.array(LampState).min(2).max(16),
   Invalid: LampState.optional(),
   CurrentValue: z.number().int().default(0),
@@ -421,7 +429,7 @@ export const StringDisplay = z.object({
   ...base,
   CurrentValue: z.string().default(""),
   DisplayLength: z.number().int().min(1).max(255).optional(),
-  TextColor: ColorRef.optional(),
+  TextColor: Paint.optional(),
   Font: FontRef.optional(),
   Fill: Paint.optional(),
   Border: Paint.optional(),
@@ -451,7 +459,7 @@ export const ToggleSwitch = z.object({
 export const ScaleLabel = z
   .object({
     Max: z.number().optional(),
-    TextColor: ColorRef.optional(),
+    TextColor: Paint.optional(),
     Font: FontRef.optional(),
     IntegerDigits: z.number().int().optional(),
     FloatDigits: z.number().int().optional(),
@@ -500,7 +508,7 @@ export const DateTimeDisplay = z.object({
   ...base,
   IsInputModeEnabled: z.boolean().optional(),
   SelectedColor: z.number().int().optional(),
-  TextColor: ColorRef.optional(),
+  TextColor: Paint.optional(),
   Font: FontRef.optional(),
   Fill: Paint.optional(),
   Border: Paint.optional(),

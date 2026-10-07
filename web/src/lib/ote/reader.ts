@@ -148,7 +148,7 @@ export const fingerprintWires = (wires: Wire[]) =>
 
 export const fingerprintScreen = (screen: Screen) => JSON.stringify(screen);
 
-interface Modelled {
+export interface Modelled {
   screen: Screen | null;
   parts: Map<string, Record<string, unknown>>;
   opaque: OpaquePart[];
@@ -158,7 +158,7 @@ interface Modelled {
 }
 
 /** The screen the store holds, and what was set aside from it. */
-function modelScreen(raw: Record<string, unknown>, panel: Panel): Modelled {
+export function modelScreen(raw: Record<string, unknown>, panel: Panel): Modelled {
   const view = (raw.Children as Record<string, unknown>[] | undefined)?.[0];
   const parts = new Map<string, Record<string, unknown>>();
   const opaque: OpaquePart[] = [];

@@ -143,7 +143,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
         standards: DEFAULT_STANDARDS,
         versions: [],
         chat: [],
-        source: data.source,
+        source: data.source ?? undefined,
         foreign: data.foreign ?? {},
       };
       hydrate(payload);
@@ -157,9 +157,9 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
         ),
         tags: data.variables.length,
         target: `${data.target.model} · ${data.target.width} × ${data.target.height}`,
-        intent:
-          `Opened ${file.name}` +
-          (/\.vxdz$/i.test(file.name) ? " — exports as an .eote" : ""),
+        intent: data.converted
+          ? `Converted ${file.name} from the older 3.x layout — it exports as a new 4.4 .eote`
+          : `Opened ${file.name}` + (/\.vxdz$/i.test(file.name) ? " — exports as an .eote" : ""),
       });
       reveal(from);
     } catch (caught) {

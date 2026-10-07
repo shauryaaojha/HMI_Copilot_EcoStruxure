@@ -15,6 +15,7 @@
 import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { layoutOf, readProject } from "../src/lib/ote/reader";
+import { readStructProject } from "../src/lib/ote/struct";
 
 const args = process.argv.slice(2);
 const jsonAt = args.indexOf("--json");
@@ -52,7 +53,8 @@ for (const file of files) {
   };
   try {
     row.layout = await layoutOf(bytes);
-    const read = await readProject(bytes, basename(file));
+    // The same dispatch as /api/import: the older layout is converted.
+    const read = row.layout === "struct" ? await readStructProject(bytes, basename(file)) : await readProject(bytes, basename(file));
     row.ok = true;
     row.modelled = read.screens.length;
     row.screens = read.screens.length + (read.carried.screens ?? 0);

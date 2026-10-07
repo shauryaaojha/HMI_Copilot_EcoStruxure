@@ -30,7 +30,8 @@ import type { Binding, ForeignPart } from "@/store/types";
 
 /** What /api/import answers with. */
 interface Imported {
-  source: string;
+  /** Null for a converted file: there is nothing to write back into. */
+  source: string | null;
   name: string;
   target: { model: string; width: number; height: number };
   screens: Screen[];
@@ -42,6 +43,8 @@ interface Imported {
   warnings: string[];
   /** Which generation of the format the file turned out to be. */
   layout?: "typed" | "struct";
+  /** True when the file was in the older layout and was converted. */
+  converted?: boolean;
 }
 
 type Filter = "all" | "recent" | "starred";
@@ -113,7 +116,7 @@ export function ProjectsScreen() {
         standards: DEFAULT_STANDARDS,
         versions: [],
         chat: [],
-        source: data.source,
+        source: data.source ?? undefined,
         foreign: data.foreign ?? {},
       });
       const grid = data.carried.roots?.Grid ?? 0;
@@ -133,7 +136,9 @@ export function ProjectsScreen() {
         bindings: data.bindings.length,
         target: `${data.target.model} · ${data.target.width} × ${data.target.height}`,
         intent:
-          `Opened ${file.name}` +
+          (data.converted
+            ? `Converted ${file.name} from the older 3.x layout — it exports as a new 4.4 .eote`
+            : `Opened ${file.name}`) +
           // Only worth saying for a .vxdz: an .eote is always the modern
           // layout, and an engineer who opened one does not need telling.
           (/\.vxdz$/i.test(file.name) && data.layout === "typed"
