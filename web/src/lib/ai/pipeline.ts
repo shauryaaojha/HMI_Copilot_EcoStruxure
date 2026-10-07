@@ -74,6 +74,12 @@ export interface PipelineInput {
   panel?: { model: string; width: number; height: number };
   /** DDT instances from a typed tag import; inference groups these first. */
   structure?: StructureHint[];
+  /**
+   * Screens decided already - a migration from Vijeo Designer, one per panel
+   * (lib/vijeo/migrate.ts). When set, nothing is planned and no process view
+   * or overview is added: the application has the screens it had.
+   */
+  programs?: ScreenProgram[];
 }
 
 const PROVIDER_NAME: Record<Provider, string> = {
@@ -150,7 +156,11 @@ export async function* runPipeline(
     }
   }
 
-  if (configured) {
+  const explicit = input.programs?.length ? input.programs : null;
+  if (explicit) {
+    plan = { screens: explicit.map(specOf), rationale: "the screens the source project had" };
+    yield log(`Keeping the ${explicit.length} screen${explicit.length === 1 ? "" : "s"} the source project had; nothing planned`);
+  } else if (configured) {
     // The model call is the only slow step - seconds, against milliseconds for
     // everything else. Saying which provider is being asked keeps that gap
     // legible instead of looking like a stall. It states what is happening, not
@@ -257,8 +267,8 @@ export async function* runPipeline(
   // stay unique across the application. The navigation lists them all before
   // anything is laid out.
   const readings = [...new Set(plan.screens.flatMap((s) => s.readings ?? []))];
-  const architected = architectPrograms(plant, { readings });
-  const programs: ScreenProgram[] = plan.screens.map((spec) => programOf(spec, plan!.rationale));
+  const architected = explicit ? [] : architectPrograms(plant, { readings });
+  const programs: ScreenProgram[] = explicit ? explicit.map((p) => ({ ...p })) : plan.screens.map((spec) => programOf(spec, plan!.rationale));
   const takenNames = new Set([...existing.map((s) => s.name.toLowerCase()), ...programs.map((p) => p.name.toLowerCase())]);
 
   // The overview KPIs: on the planned overview when there is one and its

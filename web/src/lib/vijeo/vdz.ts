@@ -4,22 +4,28 @@
  * What is known, and from where:
  * - A .vdz is what Vijeo Designer writes on File > Backup project (and Vijeo
  *   Manager on export): Schneider FAQ FA268436, Machine Expert help.
- * - It is a ZIP holding one OLE compound file, `<name>.SwxCF`; panels are
- *   storages under `Target N/...` whose `GraphicalObject` stream is the screen,
- *   and a screen refers to a variable as a UTF-16 expression `TagDB.<name>`.
- *   The variable database is `Services/TagDatabase`, the text table
- *   `LangManager/LangManagerData`. This layout was established by an
- *   independent reverse-engineering of Vijeo Designer 6.2 projects
- *   (github.com/apexsotjo-blip/vijeo-mcp, verified there against Vijeo's own
- *   load and save); this module is written here from those facts, not copied.
+ * - It is a ZIP holding one OLE compound file, `<name>.SwxCF`. Inside, each
+ *   panel is a storage whose `GraphicalObject` stream is the screen:
+ *     Targets/<target>/Component N/WindowList/BasePanelsList/PanelN        base panels
+ *     Targets/<target>/Component N/PopupWindowList/<group>/PanelN          popups
+ *     Targets/<target>/Component N/WindowList/DefinitionNodeStorage/<f>/PanelN   templates
+ *   The panel's designer-visible name is the first UTF-16 string of its
+ *   `WindowObject` stream; a popup group's, of `PageListProperties`. Screens
+ *   name variables as UTF-16 text: `TagDB.<name>.<accessor>` in expressions
+ *   (certain) and plain dotted names `FOLDER.VAR` (probable). The variable
+ *   database is `Services/TagDatabase`; texts, images and the name server are
+ *   definitions, never references.
+ *   This layout was established by an independent reverse-engineering of
+ *   Vijeo Designer 6.2 projects (github.com/apexsotjo-blip/vijeo-mcp, checked
+ *   there against Vijeo's own load and save). This module is written here from
+ *   those facts, not copied.
  *
- * What this does with it is deliberately modest. The panel stream is a
- * binary MFC serialisation nobody has published, so no object is modelled and
- * nothing is ever written. What *can* be read reliably is the inventory: which
- * targets and panels exist, what each panel is called in the container, and
- * which variables each one references by `TagDB.` expression - which is
- * exactly what a migration estimate, a knowledge-base record, and the question
- * "which of these 2,900 tags does the HMI actually use?" need.
+ * What is done with it is deliberately modest. The panel stream is a binary
+ * MFC serialisation nobody has published, so no object is modelled and nothing
+ * is ever written. What can be read reliably is the inventory - targets,
+ * panels by their designer names, and the variables each panel uses - which is
+ * what a migration (lib/vijeo/migrate.ts), a knowledge-base record and the
+ * question "which of these tags does the HMI actually use?" need.
  */
 
 import JSZip from "jszip";
@@ -28,11 +34,17 @@ import { IngestError } from "@/lib/ingest/errors";
 import { guardZip } from "@/lib/ingest/zip";
 
 export interface VijeoPanel {
-  /** Container path of the panel's storage, e.g. "Target 1/Base/Panel18". */
+  /** Stable id: "<target>/<kind>/[<group>/]PanelN". */
   id: string;
+  /** The name the engineer sees in Vijeo Designer, or the storage name when unreadable. */
+  name: string;
   target: string;
-  kind: "base" | "popup" | "template" | "other";
-  /** Variables the panel's expressions name, without the TagDB. prefix or accessor. */
+  kind: "base" | "popup" | "template";
+  /** Popup window group, or template folder. */
+  group: string;
+  /** Variables named by a TagDB expression: certain. */
+  tagdb: string[];
+  /** Every variable-like dotted name, TagDB ones included: probable. */
   references: string[];
   /** Size of the GraphicalObject stream: a rough measure of how much is drawn. */
   bytes: number;
@@ -43,47 +55,57 @@ export interface VijeoInventory {
   streams: number;
   targets: string[];
   panels: VijeoPanel[];
-  /** Every variable referenced by any panel, sorted. */
+  /** Every variable any panel references, sorted. */
   variables: string[];
-  /** Whether the variable database and text table streams exist. */
   hasTagDatabase: boolean;
   hasTextTable: boolean;
 }
 
-const U16 = /(?:[\x20-\x7e]\x00){4,}/g;
-
-/** UTF-16LE runs of printable ASCII, the way the panel stream stores identifiers. */
-function utf16Strings(data: Uint8Array): string[] {
+/** UTF-16LE runs of printable ASCII, the way the streams store identifiers. */
+export function utf16Strings(data: Uint8Array): string[] {
   const latin = new TextDecoder("latin1").decode(data);
   const out: string[] = [];
-  for (const m of latin.matchAll(U16)) out.push(m[0].replace(/\x00/g, ""));
+  for (const m of latin.matchAll(/(?:[\x20-\x7e]\x00){2,}/g)) out.push(m[0].replace(/\x00/g, ""));
   return out;
 }
 
+const NAME = /[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*|\[\d+\])+/g;
+const ACCESSOR = /^(get|set|is)[A-Z]/;
+
 /**
- * `TagDB.PUMPS.P5.Running.getIntValue` -> `PUMPS.P5.Running`. Accessor methods
- * (get/set/is + capital) end the variable path; only expressions that start
- * TagDB. are taken, because a bare dotted string may be anything.
+ * `TagDB.PUMPS.P5.Running.getIntValue` -> `PUMPS.P5.Running`, certain. A bare
+ * `PUMPS.P5.Running` is probable. An accessor method ends the variable path.
  */
-export function tagReferences(strings: string[]): string[] {
-  const out = new Set<string>();
+export function namesIn(strings: string[]): { tagdb: Set<string>; dotted: Set<string> } {
+  const tagdb = new Set<string>();
+  const dotted = new Set<string>();
   for (const s of strings) {
-    for (const m of s.matchAll(/TagDB\.([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*|\[\d+\])*)/g)) {
-      const parts = m[1].split(".");
-      const cut = parts.findIndex((p, i) => i > 0 && /^(get|set|is)[A-Z]/.test(p));
-      out.add((cut > 0 ? parts.slice(0, cut) : parts).join("."));
+    for (const m of s.matchAll(NAME)) {
+      const isTag = m[0].startsWith("TagDB.");
+      const parts = (isTag ? m[0].slice(6) : m[0]).split(".");
+      const cut = parts.findIndex((p, i) => i > 0 && ACCESSOR.test(p));
+      const name = (cut > 0 ? parts.slice(0, cut) : parts).join(".");
+      if (!name) continue;
+      if (isTag) tagdb.add(name);
+      if (isTag || name.includes(".")) dotted.add(name);
     }
   }
-  return [...out].sort();
+  return { tagdb, dotted };
 }
 
-function kindOf(path: string): VijeoPanel["kind"] {
-  const p = path.toLowerCase();
-  if (/(^|\/)base(\/|$)/.test(p)) return "base";
-  if (/(^|\/)popup/.test(p)) return "popup";
-  if (/(^|\/)template/.test(p)) return "template";
-  return "other";
-}
+/** The older single-purpose helper, kept for callers that only want certain references. */
+export const tagReferences = (strings: string[]) => [...namesIn(strings).tagdb].sort();
+
+const PANEL = new RegExp(
+  "^Targets/(?<t>[^/]+)/Component \\d+/(?:" +
+    "WindowList/BasePanelsList/(?<base>Panel\\d+)" +
+    "|PopupWindowList/(?<grp>[^/]+)/(?<pop>Panel\\d+)" +
+    "|WindowList/DefinitionNodeStorage/(?<fold>[^/]+)/(?<tpl>Panel\\d+)" +
+    ")/GraphicalObject$",
+);
+
+/** Streams that define things rather than use them: scanning them would make every variable look used. */
+const DEFINITIONS = ["Services/", "/BitmapManager/", "/JpegList", "/LangManager/", "/JpegThumbnails"];
 
 /** The compound file inside a .vdz, or an IngestError saying why not. */
 export async function openVdz(bytes: Uint8Array): Promise<{ name: string; cf: CompoundFile }> {
@@ -103,14 +125,35 @@ export async function openVdz(bytes: Uint8Array): Promise<{ name: string; cf: Co
 
 export async function inventoryVdz(bytes: Uint8Array): Promise<VijeoInventory> {
   const { name, cf } = await openVdz(bytes);
+  const first = (path: string) => {
+    const data = cf.read(path);
+    return data ? (utf16Strings(data)[0] ?? "") : "";
+  };
   const panels: VijeoPanel[] = [];
   for (const e of cf.entries) {
-    if (e.type !== "stream" || !/\/GraphicalObject$/.test(e.path)) continue;
-    const id = e.path.replace(/\/GraphicalObject$/, "");
+    if (e.type !== "stream") continue;
+    const m = e.path.match(PANEL);
+    if (!m?.groups) continue;
+    if (DEFINITIONS.some((d) => `/${e.path}`.includes(d))) continue;
+    const g = m.groups;
+    const root = e.path.slice(0, -"/GraphicalObject".length);
+    const storage = root.split("/").pop()!;
+    const kind: VijeoPanel["kind"] = g.base ? "base" : g.pop ? "popup" : "template";
+    const group = g.pop ? first(`${root.split("/").slice(0, -1).join("/")}/PageListProperties`) || g.grp : g.fold ?? "";
     const data = cf.read(e.path) ?? new Uint8Array(0);
-    panels.push({ id, target: id.split("/")[0], kind: kindOf(id), references: tagReferences(utf16Strings(data)), bytes: data.length });
+    const { tagdb, dotted } = namesIn(utf16Strings(data));
+    panels.push({
+      id: `${g.t}/${kind}/${group ? `${group}/` : ""}${storage}`,
+      name: first(`${root}/WindowObject`) || storage,
+      target: g.t,
+      kind,
+      group,
+      tagdb: [...tagdb].sort(),
+      references: [...dotted].sort(),
+      bytes: data.length,
+    });
   }
-  panels.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+  panels.sort((a, b) => a.kind.localeCompare(b.kind) || a.id.localeCompare(b.id, undefined, { numeric: true }));
   const variables = [...new Set(panels.flatMap((p) => p.references))].sort();
   const has = (re: RegExp) => cf.entries.some((e) => re.test(e.path));
   return {

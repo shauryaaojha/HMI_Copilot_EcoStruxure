@@ -295,15 +295,20 @@ describe("Vijeo Designer's own variable export", () => {
     "ArrayVariable,LAMPS01,BOOL,Internal,,,",
   ].join("\r\n");
 
-  it("takes variables and structure elements, skips folders, reports structures and arrays", async () => {
+  it("takes variables and structure elements, skips folders, keeps structures, reports arrays", async () => {
     const r = await parseTagsFile(new TextEncoder().encode(csv), "vijeo.csv");
     expect(r.variables.map((v) => [v.DataType, v.Comments, v.DeviceAddress])).toEqual([
       ["BOOL", "Pump 1 running", "%MW100:X0"],
       ["REAL", "Tank level", ""],
       ["BOOL", "P5 running", "%MW200:X0"],
     ]);
-    expect(r.variables[2].Name).toMatch(/^PUMPS_P5_Running$/);
-    expect(r.corrections.some((c) => c.from === "PUMPS.P5.Running")).toBe(true);
-    expect(r.skipped.map((s) => s.value)).toEqual(["PUMPS.P5", "LAMPS01"]);
+    // Folder PUMPS is left out of the OTE name, so inference sees P5.
+    expect(r.variables[2].Name).toBe("P5_Running");
+    expect(r.corrections).toContainEqual(expect.objectContaining({ from: "PUMPS.P5.Running", to: "P5_Running", reason: expect.stringMatching(/folder PUMPS left out/) }));
+    expect(r.skipped.map((s) => s.value)).toEqual(["LAMPS01"]);
+    // The structure instance is equipment the project declared: one unit.
+    expect(r.structure).toEqual([
+      { instance: "P5", ddt: "PumpType", comment: "", address: "", members: [{ path: "Running", variable: "P5_Running", typeName: "BOOL" }] },
+    ]);
   });
 });

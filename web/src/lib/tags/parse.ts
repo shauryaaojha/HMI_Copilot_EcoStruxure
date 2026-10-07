@@ -22,7 +22,7 @@ import { refuse, sniff } from "@/lib/ingest/sniff";
 type DataType = (typeof DATA_TYPES)[number];
 
 /** Header aliases, lowercased and stripped of non-alphanumerics. */
-const COLUMNS: Record<keyof ParsedRow, string[]> = {
+const COLUMNS: Record<Exclude<keyof ParsedRow, "original">, string[]> = {
   name: ["name", "tagname", "symbol", "symbolname", "variable", "variablename", "tag", "identifier"],
   dataType: ["datatype", "type", "iectype", "vartype", "datatypename"],
   comment: ["comment", "comments", "description", "desc", "remark", "note"],
@@ -34,6 +34,8 @@ interface ParsedRow {
   dataType: string;
   comment: string;
   address: string;
+  /** The name as the file wrote it, when it was shortened (a Vijeo folder left out). */
+  original?: string;
 }
 
 export interface ParseResult {
@@ -93,7 +95,7 @@ function mapHeader(header: string[]): Partial<Record<keyof ParsedRow, number>> {
   const rank: Partial<Record<keyof ParsedRow, number>> = {};
   header.forEach((cell, index) => {
     const k = key(String(cell ?? ""));
-    for (const [field, aliases] of Object.entries(COLUMNS) as [keyof ParsedRow, string[]][]) {
+    for (const [field, aliases] of Object.entries(COLUMNS) as [Exclude<keyof ParsedRow, "original">, string[]][]) {
       const r = aliases.indexOf(k);
       if (r >= 0 && (rank[field] === undefined || r < rank[field]!)) {
         mapping[field] = index;
@@ -249,12 +251,29 @@ export function parseGrid(grid: unknown[][], filename = ""): ParseResult {
       ? 0
       : -1;
 
+  // Vijeo folders: "Folder,PUMPS" rows. A variable "PUMPS.PMP_101_RUN" is
+  // PMP_101_RUN filed in PUMPS, and flattening it to PUMPS_PMP_101_RUN would
+  // hide the equipment prefix from inference. So the folder path is left out
+  // of the OTE name - when what remains is still unique - and said so.
+  const folders = new Set<string>();
+  if (kindColumn >= 0) {
+    for (const r of body) if (key(String(r[kindColumn] ?? "")) === "folder") folders.add(String(r[1] ?? "").trim());
+  }
+  const unfiled = (name: string): string => {
+    const parts = name.split(".");
+    let cut = 0;
+    while (cut < parts.length - 1 && folders.has(parts.slice(0, cut + 1).join("."))) cut++;
+    return parts.slice(cut).join(".");
+  };
+
   const cell = (row: unknown[], field: keyof ParsedRow): string => {
     const index = mapping[field];
     return index === undefined ? "" : String(row[index] ?? "").trim();
   };
 
   const rows: ParsedRow[] = [];
+  /** Vijeo Designer structure instances (DDTVariable rows): name -> type. */
+  const instances = new Map<string, { type: string; comment: string }>();
   const skipped: ParseResult["skipped"] = [];
 
   body.forEach((row, i) => {
@@ -263,7 +282,13 @@ export function parseGrid(grid: unknown[][], filename = ""): ParseResult {
     if (kindColumn >= 0) {
       const kind = VIJEO_ROWS[key(String(row[kindColumn] ?? ""))];
       if (kind === "skip-folder") return; // a folder is not a tag
-      if (kind === "skip-structure" || kind === "skip-array") {
+      if (kind === "skip-structure") {
+        // Not a tag itself, but it says what its elements are: "PUMPS.P5" of
+        // type PumpType. Kept, so its SubVariable rows become one unit.
+        instances.set(name, { type: cell(row, "dataType"), comment: cell(row, "comment") });
+        return;
+      }
+      if (kind === "skip-array") {
         skipped.push({
           row: i + firstBodyRow,
           value: name,
@@ -286,8 +311,10 @@ export function parseGrid(grid: unknown[][], filename = ""): ParseResult {
       return;
     }
 
+    const short = folders.size ? unfiled(name) : name;
     rows.push({
-      name,
+      name: short,
+      ...(short !== name ? { original: name } : {}),
       // A tag list with no type column is common; BOOL is the safe default
       // because a wrong BOOL is visible on screen, a wrong REAL is not.
       dataType: dataType ?? "BOOL",
@@ -296,7 +323,27 @@ export function parseGrid(grid: unknown[][], filename = ""): ParseResult {
     });
   });
 
-  const { names, corrections } = normaliseNames(rows.map((r) => r.name));
+  // A shortened name that would collide with another keeps its folders.
+  const counts = new Map<string, number>();
+  for (const r of rows) counts.set(r.name, (counts.get(r.name) ?? 0) + 1);
+  for (const r of rows) if (r.original && counts.get(r.name)! > 1) r.name = r.original;
+
+  const normalised = normaliseNames(rows.map((r) => r.name));
+  const names = normalised.names;
+  // Report renames from what the file said, so a Vijeo name maps to its OTE one.
+  const corrections: Correction[] = [];
+  rows.forEach((r, i) => {
+    const from = r.original ?? r.name;
+    if (from === names[i]) return;
+    const own = normalised.corrections.find((c) => c.from === r.name && c.to === names[i]);
+    corrections.push({
+      from,
+      to: names[i],
+      reason: r.original
+        ? `Vijeo folder ${r.original.slice(0, r.original.length - r.name.length - 1)} left out of the name${own ? `; ${own.reason}` : ""}`
+        : (own?.reason ?? "renamed to an OTE-legal name"),
+    });
+  });
 
   const variables: Variable[] = rows.map((r, i) => ({
     Name: names[i],
@@ -311,5 +358,20 @@ export function parseGrid(grid: unknown[][], filename = ""): ParseResult {
   }
 
   void filename;
-  return { variables, corrections, skipped, summary };
+  // Vijeo structure instances, as the same structure a Control Expert DDT
+  // gives: each instance's elements are the rows named "<instance>.<member>".
+  const structure: StructuredInstance[] = [];
+  if (instances.size > 0) {
+    const full = (r: ParsedRow) => r.original ?? r.name;
+    const byOriginal = new Map(rows.map((r, i) => [full(r), names[i]]));
+    for (const [instance, { type, comment }] of instances) {
+      const members = rows
+        .filter((r) => full(r).startsWith(`${instance}.`))
+        .map((r) => ({ path: full(r).slice(instance.length + 1), variable: byOriginal.get(full(r))!, typeName: r.dataType }));
+      if (members.length === 0) continue;
+      structure.push({ instance: unfiled(instance).replace(/[^A-Za-z0-9_]/g, "_"), ddt: type, comment, address: "", members });
+    }
+  }
+
+  return { variables, corrections, skipped, summary, ...(structure.length ? { structure } : {}) };
 }

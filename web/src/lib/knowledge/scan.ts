@@ -582,7 +582,7 @@ export async function scanVijeo(bytes: Uint8Array, fileName = "project.vdz"): Pr
   const inv = await inventoryVdz(bytes);
   const screens: KnownScreen[] = inv.panels.map((p) => ({
     id: p.id,
-    name: p.id,
+    name: p.name,
     area: p.kind === "popup" ? "Contents" : "Screens",
     rootType: `Vijeo ${p.kind} panel`,
     objects: [],
@@ -590,7 +590,7 @@ export async function scanVijeo(bytes: Uint8Array, fileName = "project.vdz"): Pr
     bound: p.references.length,
   }));
   const bindings: KnownBinding[] = inv.panels.flatMap((p) =>
-    p.references.map((tag) => ({ tag, objectType: "VijeoPanel", objectName: p.id, property: "reference", screen: p.id, via: "inline" as const })),
+    p.references.map((tag) => ({ tag, objectType: "VijeoPanel", objectName: p.name, property: p.tagdb.includes(tag) ? "TagDB" : "reference", screen: p.name, via: "inline" as const })),
   );
   return {
     v: KNOWLEDGE_VERSION,
