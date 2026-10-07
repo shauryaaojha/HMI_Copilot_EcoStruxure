@@ -10,6 +10,7 @@
 
 import { runPipeline, type ExistingScreen } from "@/lib/ai/pipeline";
 import type { StructureHint } from "@/lib/ai/infer";
+import { ScreenProgram } from "@/lib/program/program";
 import type { GenerationEvent } from "@/types/events";
 import type { Variable } from "@/lib/ote/schema";
 import { panelOf } from "@/lib/ote/packager";
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
     existing?: ExistingScreen[];
     target?: { model?: unknown; width?: unknown; height?: unknown };
     structure?: StructureHint[];
+    programs?: ScreenProgram[];
   };
   try {
     body = (await request.json()) as typeof body;
@@ -36,6 +38,13 @@ export async function POST(request: Request) {
   const variables = body.variables ?? [];
   const existing = Array.isArray(body.existing) ? body.existing : undefined;
   const structure = Array.isArray(body.structure) ? body.structure : undefined;
+  // Screens decided already (a migration). Each must be a valid program; one
+  // that is not fails the request rather than compiling into nonsense.
+  const parsedPrograms = Array.isArray(body.programs) ? body.programs.map((p) => ScreenProgram.safeParse(p)) : [];
+  if (parsedPrograms.some((r) => !r.success)) {
+    return Response.json({ error: "a screen program in the request is not valid" }, { status: 400 });
+  }
+  const programs = parsedPrograms.length ? parsedPrograms.map((r) => r.data!) : undefined;
   // The panel the project is designed for, as the client holds it; else the
   // one the skeleton's Target.dat names; else the pipeline's default profile.
   const t = body.target;
@@ -51,7 +60,7 @@ export async function POST(request: Request) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
 
       try {
-        for await (const event of runPipeline({ intent, variables, existing, panel, structure })) {
+        for await (const event of runPipeline({ intent, variables, existing, panel, structure, programs })) {
           send(event);
         }
       } catch (error) {

@@ -19,6 +19,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { GenerationEvent } from "@/types/events";
 import type { ExistingScreen } from "@/lib/ai/pipeline";
+import type { ScreenProgram } from "@/lib/program/program";
 import { useProject } from "@/store/project";
 import { mockGeneration } from "./mockPipeline";
 import { readEvents } from "./sse";
@@ -37,6 +38,11 @@ export interface GenerateOptions {
    * plans only the equipment not yet placed and never reuses a name.
    */
   existing?: ExistingScreen[];
+  /**
+   * Screens decided already (a Vijeo Designer migration): compiled as given,
+   * nothing planned. lib/ai/pipeline.ts PipelineInput.programs.
+   */
+  programs?: ScreenProgram[];
 }
 
 export function useGeneration() {
@@ -172,6 +178,7 @@ export function useGeneration() {
               existing: options.existing,
               target: store.getState().target,
               structure: store.getState().tagImport?.structure,
+              ...(options.programs ? { programs: options.programs } : {}),
             }),
           });
 

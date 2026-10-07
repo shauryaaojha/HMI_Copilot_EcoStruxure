@@ -19,6 +19,10 @@
  */
 
 import { expectJson } from "@/lib/ingest/client";
+import { useGeneration } from "@/components/generation/useGeneration";
+import type { MigrationPlan } from "@/lib/vijeo/migrate";
+
+type MigrationResponse = MigrationPlan & { source: { container: string; panels: number; targets: string[]; withVariableExport: boolean } };
 import type { Imported } from "@/components/projects/ProjectsScreen";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -68,6 +72,9 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
   const variables = useProject((s) => s.variables);
   const hydrate = useProject((s) => s.hydrate);
   const { send } = useChat();
+  const { generate } = useGeneration();
+  const importTags = useProject((s) => s.importTags);
+  const rename = useProject((s) => s.rename);
   const { upload, useSample } = useTagImport();
   const pane = useCursorLight<HTMLDivElement>();
   const cards = useSpotlights<HTMLDivElement>();
@@ -112,6 +119,63 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
     } finally {
       setBusy(null);
     }
+  }
+
+  /**
+   * A Vijeo Designer backup, migrated: its panels become OTE screens with the
+   * same names and the same units, compiled by the normal pipeline
+   * (lib/vijeo/migrate.ts). The variable export, when picked with it, gives
+   * the real data types and structure; without it, types are read from names
+   * and each one is listed among the import's corrections.
+   */
+  async function migrateVijeo(vdz: File, variables: File | undefined, from: Origin) {
+    setBusy(vdz.name);
+    setError(null);
+    try {
+      const s = useProject.getState();
+      const form = new FormData();
+      form.append("vdz", vdz);
+      if (variables) form.append("variables", variables);
+      form.append("width", String(s.target.width));
+      form.append("height", String(s.target.height));
+      const plan = await expectJson<MigrationResponse>(await fetch("/api/vijeo/migrate", { method: "POST", body: form }), "Reading the Vijeo Designer backup");
+      if (plan.programs.length === 0) {
+        throw new Error(
+          `None of the ${plan.source.panels} panels in ${vdz.name} shows equipment this tool recognises, so there is nothing to migrate.` +
+            (variables ? "" : " Pick the Vijeo variable export together with the backup to give it the real tags."),
+        );
+      }
+      importTags(plan.variables, {
+        fileName: variables ? `${vdz.name} + ${variables.name}` : vdz.name,
+        at: Date.now(),
+        corrections: plan.report.assumedTypes.map((a) => ({
+          from: a.tag,
+          to: a.tag,
+          reason: `data type ${a.dataType} assumed from the name: pick the Vijeo variable export with the backup for the real type`,
+        })),
+        skipped: plan.report.notMigrated.map((n) => ({ row: 0, value: n.panel, reason: `not migrated: ${n.reason}` })),
+        summary: { total: plan.variables.length },
+        ...(plan.structure?.length ? { structure: plan.structure } : {}),
+      });
+      if (s.name === "Untitled") rename(plan.source.container);
+      const log = useProject.getState().log;
+      log(`Migrating ${plan.report.migrated.length} of ${plan.source.panels} Vijeo Designer panels from ${vdz.name}`);
+      for (const n of plan.report.notMigrated) log(`Not migrated: ${n.panel} (${n.reason})`);
+      if (plan.report.unknownReferences.length) log(`${plan.report.unknownReferences.length} variables the panels name are not in the export, e.g. ${plan.report.unknownReferences.slice(0, 3).join(", ")}`);
+      reveal(from);
+      void generate(`Migrated from Vijeo Designer: ${plan.source.container}`, { fresh: true, programs: plan.programs });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "could not migrate that backup");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /** What the picker was given: a Vijeo backup (with its export), or a project. */
+  function opened(files: File[], from: Origin) {
+    const vdz = files.find((f) => /\.vdz$/i.test(f.name));
+    if (vdz) return void migrateVijeo(vdz, files.find((f) => /\.(csv|txt)$/i.test(f.name)), from);
+    if (files[0]) void openProject(files[0], from);
   }
 
   /**
@@ -289,6 +353,8 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
             <p className="mt-1 text-xs leading-relaxed text-text-muted">
               An .eote, or a .vxdz from 3.4.1 on. It exports back unchanged everywhere
               you did not touch — always as an .eote, which is the format we write.
+              Or a Vijeo Designer backup (.vdz) to migrate: pick its variable export
+              (.csv) with it for the real data types.
             </p>
           </button>
         </div>
@@ -371,11 +437,11 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
       <input
         ref={filePicker}
         type="file"
-        accept=".eote,.vxdz,.vdz"
+        accept=".eote,.vxdz,.vdz,.csv"
+        multiple
         className="hidden"
         onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) void openProject(file, centre());
+          opened([...(e.target.files ?? [])], centre());
           e.target.value = "";
         }}
       />

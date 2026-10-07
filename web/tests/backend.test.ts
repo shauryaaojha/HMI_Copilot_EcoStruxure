@@ -103,7 +103,7 @@ describe("capabilities", () => {
 
   it("refuses to write rather than guessing at a format", async () => {
     await expect(VIJEO.write({ name: "x", target: { model: "m", width: 1, height: 1 }, screens: [], variables: [], alarms: [], wires: [] })).rejects.toThrow(
-      /needs one real project/,
+      /migrate it to Operator Terminal Expert/,
     );
   });
 });

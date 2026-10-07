@@ -73,10 +73,15 @@ export const VIJEO: Backend = {
   // called Vijeo XD. lib/ingest/sniff.ts tells the three apart.
   extension: ".vdz",
   capabilities,
+  // A whole .vdz cannot be written: its screens are an unpublished binary
+  // serialisation and we have never opened a real Vijeo Designer project.
+  // What does work, and is said so: a .vdz migrates *to* OTE
+  // (lib/vijeo/migrate.ts), and the tags go *to* Vijeo through the engineer's
+  // own variable export (lib/vijeo/exportVariables.ts, the Export screen).
   unavailable:
-    "Vijeo Designer export is declared but not implemented: we have never opened a Vijeo Designer project, " +
-    "and writing a format from its documentation produces a file that opens and is wrong. " +
-    "It needs one real project and one variable export to finish.",
+    "A Vijeo Designer project cannot be written: its screens are an unpublished binary format, and we have never opened a Vijeo Designer project " +
+    "to check one against. Writing it from documentation would produce a file that opens and is wrong. " +
+    "What works instead: open a .vdz to migrate it to Operator Terminal Expert, and send the tags to Vijeo with \"Variables for Vijeo Designer\" on the Export screen.",
   async write() {
     throw new Error(VIJEO.unavailable);
   },
