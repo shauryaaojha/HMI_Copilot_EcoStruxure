@@ -11,6 +11,7 @@
  */
 
 import { useState } from "react";
+import { KnowledgePanel } from "./KnowledgePanel";
 import { useProject } from "@/store/project";
 import { useTheme } from "@/components/shell/theme";
 import {
@@ -117,6 +118,7 @@ export function SettingsScreen() {
               </Button>
             </div>
           </Panel>
+          <KnowledgePanel />
         </div>
       )}
 
