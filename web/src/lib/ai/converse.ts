@@ -512,6 +512,8 @@ const JSON_SCHEMA = {
 export interface Catalog {
   tags: { name: string; dataType: string; comment: string }[];
   objects: ObjectEntry[];
+  /** The project's alarms, for alarm_rationalisation. Optional; never in the prompt. */
+  alarms?: Alarm[];
 }
 
 export interface ConverseInput {
@@ -537,6 +539,7 @@ function toolContext(input: ConverseInput): PreparedContext {
   return prepare({
     tags: input.catalog?.tags ?? input.digest.variables,
     objects: input.catalog?.objects ?? [],
+    alarms: input.catalog?.alarms,
     structure: input.structure,
     knowledge: input.knowledge,
     targetParts: input.target?.parts,

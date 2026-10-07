@@ -120,3 +120,27 @@ describe("routing without a model", () => {
     expect(lines[0]).toMatch(/^Looked up get_equipment\("PMP_101"\) because the request names Pump 101:/);
   });
 });
+
+describe("alarm_rationalisation", () => {
+  it("drafts the table for the engineer's question, or one alarm of it", () => {
+    const withAlarms = prepare({
+      tags,
+      objects,
+      alarms: [{ Message: "Transfer pump 1 fault", Trigger: "PMP_101_FLT", AlarmType: 1, AlarmRecordType: 1, Severity: 5, Value: "0" }],
+    });
+    const all = runTool("alarm_rationalisation", { trigger: "" }, withAlarms).text;
+    expect(all).toMatch(/^1 alarms: 1 high/);
+    expect(all).toMatch(/action: Check the drive/);
+    expect(runTool("alarm_rationalisation", { trigger: "PMP_101_FLT" }, withAlarms).text).not.toMatch(/^1 alarms/);
+    expect(runTool("alarm_rationalisation", { trigger: "NOPE" }, withAlarms).text).toMatch(/no alarm is triggered by NOPE/);
+    expect(runTool("alarm_rationalisation", { trigger: "" }, ctx).text).toBe("the project has no alarms configured");
+  });
+});
+
+describe("routing alarm questions", () => {
+  it("runs the rationalisation when the request is about alarms", () => {
+    const withAlarms = prepare({ tags, objects, alarms: [{ Message: "x", Trigger: "PMP_101_FLT", AlarmType: 1, AlarmRecordType: 1, Severity: 5, Value: "0" }] });
+    expect(routeTools("are the alarm priorities sensible?", withAlarms).map((c) => c.name)).toContain("alarm_rationalisation");
+    expect(routeTools("make the title bigger", withAlarms)).toEqual([]);
+  });
+});
