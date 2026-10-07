@@ -105,6 +105,7 @@ export function useChat() {
         structure: s.tagImport?.structure,
         // What the lookup tools can search. Compact, never in the prompt.
         catalog: {
+          alarms: s.alarms,
           tags: s.variables.map((v) => ({ name: v.Name, dataType: v.DataType, comment: v.Comments ?? "" })),
           objects: s.screens.flatMap((screen) =>
             screen.Children[0].Children.map((p) => ({

@@ -35,7 +35,8 @@ import { inferEquipment, type InferredEquipment, type StructureHint } from "./in
 import { MACHINE_CLASSES, machineClass, words } from "@/lib/library/machines";
 import { aggregate, exampleScreens, precedentFor, type Conventions } from "@/lib/knowledge/conventions";
 import type { ProjectKnowledge } from "@/lib/knowledge/scan";
-import type { Variable } from "@/lib/ote/schema";
+import type { Alarm, Variable } from "@/lib/ote/schema";
+import { rationalise } from "@/lib/alarms/rationalise";
 
 export interface ToolContext {
   tags: { name: string; dataType: string; comment: string }[];
@@ -46,6 +47,8 @@ export interface ToolContext {
   /** The part types the target format can write (lib/backend). */
   targetParts?: readonly string[];
   targetName?: string;
+  /** The project's alarms, for the rationalisation tool. */
+  alarms?: Alarm[];
 }
 
 /** A context with its derived values computed once. */
@@ -214,6 +217,27 @@ export const TOOLS: readonly ToolSpec[] = [
     },
   },
   {
+    name: "alarm_rationalisation",
+    does: "Returns the project's alarm table as ISA-18.2 rationalisation drafts it: each alarm's priority, consequence and operator action from the machine library, the priority distribution, and what is missing or duplicated.",
+    when: "The engineer asks about alarm priorities, floods, which alarms lack an action, or whether the alarm set is sound; or before adding or changing alarms.",
+    not: "To list tags or objects - use find_tags or find_objects. It drafts; it never changes an alarm.",
+    schema: { type: "object", properties: { trigger: { type: "string", description: "One alarm's trigger tag, or an empty string for the whole table" } }, required: ["trigger"], additionalProperties: false },
+    run(input, ctx) {
+      const alarms = ctx.alarms ?? [];
+      if (alarms.length === 0) return "the project has no alarms configured";
+      const r = rationalise(alarms, ctx.equipment);
+      const want = str(input.trigger).trim().toLowerCase();
+      const rows = want ? r.rows.filter((x) => x.trigger.toLowerCase() === want) : r.rows;
+      if (want && rows.length === 0) return `no alarm is triggered by ${str(input.trigger)}`;
+      const d = r.distribution;
+      return [
+        ...(want ? [] : [`${d.total} alarms: ${d.high} high, ${d.medium} medium, ${d.low} low (ISA-18.2 practice about 5/15/80).`]),
+        ...cap(rows.map((x) => `"${x.message}" on ${x.trigger} (${x.on}): ${x.priority}; consequence: ${x.consequence || "not yet defined"}; action: ${x.action || "not yet defined"}`), "no alarms"),
+        ...r.findings.filter((f) => !want || f.trigger?.toLowerCase() === want).slice(0, 8).map((f) => `${f.severity}: ${f.message}`),
+      ].join("\n");
+    },
+  },
+  {
     name: "target_capabilities",
     does: "Says which part types the project's target format can write, and whether a given one is among them.",
     when: "Before adding a part type that is not Rectangle, TextBox, Lamp or NumericDisplay, or when the engineer asks whether something can be exported.",
@@ -260,6 +284,7 @@ export const TOOL_GUIDE = [
   "- which part should show an unusual tag -> binding_precedent",
   "- how finished projects lay out a screen like this -> example_screens",
   "- whether the target can write a part type -> target_capabilities",
+  "- alarm priorities, missing operator actions, floods -> alarm_rationalisation",
   "Call nothing when the context already has the answer. Never guess a tag, object or equipment name: look it up.",
 ].join("\n");
 
@@ -319,6 +344,11 @@ export function routeTools(request: string, ctx: PreparedContext): RoutedCall[] 
   // A tag said outright, with a verb that puts it on a screen.
   if (ctx.conventions && /\b(bind|show|display|connect|wire|link|indicate)\b/.test(text)) {
     for (const t of ctx.tags) if (said(t.name)) add({ name: "binding_precedent", input: { tag: t.name }, why: `the request binds ${t.name}` });
+  }
+
+  // A question about the alarm set as a whole.
+  if (ctx.alarms?.length && /\b(alarms?|priorit(y|ies)|flood|rationali[sz])/.test(text)) {
+    add({ name: "alarm_rationalisation", input: { trigger: "" }, why: "the request is about the alarms" });
   }
 
   // A part type the target may not write.
