@@ -17,6 +17,7 @@
  * what exists (F5).
  */
 
+import { commitsWithoutReview } from "@/lib/ai/review";
 import { useCallback, useRef } from "react";
 import { describeOp, digestOf, type HistoryItem } from "@/lib/ai/converse";
 import { isUnnamed, nameProject } from "@/lib/ai/name";
@@ -297,7 +298,9 @@ export function useChat() {
           return;
         }
 
-        const clean = run.outcome.rejected.length === 0 && !run.outcome.deleted;
+        // Clean edits commit at once, unless the project asks for every AI edit
+        // to be reviewed (lib/ai/review.ts).
+        const clean = commitsWithoutReview(run.outcome, useProject.getState().standards);
         if (clean) {
           commit(run, run.outcome.applied[0]?.slice(0, 60) || "Conversational edit");
           const after = useProject.getState();
