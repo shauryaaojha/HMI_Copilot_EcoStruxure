@@ -92,11 +92,19 @@ export const Paint = z.union([
  * this alone.
  */
 export const FontRef = z.object({
-  Type: z.object({
-    Type: z.literal(2),
-    Value: z.union([z.string(), z.number()]),
-    DisplayValue: z.string().optional(),
-  }),
+  // Optional, and sometimes a bare number: 3.4 files write `{Type: 240}` on
+  // 153 fonts of the typed corpus and leave Type out of 33 more when it is the
+  // default. The product's own output in every case, so all of it parses.
+  Type: z
+    .union([
+      z.object({
+        Type: z.literal(2),
+        Value: z.union([z.string(), z.number()]),
+        DisplayValue: z.string().optional(),
+      }),
+      z.number(),
+    ])
+    .optional(),
   Size: z.number().positive().optional(),
   Bold: z.boolean().optional(),
   Italic: z.boolean().optional(),
@@ -106,6 +114,24 @@ export const Location = z.object({
   Left: z.number(),
   Top: z.number(),
 });
+
+/**
+ * The product leaves out any value that is its default, zero included:
+ * `Location: {Top: 37}` is Left 0, and a part at the origin has no Location at
+ * all. The reader fills the zeros in before parsing (`withOrigin`), so every
+ * modelled part has both; an untouched screen is still written back from the
+ * original bytes, so nothing the product did not write is ever added to it.
+ */
+export function withOrigin(part: unknown): unknown {
+  if (!part || typeof part !== "object") return part;
+  const p = part as Record<string, unknown>;
+  const loc = (p.Location && typeof p.Location === "object" ? p.Location : {}) as Record<string, unknown>;
+  if (typeof loc.Left === "number" && typeof loc.Top === "number") return part;
+  return {
+    ...p,
+    Location: { ...loc, Left: typeof loc.Left === "number" ? loc.Left : 0, Top: typeof loc.Top === "number" ? loc.Top : 0 },
+  };
+}
 
 /** Horizontal: 1 left, 2 centre, 4 right. Vertical: 64 middle. */
 export const TextLayout = z.object({
@@ -226,15 +252,136 @@ export const AlarmSummary = z.object({
 });
 
 /** One of the 475 shipped graphic objects, placed as path geometry. */
+/**
+ * Vector geometry the way 3.4 writes it: `Path: {Commands, Data}`, points in a
+ * 3072-unit box stretched over the part's Width and Height. Passthrough
+ * because the merge is top-level only - a nested key dropped here would be
+ * dropped from the file.
+ */
+export const VectorPath = z
+  .object({
+    Commands: z.string().optional(),
+    Data: z.string().optional(),
+  })
+  .passthrough();
+
+/**
+ * A vector symbol, in either encoding the product writes: 4.4 keeps `Commands`
+ * and `Points` on the part (what we generate from the shipped graphics), 3.4
+ * keeps them under `Path` as `Commands` and `Data`. A part carries one or the
+ * other; `pathGeometry` reads whichever is there.
+ */
 export const PathPart = z.object({
   Type: z.literal("Path"),
   ...base,
-  Commands: z.string(),
-  Points: z.string(),
+  Commands: z.string().optional(),
+  Points: z.string().optional(),
+  Path: VectorPath.optional(),
   Fill: Paint.optional(),
   Border: Paint.optional(),
   Thickness: z.number().optional(),
 });
+
+/** The Rectangle's round sibling: same fill, border and thickness. */
+export const Ellipse = z.object({
+  Type: z.literal("Ellipse"),
+  ...base,
+  Fill: Paint.optional(),
+  Border: Paint.optional(),
+  Thickness: z.number().optional(),
+  Animation: Animation.optional(),
+});
+
+/**
+ * A straight line. With no `Path` it runs corner to corner of its box, which
+ * is how the product writes a line it was never asked to bend: `Width: 0` is a
+ * vertical one, a missing Height a horizontal one.
+ */
+export const Line = z.object({
+  Type: z.literal("Line"),
+  ...base,
+  Stroke: Paint.optional(),
+  Thickness: z.number().optional(),
+  Path: VectorPath.optional(),
+});
+
+/** An open run of segments. */
+export const PolyLine = z.object({
+  Type: z.literal("PolyLine"),
+  ...base,
+  Stroke: Paint.optional(),
+  Thickness: z.number().optional(),
+  Path: VectorPath.optional(),
+});
+
+/** A closed, fillable outline. */
+export const Polygon = z.object({
+  Type: z.literal("Polygon"),
+  ...base,
+  Fill: Paint.optional(),
+  Border: Paint.optional(),
+  Thickness: z.number().optional(),
+  Path: VectorPath.optional(),
+});
+
+/** A curve: the same point box as PolyLine, with C commands in it. */
+export const Bezier = z.object({
+  Type: z.literal("Bezier"),
+  ...base,
+  Stroke: Paint.optional(),
+  Thickness: z.number().optional(),
+  Path: VectorPath.optional(),
+});
+
+/**
+ * The four angle shapes. Angles are degrees from three o'clock, clockwise, as
+ * the product's own defaults show: 135 to 405 is the gauge arc open at the
+ * bottom. `Buildtime/PropertyDefinitions/ScreenDesign/GraphicObjects/02-Shapes`
+ * gives the defaults the product leaves out of the file: Start 135, End 405,
+ * InnerRadius 70 (percent of the radius).
+ */
+const angles = {
+  StartAngle: z.number().optional(),
+  EndAngle: z.number().optional(),
+};
+export const Arc = z.object({ Type: z.literal("Arc"), ...base, ...angles, Stroke: Paint.optional(), Thickness: z.number().optional() });
+export const Pie = z.object({
+  Type: z.literal("Pie"),
+  ...base,
+  ...angles,
+  Fill: Paint.optional(),
+  Border: Paint.optional(),
+  Thickness: z.number().optional(),
+});
+export const Arch = z.object({
+  Type: z.literal("Arch"),
+  ...base,
+  ...angles,
+  InnerRadius: z.number().optional(),
+  Fill: Paint.optional(),
+  Border: Paint.optional(),
+  Thickness: z.number().optional(),
+});
+export const Doughnut = z.object({
+  Type: z.literal("Doughnut"),
+  ...base,
+  InnerRadius: z.number().optional(),
+  Fill: Paint.optional(),
+  Border: Paint.optional(),
+  Thickness: z.number().optional(),
+});
+
+/** Commands and points of a Path part, whichever encoding it carries. */
+export function pathGeometry(part: { Commands?: string; Points?: string; Path?: { Commands?: string; Data?: string } }):
+  | { Commands: string; Points: string }
+  | null {
+  if (part.Commands !== undefined && part.Points !== undefined) return { Commands: part.Commands, Points: part.Points };
+  if (part.Path?.Data !== undefined) {
+    const n = part.Path.Data.split(",").filter((x) => x.trim() !== "").length / 2;
+    return { Commands: part.Path.Commands ?? "M" + "L".repeat(Math.max(0, n - 1)), Points: part.Path.Data };
+  }
+  return null;
+}
 
 /**
  * A Switch is a touch target with a face for each of its two states, and a
@@ -432,6 +579,15 @@ export const Part = z.discriminatedUnion("Type", [
   DateTimeDisplay,
   TrendGraph,
   BlockTrend,
+  Ellipse,
+  Line,
+  PolyLine,
+  Polygon,
+  Bezier,
+  Arc,
+  Pie,
+  Arch,
+  Doughnut,
 ]);
 
 export const ViewBox = z.object({
@@ -569,6 +725,15 @@ export const PART_TYPES = [
   "DateTimeDisplay",
   "TrendGraph",
   "BlockTrend",
+  "Ellipse",
+  "Line",
+  "PolyLine",
+  "Polygon",
+  "Bezier",
+  "Arc",
+  "Pie",
+  "Arch",
+  "Doughnut",
 ] as const satisfies readonly PartType[];
 export type ViewBox = z.infer<typeof ViewBox>;
 export type Screen = z.infer<typeof Screen>;

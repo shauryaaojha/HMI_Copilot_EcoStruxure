@@ -73,12 +73,20 @@ export const ALIGN_V = { top: 32, bottom: 64, stretch: 3, middle: 128 } as const
 
 const GRIDS = new Set(["Grid", "ScrollGrid"]);
 const CANVASES = new Set(["Canvas", "ScrollCanvas", "ZoomCanvas"]);
+/**
+ * A GroupObject places its children by Left/Top inside its own box, exactly
+ * as a canvas does (HVAC_Symbol01's PZH tag: a Path, a Line at Top 9 and a
+ * TextBox, inside a 44x17 group). It is not a screen root, so it is laid out
+ * as a canvas only when nested.
+ */
+const GROUPS = new Set(["GroupObject"]);
 const STACKS = new Set(["StackPanel"]);
 const UNIFORM = new Set(["UniformGrid"]);
 
 /** True for the container types this module lays out. */
 export const isContainerType = (type: unknown): boolean =>
-  typeof type === "string" && (GRIDS.has(type) || CANVASES.has(type) || STACKS.has(type) || UNIFORM.has(type));
+  typeof type === "string" &&
+  (GRIDS.has(type) || CANVASES.has(type) || GROUPS.has(type) || STACKS.has(type) || UNIFORM.has(type));
 
 /**
  * True when a nested node holds other parts and places them itself. An empty
@@ -227,7 +235,7 @@ export function layoutTree(root: Raw, rootBox: Box): Laid {
       return;
     }
 
-    if (CANVASES.has(type)) {
+    if (CANVASES.has(type) || GROUPS.has(type)) {
       for (const kid of kids) {
         const loc = obj(kid.Location);
         const kidBox = {

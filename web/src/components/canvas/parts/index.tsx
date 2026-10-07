@@ -30,6 +30,7 @@ import {
 } from "./DataParts";
 import { AlarmSummaryPart, type AlarmRow } from "./AlarmSummaryPart";
 import { PathPartNode } from "./GraphicObject";
+import { AngleShapePart, EllipsePart, LinePart, PolygonPart } from "./Shapes";
 
 export { AlarmSummaryPart, type AlarmRow } from "./AlarmSummaryPart";
 export { GraphicObject } from "./GraphicObject";
@@ -121,6 +122,23 @@ export function PartNode({ part, values, alarms }: PartNodeProps) {
 
     case "BlockTrend":
       return <BlockTrendPart part={part} />;
+
+    case "Ellipse":
+      return <EllipsePart part={part} />;
+
+    case "Line":
+    case "PolyLine":
+    case "Bezier":
+      return <LinePart part={part} />;
+
+    case "Arc":
+    case "Pie":
+    case "Arch":
+    case "Doughnut":
+      return <AngleShapePart part={part} />;
+
+    case "Polygon":
+      return <PolygonPart part={part} />;
 
     default: {
       const exhaustive: never = part;

@@ -111,7 +111,7 @@ describe.skipIf(!hasSkeleton)("a Path part survives packaging", () => {
     expect(written.Commands).toBe(symbol.Commands);
     expect(written.Points).toBe(symbol.Points);
     // And they must still draw the same shape on the canvas.
-    expect(toPathData(written)).toBe(symbol.d);
+    expect(toPathData(written as { Commands: string; Points: string })).toBe(symbol.d);
   }, 60_000);
 });
 

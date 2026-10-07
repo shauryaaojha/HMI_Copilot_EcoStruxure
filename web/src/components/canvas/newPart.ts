@@ -48,6 +48,8 @@ export const TOOLS: {
     group: "Composites" as ToolGroup,
   })),
   { type: "Rectangle", label: "Rectangle", hint: "Panel or background", key: "r", group: "Basic" },
+  { type: "Ellipse", label: "Ellipse", hint: "Circle or oval", key: "o", group: "Basic" },
+  { type: "Line", label: "Line", hint: "Straight line, corner to corner of its box", key: "j", group: "Basic" },
   { type: "TextBox", label: "Text", hint: "Label or title", key: "t", group: "Basic" },
   { type: "Pipe", label: "Pipe", hint: "Line whose colour follows a state", key: "p", group: "Basic" },
   { type: "Lamp", label: "Lamp", hint: "Two-state indicator", key: "l", group: "Indicators" },
@@ -83,6 +85,15 @@ const STEM: Record<PartType, string> = {
   DateTimeDisplay: "Clock",
   TrendGraph: "Trend",
   BlockTrend: "Blocks",
+  Ellipse: "Ellipse",
+  Line: "Line",
+  PolyLine: "PolyLine",
+  Polygon: "Polygon",
+  Bezier: "Bezier",
+  Arc: "Arc",
+  Pie: "Pie",
+  Arch: "Arch",
+  Doughnut: "Doughnut",
 };
 
 export function partFromTool(type: PartType, box: Box): Part {
@@ -120,6 +131,27 @@ export function partFromTool(type: PartType, box: Box): Part {
       // A Path with no geometry would render as nothing; a library drop goes
       // through symbolPart instead, which has the geometry to give it.
       return rectangle(name, box);
+    case "Ellipse":
+      return { ...rectangle(name, box), Type: "Ellipse" } as Part;
+    case "Line":
+    case "PolyLine": {
+      const { Fill: _f, Border: _b, ...rest } = rectangle(name, box) as Extract<Part, { Type: "Rectangle" }>;
+      return { ...rest, Type: type, Stroke: { Color: { Value: 1 } }, Thickness: 2 } as Part;
+    }
+    case "Bezier": {
+      const { Fill: _f, Border: _b, ...rest } = rectangle(name, box) as Extract<Part, { Type: "Rectangle" }>;
+      return { ...rest, Type: "Bezier", Stroke: { Color: { Value: 1 } }, Thickness: 2, Path: { Commands: "MC", Data: "0,3072,0,0,3072,0,3072,3072" } } as Part;
+    }
+    case "Arc": {
+      const { Fill: _f, Border: _b, ...rest } = rectangle(name, box) as Extract<Part, { Type: "Rectangle" }>;
+      return { ...rest, Type: "Arc", Stroke: { Color: { Value: 1 } }, Thickness: 2 } as Part;
+    }
+    case "Pie":
+    case "Arch":
+    case "Doughnut":
+      return { ...rectangle(name, box), Type: type } as Part;
+    case "Polygon":
+      return { ...rectangle(name, box), Type: "Polygon", Path: { Commands: "MLLLz", Data: "1536,0,3072,1536,1536,3072,0,1536" } } as Part;
   }
 }
 

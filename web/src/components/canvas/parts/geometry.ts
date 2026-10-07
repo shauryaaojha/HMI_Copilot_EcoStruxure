@@ -28,6 +28,10 @@ export function fill(node: unknown, key: string, fallback: string): string {
     if (paint.Type === 0) return "none";
     const first = paint.Color1 as { Value?: number } | undefined;
     if (first && typeof first.Value === "number") return resolveColor(first.Value, fallback);
+    // A gradient written as stops (Type 3): the first stop is the colour.
+    const stops = paint.ColorStops as { Color?: { Value?: number } }[] | undefined;
+    const stop = Array.isArray(stops) ? stops[0]?.Color?.Value : undefined;
+    if (typeof stop === "number") return resolveColor(stop, fallback);
   }
   // resolveColorNode rather than resolveColor, because a project without a
   // palette writes the colour packed and an index lookup would miss it.

@@ -11,12 +11,15 @@
  * from the same index, so what is browsed is what is placed.
  */
 
-import { boundsOf, toPathData, type RawPathFile } from "@/lib/ote/graphics";
+import { boundsOf, toPathData, type PathGeometry } from "@/lib/ote/graphics";
+import { pathGeometry } from "@/lib/ote/schema";
 import { fill, type PartOf } from "./geometry";
 
 export interface GraphicObjectProps {
   /** Either a placed Path part or a raw entry out of the graphics index. */
-  source: RawPathFile;
+  source: PathGeometry;
+  /** Stretch to the box, as the product does with its own Path parts' 3072-unit geometry. */
+  stretch?: boolean;
   x: number;
   y: number;
   width: number;
@@ -35,6 +38,7 @@ export function GraphicObject({
   fillColor,
   strokeColor,
   strokeWidth,
+  stretch,
 }: GraphicObjectProps) {
   // A malformed symbol should be visible as a gap, not take the screen down.
   let d: string;
@@ -63,8 +67,8 @@ export function GraphicObject({
       y={y}
       width={width}
       height={height}
-      viewBox={`0 0 ${natural.width || 1} ${natural.height || 1}`}
-      preserveAspectRatio="xMidYMid meet"
+      viewBox={stretch ? "0 0 3072 3072" : `0 0 ${natural.width || 1} ${natural.height || 1}`}
+      preserveAspectRatio={stretch ? "none" : "xMidYMid meet"}
       overflow="visible"
     >
       {/* The path is in the product's 3072-unit space; a 2-unit stroke
@@ -78,9 +82,12 @@ export function GraphicObject({
 }
 
 export function PathPartNode({ part }: { part: PartOf<"Path"> }) {
+  const geometry = pathGeometry(part);
+  if (!geometry) return null;
   return (
     <GraphicObject
-      source={part}
+      source={geometry}
+      stretch={part.Commands === undefined}
       x={part.Location.Left}
       y={part.Location.Top}
       width={(part.Width ?? 0)}

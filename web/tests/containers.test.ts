@@ -133,7 +133,7 @@ describe("writing back", () => {
     const root = simpleScreen().Children[0] as Record<string, unknown>;
     return { root, laid: layoutTree(root, PANEL) };
   };
-  const flat = (laid: ReturnType<typeof layoutTree>) =>
+  const flat = (laid: ReturnType<typeof layoutTree>): Record<string, unknown>[] =>
     laid.leaves.map((l) => ({ ...l.raw, Location: { Left: l.box.left, Top: l.box.top }, Width: l.box.width, Height: l.box.height }));
 
   it("leaves an unmoved part placed by its cell, with no size of its own", () => {

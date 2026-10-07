@@ -226,8 +226,8 @@ describe("a faceplate carrying the installation's own symbol", () => {
     const symbols = built.parts.filter((p) => p.Type === "Path");
     expect(symbols).toHaveLength(units.length);
     for (const symbol of symbols) {
-      expect(symbol.Type === "Path" && symbol.Commands.length).toBeGreaterThan(0);
-      expect(symbol.Type === "Path" && symbol.Points.length).toBeGreaterThan(0);
+      expect(symbol.Type === "Path" && symbol.Commands!.length).toBeGreaterThan(0);
+      expect(symbol.Type === "Path" && symbol.Points!.length).toBeGreaterThan(0);
     }
   });
 

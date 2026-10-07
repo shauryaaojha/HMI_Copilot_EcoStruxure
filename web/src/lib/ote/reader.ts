@@ -13,7 +13,7 @@
  */
 
 import JSZip from "jszip";
-import { DATA_TYPES, Part, Screen, type Alarm, type Variable } from "./schema";
+import { DATA_TYPES, Part, Screen, withOrigin, type Alarm, type Variable } from "./schema";
 import type { BindingGraph, BindingRow, Source, Target, Wire } from "./bindings";
 import { OBJECT_TYPE } from "./bindings";
 import type { AlarmTarget, VariableIds } from "./databases";
@@ -167,7 +167,7 @@ function modelScreen(raw: Record<string, unknown>, panel: Panel): Modelled {
 
   const known: Part[] = [];
   (view.Children as Record<string, unknown>[]).forEach((child, i) => {
-    const parsed = Part.safeParse(child);
+    const parsed = Part.safeParse(withOrigin(child));
     if (parsed.success) {
       known.push(parsed.data);
       parts.set(parsed.data.UniqueId, child);
