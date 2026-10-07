@@ -254,7 +254,13 @@ export function useTagImport() {
           `Parsed ${data.variables.length} tags from ${file.name}` +
             (data.corrections?.length
               ? ` — ${data.corrections.length} names corrected`
-              : ""),
+              : "") +
+            // A Control Expert export declares equipment by type; say how much,
+            // because it is why those units will be classified with confidence.
+            (data.structure?.length
+              ? ` — ${data.structure.length} equipment instance${data.structure.length === 1 ? "" : "s"} declared by DDT (${[...new Set(data.structure.map((s) => s.ddt))].slice(0, 3).join(", ")}${new Set(data.structure.map((s) => s.ddt)).size > 3 ? ", …" : ""})`
+              : "") +
+            (data.skipped?.length ? ` — ${data.skipped.length} not imported, see the list` : ""),
         );
         return data;
       } catch (error) {
