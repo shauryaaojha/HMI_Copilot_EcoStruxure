@@ -95,6 +95,24 @@ export async function* mockGeneration({
     };
     return;
   }
+  // What follows replays the bundled demo screen, not a generation. That is
+  // only honest when the project holds the tags that screen binds: with any
+  // other tag list it drew a pump station the engineer never asked for, wired
+  // to tags their project does not have, and the export then failed on the
+  // first binding. So it runs for the demo tag list and refuses otherwise.
+  const have = new Set(variables.map((v) => v.Name.toLowerCase()));
+  const fixtureTags = demoBindings.Sources.map((s) => s.ObjectFullName);
+  const missing = [...new Set(fixtureTags)].filter((t) => !have.has(t.toLowerCase()));
+  if (missing.length > 0) {
+    yield {
+      type: "error",
+      message:
+        "The generator did not answer, so nothing was generated. The offline fallback can only replay the " +
+        `bundled demo screen, which binds tags this project does not have (${missing.slice(0, 3).join(", ")}` +
+        `${missing.length > 3 ? ", ..." : ""}). Check that the app's server is running and try again.`,
+    };
+    return;
+  }
   const tags = variables;
 
   const view = demoScreen.Children[0];

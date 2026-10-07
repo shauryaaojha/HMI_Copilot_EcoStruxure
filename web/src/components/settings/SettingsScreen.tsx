@@ -11,6 +11,7 @@
  */
 
 import { useState } from "react";
+import { KnowledgePanel } from "./KnowledgePanel";
 import { useProject } from "@/store/project";
 import { useTheme } from "@/components/shell/theme";
 import {
@@ -81,6 +82,11 @@ export function SettingsScreen() {
                 onChange={(on) => setStandards({ showGrid: on })}
                 label="Show the grid by default"
               />
+              <Toggle
+                checked={standards.reviewAiEdits ?? false}
+                onChange={(on) => setStandards({ reviewAiEdits: on })}
+                label="Review every AI edit before it lands (management of change)"
+              />
               <p className="text-xs text-text-faint">
                 These are company standards and live on the Standards screen too;
                 both write the same values.
@@ -112,6 +118,7 @@ export function SettingsScreen() {
               </Button>
             </div>
           </Panel>
+          <KnowledgePanel />
         </div>
       )}
 

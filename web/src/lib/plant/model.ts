@@ -16,7 +16,7 @@
 
 import { z } from "zod";
 import type { Variable } from "@/lib/ote/schema";
-import { inferEquipment, type InferredEquipment } from "@/lib/ai/infer";
+import { inferEquipment, type InferredEquipment, type StructureHint } from "@/lib/ai/infer";
 import { rangeFor, type Range } from "./units";
 import { measuredByClass } from "./classes";
 
@@ -41,6 +41,12 @@ export const PlantEquipment = z.object({
   ranges: z.record(RangeSchema),
   symbol: z.string().optional(),
   confidence: z.number().min(0).max(1),
+  /**
+   * Why the class was chosen, when the machine library weighed it - the DDT
+   * type, the prefix, the signal shape (lib/library/machines.ts classify).
+   * Optional: a unit read from its name alone has only the naming rule.
+   */
+  evidence: z.array(z.string()).optional(),
 });
 
 export const Connection = z.object({
@@ -122,8 +128,8 @@ function confidenceOf(unit: InferredEquipment): number {
   return unit.loop ? 0.9 : 0.7;
 }
 
-export function modelPlant(variables: Variable[], answers: Record<string, string> = {}): PlantModel {
-  const inferred = inferEquipment(variables);
+export function modelPlant(variables: Variable[], answers: Record<string, string> = {}, structure?: StructureHint[]): PlantModel {
+  const inferred = inferEquipment(variables, structure);
   const assumptions: string[] = [];
 
   // --- equipment -----------------------------------------------------------
@@ -153,7 +159,10 @@ export function modelPlant(variables: Variable[], answers: Record<string, string
       roles: roles.map((r) => ({ role: r.role, tag: r.tag, dataType: r.dataType })),
       ranges,
       symbol: unit.symbol,
-      confidence: confidenceOf(unit),
+      // A unit the PLC's type system declared carries the library's weighed
+      // confidence and its reasons; one read from its name, the naming rule's.
+      confidence: unit.confidence ?? confidenceOf(unit),
+      ...(unit.evidence?.length ? { evidence: unit.evidence } : {}),
     };
   });
   if (refined.length > 0) {

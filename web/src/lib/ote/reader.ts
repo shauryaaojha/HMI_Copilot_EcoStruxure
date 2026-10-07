@@ -18,6 +18,8 @@ import type { BindingGraph, BindingRow, Source, Target, Wire } from "./bindings"
 import { OBJECT_TYPE } from "./bindings";
 import type { AlarmTarget, VariableIds } from "./databases";
 import { openDatabase, readPanel, type Panel } from "./packager";
+import { guardZip } from "@/lib/ingest/zip";
+import { IngestError } from "@/lib/ingest/errors";
 import { readScales, scaleName, type Scale } from "./converters";
 import { flatten, isFlatRoot, layoutTree, type Laid } from "./containers";
 
@@ -61,7 +63,21 @@ export interface Preserved {
    */
   hierarchy: { ObjectId: string; [key: string]: unknown }[];
   variableIds: VariableIds;
-  alarms: { groupId: string | null; groupName: string; uids: string[]; startId: number };
+  alarms: {
+    groupId: string | null;
+    groupName: string;
+    uids: string[];
+    startId: number;
+    /**
+     * Each modelled alarm's row exactly as read, aligned with `uids`, and the
+     * key it is recognised by when written back (trigger, level, kind). A
+     * rewrite reuses the row of an alarm it still holds, so its UniqueId,
+     * deadband, parameter and every column the model does not cover survive
+     * an edit to some other alarm.
+     */
+    rows?: Record<string, unknown>[];
+    keys?: string[];
+  };
   alarmTargets: AlarmTarget[];
   /** Binding rows the reader could not model, kept verbatim for re-appending. */
   extra: { sources: Source[]; targets: Target[]; bindings: BindingRow[] };
@@ -147,6 +163,10 @@ export const fingerprintWires = (wires: Wire[]) =>
   );
 
 export const fingerprintScreen = (screen: Screen) => JSON.stringify(screen);
+
+/** What identifies an alarm across an edit: what trips it, at which level, of which kind. */
+export const alarmKey = (a: Pick<Alarm, "Trigger" | "AlarmType" | "AlarmRecordType">) =>
+  `${a.Trigger.toLowerCase()}|${a.AlarmType}|${a.AlarmRecordType}`;
 
 export interface Modelled {
   screen: Screen | null;
@@ -283,6 +303,9 @@ export async function layoutOf(bytes: Uint8Array): Promise<ProjectLayout> {
 }
 
 export async function readProject(bytes: Uint8Array, fileName = "project.eote"): Promise<ReadProject> {
+  // Checked here as well as at the route: the export path reads stored bytes
+  // back through this function, and nothing should inflate unchecked.
+  guardZip(bytes);
   const zip = await JSZip.loadAsync(bytes);
   const entries = new Map<string, Uint8Array>();
   for (const [name, file] of Object.entries(zip.files)) {
@@ -291,16 +314,64 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
   }
   const get = index(entries);
   const warnings: string[] = [];
-  const json = (path: string) => {
+  /**
+   * An entry as JSON. A damaged entry is reported and treated as absent: the
+   * bytes are still in `entries` and go back out unchanged, so a screen that
+   * will not parse is carried rather than failing the whole open. Entries the
+   * writer would *regenerate* from the model are the exception, and use
+   * `required` - see Bindings.dat below.
+   */
+  const json = (path: string, required = false) => {
     const e = get(path);
-    return e ? (JSON.parse(decode(e)) as unknown) : undefined;
+    if (!e) return undefined;
+    try {
+      return JSON.parse(decode(e).replace(/^﻿/, "")) as unknown;
+    } catch (error) {
+      const why = error instanceof Error ? error.message : String(error);
+      if (required) {
+        throw new IngestError(
+          "damaged",
+          `${path.replace(/\//g, "\\")} in ${fileName} is damaged (${why}).`,
+          "Open the project in Operator Terminal Expert and save it again; the product rewrites the file. Nothing was changed here.",
+          { entry: path },
+        );
+      }
+      warnings.push(`${path.replace(/\//g, "\\")} could not be read (${why}) and is carried through unchanged.`);
+      return undefined;
+    }
+  };
+  /** A database, or a refusal naming it: these are rewritten from the model. */
+  const database = async (name: string) => {
+    const e = get(name);
+    if (!e) return undefined;
+    try {
+      return await openDatabase(e);
+    } catch (error) {
+      throw new IngestError("damaged", `${name} in ${fileName} is not a readable database (${error instanceof Error ? error.message : String(error)}).`, "Open the project in Operator Terminal Expert and save it again.", { entry: name });
+    }
+  };
+  /** A query against a table this version of the product may not have. */
+  const query = (db: Awaited<ReturnType<typeof openDatabase>>, table: string, sql: string) => {
+    try {
+      return db.exec(sql)[0];
+    } catch (error) {
+      throw new IngestError(
+        "damaged",
+        `The ${table} table in ${fileName} is not in the shape Operator Terminal Expert 4.4 writes (${error instanceof Error ? error.message : String(error)}).`,
+        "If this project was made by a version before 3.4.1, open it in Operator Terminal Expert 4.4 and save it to upgrade it.",
+        { table },
+      );
+    }
   };
 
   // --- target -------------------------------------------------------------
   const target = readPanel(json("Target.dat")) ?? { model: "unknown", width: 1024, height: 600 };
 
   // --- screens ------------------------------------------------------------
-  const hierarchy = (json("Screens/Hierarchy.dat") as { ObjectId: string }[] | undefined) ?? [];
+  const hierarchyRaw = json("Screens/Hierarchy.dat");
+  const hierarchy = (Array.isArray(hierarchyRaw) ? hierarchyRaw : []).filter(
+    (h): h is { ObjectId: string } => typeof (h as { ObjectId?: unknown })?.ObjectId === "string",
+  );
   const order = hierarchy.map((h) => h.ObjectId);
   // Screens the hierarchy forgot still exist on disk; list them after.
   for (const name of entries.keys()) {
@@ -368,13 +439,11 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
   const variables: Variable[] = [];
   const variableIds: VariableIds = {};
   let variableRows = 0;
-  const variablesDb = get("Variables.db");
-  if (variablesDb) {
-    const db = await openDatabase(variablesDb);
+  const db0 = await database("Variables.db");
+  if (db0) {
+    const db = db0;
     try {
-      const rows = db.exec(
-        'SELECT "UniqueId", "Name", "DataType", "Comments", "DeviceAddress" FROM Variables ORDER BY "Order"',
-      )[0];
+      const rows = query(db, "Variables", 'SELECT "UniqueId", "Name", "DataType", "Comments", "DeviceAddress" FROM Variables ORDER BY "Order"');
       for (const row of rows?.values ?? []) {
         const [uid, name, dataType, comments, address] = row as [string, string, string, string | null, string | null];
         if (!(DATA_TYPES as readonly string[]).includes(dataType)) {
@@ -401,18 +470,29 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
   // Scale converters only: a binding through one is a bar we can model and
   // write back as itself. Every other converter type stays opaque.
   let scales = new Map<string, Scale>();
-  const convertersDb = get("Converters.db");
+  const convertersDb = await database("Converters.db");
   if (convertersDb) {
-    const db = await openDatabase(convertersDb);
     try {
-      scales = readScales(db);
+      scales = readScales(convertersDb);
+    } catch {
+      // Converters we cannot read stay opaque: their bindings fall through
+      // to `extra` and go back out as they came.
+      warnings.push("Converters.db could not be read; bindings through a converter are carried unchanged.");
     } finally {
-      db.close();
+      convertersDb.close();
     }
   }
 
   // --- bindings -----------------------------------------------------------
-  const graph = (json("Bindings.dat") as BindingGraph | undefined) ?? { Sources: [], Targets: [], Bindings: [] };
+  // Required: an export rewrites Bindings.dat from the wires plus `extra`, so
+  // a graph we could not read would come back empty - every binding in the
+  // project silently gone. Refusing is the only safe answer.
+  const rawGraph = json("Bindings.dat", true) as Partial<BindingGraph> | undefined;
+  const graph: BindingGraph = {
+    Sources: Array.isArray(rawGraph?.Sources) ? rawGraph.Sources : [],
+    Targets: Array.isArray(rawGraph?.Targets) ? rawGraph.Targets : [],
+    Bindings: Array.isArray(rawGraph?.Bindings) ? rawGraph.Bindings : [],
+  };
   const sourcesByRef = new Map(graph.Sources.map((s) => [s.ReferenceId, s]));
   const targetsByRef = new Map(graph.Targets.map((t) => [t.ReferenceId, t]));
   const partsById = new Map(
@@ -470,18 +550,34 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
   const alarms: Alarm[] = [];
   const alarmTargets: AlarmTarget[] = [];
   const alarmMeta: Preserved["alarms"] = { groupId: null, groupName: "", uids: [], startId: 1 };
-  const alarmDb = get("Alarm.db");
+  const alarmDb = await database("Alarm.db");
   if (alarmDb) {
-    const db = await openDatabase(alarmDb);
+    const db = alarmDb;
     try {
-      const group = db.exec('SELECT "UniqueId", "Name" FROM AlarmGroup ORDER BY "Order" LIMIT 1')[0];
-      if (group?.values[0]) {
-        alarmMeta.groupId = String(group.values[0][0]);
-        alarmMeta.groupName = String(group.values[0][1]);
+      const groups = query(db, "AlarmGroup", 'SELECT "UniqueId", "Name" FROM AlarmGroup ORDER BY "Order"')?.values ?? [];
+      if (groups[0]) {
+        alarmMeta.groupId = String(groups[0][0]);
+        alarmMeta.groupName = String(groups[0][1]);
       }
-      const rows = db.exec(
-        'SELECT "UniqueId", "AlarmType", "AlarmRecordType", "Id", "Message", "Severity", "Value" FROM Alarm ORDER BY "Order"',
-      )[0];
+      // Only the first group is modelled. Alarms in any other group stay in
+      // the file untouched: modelling them under the first group's name was
+      // how a rewrite used to move them into it.
+      const all = query(db, "Alarm", 'SELECT * FROM Alarm ORDER BY "Order"');
+      const col = (name: string) => all?.columns.indexOf(name) ?? -1;
+      const inGroup = (row: unknown[]) =>
+        alarmMeta.groupId === null || col("AlarmGroupId") < 0 || String(row[col("AlarmGroupId")]).toUpperCase() === alarmMeta.groupId.toUpperCase();
+      const mine = (all?.values ?? []).filter(inGroup);
+      const others = (all?.values.length ?? 0) - mine.length;
+      if (others > 0) {
+        warnings.push(
+          `${others} alarm${others === 1 ? "" : "s"} in ${groups.length - 1} other alarm group${groups.length - 1 === 1 ? "" : "s"} ` +
+            `${others === 1 ? "is" : "are"} carried through unchanged; only "${alarmMeta.groupName}" is edited here.`,
+        );
+      }
+      alarmMeta.rows = mine.map((r) => Object.fromEntries(all!.columns.map((c, i) => [c, r[i]])));
+      alarmMeta.keys = [];
+      const pick = ["UniqueId", "AlarmType", "AlarmRecordType", "Id", "Message", "Severity", "Value"].map(col);
+      const rows = { values: mine.map((r) => pick.map((i) => (i >= 0 ? r[i] : null))) };
       const LEVEL: Record<number, string> = { 1: "HiHi", 2: "Hi", 3: "Lo", 4: "LoLo" };
       let first = true;
       for (const row of rows?.values ?? []) {
@@ -500,6 +596,7 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
         };
         alarms.push(alarm);
         alarmMeta.uids.push(String(uid));
+        alarmMeta.keys.push(alarmKey(alarm));
         alarmTargets.push({
           uid: String(uid),
           fullName: `${alarmMeta.groupName}.Alarm${id}.${LEVEL[alarm.AlarmType]}`,

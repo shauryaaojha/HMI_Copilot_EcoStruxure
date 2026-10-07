@@ -7,6 +7,8 @@
  * docs/BUILD_PLAN.md, extended for the editor phases.
  */
 
+import type { ScreenProgram } from "@/lib/program/program";
+import { applyRegeneration as applyRegenerationPlan, type FreshScreen, type RegenPlan } from "@/lib/program/regenerate";
 import { create } from "zustand";
 import { current } from "immer";
 import { immer } from "zustand/middleware/immer";
@@ -22,7 +24,7 @@ import {
   type AlignMode,
   type ZMove,
 } from "./edits";
-import { DEFAULT_STANDARDS } from "./types";
+import { DEFAULT_STANDARDS, isEmptyMeta } from "./types";
 import { applyPack } from "@/lib/standard/apply";
 import { expandComposite, propsFor, unionBox, type CompositeKind } from "@/lib/composites";
 import type { Box } from "@/lib/ote/parts";
@@ -113,6 +115,12 @@ interface ProjectState {
   foreign: Record<string, ForeignPart[]>;
   /** Composite instances by id (= the group id their parts carry). */
   composites: Record<string, CompositeInstance>;
+  /**
+   * The recipe each generated screen was compiled from, by screen UniqueId,
+   * so it can be regenerated alone as a diff (lib/program/regenerate.ts).
+   * A screen drawn by hand or imported has none.
+   */
+  programs: Record<string, ScreenProgram>;
   /** What the plant is. Built from the tags; corrected here. docs/ARCHITECTURE_SCREEN_QUALITY.md §3.1. */
   plant?: PlantModel;
   variables: Variable[];
@@ -203,6 +211,23 @@ interface ProjectState {
   /** Adopt parts already on a screen (the generator's) as a composite instance. */
   registerComposite: (instance: CompositeInstance) => void;
 
+  /* --- regeneration --------------------------------------------------- */
+  /** Keep the recipe a generated screen was compiled from. */
+  setProgram: (viewBoxId: string, program: ScreenProgram) => void;
+  /** Record that the generator placed this object, under this key. */
+  markGenerated: (id: string, key: string) => void;
+  /**
+   * Apply the accepted units of a regeneration plan to one screen, as one
+   * undoable step. Returns what happened.
+   */
+  applyRegeneration: (
+    screenId: string,
+    fresh: FreshScreen,
+    plan: RegenPlan,
+    accepted: string[],
+    program: ScreenProgram,
+  ) => { added: number; updated: number; removed: number };
+
   /* --- the plant model ---------------------------------------------- */
   setPlant: (model: PlantModel | undefined) => void;
   /** Answer the modeller's question; the model is rebuilt with the answer kept. */
@@ -286,7 +311,7 @@ type ProjectActions = Pick<
   | "hover" | "setSimulating" | "setPreview" | "addScreen" | "duplicateScreen" | "renameScreen"
   | "removeScreen" | "setActiveScreen" | "reorderScreens" | "placeScreen"
   | "tidyBoard" | "importScreens" | "applyStandard" | "addComposite" | "setCompositeProps"
-  | "registerComposite" | "setPlant" | "answerQuestion" | "setRange" | "connect" | "disconnect"
+  | "registerComposite" | "setProgram" | "markGenerated" | "applyRegeneration" | "setPlant" | "answerQuestion" | "setRange" | "connect" | "disconnect"
   | "appendObject"
   | "updateObject" | "setProperty" | "nudge" | "setBox" | "removeObjects"
   | "duplicateObjects" | "copyObjects" | "cutObjects" | "pasteObjects" | "align"
@@ -395,6 +420,18 @@ function detachedPartsByIds(s: Draft, ids: string[]): Part[] {
   );
 }
 
+/**
+ * An edit by hand to something the generator placed: it becomes "edited", so
+ * a regeneration keeps it unless the engineer says otherwise. Anything else
+ * keeps the origin it has.
+ */
+function touch(s: Draft, ids: Iterable<string>) {
+  for (const id of ids) {
+    const meta = s.objectMeta[id];
+    if (meta?.origin === "generated") meta.origin = "edited";
+  }
+}
+
 /** Locked objects ignore edits; that is the whole point of the lock. */
 const editable = (s: Draft, ids: string[]) =>
   ids.filter((id) => !s.objectMeta[id]?.locked);
@@ -422,6 +459,7 @@ export function createProjectStore() {
     handleSeq: 0,
     foreign: {},
     composites: {},
+    programs: {},
     selectedIds: [],
     simulating: false,
     clipboard: [],
@@ -512,7 +550,7 @@ export function createProjectStore() {
           taken.add(part.Name);
         }
         viewOf(screen).Children.push(...parts);
-        for (const part of parts) (s.objectMeta[part.UniqueId] ??= {}).groupId = id;
+        for (const part of parts) Object.assign((s.objectMeta[part.UniqueId] ??= {}), { groupId: id, origin: "manual" });
         for (const w of wires) {
           const part = parts[w.index];
           if (part) s.bindings.push({ tag: w.tag, targetId: part.UniqueId, targetName: part.Name, property: w.property, ...(w.converter ? { converter: w.converter } : {}) });
@@ -554,6 +592,16 @@ export function createProjectStore() {
           ...parts,
           ...children.slice(first).filter((p) => !own.has(p.UniqueId)),
         ];
+        // Re-expanding a generated composite is an edit of it: its parts keep
+        // their keys (matched by name) and become "edited", so a regeneration
+        // keeps them unless the engineer ticks them.
+        const before = new Map(oldParts.map((p) => [p.Name, current(s.objectMeta)[p.UniqueId] ?? {}]));
+        const origins = [...before.values()].map((m) => m.origin);
+        const origin = origins.some((o) => o === "generated" || o === "edited") ? "edited" : origins.find(Boolean);
+        for (const part of parts) {
+          const was = before.get(part.Name);
+          if (origin || was?.key) Object.assign((s.objectMeta[part.UniqueId] ??= {}), { ...(origin ? { origin } : {}), ...(was?.key ? { key: was.key } : {}) });
+        }
         for (const oldId of own) delete s.objectMeta[oldId];
         s.bindings = s.bindings.filter((b) => !own.has(b.targetId));
         for (const part of parts) (s.objectMeta[part.UniqueId] ??= {}).groupId = id;
@@ -572,6 +620,64 @@ export function createProjectStore() {
         s.composites[instance.id] = instance;
       }),
 
+    setProgram: (viewBoxId, program) =>
+      set((s) => {
+        const screen = s.screens.find((x) => viewOf(x).UniqueId === viewBoxId);
+        if (screen) s.programs[screen.UniqueId] = program;
+      }),
+
+    markGenerated: (id, key) =>
+      set((s) => {
+        s.objectMeta[id] = { ...s.objectMeta[id], origin: "generated", key };
+      }),
+
+    applyRegeneration: (screenId, fresh, plan, accepted, program) => {
+      let summary = { added: 0, updated: 0, removed: 0 };
+      set((s) => {
+        const screen = s.screens.find((x) => x.UniqueId === screenId);
+        if (!screen) return;
+        const parts = current(viewOf(screen)).Children;
+        const ids = new Set(parts.map((p) => p.UniqueId));
+        const allMeta = current(s.objectMeta);
+        const result = applyRegenerationPlan(
+          {
+            parts,
+            meta: Object.fromEntries(parts.flatMap((p) => (allMeta[p.UniqueId] ? [[p.UniqueId, allMeta[p.UniqueId]]] : []))),
+            bindings: current(s.bindings).filter((b) => ids.has(b.targetId)),
+            composites: Object.values(current(s.composites)).filter((c) => c.screenId === screenId || c.partIds.some((id) => ids.has(id))),
+          },
+          fresh,
+          plan,
+          new Set(accepted),
+          takenNames(s),
+          screenId,
+        );
+        summary = result.summary;
+        if (result.summary.added + result.summary.updated + result.summary.removed === 0) {
+          s.programs[screenId] = program;
+          return;
+        }
+        remember(s, `Regenerate ${screen.Name}`);
+        viewOf(screen).Children = result.parts;
+        const kept = new Set(result.parts.map((p) => p.UniqueId));
+        for (const id of ids) if (!kept.has(id)) delete s.objectMeta[id];
+        for (const p of result.parts) {
+          const m = result.meta[p.UniqueId];
+          if (m && !isEmptyMeta(m)) s.objectMeta[p.UniqueId] = m;
+          else delete s.objectMeta[p.UniqueId];
+        }
+        s.bindings = [...current(s.bindings).filter((b) => !ids.has(b.targetId)), ...result.bindings];
+        for (const [cid, c] of Object.entries(current(s.composites))) {
+          if (c.screenId === screenId || c.partIds.some((id) => ids.has(id))) delete s.composites[cid];
+        }
+        for (const c of result.composites) s.composites[c.id] = c;
+        s.programs[screenId] = program;
+        s.selectedIds = s.selectedIds.filter((id) => kept.has(id));
+        ensureHandles(s);
+      });
+      return summary;
+    },
+
     setPlant: (model) =>
       set((s) => {
         s.plant = model;
@@ -584,7 +690,7 @@ export function createProjectStore() {
         const engineerRanges = s.plant.equipment.flatMap((e) =>
           Object.entries(e.ranges).filter(([, r]) => r.source === "engineer").map(([tag, r]) => [e.id, tag, r] as const),
         );
-        const rebuilt = modelPlant(s.variables, answers);
+        const rebuilt = modelPlant(s.variables, answers, s.tagImport?.structure);
         // Ranges the engineer typed survive a rebuild; class defaults do not need to.
         for (const [eid, tag, r] of engineerRanges) {
           const e = rebuilt.equipment.find((x) => x.id === eid);
@@ -673,6 +779,7 @@ export function createProjectStore() {
             partNames.add(name);
             const id = crypto.randomUUID();
             idMap.set(part.UniqueId, id);
+            s.objectMeta[id] = { origin: "imported" };
             return { ...structuredClone(part), UniqueId: id, Name: name };
           });
           const name = uniqueName(screenNames, source.Name);
@@ -758,6 +865,8 @@ export function createProjectStore() {
             },
           ],
         };
+        // A copy is the engineer's, not the generator's: no keys, no recipe.
+        for (const p of viewOf(copy).Children) s.objectMeta[p.UniqueId] = { origin: "manual" };
         s.screens.splice(s.screens.indexOf(original) + 1, 0, copy);
         s.activeScreenId = newId;
         s.selectedIds = [];
@@ -787,6 +896,7 @@ export function createProjectStore() {
         const [gone] = s.screens.splice(at, 1);
         for (const part of viewOf(gone).Children) delete s.objectMeta[part.UniqueId];
         delete s.screenPlacement[gone.UniqueId];
+        delete s.programs[gone.UniqueId];
         if (s.activeScreenId === id) {
           s.activeScreenId = s.screens[Math.min(at, s.screens.length - 1)].UniqueId;
         }
@@ -833,6 +943,7 @@ export function createProjectStore() {
         remember(s, `Add ${part.Type}`);
         part.Name = uniqueName(takenNames(s), part.Name);
         viewOf(screen).Children.push(part);
+        s.objectMeta[part.UniqueId] = { ...s.objectMeta[part.UniqueId], origin: "manual" };
         s.handles[part.UniqueId] ??= `o${++s.handleSeq}`;
       }),
 
@@ -841,6 +952,7 @@ export function createProjectStore() {
         const screen = screenHolding(s, id);
         if (!screen || s.objectMeta[id]?.locked) return;
         remember(s, "Edit object");
+        touch(s, [id]);
         const parts = viewOf(screen).Children;
         Object.assign(parts[parts.findIndex((p) => p.UniqueId === id)], patch);
       }),
@@ -851,6 +963,7 @@ export function createProjectStore() {
         const screen = screenHolding(s, id);
         if (!screen || s.objectMeta[id]?.locked) return;
         remember(s, `Set ${path.join(".")}`);
+        touch(s, [id]);
         const part = viewOf(screen).Children.find((p) => p.UniqueId === id)!;
         let node = part as unknown as Record<string, unknown>;
         for (const step of path.slice(0, -1)) {
@@ -865,6 +978,7 @@ export function createProjectStore() {
         const wanted = new Set(editable(s, ids));
         if (wanted.size === 0) return;
         remember(s, "Move");
+        touch(s, [...wanted]);
         for (const screen of s.screens) {
           for (const part of viewOf(screen).Children) {
             if (!wanted.has(part.UniqueId)) continue;
@@ -879,6 +993,7 @@ export function createProjectStore() {
         const screen = screenHolding(s, id);
         if (!screen || s.objectMeta[id]?.locked) return;
         remember(s, "Resize");
+        touch(s, [id]);
         const part = viewOf(screen).Children.find((p) => p.UniqueId === id)!;
         part.Location.Left = box.left;
         part.Location.Top = box.top;
@@ -921,6 +1036,7 @@ export function createProjectStore() {
           dx: s.standards.gridSize * 2,
           dy: s.standards.gridSize * 2,
         });
+        for (const p of copies) s.objectMeta[p.UniqueId] = { origin: "manual" };
         viewOf(screen).Children.push(...copies);
         s.selectedIds = copies.map((p) => p.UniqueId);
         ensureHandles(s);
@@ -946,6 +1062,7 @@ export function createProjectStore() {
           dx: s.standards.gridSize * 2,
           dy: s.standards.gridSize * 2,
         });
+        for (const p of copies) s.objectMeta[p.UniqueId] = { origin: "manual" };
         viewOf(screen).Children.push(...copies);
         s.selectedIds = copies.map((p) => p.UniqueId);
         ensureHandles(s);
@@ -958,6 +1075,7 @@ export function createProjectStore() {
         const screen = activeScreen(s);
         if (parts.length === 0 || !screen) return;
         remember(s, `Align ${mode}`);
+        touch(s, wanted);
         const moves = alignTo(detachedPartsByIds(s, wanted), mode, rootBox(viewOf(screen), s.target));
         for (const part of parts) {
           const to = moves.get(part.UniqueId);
@@ -973,6 +1091,7 @@ export function createProjectStore() {
         const parts = partsByIds(s, wanted);
         if (parts.length < 3) return;
         remember(s, `Distribute ${axis}`);
+        touch(s, wanted);
         const moves = distribute(detachedPartsByIds(s, wanted), axis);
         for (const part of parts) {
           const to = moves.get(part.UniqueId);
@@ -997,8 +1116,9 @@ export function createProjectStore() {
         for (const id of ids) {
           const meta = (s.objectMeta[id] ??= {});
           Object.assign(meta, patch);
-          // An empty record is noise in the save file.
-          if (!meta.locked && !meta.hidden && !meta.groupId) delete s.objectMeta[id];
+          // An empty record is noise in the save file. Provenance is not
+          // empty: dropping it would make a generated object look unknown.
+          if (isEmptyMeta(meta)) delete s.objectMeta[id];
         }
       }),
 
@@ -1022,7 +1142,7 @@ export function createProjectStore() {
         for (const [id, meta] of Object.entries(s.objectMeta)) {
           if (!meta.groupId || !groups.has(meta.groupId)) continue;
           delete meta.groupId;
-          if (!meta.locked && !meta.hidden) delete s.objectMeta[id];
+          if (isEmptyMeta(meta)) delete s.objectMeta[id];
         }
       }),
 
@@ -1177,6 +1297,7 @@ export function createProjectStore() {
         const had = s.bindings.find((b) => b.targetId === targetId && b.property === property);
         if ((had?.tag ?? null) === tag) return;
         remember(s, tag ? `Bind ${part.Name} to ${tag}` : `Unbind ${part.Name}`);
+        touch(s, [targetId]);
         s.bindings = s.bindings.filter((b) => !(b.targetId === targetId && b.property === property));
         // Rebinding a bar keeps its converter: the range is the indicator's.
         if (tag) s.bindings.push({ tag, targetId, targetName: part.Name, property, ...(had?.converter ? { converter: had.converter } : {}) });
@@ -1236,6 +1357,7 @@ export function createProjectStore() {
         s.equipment = [];
         s.findings = [];
         s.objectMeta = {};
+        s.programs = {};
         s.screenPlacement = {};
         s.selectedIds = [];
         s.hoveredId = undefined;
@@ -1253,6 +1375,7 @@ export function createProjectStore() {
         s.screens = [];
         s.foreign = {};
         s.composites = {};
+        s.programs = {};
         s.plant = undefined;
         s.variables = [];
         s.alarms = [];
@@ -1260,6 +1383,7 @@ export function createProjectStore() {
         s.equipment = [];
         s.findings = [];
         s.objectMeta = {};
+        s.programs = {};
         s.screenPlacement = {};
         s.selectedIds = [];
         s.hoveredId = undefined;

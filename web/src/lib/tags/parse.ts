@@ -15,6 +15,9 @@
 import { DATA_TYPES, type Variable } from "@/lib/ote/schema";
 import { readTable, readTextTable } from "./table";
 import { normaliseNames, type Correction } from "@/lib/validation/naming";
+import { parseControlExpert, type StructuredInstance } from "./controlExpert";
+import { IngestError } from "@/lib/ingest/errors";
+import { refuse, sniff } from "@/lib/ingest/sniff";
 
 type DataType = (typeof DATA_TYPES)[number];
 
@@ -39,6 +42,15 @@ export interface ParseResult {
   /** Rows that could not be salvaged at all, with why. */
   skipped: { row: number; value: string; reason: string }[];
   summary: { total: number } & Partial<Record<DataType, number>>;
+  /**
+   * DDT instances, when the export carried its types (Control Expert XML).
+   * Equipment declared by the PLC's type system rather than read off names.
+   */
+  structure?: StructuredInstance[];
+  /** What the file was, as an engineer would say it. */
+  source?: "control-expert" | "table";
+  /** The tool that wrote it, when the file says. */
+  producer?: string;
 }
 
 const key = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -56,7 +68,10 @@ const TYPE_ALIASES: Record<string, DataType> = {
   udint: "UDINT", uint32: "UDINT", dword: "DWORD",
   real: "REAL", float: "REAL", float32: "REAL", analog: "REAL", single: "REAL",
   lreal: "LREAL", double: "LREAL", float64: "LREAL",
-  string: "STRING", str: "STRING", text: "STRING", char: "STRING",
+  string: "STRING", str: "STRING", text: "STRING", char: "STRING", wstring: "STRING",
+  // IEC spellings Control Expert, Machine Expert and OTE's own export use.
+  sint: "INT", usint: "UINT", byte: "WORD", int8: "INT", uint8: "UINT",
+  time: "DINT", date: "UDINT", tod: "UDINT", dt: "UDINT",
 };
 
 export function normaliseDataType(raw: string): DataType | null {
@@ -64,20 +79,44 @@ export function normaliseDataType(raw: string): DataType | null {
   if (cleaned.length === 0) return null;
   const direct = DATA_TYPES.find((t) => t.toLowerCase() === cleaned);
   if (direct) return direct;
+  // STRING[32], WSTRING[16]: a sized string is still a string.
+  if (/^w?string\s*\[\s*\d+\s*\]$/.test(cleaned)) return "STRING";
   return TYPE_ALIASES[cleaned] ?? TYPE_ALIASES[key(cleaned)] ?? null;
 }
 
 /** Finds which spreadsheet column holds which field. */
 function mapHeader(header: string[]): Partial<Record<keyof ParsedRow, number>> {
+  // The most specific alias wins, not the leftmost column: Vijeo Designer's
+  // export starts "Type,Name,Data Type,..." where Type is the row kind
+  // (Variable, Folder), and taking it as the data type skipped every row.
   const mapping: Partial<Record<keyof ParsedRow, number>> = {};
+  const rank: Partial<Record<keyof ParsedRow, number>> = {};
   header.forEach((cell, index) => {
     const k = key(String(cell ?? ""));
     for (const [field, aliases] of Object.entries(COLUMNS) as [keyof ParsedRow, string[]][]) {
-      if (mapping[field] === undefined && aliases.includes(k)) mapping[field] = index;
+      const r = aliases.indexOf(k);
+      if (r >= 0 && (rank[field] === undefined || r < rank[field]!)) {
+        mapping[field] = index;
+        rank[field] = r;
+      }
     }
   });
   return mapping;
 }
+
+/**
+ * Vijeo Designer's variable export marks every row with its kind in the first
+ * column (folder, variable, structure instance, structure element, array).
+ * When the header's first column is that, the kind decides what is a tag.
+ */
+const VIJEO_ROWS: Record<string, "tag" | "skip-folder" | "skip-structure" | "skip-array"> = {
+  variable: "tag",
+  subvariable: "tag",
+  folder: "skip-folder",
+  ddtvariable: "skip-structure",
+  structurevariable: "skip-structure",
+  arrayvariable: "skip-array",
+};
 
 /**
  * A file with no recognisable header - a bare list of names, one per line, or
@@ -86,6 +125,23 @@ function mapHeader(header: string[]): Partial<Record<keyof ParsedRow, number>> {
 function looksLikeHeader(row: unknown[]): boolean {
   const mapping = mapHeader(row.map((c) => String(c ?? "")));
   return mapping.name !== undefined;
+}
+
+/**
+ * Where the header is. PLC and HMI exports often open with a preamble - OTE's
+ * text export carries a `[FileVersion]` line, Excel exports a title row - so
+ * the header is the first of the opening rows that names a tag column *and*
+ * one other known column. A row that only says "Name" could be a title; one
+ * that says Name and DataType is a header. Falls back to a lone name column in
+ * the first row, and then to no header.
+ */
+function findHeader(grid: unknown[][]): number {
+  const scan = Math.min(grid.length, 30);
+  for (let i = 0; i < scan; i++) {
+    const m = mapHeader(grid[i].map((c) => String(c ?? "")));
+    if (m.name !== undefined && (m.dataType !== undefined || m.comment !== undefined || m.address !== undefined)) return i;
+  }
+  return grid.length > 0 && looksLikeHeader(grid[0]) ? 0 : -1;
 }
 
 /**
@@ -110,7 +166,50 @@ export async function parseTagsFile(
   file: ArrayBuffer | ArrayBufferView,
   filename = "",
 ): Promise<ParseResult> {
-  return parseGrid(await readTable(toBytes(file), filename), filename);
+  const bytes = toBytes(file);
+  const kind = await sniff(bytes, filename);
+  const label = filename || "that file";
+  switch (kind.kind) {
+    case "control-expert-xml": {
+      if (kind.root !== "VariablesExchangeFile" && kind.root !== "FEFExchangeFile" && kind.root !== "DDTExchangeFile") {
+        // Program sections carry a dataBlock too, but only of their local
+        // variables; reading one as the tag list would be a quiet half-import.
+        throw new IngestError(
+          "unsupported-format",
+          `${label} is a Control Expert ${kind.root.replace(/ExchangeFile$/, "")} section export, not a variable export.`,
+          "In Control Expert, export the variables (Data Editor > Export, .xsy) or the whole application (.xef), or the HMI variable file (.xvm).",
+        );
+      }
+      const text = new TextDecoder("utf-8").decode(bytes);
+      const r = parseControlExpert(text);
+      return { ...r, source: "control-expert" };
+    }
+    case "ote-project":
+    case "compound-object":
+      throw new IngestError(
+        "unsupported-format",
+        `${label} is ${kind.kind === "ote-project" ? `an ${kind.product} project` : "an OTE compound object"}, not a tag list.`,
+        kind.kind === "ote-project" ? "Use Open project to open it; its variables come with it." : "Compound objects are imported into the Library.",
+      );
+    case "vijeo-designer":
+      throw refuse(kind, label)!;
+    case "sqlite":
+      throw new IngestError(
+        "unsupported-format",
+        `${label} is a SQLite database on its own. A project's Variables.db is only meaningful inside its project.`,
+        "Open the whole .eote, or export the variables from Operator Terminal Expert as .csv or .xlsx.",
+      );
+    case "xml":
+      throw new IngestError(
+        "unknown-format",
+        `${label} is XML with root <${kind.root}>, which is not a tag export HMI Copilot reads.`,
+        "Supported XML: Control Expert variable exports (.xsy, .xvm, .xef).",
+      );
+    case "zip":
+      throw new IngestError("unknown-format", `${label} is a ZIP archive but not a spreadsheet or a project.`);
+    default:
+      return { ...parseGrid(await readTable(bytes, filename), filename), source: "table" };
+  }
 }
 
 /**
@@ -134,11 +233,21 @@ export function parseGrid(grid: unknown[][], filename = ""): ParseResult {
     return { variables: [], corrections: [], skipped: [], summary: { total: 0 } };
   }
 
-  const hasHeader = looksLikeHeader(grid[0]);
+  const headerRow = findHeader(grid);
+  const hasHeader = headerRow >= 0;
   const mapping = hasHeader
-    ? mapHeader(grid[0].map((c) => String(c ?? "")))
+    ? mapHeader(grid[headerRow].map((c) => String(c ?? "")))
     : { name: 0, dataType: 1, comment: 2, address: 3 };
-  const body = hasHeader ? grid.slice(1) : grid;
+  const body = hasHeader ? grid.slice(headerRow + 1) : grid;
+  const firstBodyRow = hasHeader ? headerRow + 2 : 1;
+
+  // Vijeo Designer: first column "Type" holding row kinds, and the data type
+  // somewhere else. Recognised by the rows, not by the header alone.
+  const kindColumn =
+    hasHeader && key(String(grid[headerRow][0] ?? "")) === "type" && mapping.dataType !== 0 &&
+    body.slice(0, 50).some((r) => VIJEO_ROWS[key(String(r[0] ?? ""))] !== undefined)
+      ? 0
+      : -1;
 
   const cell = (row: unknown[], field: keyof ParsedRow): string => {
     const index = mapping[field];
@@ -151,14 +260,28 @@ export function parseGrid(grid: unknown[][], filename = ""): ParseResult {
   body.forEach((row, i) => {
     const name = cell(row, "name");
     if (name.length === 0) return; // blank line, not an error worth reporting
+    if (kindColumn >= 0) {
+      const kind = VIJEO_ROWS[key(String(row[kindColumn] ?? ""))];
+      if (kind === "skip-folder") return; // a folder is not a tag
+      if (kind === "skip-structure" || kind === "skip-array") {
+        skipped.push({
+          row: i + firstBodyRow,
+          value: name,
+          reason: kind === "skip-array" ? "array variable: its elements are imported where the export lists them" : "structure instance: its elements are imported as their own rows",
+        });
+        return;
+      }
+    }
 
     const rawType = cell(row, "dataType");
     const dataType = normaliseDataType(rawType);
     if (!dataType && rawType.length > 0) {
       skipped.push({
-        row: i + (hasHeader ? 2 : 1),
+        row: i + firstBodyRow,
         value: `${name} (${rawType})`,
-        reason: `unrecognised data type "${rawType}"`,
+        reason: /^(array|struct|structure)\b/i.test(rawType)
+          ? `${rawType.toLowerCase().startsWith("array") ? "array" : "structure"} variable: OTE holds it, the generator does not lay it out yet`
+          : `unrecognised data type "${rawType}"`,
       });
       return;
     }

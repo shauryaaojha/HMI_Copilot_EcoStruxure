@@ -54,6 +54,8 @@ export interface PersistedProject {
   foreign?: Record<string, ForeignPart[]>;
   /** Composite instances, so an indicator is still an indicator after a reload. */
   composites?: Record<string, CompositeInstance>;
+  /** Screen recipes, for regeneration. Optional: older saves have none. */
+  programs?: Record<string, import("@/lib/program/program").ScreenProgram>;
   plant?: PlantModel;
   standards: Standards;
   versions: Version[];

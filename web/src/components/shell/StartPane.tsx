@@ -18,6 +18,8 @@
  * the engineer acted. Plain CSS: one transition on `clip-path`.
  */
 
+import { expectJson } from "@/lib/ingest/client";
+import type { Imported } from "@/components/projects/ProjectsScreen";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -126,8 +128,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
         headers: { "Content-Type": "application/octet-stream", "X-File-Name": encodeURIComponent(file.name) },
         body: await file.arrayBuffer(),
       });
-      const data = await response.json();
-      if (!response.ok || data.error) throw new Error(data.error ?? `could not open that file (${response.status})`);
+      const data = await expectJson<Imported>(response, "Opening that file");
 
       const payload = {
         id: projectId,
@@ -359,7 +360,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
       <input
         ref={tagPicker}
         type="file"
-        accept=".csv,.tsv,.txt,.xlsx"
+        accept=".csv,.tsv,.txt,.xlsx,.xsy,.xvm,.xef,.xml"
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
@@ -370,7 +371,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
       <input
         ref={filePicker}
         type="file"
-        accept=".eote,.vxdz"
+        accept=".eote,.vxdz,.vdz"
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];

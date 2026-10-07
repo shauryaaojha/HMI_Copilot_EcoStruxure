@@ -29,6 +29,7 @@ import JSZip from "jszip";
 import { DATA_TYPES, type Alarm, type Variable } from "./schema";
 import type { Wire } from "./bindings";
 import { openDatabase, type Panel } from "./packager";
+import { guardZip } from "@/lib/ingest/zip";
 import { displaySizes, modelScreen, summariseOpaque, type ForeignSummary, type ReadProject } from "./reader";
 import type { Screen } from "./schema";
 
@@ -155,6 +156,8 @@ export async function readStructProject(
   bytes: Uint8Array,
   fileName = "project.vxdz",
 ): Promise<Omit<ReadProject, "preserved"> & { converted: Raw[] }> {
+  // The same central-directory check readProject makes before inflating.
+  guardZip(bytes);
   const zip = await JSZip.loadAsync(bytes);
   const entries = new Map<string, Uint8Array>();
   for (const [name, file] of Object.entries(zip.files)) {

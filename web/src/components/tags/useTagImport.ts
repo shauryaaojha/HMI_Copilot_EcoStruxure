@@ -15,8 +15,9 @@
 import { useCallback, useState } from "react";
 import type { Variable } from "@/lib/ote/schema";
 import { useProject, type TagImport } from "@/store/project";
+import { failureMessage, jsonOrNull } from "@/lib/ingest/client";
 
-export const ACCEPTED = ".csv,.txt,.xlsx,.xls";
+export const ACCEPTED = ".csv,.txt,.tsv,.xlsx,.xsy,.xvm,.xef,.xml";
 
 export interface Sample {
   path: string;
@@ -203,6 +204,7 @@ interface ParseResponse {
   corrections: TagImport["corrections"];
   skipped: TagImport["skipped"];
   summary: TagImport["summary"];
+  structure?: TagImport["structure"];
   error?: string;
 }
 
@@ -227,21 +229,23 @@ export function useTagImport() {
 
       try {
         const response = await fetch("/api/tags/parse", { method: "POST", body });
-        const data = (await response.json()) as ParseResponse;
+        const parsed = await jsonOrNull<ParseResponse>(response);
 
-        if (!response.ok) {
-          const message = data.error ?? `parse failed (${response.status})`;
+        if (!response.ok || !parsed) {
+          const message = failureMessage(response, parsed, "Reading the tag file");
           setState({ status: "failed", fileName: file.name, message });
           log(`Import failed: ${message}`);
           return null;
         }
 
+        const data = parsed;
         importTags(data.variables, {
           fileName: file.name,
           at: Date.now(),
           corrections: data.corrections ?? [],
           skipped: data.skipped ?? [],
           summary: data.summary ?? { total: data.variables.length },
+          ...(data.structure?.length ? { structure: data.structure } : {}),
         });
 
         setState({ status: "done", fileName: file.name, count: data.variables.length });
@@ -250,7 +254,13 @@ export function useTagImport() {
           `Parsed ${data.variables.length} tags from ${file.name}` +
             (data.corrections?.length
               ? ` — ${data.corrections.length} names corrected`
-              : ""),
+              : "") +
+            // A Control Expert export declares equipment by type; say how much,
+            // because it is why those units will be classified with confidence.
+            (data.structure?.length
+              ? ` — ${data.structure.length} equipment instance${data.structure.length === 1 ? "" : "s"} declared by DDT (${[...new Set(data.structure.map((s) => s.ddt))].slice(0, 3).join(", ")}${new Set(data.structure.map((s) => s.ddt)).size > 3 ? ", …" : ""})`
+              : "") +
+            (data.skipped?.length ? ` — ${data.skipped.length} not imported, see the list` : ""),
         );
         return data;
       } catch (error) {

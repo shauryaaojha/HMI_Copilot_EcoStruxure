@@ -305,20 +305,30 @@ async function planWithClaude(
   limits: Limits,
 ): Promise<ScreenPlan | null> {
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
-  const { jsonSchemaOutputFormat } = await import(
-    "@anthropic-ai/sdk/helpers/json-schema"
+  const { betaJSONSchemaOutputFormat } = await import(
+    "@anthropic-ai/sdk/helpers/beta/json-schema"
   );
 
   const client = new Anthropic();
-  const response = await client.messages.parse({
-    model: resolveProvider().model ?? "claude-opus-5",
+  const response = await client.beta.messages.parse({
+    // On a policy decline the API re-runs the call on a fallback model chosen
+    // by refusal category, inside the same request (server-side fallback).
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+    model: resolveProvider().model ?? "claude-opus-5-5",
     max_tokens: 8192,
     thinking: { type: "adaptive" },
     system: system(limits),
     messages: [{ role: "user", content: prompt(intent, equipment) }],
-    output_config: { format: jsonSchemaOutputFormat(JSON_SCHEMA) },
+    // Planning a whole hierarchy against the panel's limits is the one
+    // intelligence-sensitive call in generation; stated, because Opus 5.5
+    // would otherwise run it at medium.
+    output_config: { format: betaJSONSchemaOutputFormat(JSON_SCHEMA), effort: "high" },
   });
 
+  // A declined or truncated plan is no plan: the caller falls back to the
+  // deterministic one and says so, rather than reading a partial object.
+  if (response.stop_reason === "refusal" || response.stop_reason === "max_tokens") return null;
   return coerce(response.parsed_output);
 }
 

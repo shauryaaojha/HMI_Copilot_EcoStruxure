@@ -10,6 +10,7 @@
  * Phase 9 of docs/BUILD_PLAN.md.
  */
 
+import { expectJson } from "@/lib/ingest/client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -29,7 +30,7 @@ import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
 import type { Binding, ForeignPart } from "@/store/types";
 
 /** What /api/import answers with. */
-interface Imported {
+export interface Imported {
   /** Null for a converted file: there is nothing to write back into. */
   source: string | null;
   name: string;
@@ -45,6 +46,10 @@ interface Imported {
   layout?: "typed" | "struct";
   /** True when the file was in the older layout and was converted. */
   converted?: boolean;
+  /** The product and version that wrote it, e.g. "EcoStruxure Operator Terminal Expert 3.4.1 (.vxdz)". */
+  product?: string;
+  /** Set when the open also added the project to the knowledge base. */
+  knowledge?: { id: string; isNew: boolean };
 }
 
 type Filter = "all" | "recent" | "starred";
@@ -97,8 +102,7 @@ export function ProjectsScreen() {
         },
         body: await file.arrayBuffer(),
       });
-      const data = (await response.json()) as Imported & { error?: string };
-      if (!response.ok || data.error) throw new Error(data.error ?? `import failed (${response.status})`);
+      const data = await expectJson<Imported>(response, "Opening the project");
 
       const record = createProject(data.name);
       const objects = data.screens.reduce((n, s) => n + s.Children[0].Children.length, 0);
@@ -201,7 +205,7 @@ export function ProjectsScreen() {
         <input
           ref={picker}
           type="file"
-          accept=".eote,.vxdz"
+          accept=".eote,.vxdz,.vdz"
           className="hidden"
           aria-label="Open a project file"
           onChange={(e) => {
@@ -216,7 +220,7 @@ export function ProjectsScreen() {
           onClick={() => picker.current?.click()}
           disabled={opening !== null}
           icon={<Upload size={16} />}
-          title="Open an existing EcoStruxure Operator Terminal Expert project: an .eote, or a .vxdz at application version 3.4.1 or later. Everything the editor does not model is carried through unchanged."
+          title="Open an existing EcoStruxure Operator Terminal Expert project: an .eote or a .vxdz. Everything the editor does not model is carried through unchanged; a .vxdz older than 3.4.1 is converted and exports as a new 4.4 project."
         >
           {opening ? `Opening ${opening}…` : "Open project"}
         </Button>

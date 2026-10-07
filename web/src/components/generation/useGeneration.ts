@@ -74,9 +74,15 @@ export function useGeneration() {
           event.screenName || store.getState().name || "Screen1",
         );
         s.appendToView(event.parentId, event.part);
+        if (event.key) s.markGenerated(event.part.UniqueId, event.key);
         s.attribute("layout", event.part.UniqueId);
         break;
       }
+
+      case "program":
+        s.ensureScreen(event.parentId, event.screenName);
+        s.setProgram(event.parentId, event.program);
+        break;
 
       case "plant":
         s.setPlant(event.model);
@@ -165,6 +171,7 @@ export function useGeneration() {
               variables: store.getState().variables,
               existing: options.existing,
               target: store.getState().target,
+              structure: store.getState().tagImport?.structure,
             }),
           });
 
@@ -205,7 +212,7 @@ export function useGeneration() {
         if (used === "local") {
           store
             .getState()
-            .log("/api/generate did not answer — running the local pipeline.");
+            .log("/api/generate did not answer — replaying the bundled demo screen, which needs the demo tags.");
           for await (const event of mockGeneration({
             intent,
             variables: store.getState().variables,

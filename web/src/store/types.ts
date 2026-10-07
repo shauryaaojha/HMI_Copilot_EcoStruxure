@@ -46,7 +46,32 @@ export interface ObjectMeta {
   hidden?: boolean;
   /** Members of one group share this id. Groups are flat - no nesting. */
   groupId?: string;
+  /**
+   * Where the object came from, which decides what a regeneration may do to
+   * it (lib/program/regenerate.ts):
+   *
+   *   generated  placed by the generator and untouched since; may be replaced
+   *   edited     placed by the generator, then changed by hand; kept unless
+   *              the engineer ticks it
+   *   manual     placed by hand; never touched
+   *   imported   lifted from another project; never touched
+   *
+   * Absent means unknown - an object from before provenance existed - and is
+   * treated as protected, like `edited`.
+   */
+  origin?: ObjectOrigin;
+  /**
+   * The generator's stable key for the object on its screen (the name the
+   * compiler asked for, before it was made unique). What a regeneration
+   * matches on, so the object keeps its UniqueId, its name and its bindings.
+   */
+  key?: string;
 }
+
+export type ObjectOrigin = "generated" | "edited" | "manual" | "imported";
+
+/** A meta record that carries nothing, and can be dropped from the save. */
+export const isEmptyMeta = (m: ObjectMeta) => !m.locked && !m.hidden && !m.groupId && !m.origin && !m.key;
 
 /** Canvas grid, snapping and the colour set every part resolves through. */
 export interface Standards {
@@ -58,6 +83,12 @@ export interface Standards {
   showRulers: boolean;
   colorSet: number;
   enforceNaming: boolean;
+  /**
+   * Every edit asked for in the conversation becomes a proposal the engineer
+   * accepts, never a direct commit - for sites under management of change.
+   * Optional: older saves have none and keep the default, off.
+   */
+  reviewAiEdits?: boolean;
 }
 
 export const DEFAULT_STANDARDS: Standards = {
@@ -102,6 +133,12 @@ export interface TagImport {
   corrections: { from: string; to: string; reason: string }[];
   skipped: { row: number; value: string; reason: string }[];
   summary: { total: number } & Partial<Record<string, number>>;
+  /**
+   * DDT instances, when the file carried types (a Control Expert export).
+   * Equipment inference groups and classifies these before it reads names;
+   * every caller passes it, so the generator and the editor agree on units.
+   */
+  structure?: import("@/lib/ai/infer").StructureHint[];
 }
 
 /* ---------------------------------------------------------------------- */
@@ -151,6 +188,8 @@ export interface ChatMessage {
     applied: string[];
     rejected: string[];
     deleted: boolean;
+    /** One line per op the model proposed, so the engineer can accept some and not others. */
+    ops?: string[];
   };
   /** Tokens for the debug line: in, of which cached, out. */
   usage?: { input: number; cached: number; output: number };

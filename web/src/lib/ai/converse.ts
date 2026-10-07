@@ -29,8 +29,10 @@ import { regionOf, regionsOf, roomReport } from "@/lib/ote/regions";
 import { ALIGN_MODES, COLOR_NAMES, OP_NAMES, coerceTurn, type Op, type Turn } from "./ops";
 import { PART_TYPES } from "@/lib/ote/schema";
 import { REGIONS, SIDES } from "@/lib/ote/regions";
-import { inferEquipment } from "./infer";
-import { findObjects, findTags, relevantTags, type ObjectEntry } from "./retrieve";
+import { inferEquipment, type StructureHint } from "./infer";
+import { relevantTags, type ObjectEntry } from "./retrieve";
+import { TOOLS, TOOL_GUIDE, describeTool, prepare, routedContext, runTool, type PreparedContext } from "./tools";
+import type { ProjectKnowledge } from "@/lib/knowledge/scan";
 import { resolveProvider, type Provider } from "./provider";
 import { isUnnamed } from "./name";
 
@@ -115,6 +117,7 @@ export interface DigestSource {
   bindings: { tag: string; targetId: string; targetName: string; property: string }[];
   selectedIds: string[];
   handles: Record<string, string>;
+  structure?: StructureHint[];
 }
 
 /** Built from the store. `request` steers which tags are retrieved. */
@@ -123,7 +126,7 @@ export function digestOf(project: DigestSource, request = ""): ProjectDigest {
   const active =
     project.screens.find((s) => s.UniqueId === project.activeScreenId) ?? project.screens[0];
   const boundTo = new Map(project.bindings.map((b) => [b.targetId, b.tag]));
-  const equipment = inferEquipment(project.variables);
+  const equipment = inferEquipment(project.variables, project.structure);
 
   const screens: ScreenDigest[] = project.screens.map((screen) => {
     const parts = screen.Children[0].Children;
@@ -509,6 +512,8 @@ const JSON_SCHEMA = {
 export interface Catalog {
   tags: { name: string; dataType: string; comment: string }[];
   objects: ObjectEntry[];
+  /** The project's alarms, for alarm_rationalisation. Optional; never in the prompt. */
+  alarms?: Alarm[];
 }
 
 export interface ConverseInput {
@@ -521,6 +526,36 @@ export interface ConverseInput {
    */
   repair?: boolean;
   catalog?: Catalog;
+  /** DDT instances from a typed tag import, so tools see the same units the generator does. */
+  structure?: StructureHint[];
+  /** Finished projects, handed in by the server route (lib/knowledge). */
+  knowledge?: ProjectKnowledge[];
+  /** What the target format can write, for target_capabilities. */
+  target?: { name: string; parts: readonly string[] };
+}
+
+/** The tool context for a turn: the catalog when the client sent one, else the digest. */
+function toolContext(input: ConverseInput): PreparedContext {
+  return prepare({
+    tags: input.catalog?.tags ?? input.digest.variables,
+    objects: input.catalog?.objects ?? [],
+    alarms: input.catalog?.alarms,
+    structure: input.structure,
+    knowledge: input.knowledge,
+    targetParts: input.target?.parts,
+    targetName: input.target?.name,
+  });
+}
+
+/**
+ * Lookups the request obviously needs, run before any model sees it
+ * (lib/ai/tools.ts routeTools). Every provider gets them, including one with no
+ * tool calling, and the repair pass skips them as it skips the model's own.
+ */
+function routedLines(input: ConverseInput, ctx: PreparedContext): string[] {
+  if (input.repair) return [];
+  const request = [...input.history].reverse().find((m) => m.role === "user")?.text ?? "";
+  return routedContext(request, ctx).lines;
 }
 
 /**
@@ -610,10 +645,20 @@ async function withGemini(input: ConverseInput, model: string): Promise<Converse
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY!.trim() });
   const { anchor, recent } = splitHistory(input.history);
 
+  const routed = routedLines(input, toolContext(input));
   const contents: { role: "user" | "model"; parts: { text: string }[] }[] = [
     {
       role: "user",
-      parts: [{ text: projectContext(input.digest) + "\n\n" + volatileContext(input.digest) + (anchor ? `\n\n${anchor}` : "") }],
+      parts: [
+        {
+          text:
+            projectContext(input.digest) +
+            "\n\n" +
+            volatileContext(input.digest) +
+            (routed.length ? `\n\n${routed.join("\n\n")}` : "") +
+            (anchor ? `\n\n${anchor}` : ""),
+        },
+      ],
     },
   ];
   for (const item of recent) {
@@ -658,40 +703,19 @@ async function withGemini(input: ConverseInput, model: string): Promise<Converse
 /** At most this many lookups before the turn proceeds with what it has. */
 const MAX_LOOKUPS = 4;
 
-const LOOKUP_TOOLS: Anthropic.Tool[] = [
-  {
-    name: "find_tags",
-    description:
-      "Search the full PLC tag list by words in the tag name or comment. Use when the " +
-      "request names a signal that is not in the tags you were shown.",
-    input_schema: {
-      type: "object",
-      properties: { query: { type: "string", description: "Words from the request, e.g. 'backwash high level'" } },
-      required: ["query"],
-      additionalProperties: false,
-    },
-    strict: true,
-  },
-  {
-    name: "find_objects",
-    description:
-      "Search every object on every screen by name, type or bound tag. Use when the " +
-      "request refers to an object that is not on the active screen.",
-    input_schema: {
-      type: "object",
-      properties: { query: { type: "string", description: "Words from the request, e.g. 'dosing pump fault lamp'" } },
-      required: ["query"],
-      additionalProperties: false,
-    },
-    strict: true,
-  },
-];
+/** The registry's tools as Claude takes them: strict, closed schemas. */
+const LOOKUP_TOOLS: Anthropic.Tool[] = TOOLS.map((t) => ({
+  name: t.name,
+  description: describeTool(t),
+  input_schema: t.schema,
+  strict: true,
+}));
 
 const LOOKUP_SYSTEM =
-  "You are checking whether an engineer's request refers to anything not already in " +
-  "the context you were given. If every tag and object it needs is present, reply with " +
-  "the single word READY. Otherwise call find_tags or find_objects with the words from " +
-  "the request, then reply READY. Never guess a tag or object name.";
+  "You are checking whether an engineer's request needs anything not already in the context " +
+  "you were given. If it does not, reply with the single word READY. Otherwise call the tools " +
+  "that supply what is missing - several at once when they are independent - then reply READY.\n\n" +
+  TOOL_GUIDE;
 
 /**
  * The lookup phase: the model asks for what it cannot see, bounded, before the
@@ -707,7 +731,9 @@ async function lookup(
   const catalog = input.catalog;
   const usage: Usage = { input: 0, cached: 0, output: 0 };
   if (!catalog) return { lines: [], usage };
+  const ctx = toolContext(input);
   const lines: string[] = [];
+  const asked = new Set<string>();
   const messages: Anthropic.MessageParam[] = [
     {
       role: "user",
@@ -716,13 +742,6 @@ async function lookup(
         `The full tag list has ${catalog.tags.length} entries and there are ${catalog.objects.length} objects across all screens.`,
     },
   ];
-  const variables: Variable[] = catalog.tags.map((t) => ({
-    Name: t.name,
-    DataType: t.dataType as Variable["DataType"],
-    Comments: t.comment,
-    DeviceAddress: "",
-  }));
-
   for (let round = 0; round < MAX_LOOKUPS; round++) {
     const response = await client.messages.create({
       model,
@@ -742,22 +761,17 @@ async function lookup(
     messages.push({ role: "assistant", content: response.content });
     const results: Anthropic.ToolResultBlockParam[] = [];
     for (const call of calls) {
-      const query = String((call.input as { query?: unknown }).query ?? "");
-      let text: string;
-      if (call.name === "find_tags") {
-        const hits = findTags(variables, query);
-        text = hits.length
-          ? hits.map((v) => `${v.Name} (${v.DataType})${v.Comments ? ` — ${v.Comments}` : ""}`).join("\n")
-          : "no tags match";
-        if (hits.length) lines.push(`Looked up tags for "${query}":\n${text}`);
-      } else {
-        const hits = findObjects(catalog.objects, query);
-        text = hits.length
-          ? hits.map((o) => `${o.handle} ${o.name} [${o.type}, on ${o.screen}${o.tag ? `, shows ${o.tag}` : ""}]`).join("\n")
-          : "no objects match";
-        if (hits.length) lines.push(`Looked up objects for "${query}":\n${text}`);
+      // The same call twice in one turn returns the same answer; say so
+      // rather than spend context on it again.
+      const key = `${call.name}:${JSON.stringify(call.input)}`;
+      if (asked.has(key)) {
+        results.push({ type: "tool_result", tool_use_id: call.id, content: "already answered above" });
+        continue;
       }
-      results.push({ type: "tool_result", tool_use_id: call.id, content: text });
+      asked.add(key);
+      const r = runTool(call.name, call.input, ctx);
+      if (!r.isError) lines.push(`Looked up ${call.name}(${Object.values((call.input ?? {}) as Record<string, unknown>).map((v) => JSON.stringify(v)).join(", ")}):\n${r.text}`);
+      results.push({ type: "tool_result", tool_use_id: call.id, content: r.text, ...(r.isError ? { is_error: true } : {}) });
     }
     messages.push({ role: "user", content: results });
   }
@@ -766,12 +780,14 @@ async function lookup(
 
 async function withClaude(input: ConverseInput, model: string): Promise<ConverseResult | null> {
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
-  const { jsonSchemaOutputFormat } = await import("@anthropic-ai/sdk/helpers/json-schema");
+  const { betaJSONSchemaOutputFormat } = await import("@anthropic-ai/sdk/helpers/beta/json-schema");
   const client = new Anthropic();
   const { anchor, recent } = splitHistory(input.history);
 
   const request = [...input.history].reverse().find((m) => m.role === "user")?.text ?? "";
-  const found = input.repair ? { lines: [], usage: { input: 0, cached: 0, output: 0 } } : await lookup(client, model, input, request);
+  const routed = routedLines(input, toolContext(input));
+  const looked = input.repair ? { lines: [], usage: { input: 0, cached: 0, output: 0 } } : await lookup(client, model, input, request);
+  const found = { lines: [...routed, ...looked.lines], usage: looked.usage };
 
   // The cached prefix is system + project context. The volatile block sits
   // after the breakpoint, then the history as real turns.
@@ -803,19 +819,23 @@ async function withClaude(input: ConverseInput, model: string): Promise<Converse
   }
   if (input.repair) messages.push({ role: "user", content: REPAIR_NOTE });
 
-  const response = await client.messages.parse({
+  const response = await client.beta.messages.parse({
+    // On a policy decline the API re-runs the call on a fallback model chosen
+    // by refusal category, inside the same request (server-side fallback).
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
     model,
     max_tokens: 8192,
     thinking: { type: "adaptive" },
     output_config: {
-      format: jsonSchemaOutputFormat(JSON_SCHEMA),
+      format: betaJSONSchemaOutputFormat(JSON_SCHEMA),
       effort: input.repair ? "low" : "medium",
     },
     system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral", ttl: "1h" } }],
     messages,
   });
 
-  if (response.stop_reason === "refusal") return null;
+  if (response.stop_reason === "refusal" || response.stop_reason === "max_tokens") return null;
   const turn = coerceTurn(response.parsed_output);
   if (!turn) return null;
   return {

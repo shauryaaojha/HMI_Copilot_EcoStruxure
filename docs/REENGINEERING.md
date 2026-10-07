@@ -311,7 +311,7 @@ as data, and that is where the product becomes theirs.
 | AI Design Copilot | Conversation as a command layer over the Plant Model, never over coordinates; works the same on imported screens, screenshots and hand-built ones (§5.1) |
 | Knowledge-Based Engineering Assistant, AI Engineering Mentor | Retrieval over the installed feature guide; answers cite the page |
 | AI Script Generator | Lua, screen and global scripts, from templates per class; later phase |
-| AI Migration Assistant | Vijeo Designer `.zdat` → Plant Model → OTE, only with Schneider's blessing; screenshot-to-screen recreation for anything older or third-party (§5.1) |
+| AI Migration Assistant | Vijeo Designer `.vdz` project (or its `.zdat` migration export) → Plant Model → OTE, only with Schneider's blessing; screenshot-to-screen recreation for anything older or third-party (§5.1) |
 | HMI System Log Analyzer, failure analysis | Out of scope for the engineering tool; note as a runtime-side sibling |
 
 ---

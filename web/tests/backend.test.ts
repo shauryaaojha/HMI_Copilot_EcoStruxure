@@ -62,7 +62,9 @@ describe("the registry", () => {
       expect(b.name.length).toBeGreaterThan(3);
     }
     expect(OTE.extension).toBe(".eote");
-    expect(VIJEO.extension).toBe(".zdat");
+    // A Vijeo Designer project archive (Schneider FAQ FA268436); .zdat is the
+    // migration-tool export and .vxdz is OTE before 4.0. lib/ingest/sniff.ts.
+    expect(VIJEO.extension).toBe(".vdz");
   });
 
   it("lets only a backend that has read a real file claim to be non-provisional", () => {

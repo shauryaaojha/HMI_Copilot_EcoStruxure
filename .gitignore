@@ -46,3 +46,7 @@ web/t.mts
 # Projects opened in the app, kept so an export can write back into them.
 web/.imports/
 demo_project/renders/
+
+# Scanned project knowledge (lib/knowledge/store.ts). Holds customer tag
+# names, comments and alarm text: it stays on the machine that scanned it.
+web/.knowledge/

@@ -181,6 +181,7 @@ export function compileProgram(
   return {
     screen,
     parts: place.parts,
+    keys: { ...place.keys },
     wires,
     composites: place.composites.map((c) => ({ ...c, screenId: screen.UniqueId })),
     notes,

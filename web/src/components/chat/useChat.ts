@@ -17,10 +17,11 @@
  * what exists (F5).
  */
 
+import { commitsWithoutReview, labelOp, selectedOps } from "@/lib/ai/review";
 import { useCallback, useRef } from "react";
 import { describeOp, digestOf, type HistoryItem } from "@/lib/ai/converse";
 import { isUnnamed, nameProject } from "@/lib/ai/name";
-import type { Turn } from "@/lib/ai/ops";
+import type { Op, Turn } from "@/lib/ai/ops";
 import { inferEquipment } from "@/lib/ai/infer";
 import type { ExistingScreen } from "@/lib/ai/pipeline";
 import { commit, dryRun, previewOf, type DryRun, type OpOutcome } from "@/lib/ai/applier";
@@ -42,13 +43,15 @@ const id = () => crypto.randomUUID();
  * a project that has moved on.
  */
 const pending = new Map<string, DryRun>();
+/** The ops behind each pending proposal, so some can be accepted and not others. */
+const pendingOps = new Map<string, Op[]>();
 
 const cardKey = (unitId: string) => unitId.replace(/[^A-Za-z0-9]/g, "");
 
 /** The screens the application has, as the pipeline needs them for an extension. */
 function existingScreens(): ExistingScreen[] {
   const s = useProject.getState();
-  const equipment = inferEquipment(s.variables);
+  const equipment = inferEquipment(s.variables, s.tagImport?.structure);
   return s.screens.filter((screen) => screen.Type !== "Content").map((screen) => {
     const names = new Set(screen.Children[0].Children.map((p) => p.Name));
     const include = equipment
@@ -98,8 +101,11 @@ export function useChat() {
       body: JSON.stringify({
         history,
         repair,
+        // DDT instances, so the tools see the same equipment the generator does.
+        structure: s.tagImport?.structure,
         // What the lookup tools can search. Compact, never in the prompt.
         catalog: {
+          alarms: s.alarms,
           tags: s.variables.map((v) => ({ name: v.Name, dataType: v.DataType, comment: v.Comments ?? "" })),
           objects: s.screens.flatMap((screen) =>
             screen.Children[0].Children.map((p) => ({
@@ -122,6 +128,7 @@ export function useChat() {
             bindings: s.bindings,
             selectedIds: s.selectedIds,
             handles: s.handles,
+            structure: s.tagImport?.structure,
           },
           request,
         ),
@@ -294,7 +301,9 @@ export function useChat() {
           return;
         }
 
-        const clean = run.outcome.rejected.length === 0 && !run.outcome.deleted;
+        // Clean edits commit at once, unless the project asks for every AI edit
+        // to be reviewed (lib/ai/review.ts).
+        const clean = commitsWithoutReview(run.outcome, useProject.getState().standards);
         if (clean) {
           commit(run, run.outcome.applied[0]?.slice(0, 60) || "Conversational edit");
           const after = useProject.getState();
@@ -312,6 +321,7 @@ export function useChat() {
         // Something was rejected even after repair, or something would be
         // deleted: the engineer decides, looking at ghosts on the canvas.
         pending.set(answerId, run);
+        pendingOps.set(answerId, ops);
         useProject.getState().setPreview({ messageId: answerId, screens: previewOf(run) });
         patch({
           pending: false,
@@ -321,6 +331,7 @@ export function useChat() {
             applied: run.outcome.applied,
             rejected: run.outcome.problems,
             deleted: run.outcome.deleted,
+            ops: ops.map(labelOp),
           },
           error: repaired && run.outcome.rejected.length > 0 ? "Still could not do everything after one repair pass." : undefined,
         });
@@ -337,8 +348,24 @@ export function useChat() {
   /** A clarifying question answered by clicking it is still a turn. */
   const answer = useCallback((text: string) => void send(text), [send]);
 
-  const accept = useCallback((messageId: string) => {
-    const run = pending.get(messageId);
+  /** Ghosts for a subset of a proposal's ops, while the engineer ticks. */
+  const previewSome = useCallback((messageId: string, keep: number[]) => {
+    const ops = pendingOps.get(messageId);
+    if (!ops) return;
+    const run = dryRun(selectedOps(ops, new Set(keep)));
+    useProject.getState().setPreview({ messageId, screens: previewOf(run) });
+  }, []);
+
+  /**
+   * Accept a proposal, or only some of its ops. A subset is run again on its
+   * own: an op that needed one left out is rejected and shown, not silently
+   * half-applied.
+   */
+  const accept = useCallback((messageId: string, keep?: number[]) => {
+    const ops = pendingOps.get(messageId);
+    const partial = !!(keep && ops && keep.length < ops.length);
+    const run = partial ? dryRun(selectedOps(ops!, new Set(keep))) : pending.get(messageId);
+    pendingOps.delete(messageId);
     const s = useProject.getState();
     const message = s.chat.find((m) => m.id === messageId);
     if (!message?.proposal) return;
@@ -349,11 +376,15 @@ export function useChat() {
     pending.delete(messageId);
     s.setPreview(undefined);
     commit(run, run.outcome.applied[0]?.slice(0, 60) || "Accepted proposal");
+    if (partial) {
+      useProject.getState().log(`Accepted ${keep!.length} of ${ops!.length} proposed changes`);
+      for (const p of run.outcome.problems) useProject.getState().log(`Not applied: ${p}`);
+    }
     const after = useProject.getState();
     for (const line of run.outcome.applied) after.log(line);
     const versionAt = after.snapshot(run.outcome.applied[0]?.slice(0, 60) || "Accepted proposal");
     after.patchMessage(messageId, {
-      proposal: { ...message.proposal, status: "accepted" },
+      proposal: { ...message.proposal, status: "accepted", ...(partial ? { rejected: run.outcome.problems } : {}) },
       changes: run.outcome.applied,
       versionAt,
       turn: message.turn ? { ...message.turn, decision: "accepted" } : undefined,
@@ -362,6 +393,7 @@ export function useChat() {
 
   const discard = useCallback((messageId: string) => {
     pending.delete(messageId);
+    pendingOps.delete(messageId);
     const s = useProject.getState();
     if (s.preview?.messageId === messageId) s.setPreview(undefined);
     const message = s.chat.find((m) => m.id === messageId);
@@ -372,5 +404,5 @@ export function useChat() {
     });
   }, []);
 
-  return { send, answer, accept, discard };
+  return { send, answer, accept, discard, previewSome };
 }

@@ -13,6 +13,8 @@ import type { Alarm, Part, Variable } from "@/lib/ote/schema";
 import type { PlantModel } from "@/lib/plant/model";
 
 /** The eight pipeline steps, in order. */
+import type { ScreenProgram } from "@/lib/program/program";
+
 export const PIPELINE_STEPS = [
   "ingest",
   "infer",
@@ -66,7 +68,25 @@ export type GenerationEvent =
    * and every generated screen came out called after the project. Optional, so
    * an older producer still parses.
    */
-  | { type: "object"; part: Part; parentId: string; screenName?: string }
+  | {
+      type: "object";
+      part: Part;
+      parentId: string;
+      screenName?: string;
+      /**
+       * The part's stable key (lib/ote/layout.ts LaidOutScreen.keys). The
+       * consumer records it with "generated" provenance, which is what lets a
+       * later regeneration of this screen match the part instead of
+       * replacing it. Optional: an older producer still parses.
+       */
+      key?: string;
+    }
+  /**
+   * The recipe a screen was compiled from, sent once per screen before its
+   * objects. Kept with the screen, so the screen can be regenerated alone,
+   * against changed tags or a changed library, as a reviewable diff.
+   */
+  | { type: "program"; parentId: string; screenName: string; program: ScreenProgram }
   /**
    * Parts already emitted belong to one composite. The canvas groups them and
    * keeps the props, so the inspector edits the indicator rather than its six
