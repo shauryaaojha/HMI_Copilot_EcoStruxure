@@ -19,6 +19,7 @@ import { OBJECT_TYPE } from "./bindings";
 import type { AlarmTarget, VariableIds } from "./databases";
 import { openDatabase, readPanel, type Panel } from "./packager";
 import { readScales, scaleName, type Scale } from "./converters";
+import { flatten, isFlatRoot, layoutTree, type Laid } from "./containers";
 
 /** A child of a screen the schema cannot model, kept where it was. */
 export interface OpaquePart {
@@ -37,6 +38,12 @@ export interface PreservedScreen {
   fingerprint: string;
   /** Where it lives: a screen under Screens\, a content screen under Contents\. */
   area: "Screens" | "Contents";
+  /**
+   * Set when the screen is laid out by containers (a Grid root, or a canvas
+   * holding grids and stacks): the resolved tree the export writes back into.
+   * docs in lib/ote/containers.ts.
+   */
+  tree?: { laid: Laid; modelled: Set<string> };
 }
 
 export interface Preserved {
@@ -69,7 +76,7 @@ export interface ForeignSummary {
 }
 
 /** What the canvas can say about an object it cannot model. */
-export function summariseOpaque(raw: unknown): ForeignSummary {
+export function summariseOpaque(raw: unknown, resolved?: ForeignSummary["box"]): ForeignSummary {
   const r = (raw ?? {}) as Record<string, unknown>;
   const loc = r.Location as Record<string, unknown> | undefined;
   const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
@@ -81,9 +88,10 @@ export function summariseOpaque(raw: unknown): ForeignSummary {
     type: typeof r.Type === "string" ? r.Type : "Unknown",
     name: typeof r.Name === "string" ? r.Name : "",
     box:
-      left !== undefined && top !== undefined && width !== undefined && height !== undefined
+      resolved ??
+      (left !== undefined && top !== undefined && width !== undefined && height !== undefined
         ? { left, top, width, height }
-        : null,
+        : null),
   };
 }
 
@@ -140,12 +148,22 @@ export const fingerprintWires = (wires: Wire[]) =>
 
 export const fingerprintScreen = (screen: Screen) => JSON.stringify(screen);
 
+interface Modelled {
+  screen: Screen | null;
+  parts: Map<string, Record<string, unknown>>;
+  opaque: OpaquePart[];
+  tree?: PreservedScreen["tree"];
+  /** Unmodelled leaves of a container tree, at their resolved boxes. */
+  foreign?: ForeignSummary[];
+}
+
 /** The screen the store holds, and what was set aside from it. */
-function modelScreen(raw: Record<string, unknown>): { screen: Screen | null; parts: Map<string, Record<string, unknown>>; opaque: OpaquePart[] } {
+function modelScreen(raw: Record<string, unknown>, panel: Panel): Modelled {
   const view = (raw.Children as Record<string, unknown>[] | undefined)?.[0];
   const parts = new Map<string, Record<string, unknown>>();
   const opaque: OpaquePart[] = [];
   if (!view || !Array.isArray(view.Children)) return { screen: null, parts, opaque };
+  if (!isFlatRoot(view)) return modelTree(raw, view, panel);
 
   const known: Part[] = [];
   (view.Children as Record<string, unknown>[]).forEach((child, i) => {
@@ -164,6 +182,57 @@ function modelScreen(raw: Record<string, unknown>): { screen: Screen | null; par
   };
   const parsed = Screen.safeParse(candidate);
   return { screen: parsed.success ? parsed.data : null, parts, opaque };
+}
+
+/**
+ * A screen laid out by containers, flattened for the editor.
+ *
+ * The store sees a Canvas at the root - the only root it draws - holding every
+ * leaf the schema models, at the box the layout resolved. The real root and
+ * everything between it and those leaves stays in `tree`, and the export
+ * writes the edits back into it (lib/ote/containers.ts, `mergeTree`).
+ */
+function modelTree(raw: Record<string, unknown>, view: Record<string, unknown>, panel: Panel): Modelled {
+  const parts = new Map<string, Record<string, unknown>>();
+  const opaque: OpaquePart[] = [];
+  const rootBox = {
+    left: 0,
+    top: 0,
+    width: typeof view.Width === "number" ? view.Width : panel.width,
+    height: typeof view.Height === "number" ? view.Height : panel.height,
+  };
+  const laid = layoutTree(view, rootBox);
+  const known: Part[] = [];
+  const modelled = new Set<string>();
+  const foreign: ForeignSummary[] = [];
+  laid.leaves.forEach((leaf, i) => {
+    const parsed = Part.safeParse(flatten(leaf));
+    if (parsed.success && !modelled.has(parsed.data.UniqueId)) {
+      known.push(parsed.data);
+      parts.set(parsed.data.UniqueId, leaf.raw);
+      modelled.add(parsed.data.UniqueId);
+    } else {
+      opaque.push({ index: i, raw: leaf.raw });
+      foreign.push(summariseOpaque(leaf.raw, leaf.box));
+    }
+  });
+
+  const root = {
+    Type: "Canvas" as const,
+    UniqueId: view.UniqueId,
+    Name: view.Name,
+    ...(view.Width !== undefined ? { Width: view.Width } : {}),
+    ...(view.Height !== undefined ? { Height: view.Height } : {}),
+  };
+  const withFill = Screen.safeParse({ ...raw, Children: [{ ...root, Fill: view.Fill, Children: known }] });
+  const parsed = withFill.success ? withFill : Screen.safeParse({ ...raw, Children: [{ ...root, Children: known }] });
+  return {
+    screen: parsed.success ? parsed.data : null,
+    parts,
+    opaque,
+    tree: { laid, modelled },
+    foreign,
+  };
 }
 
 /**
@@ -243,16 +312,16 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
       return;
     }
     const metadata = (json(`${area}/${id}/Metadata.dat`) as Record<string, unknown> | undefined) ?? {};
-    const { screen, parts, opaque } = modelScreen(raw);
+    const { screen, parts, opaque, tree, foreign: resolved } = modelScreen(raw, target);
     if (!screen) {
       const rootType = String(((raw.Children as Record<string, unknown>[] | undefined)?.[0]?.Type) ?? "unknown");
       carriedRoots[rootType] = (carriedRoots[rootType] ?? 0) + 1;
       return;
     }
     opaqueParts += opaque.length;
-    if (opaque.length > 0) foreign[screen.UniqueId] = opaque.map((o) => summariseOpaque(o.raw));
+    if (opaque.length > 0) foreign[screen.UniqueId] = resolved ?? opaque.map((o) => summariseOpaque(o.raw));
     screens.push(screen);
-    preservedScreens.set(id, { raw, parts, opaque, metadata, fingerprint: fingerprintScreen(screen), area });
+    preservedScreens.set(id, { raw, parts, opaque, metadata, fingerprint: fingerprintScreen(screen), area, ...(tree ? { tree } : {}) });
   };
   for (const id of order) read(id, "Screens");
   for (const id of contentOrder) read(id, "Contents");
@@ -262,7 +331,7 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
     const why = Object.entries(carriedRoots).map(([type, n]) => `${n} ${type}`).join(", ");
     warnings.push(
       `${carriedScreens} screen${carriedScreens === 1 ? "" : "s"} could not be modelled (root: ${why}) and ${carriedScreens === 1 ? "is" : "are"} carried through unchanged.` +
-        (carriedRoots.Grid ? " A Grid places its children by row and column, which the editor does not lay out yet." : ""),
+        "",
     );
   }
 

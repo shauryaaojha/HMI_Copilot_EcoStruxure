@@ -70,12 +70,14 @@ describe("content screens", () => {
     expect(read.screens[0].Type).toBe("Screen");
   });
 
-  it("says what it carried and why, once, instead of an empty canvas", async () => {
+  it("models a Grid-rooted screen instead of carrying it whole", async () => {
+    // It used to be carried with a warning, which opened as an empty canvas.
+    // lib/ote/containers.ts lays the grid out; tests/containers.test.ts has the rules.
     const read = await readProject(await withContents());
-    expect(read.carried.screens).toBe(1);
-    expect(read.carried.roots).toEqual({ Grid: 1 });
-    expect(read.warnings.filter((w) => /could not be modelled/.test(w))).toHaveLength(1);
-    expect(read.warnings.join(" ")).toMatch(/row and column/);
+    expect(read.carried.screens).toBe(0);
+    expect(read.carried.roots).toEqual({});
+    expect(read.screens.some((s) => s.UniqueId === GRID)).toBe(true);
+    expect(read.warnings.filter((w) => /could not be modelled/.test(w))).toHaveLength(0);
   });
 
   it("writes back byte-identical when nothing changed", async () => {
@@ -154,7 +156,8 @@ corpus("the template corpus", () => {
     const bytes = new Uint8Array(fs.readFileSync(find("GPS_Slider01.vxdz")!));
     const read = await readProject(bytes, "GPS_Slider01.vxdz");
     expect(read.screens.filter((s) => s.Type === "Content").length).toBe(18);
-    expect(read.carried.roots.Grid).toBe(1);
+    expect(read.carried.roots.Grid).toBeUndefined();
+    expect(read.screens.length).toBe(19);
     const out = await packageProject(inputOf(read), undefined, read.preserved);
     // Entry by entry: a re-zipped archive is never the same bytes, its entries are.
     const a = await JSZip.loadAsync(bytes);

@@ -41,6 +41,7 @@ import {
   fingerprintWires,
   type Preserved,
 } from "./reader";
+import { mergeTree } from "./containers";
 
 export interface PackageInput {
   name: string;
@@ -227,6 +228,23 @@ export async function panelOf(skeleton?: Skeleton): Promise<Panel | null> {
 /** The screen JSON to write: the store's tree merged over what was read. */
 function mergeScreen(screen: Screen, kept: Preserved["screens"] extends Map<string, infer S> ? S : never): unknown {
   const rawView = (kept.raw.Children as Record<string, unknown>[])[0];
+  if (kept.tree) {
+    // Laid out by containers: the edits go back into the original tree, and
+    // the root stays what it was - the Canvas the store holds is a view of it.
+    const { Children: _flat, Type: _type, UniqueId: _id, Name: _name, ...rootEdits } = screen.Children[0] as Record<string, unknown>;
+    const parts = screen.Children[0].Children.map((part) => ({
+      ...(kept.parts.get(part.UniqueId) ?? {}),
+      ...part,
+    })) as Record<string, unknown>[];
+    const root = mergeTree(rawView, kept.tree.laid, parts, kept.tree.modelled);
+    // Only root keys the editor changed (a background, say) are written: the
+    // parsed copy of an untouched key may have lost a field the raw one has.
+    const before = (JSON.parse(kept.fingerprint) as Screen).Children[0] as Record<string, unknown>;
+    for (const [key, value] of Object.entries(rootEdits)) {
+      if (JSON.stringify(before[key]) !== JSON.stringify(value)) root[key] = value;
+    }
+    return { ...kept.raw, ...screen, Children: [root] };
+  }
   const merged: unknown[] = screen.Children[0].Children.map((part) => ({
     ...(kept.parts.get(part.UniqueId) ?? {}),
     ...part,
@@ -356,10 +374,20 @@ async function packagePreserved(input: PackageInput, kept: Preserved): Promise<U
       return;
     }
     const index = ids.indexOf(id);
+    // Moved means moved against where it was read, not against Order: the
+    // product numbers Order from 1 in some files and 0 in ours, and its Id is
+    // an identity, not a position (HVAC_Symbol01 has Id 96 at Order 23). So a
+    // moved screen keeps its file's own base and its own Id.
+    const at = kept.order.indexOf(id);
+    const moved = at !== index;
+    const reordered = () => {
+      const base = typeof was?.metadata.Order === "number" && at >= 0 ? was.metadata.Order - at : 0;
+      return { ...was!.metadata, Name: screen.Name, Order: index + base };
+    };
     if (was && was.fingerprint === fingerprintScreen(screen)) {
       // Untouched, but the order or name may still have moved.
-      if (was.metadata.Name !== screen.Name || was.metadata.Order !== index) {
-        entries.set(nameOf(`Screens/${id}/Metadata.dat`), jsonEntry({ ...was.metadata, Name: screen.Name, Order: index, Id: index + 1 }));
+      if (was.metadata.Name !== screen.Name || moved) {
+        entries.set(nameOf(`Screens/${id}/Metadata.dat`), jsonEntry(reordered()));
         changed = true;
       }
       return;
@@ -368,11 +396,13 @@ async function packagePreserved(input: PackageInput, kept: Preserved): Promise<U
     entries.set(nameOf(`Screens/${id}/Screen.dat`), jsonEntry(was ? mergeScreen(screen, was) : screen));
     // Metadata only when it actually differs: a touched screen with the same
     // name and position keeps its Metadata.dat byte-identical.
-    if (!was || was.metadata.Name !== screen.Name || was.metadata.Order !== index) {
+    if (!was) {
       entries.set(
         nameOf(`Screens/${id}/Metadata.dat`),
-        jsonEntry({ LayoutType: 8, ObjectType: 9, ...(was?.metadata ?? {}), Id: index + 1, Name: screen.Name, Order: index }),
+        jsonEntry({ LayoutType: 8, ObjectType: 9, Id: index + 1, Name: screen.Name, Order: index }),
       );
+    } else if (was.metadata.Name !== screen.Name || moved) {
+      entries.set(nameOf(`Screens/${id}/Metadata.dat`), jsonEntry(reordered()));
     }
     if (!entries.has(nameOf(`Screens/${id}/LocalVariables.db`))) {
       if (!localVariables) throw new Error("no LocalVariables.db to copy for a new screen");
