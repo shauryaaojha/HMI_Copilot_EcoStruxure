@@ -87,3 +87,17 @@ describe("level alarms name what is measured", () => {
     expect(proposeAlarms(units)[0].message).toBe("LT 9 level high");
   });
 });
+
+describe("the Plant Model, for declared equipment", () => {
+  it("carries the library's confidence and its reasons", async () => {
+    const { modelPlant } = await import("@/lib/plant/model");
+    const parsed = parseControlExpert(`<?xml version="1.0"?><VariablesExchangeFile>
+      <DDTSource DDTName="T_AgitatorCtl"><structure><variables name="RunFb" typeName="BOOL"/><variables name="Trip" typeName="BOOL"/></structure></DDTSource>
+      <dataBlock><variables name="Blend_A" typeName="T_AgitatorCtl"/></dataBlock></VariablesExchangeFile>`);
+    const plant = modelPlant(parsed.variables, {}, parsed.structure);
+    const blend = plant.equipment.find((e) => e.id === "Blend_A")!;
+    expect(blend.class).toBe("mixer");
+    expect(blend.evidence?.[0]).toMatch(/T_AgitatorCtl/);
+    expect(blend.confidence).toBeGreaterThanOrEqual(0.5);
+  });
+});
