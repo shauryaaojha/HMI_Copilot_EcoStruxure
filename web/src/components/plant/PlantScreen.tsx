@@ -164,9 +164,11 @@ export function PlantScreen() {
                     <span className="text-sm font-medium">{e.label}</span>
                     <span className="font-mono text-[11px] text-text-muted">{e.id}</span>
                     <Badge tone="neutral">{e.class}</Badge>
-                    <Badge tone={e.confidence < 0.7 ? "warn" : "ok"} dot>
-                      {Math.round(e.confidence * 100)}%
-                    </Badge>
+                    <span title={e.evidence?.length ? `Why: ${e.evidence.join("; ")}` : "Read from the tag names"}>
+                      <Badge tone={e.confidence < 0.7 ? "warn" : "ok"} dot>
+                        {Math.round(e.confidence * 100)}%
+                      </Badge>
+                    </span>
                   </div>
                   <ul className="mt-2 flex flex-wrap gap-1">
                     {e.roles.map((r) => (

@@ -41,6 +41,12 @@ export const PlantEquipment = z.object({
   ranges: z.record(RangeSchema),
   symbol: z.string().optional(),
   confidence: z.number().min(0).max(1),
+  /**
+   * Why the class was chosen, when the machine library weighed it - the DDT
+   * type, the prefix, the signal shape (lib/library/machines.ts classify).
+   * Optional: a unit read from its name alone has only the naming rule.
+   */
+  evidence: z.array(z.string()).optional(),
 });
 
 export const Connection = z.object({
@@ -153,7 +159,10 @@ export function modelPlant(variables: Variable[], answers: Record<string, string
       roles: roles.map((r) => ({ role: r.role, tag: r.tag, dataType: r.dataType })),
       ranges,
       symbol: unit.symbol,
-      confidence: confidenceOf(unit),
+      // A unit the PLC's type system declared carries the library's weighed
+      // confidence and its reasons; one read from its name, the naming rule's.
+      confidence: unit.confidence ?? confidenceOf(unit),
+      ...(unit.evidence?.length ? { evidence: unit.evidence } : {}),
     };
   });
   if (refined.length > 0) {
