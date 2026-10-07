@@ -209,3 +209,12 @@ corpus("the struct half of the template corpus", () => {
     expect(struct).toBe(85);
   }, 300_000);
 });
+
+describe("telling the layouts apart", () => {
+  it("calls a project with no screen at all the modern layout, as the product's Blank.eote is", async () => {
+    const zip = new JSZip();
+    zip.file("Project.dat", "{}");
+    zip.file("Variables.db", new Uint8Array(0));
+    expect(await layoutOf(await zip.generateAsync({ type: "uint8array" }))).toBe("typed");
+  });
+});

@@ -29,7 +29,7 @@ import JSZip from "jszip";
 import { DATA_TYPES, type Alarm, type Variable } from "./schema";
 import type { Wire } from "./bindings";
 import { openDatabase, type Panel } from "./packager";
-import { modelScreen, summariseOpaque, type ForeignSummary, type ReadProject } from "./reader";
+import { displaySizes, modelScreen, summariseOpaque, type ForeignSummary, type ReadProject } from "./reader";
 import type { Screen } from "./schema";
 
 type Raw = Record<string, unknown>;
@@ -191,6 +191,8 @@ export async function readStructProject(
   const foreign: Record<string, ForeignSummary[]> = {};
   const wires: Wire[] = [];
   const carriedRoots: Record<string, number> = {};
+  /** ContentID -> the box of the first display that shows it. */
+  const shown = new Map<number, { width: number; height: number }>();
   /** Every screen as translated, before modelling: the harness reads these. */
   const converted: Raw[] = [];
   let opaqueParts = 0;
@@ -224,7 +226,8 @@ export async function readStructProject(
       Children: [root],
     };
     converted.push(raw);
-    const modelled = modelScreen(raw, target);
+    const modelled = modelScreen(raw, target, typeof raw.ContentID === "number" ? shown.get(raw.ContentID) : undefined);
+    if (modelled.screen) displaySizes(modelled.screen, shown);
     if (!modelled.screen) {
       const type = String(root.Type);
       carriedRoots[type] = (carriedRoots[type] ?? 0) + 1;

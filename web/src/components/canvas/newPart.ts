@@ -94,6 +94,7 @@ const STEM: Record<PartType, string> = {
   Pie: "Pie",
   Arch: "Arch",
   Doughnut: "Doughnut",
+  ContentDisplay: "Content",
 };
 
 export function partFromTool(type: PartType, box: Box): Part {
@@ -150,6 +151,10 @@ export function partFromTool(type: PartType, box: Box): Part {
     case "Arch":
     case "Doughnut":
       return { ...rectangle(name, box), Type: type } as Part;
+    case "ContentDisplay": {
+      const { Fill: _f, Border: _b, Thickness: _t, ...rest } = rectangle(name, box) as Extract<Part, { Type: "Rectangle" }>;
+      return { ...rest, Type: "ContentDisplay", ScreenId: 1 } as Part;
+    }
     case "Polygon":
       return { ...rectangle(name, box), Type: "Polygon", Path: { Commands: "MLLLz", Data: "1536,0,3072,1536,1536,3072,0,1536" } } as Part;
   }

@@ -8,7 +8,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import { layoutOf, modelScreen, readProject } from "../src/lib/ote/reader";
 import { readStructProject } from "../src/lib/ote/struct";
-import { Part, withOrigin } from "../src/lib/ote/schema";
+import { Part, normalizePart } from "../src/lib/ote/schema";
 import { flatten } from "../src/lib/ote/containers";
 
 const files: string[] = [];
@@ -48,7 +48,7 @@ for (const file of files) {
 
 function count(raw: unknown, leaf: Parameters<typeof flatten>[0] | undefined, tag: string) {
     {
-      const candidate = leaf ? flatten(leaf) : withOrigin(raw);
+      const candidate = normalizePart(leaf ? flatten(leaf) : raw);
       const type = String((raw as { Type?: string }).Type);
       // The member schema for this Type, so the complaint is about this part
       // rather than whichever union member zod tried first.

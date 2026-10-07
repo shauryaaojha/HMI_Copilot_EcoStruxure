@@ -164,9 +164,11 @@ async function editDatabase<T>(
  * The product refuses an archive whose nested entries use forward slashes.
  * Asserted against the raw bytes, not against jszip's own name list.
  */
-export function assertBackslashEntries(bytes: Uint8Array): void {
+export function assertBackslashEntries(bytes: Uint8Array, expectScreens = true): void {
   const text = Buffer.from(bytes).toString("latin1");
-  if (!text.includes("Screens\\")) {
+  // A project with no screen at all - the product's Blank.eote - has no
+  // Screens entry to check, and that is not a fault.
+  if (expectScreens && !text.includes("Screens\\")) {
     throw new Error("packaged archive has no backslash-separated Screens entry");
   }
   if (text.includes("Screens/")) {
@@ -413,7 +415,10 @@ async function packagePreserved(input: PackageInput, kept: Preserved): Promise<U
     } else if (was.metadata.Name !== screen.Name || moved) {
       entries.set(nameOf(`Screens/${id}/Metadata.dat`), jsonEntry(reordered()));
     }
-    if (!entries.has(nameOf(`Screens/${id}/LocalVariables.db`))) {
+    // Only a new screen needs one. A screen the product saved without a
+    // LocalVariables.db (Simple.eote's has none) stays without one: editing it
+    // used to fail the export here, looking for a template to copy.
+    if (!was && !entries.has(nameOf(`Screens/${id}/LocalVariables.db`))) {
       if (!localVariables) throw new Error("no LocalVariables.db to copy for a new screen");
       entries.set(nameOf(`Screens/${id}/LocalVariables.db`), localVariables);
     }
@@ -492,7 +497,9 @@ async function packagePreserved(input: PackageInput, kept: Preserved): Promise<U
     compression: "DEFLATE",
     compressionOptions: { level: 6 },
   });
-  assertBackslashEntries(bytes);
+  // An opened project with no screen (the product's Blank.eote) has no
+  // Screens entry for the check to find, and that is not a fault.
+  assertBackslashEntries(bytes, [...entries.keys()].some((n) => n.startsWith("Screens\\")));
   return bytes;
 }
 

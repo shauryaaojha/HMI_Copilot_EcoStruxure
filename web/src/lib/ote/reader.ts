@@ -13,7 +13,7 @@
  */
 
 import JSZip from "jszip";
-import { DATA_TYPES, Part, Screen, withOrigin, type Alarm, type Variable } from "./schema";
+import { DATA_TYPES, Part, Screen, normalizePart, type Alarm, type Variable } from "./schema";
 import type { BindingGraph, BindingRow, Source, Target, Wire } from "./bindings";
 import { OBJECT_TYPE } from "./bindings";
 import type { AlarmTarget, VariableIds } from "./databases";
@@ -158,16 +158,21 @@ export interface Modelled {
 }
 
 /** The screen the store holds, and what was set aside from it. */
-export function modelScreen(raw: Record<string, unknown>, panel: Panel): Modelled {
+/**
+ * `size` is the box a content screen is shown in, when a ContentDisplay shows
+ * it: a content rooted in a Grid fills whatever display holds it, so it is
+ * laid out at that size rather than the panel's (see `displaySizes`).
+ */
+export function modelScreen(raw: Record<string, unknown>, panel: Panel, size?: { width: number; height: number }): Modelled {
   const view = (raw.Children as Record<string, unknown>[] | undefined)?.[0];
   const parts = new Map<string, Record<string, unknown>>();
   const opaque: OpaquePart[] = [];
   if (!view || !Array.isArray(view.Children)) return { screen: null, parts, opaque };
-  if (!isFlatRoot(view)) return modelTree(raw, view, panel);
+  if (!isFlatRoot(view)) return modelTree(raw, view, panel, size);
 
   const known: Part[] = [];
   (view.Children as Record<string, unknown>[]).forEach((child, i) => {
-    const parsed = Part.safeParse(withOrigin(child));
+    const parsed = Part.safeParse(normalizePart(child));
     if (parsed.success) {
       known.push(parsed.data);
       parts.set(parsed.data.UniqueId, child);
@@ -184,6 +189,14 @@ export function modelScreen(raw: Record<string, unknown>, panel: Panel): Modelle
   return { screen: parsed.success ? parsed.data : null, parts, opaque };
 }
 
+/** Record the box of every ContentDisplay on a screen, first one wins. */
+export function displaySizes(screen: Screen, into: Map<number, { width: number; height: number }>): void {
+  for (const part of screen.Children[0].Children) {
+    if (part.Type !== "ContentDisplay" || part.ScreenId === undefined || into.has(part.ScreenId)) continue;
+    if ((part.Width ?? 0) > 0 && (part.Height ?? 0) > 0) into.set(part.ScreenId, { width: part.Width!, height: part.Height! });
+  }
+}
+
 /**
  * A screen laid out by containers, flattened for the editor.
  *
@@ -192,21 +205,26 @@ export function modelScreen(raw: Record<string, unknown>, panel: Panel): Modelle
  * everything between it and those leaves stays in `tree`, and the export
  * writes the edits back into it (lib/ote/containers.ts, `mergeTree`).
  */
-function modelTree(raw: Record<string, unknown>, view: Record<string, unknown>, panel: Panel): Modelled {
+function modelTree(
+  raw: Record<string, unknown>,
+  view: Record<string, unknown>,
+  panel: Panel,
+  size?: { width: number; height: number },
+): Modelled {
   const parts = new Map<string, Record<string, unknown>>();
   const opaque: OpaquePart[] = [];
   const rootBox = {
     left: 0,
     top: 0,
-    width: typeof view.Width === "number" ? view.Width : panel.width,
-    height: typeof view.Height === "number" ? view.Height : panel.height,
+    width: typeof view.Width === "number" ? view.Width : size?.width ?? panel.width,
+    height: typeof view.Height === "number" ? view.Height : size?.height ?? panel.height,
   };
   const laid = layoutTree(view, rootBox);
   const known: Part[] = [];
   const modelled = new Set<string>();
   const foreign: ForeignSummary[] = [];
   laid.leaves.forEach((leaf, i) => {
-    const parsed = Part.safeParse(flatten(leaf));
+    const parsed = Part.safeParse(normalizePart(flatten(leaf)));
     if (parsed.success && !modelled.has(parsed.data.UniqueId)) {
       known.push(parsed.data);
       parts.set(parsed.data.UniqueId, leaf.raw);
@@ -221,8 +239,11 @@ function modelTree(raw: Record<string, unknown>, view: Record<string, unknown>, 
     Type: "Canvas" as const,
     UniqueId: view.UniqueId,
     Name: view.Name,
-    ...(view.Width !== undefined ? { Width: view.Width } : {}),
-    ...(view.Height !== undefined ? { Height: view.Height } : {}),
+    // A content laid out at its display's size says so, so it is drawn at
+    // that size too. The merge writes back only root keys the editor changed,
+    // so this never reaches a file it did not come from.
+    ...(view.Width !== undefined ? { Width: view.Width } : size ? { Width: size.width } : {}),
+    ...(view.Height !== undefined ? { Height: view.Height } : size ? { Height: size.height } : {}),
   };
   const withFill = Screen.safeParse({ ...raw, Children: [{ ...root, Fill: view.Fill, Children: known }] });
   const parsed = withFill.success ? withFill : Screen.safeParse({ ...raw, Children: [{ ...root, Children: known }] });
@@ -254,7 +275,11 @@ export async function layoutOf(bytes: Uint8Array): Promise<ProjectLayout> {
   const zip = await JSZip.loadAsync(bytes);
   const names = Object.keys(zip.files).filter((n) => !zip.files[n].dir);
   const typed = names.some((n) => /Screens[\\/][0-9a-f-]{36}[\\/]Screen\.dat$/i.test(n));
-  return typed ? "typed" : "struct";
+  if (typed) return "typed";
+  // No typed screen is not proof of the older layout: the product's own
+  // Blank.eote has no screen at all. Only the older layout's own entries are.
+  const struct = names.some((n) => /^(Screens|Contents)[\\/]panel\d+\.dat$/i.test(n) || /^(hierarchy|contents)\.inf$/i.test(n));
+  return struct ? "struct" : "typed";
 }
 
 export async function readProject(bytes: Uint8Array, fileName = "project.eote"): Promise<ReadProject> {
@@ -305,6 +330,8 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
   const foreign: Record<string, ForeignSummary[]> = {};
   let opaqueParts = 0;
   const carriedRoots: Record<string, number> = {};
+  /** ContentID -> the box of the first display that shows it. */
+  const shown = new Map<number, { width: number; height: number }>();
   const read = (id: string, area: "Screens" | "Contents") => {
     const raw = json(`${area}/${id}/Screen.dat`) as Record<string, unknown> | undefined;
     if (!raw) {
@@ -312,7 +339,9 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
       return;
     }
     const metadata = (json(`${area}/${id}/Metadata.dat`) as Record<string, unknown> | undefined) ?? {};
-    const { screen, parts, opaque, tree, foreign: resolved } = modelScreen(raw, target);
+    const shownIn = area === "Contents" && typeof raw.ContentID === "number" ? shown.get(raw.ContentID) : undefined;
+    const { screen, parts, opaque, tree, foreign: resolved } = modelScreen(raw, target, shownIn);
+    if (screen) displaySizes(screen, shown);
     if (!screen) {
       const rootType = String(((raw.Children as Record<string, unknown>[] | undefined)?.[0]?.Type) ?? "unknown");
       carriedRoots[rootType] = (carriedRoots[rootType] ?? 0) + 1;

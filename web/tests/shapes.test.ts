@@ -57,3 +57,13 @@ describe("the shapes", () => {
     expect(withOrigin({})).toEqual({ Location: { Left: 0, Top: 0 } });
   });
 });
+
+describe("the defaults the product leaves out", () => {
+  it("are filled in so its own Demo 1 parts parse", async () => {
+    const { withDefaults } = await import("@/lib/ote/schema");
+    expect(withDefaults({ Type: "TextBox" })).toEqual({ Type: "TextBox", Text: "" });
+    expect(withDefaults({ Type: "Lamp" })).toEqual({ Type: "Lamp", Off: {}, On: {} });
+    expect(withDefaults({ Type: "NumericDisplay", CurrentValue: null })).toEqual({ Type: "NumericDisplay" });
+    expect(withDefaults({ Type: "N-StateLamp", States: [{ Text: null, Fill: {} }] })).toEqual({ Type: "N-StateLamp", States: [{ Fill: {} }] });
+  });
+});

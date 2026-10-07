@@ -32,7 +32,8 @@ import type { ToolType } from "./newPart";
 import { resolveColor } from "@/lib/ote/palette";
 import type { ForeignPart, ObjectMeta, ScreenPreview } from "@/store/types";
 import { snapDelta, snapTargets, unionOf, type Box } from "@/store/edits";
-import { PartNode, type AlarmRow } from "./parts";
+import { ContentScreens, contentsById, PartNode, type AlarmRow } from "./parts";
+import { useProject } from "@/store/project";
 
 /** Palette index 2 is the paper the product draws a screen on; 22 its frame. */
 /** When no panel is given: the most common ST6 size in the corpus. */
@@ -87,6 +88,12 @@ export interface ScreenRendererProps {
   preview?: ScreenPreview;
   /** Objects the reader carried rather than modelled; drawn as placeholders. */
   foreign?: ForeignPart[];
+  /**
+   * The screens a ContentDisplay can show. Defaults to the open project's, so
+   * only a renderer drawing something else (a template preview, the critic)
+   * needs to pass them.
+   */
+  contents?: Screen[];
 
   /** Screen units per CSS pixel, so handles stay one size at every zoom. */
   scale?: number;
@@ -199,6 +206,7 @@ export function ScreenRenderer({
   alarms = [],
   preview,
   foreign,
+  contents,
   scale = 1,
   showGrid = false,
   gridSize = 8,
@@ -216,6 +224,8 @@ export function ScreenRenderer({
   const view = screen.Children[0];
   const box = rootBox(view, panel ?? FALLBACK_PANEL);
   const svg = useRef<SVGSVGElement>(null);
+  const projectScreens = useProject((s) => s.screens);
+  const contentScreens = contentsById(contents ?? projectScreens);
   const [drag, setDrag] = useState<Drag | null>(null);
   /** The guide lines that actually caught, so the engineer sees what snapped. */
   const [shown, setShown] = useState<{ v?: number; h?: number }>({});
@@ -373,6 +383,7 @@ export function ScreenRenderer({
       : null;
 
   return (
+    <ContentScreens.Provider value={{ byId: contentScreens, depth: 0 }}>
     <svg
       ref={svg}
       viewBox={`0 0 ${box.width} ${box.height}`}
@@ -637,6 +648,7 @@ export function ScreenRenderer({
         pointerEvents="none"
       />
     </svg>
+    </ContentScreens.Provider>
   );
 }
 

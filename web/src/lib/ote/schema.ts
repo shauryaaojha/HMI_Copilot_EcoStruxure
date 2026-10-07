@@ -75,10 +75,15 @@ export const ColorRef = z.object({
  */
 export const Paint = z.union([
   ColorRef,
-  z.object({ Type: z.number().int() }).passthrough(),
-  // `{}`: every key at its default, which is how the product writes a
-  // TextColor nobody changed (76 TextBoxes in the struct corpus).
-  z.object({}).strict(),
+  // Type is optional because it too is left out at its default: Demo 1's
+  // gradients are `{Color1, Color2, Speed}` with no Type, and a TextColor
+  // nobody changed is `{}` (76 TextBoxes in the struct corpus).
+  // ...but never a solid colour that failed ColorRef: an index outside the
+  // colour set is a mistake, and passing it through would hide it.
+  z
+    .object({ Type: z.number().int().optional() })
+    .passthrough()
+    .refine((paint) => !("Color" in paint), { message: "a solid colour must be a valid ColorRef" }),
 ]);
 
 /**
@@ -128,6 +133,44 @@ export const Location = z.object({
  * modelled part has both; an untouched screen is still written back from the
  * original bytes, so nothing the product did not write is ever added to it.
  */
+/**
+ * Fill in what the product leaves out at its default, so a part it wrote
+ * parses as one we model. Applied at read, after `withOrigin`; an untouched
+ * screen is written back from its original bytes, so none of this reaches a
+ * file unless the engineer edited that screen, and then only as the value the
+ * product would have assumed anyway. Each case is from the product's own
+ * Demo 1.eote:
+ *
+ * - a TextBox with no Text (96 of them) is an empty one;
+ * - a Lamp or ToggleSwitch with no Off or On face has that face at defaults;
+ * - a state whose Text is null has no label;
+ * - a NumericDisplay whose CurrentValue is null (56) shows 0 at design time.
+ */
+export function withDefaults(part: unknown): unknown {
+  if (!part || typeof part !== "object") return part;
+  const p = { ...(part as Record<string, unknown>) };
+  const type = p.Type;
+  if (type === "TextBox" && typeof p.Text !== "string") p.Text = "";
+  if (type === "Lamp" || type === "ToggleSwitch") {
+    if (!p.Off || typeof p.Off !== "object") p.Off = {};
+    if (!p.On || typeof p.On !== "object") p.On = {};
+  }
+  if (p.CurrentValue === null) delete p.CurrentValue;
+  const unlabel = (state: unknown) => {
+    if (state && typeof state === "object" && (state as Record<string, unknown>).Text === null) {
+      const { Text: _drop, ...rest } = state as Record<string, unknown>;
+      return rest;
+    }
+    return state;
+  };
+  for (const key of ["Off", "On", "Release", "Press", "Invalid"]) if (key in p) p[key] = unlabel(p[key]);
+  if (Array.isArray(p.States)) p.States = p.States.map(unlabel);
+  return p;
+}
+
+/** Both fills, in order: what every reader path parses. */
+export const normalizePart = (part: unknown): unknown => withDefaults(withOrigin(part));
+
 export function withOrigin(part: unknown): unknown {
   if (!part || typeof part !== "object") return part;
   const p = part as Record<string, unknown>;
@@ -377,6 +420,20 @@ export const Doughnut = z.object({
   Thickness: z.number().optional(),
 });
 
+/**
+ * A window onto a content screen: `ScreenId` is the content's ContentID. The
+ * product's templates are made of these; the reader lays a content screen out
+ * at the size of the display that shows it.
+ */
+export const ContentDisplay = z.object({
+  Type: z.literal("ContentDisplay"),
+  ...base,
+  ScreenId: z.number().int().optional(),
+  ScreenDescription: z.string().optional(),
+  Parameter: z.number().int().optional(),
+  Fill: Paint.optional(),
+});
+
 /** Commands and points of a Path part, whichever encoding it carries. */
 export function pathGeometry(part: { Commands?: string; Points?: string; Path?: { Commands?: string; Data?: string } }):
   | { Commands: string; Points: string }
@@ -596,6 +653,7 @@ export const Part = z.discriminatedUnion("Type", [
   Pie,
   Arch,
   Doughnut,
+  ContentDisplay,
 ]);
 
 export const ViewBox = z.object({
@@ -742,6 +800,7 @@ export const PART_TYPES = [
   "Pie",
   "Arch",
   "Doughnut",
+  "ContentDisplay",
 ] as const satisfies readonly PartType[];
 export type ViewBox = z.infer<typeof ViewBox>;
 export type Screen = z.infer<typeof Screen>;
