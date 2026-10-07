@@ -18,3 +18,18 @@ export function commitsWithoutReview(outcome: EditOutcome, standards: { reviewAi
   if (standards.reviewAiEdits) return false;
   return outcome.rejected.length === 0 && !outcome.deleted;
 }
+
+/**
+ * One op as the engineer reads it in a proposal: what it does and to what.
+ * The model's own note leads when it wrote one.
+ */
+export function labelOp(op: { op: string; target?: string; targets?: string[]; name?: string; type?: string; text?: string; tag?: string; equipment?: string; screen?: string; note?: string }): string {
+  if (op.note) return op.note;
+  const verb = op.op.replace(/([A-Z])/g, " $1").toLowerCase();
+  const what = op.equipment ?? op.target ?? op.targets?.join(", ") ?? op.name ?? op.type ?? "";
+  const extra = op.tag ? ` to ${op.tag}` : op.text ? ` "${op.text}"` : "";
+  return `${verb.charAt(0).toUpperCase()}${verb.slice(1)} ${what}${extra}`.trim() + (op.screen ? ` on ${op.screen}` : "");
+}
+
+/** The ops the engineer kept ticked, in their original order. */
+export const selectedOps = <T>(ops: T[], keep: ReadonlySet<number>): T[] => ops.filter((_, i) => keep.has(i));
