@@ -188,6 +188,8 @@ export interface ChatMessage {
     applied: string[];
     rejected: string[];
     deleted: boolean;
+    /** One line per op the model proposed, so the engineer can accept some and not others. */
+    ops?: string[];
   };
   /** Tokens for the debug line: in, of which cached, out. */
   usage?: { input: number; cached: number; output: number };

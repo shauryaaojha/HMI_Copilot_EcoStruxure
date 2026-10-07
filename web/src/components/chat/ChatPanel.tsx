@@ -93,7 +93,16 @@ export function ChatPanel() {
         ? [...sample.followUps, ...OPENERS]
         : OPENERS;
 
-  const { send, accept, discard } = useChat();
+  const { send, accept, discard, previewSome } = useChat();
+  /** Per pending proposal, the ops left ticked; absent means all of them. */
+  const [kept, setKept] = useState<Record<string, number[]>>({});
+  const keptFor = (id: string, n: number) => kept[id] ?? Array.from({ length: n }, (_, i) => i);
+  const toggleOp = (id: string, n: number, i: number) => {
+    const now = keptFor(id, n);
+    const next = now.includes(i) ? now.filter((x) => x !== i) : [...now, i].sort((a, b) => a - b);
+    setKept((k) => ({ ...k, [id]: next }));
+    previewSome(id, next);
+  };
   const newProject = useNewProject();
   const thread = useRef<HTMLDivElement>(null);
   const pinned = useRef(true);
@@ -351,7 +360,23 @@ export function ChatPanel() {
                         : "Proposal — not everything could be done"
                       : `Proposal ${message.proposal.status}`}
                   </p>
-                  {message.proposal.applied.length > 0 && (
+                  {message.proposal.status === "pending" && (message.proposal.ops?.length ?? 0) > 1 && (
+                    <ul className="space-y-1" aria-label="Proposed changes">
+                      {message.proposal.ops!.map((label, i) => {
+                        const n = message.proposal!.ops!.length;
+                        const on = keptFor(message.id, n).includes(i);
+                        return (
+                          <li key={i}>
+                            <label className="flex cursor-pointer gap-2 text-[11px] leading-relaxed text-text-secondary">
+                              <input type="checkbox" checked={on} onChange={() => toggleOp(message.id, n, i)} className="mt-0.5 accent-[var(--color-brand-500)]" />
+                              <span className="min-w-0">{label}</span>
+                            </label>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                  {message.proposal.applied.length > 0 && !(message.proposal.status === "pending" && (message.proposal.ops?.length ?? 0) > 1) && (
                     <ul className="space-y-1">
                       {message.proposal.applied.map((line, i) => (
                         <li key={i} className="flex gap-2 text-[11px] leading-relaxed text-text-muted">
@@ -375,10 +400,16 @@ export function ChatPanel() {
                     <div className="flex gap-2 pt-1">
                       <button
                         type="button"
-                        onClick={() => accept(message.id)}
-                        className="focus-ring rounded-md bg-brand-500 px-2.5 py-1 text-[11px] font-medium text-text-onbrand transition hover:bg-brand-600"
+                        onClick={() => {
+                          const n = message.proposal!.ops?.length ?? 0;
+                          accept(message.id, n > 1 ? keptFor(message.id, n) : undefined);
+                        }}
+                        disabled={(message.proposal.ops?.length ?? 0) > 1 && keptFor(message.id, message.proposal.ops!.length).length === 0}
+                        className="focus-ring rounded-md bg-brand-500 px-2.5 py-1 text-[11px] font-medium text-text-onbrand transition hover:bg-brand-600 disabled:opacity-40"
                       >
-                        Apply what could be done
+                        {(message.proposal.ops?.length ?? 0) > 1
+                          ? `Apply ${keptFor(message.id, message.proposal.ops!.length).length} of ${message.proposal.ops!.length}`
+                          : "Apply what could be done"}
                       </button>
                       <button
                         type="button"
