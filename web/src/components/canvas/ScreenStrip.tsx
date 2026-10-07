@@ -19,10 +19,11 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Copy, Import, Plus, Trash2 } from "lucide-react";
+import { Copy, Import, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useProject } from "@/store/project";
 import { cn } from "@/components/ui";
 import { ImportScreensDialog } from "./ImportScreensDialog";
+import { RegenerateDialog } from "./RegenerateDialog";
 
 export function ScreenStrip() {
   const screens = useProject((s) => s.screens);
@@ -37,6 +38,7 @@ export function ScreenStrip() {
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [importing, setImporting] = useState<File | null>(null);
+  const [regenerating, setRegenerating] = useState<string | null>(null);
   const picker = useRef<HTMLInputElement>(null);
   const dragFrom = useRef<number | null>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -114,6 +116,15 @@ export function ScreenStrip() {
                 <span className="flex shrink-0 items-center gap-0.5">
                   <button
                     type="button"
+                    onClick={() => setRegenerating(screen.UniqueId)}
+                    title="Regenerate this screen from its recipe: review every change before it lands"
+                    aria-label={`Regenerate ${screen.Name}`}
+                    className="focus-ring rounded p-1 text-current opacity-50 transition hover:bg-surface-hover hover:opacity-100"
+                  >
+                    <RefreshCw size={11} aria-hidden />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => duplicateScreen(screen.UniqueId)}
                     title="Duplicate this screen"
                     aria-label={`Duplicate ${screen.Name}`}
@@ -179,6 +190,7 @@ export function ScreenStrip() {
       </button>
 
       {importing && <ImportScreensDialog file={importing} onClose={() => setImporting(null)} />}
+      {regenerating && <RegenerateDialog screenId={regenerating} onClose={() => setRegenerating(null)} />}
     </div>
   );
 }
