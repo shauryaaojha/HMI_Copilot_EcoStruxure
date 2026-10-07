@@ -32,6 +32,21 @@ import { hasMongo, mongoDb } from "@/lib/db/mongo";
 /** Filesystem fallback, relative to the app root. Gitignored; never uploaded. */
 export const IMPORT_DIR = ".imports";
 
+/**
+ * The directory the fallback writes to. The app root on a laptop; the only
+ * writable place on a serverless instance, where the app root is read-only and
+ * mkdir fails with ENOENT. That copy lives as long as the instance does, so a
+ * deployment should set MONGODB_URI - but opening a project no longer crashes.
+ */
+async function importDir(): Promise<string> {
+  const path = await import("node:path");
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    const os = await import("node:os");
+    return path.join(os.tmpdir(), IMPORT_DIR);
+  }
+  return path.join(process.cwd(), IMPORT_DIR);
+}
+
 /** How long an opened file is kept before it is deleted for us. */
 export const IMPORT_TTL_SECONDS = 24 * 60 * 60;
 
@@ -78,7 +93,7 @@ export async function putImport(bytes: Uint8Array, fileName: string): Promise<st
   if (!hasMongo()) {
     const fs = await import("node:fs/promises");
     const path = await import("node:path");
-    const dir = path.join(process.cwd(), IMPORT_DIR);
+    const dir = await importDir();
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(path.join(dir, `${id}.eote`), bytes);
     return id;
@@ -103,7 +118,7 @@ export async function getImport(id: string): Promise<Uint8Array | null> {
   if (!hasMongo()) {
     const fs = await import("node:fs/promises");
     const path = await import("node:path");
-    const file = await fs.readFile(path.join(process.cwd(), IMPORT_DIR, `${id}.eote`)).catch(() => null);
+    const file = await fs.readFile(path.join(await importDir(), `${id}.eote`)).catch(() => null);
     return file ? new Uint8Array(file) : null;
   }
 
