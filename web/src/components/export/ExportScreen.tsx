@@ -11,6 +11,7 @@
  * Phase 7 of docs/BUILD_PLAN.md - the moment the whole pitch rests on.
  */
 
+import { VijeoExportCard } from "./VijeoExportCard";
 import { useEffect, useState } from "react";
 import {
   CircleAlert,
@@ -186,6 +187,8 @@ export function ExportScreen() {
             </Button>
           </div>
         </Panel>
+
+        <VijeoExportCard />
       </div>
 
       <Panel title="Export preview" bordered className="min-h-0">
