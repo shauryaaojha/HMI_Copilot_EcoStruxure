@@ -73,7 +73,10 @@ export function ExportScreen() {
 
   return (
     <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[1fr_22rem]">
-      <div className="flex min-h-0 flex-col gap-4 overflow-y-auto">
+      {/* The cards keep their height and the column scrolls: a Panel is
+          min-h-0, so in a column shorter than its cards each one shrank and
+          its content ran over the next. */}
+      <div className="flex min-h-0 flex-col gap-4 overflow-y-auto [&>*]:shrink-0">
         <Panel title="What will be written" bordered>
           <dl className="grid grid-cols-2 gap-x-6 sm:grid-cols-3">
             {facts.map(([key, value]) => (
