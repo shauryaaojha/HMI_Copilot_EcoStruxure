@@ -7,6 +7,7 @@
  *   validate <file>                    preflight + rules + semantics, every problem at once
  *   convert  <old.vxdz> [-o out.eote]  a 3.1-3.3 project into a new 4.4 one
  *   library  [symbols|cliparts|cos]    what the installed product ships
+ *   co       inspect|check|set|rename|build   compound objects (.co), docs/CO_FORMAT.md
  *   bench    <file|dir>                open and simulate in the licensed OTE (Windows)
  *   generate --tags <file> "<goal>" [-o out.eote]   tags + a sentence → a project
  *   agent    --tags <file> "<goal>" [-o out.eote] [--bench] [--rounds n]
@@ -33,6 +34,8 @@ import { panelOf } from "../src/lib/ote/packager";
 import { buildFromTags } from "../src/lib/agent/build";
 import { runAgent, type BenchResult } from "../src/lib/agent/loop";
 import { mkdtempSync } from "node:fs";
+import { checkCo, coWiring, readCo, readCoPackage, renameCo, setCoValues, summarizeCo, writeCo } from "../src/lib/ote/co";
+import { buildCo, type CoSpec } from "../src/lib/ote/co-build";
 import { tmpdir } from "node:os";
 
 const INSTALL = "C:/Program Files/Schneider Electric/EcoStruxure Operator Terminal Expert 4.4/Buildtime";
@@ -256,11 +259,99 @@ async function agent(list: string[]) {
   }
 }
 
+/* hmi co: compound objects (lib/ote/co.ts). */
+async function co(sub: string | undefined, params: string[]) {
+  const o = params.indexOf("-o");
+  const output = o >= 0 ? params[o + 1] : undefined;
+  const positional = o >= 0 ? params.filter((_, i) => i !== o && i !== o + 1) : params;
+  const load = async (file: string) => {
+    if (!existsSync(file)) die(`${file}: no such file`);
+    return readCo(new Uint8Array(readFileSync(file)));
+  };
+  const save = async (doc: Awaited<ReturnType<typeof readCo>>, file: string | undefined) => {
+    if (!file) die("give the output file with -o out.co");
+    writeFileSync(file!, await writeCo(doc));
+    console.log(`wrote ${file}`);
+  };
+  switch (sub) {
+    case "inspect": {
+      const file = positional[0] ?? die("co inspect needs a .co or .pkg");
+      const docs = file.toLowerCase().endsWith(".pkg") ? (await readCoPackage(new Uint8Array(readFileSync(file)))).objects : [await load(file)];
+      const result = docs.map((d) => ({ ...summarizeCo(d), wiring: coWiring(d), problems: checkCo(d) }));
+      out(result, () => {
+        for (const r of result) {
+          console.log(`${r.name}  ${r.version} ${r.brand}  ${r.layout}${r.size ? `  ${r.size.width ?? "-"}x${r.size.height ?? "-"}` : ""}  id ${r.id}`);
+          console.log(`  parts   ${Object.entries(r.parts).map(([k, v]) => `${k} ${v}`).join(", ")}`);
+          console.log(`  props`);
+          for (const p of r.properties.filter((p) => !p.group)) {
+            const range = p.min !== undefined || p.max !== undefined ? ` [${p.min ?? ""}..${p.max ?? ""}]` : "";
+            console.log(`    ${p.path.padEnd(26)} ${p.type.padEnd(12)}${range.padEnd(10)} ${p.value !== undefined ? `= ${JSON.stringify(p.value)}` : ""}${p.label ? `  "${p.label}"` : ""}`);
+          }
+          const drives = r.wiring.filter((w) => !w.source.startsWith("$"));
+          console.log(`  wiring  ${r.wiring.length} bindings${drives.length < r.wiring.length ? ` (${r.wiring.length - drives.length} from local variables)` : ""}`);
+          for (const w of drives.slice(0, 24)) console.log(`    ${w.source.padEnd(26)} -> ${w.target}.${w.targetProperty}${w.converter ? `  via ${w.converter}` : ""}`);
+          if (drives.length > 24) console.log(`    ... ${drives.length - 24} more`);
+          console.log(r.problems.length ? ["  problems", ...r.problems.map((p) => `    ${p}`)].join("\n") : "  consistent");
+        }
+      });
+      break;
+    }
+    case "check": {
+      const target = positional[0] ?? die("co check needs a .co or a directory");
+      const files = statSync(target).isDirectory() ? readdirSync(target).filter((f) => f.toLowerCase().endsWith(".co")).map((f) => join(target, f)) : [target];
+      let bad = 0;
+      for (const f of files) {
+        const d = await load(f);
+        const back = await readCo(await writeCo(d));
+        const changed = [...d.entries].filter(([n, b]) => Buffer.compare(Buffer.from(b), Buffer.from(back.entries.get(n) ?? new Uint8Array())) !== 0).map(([n]) => n);
+        const problems = [...checkCo(d), ...changed.map((n) => `${n} did not survive a write unchanged`)];
+        if (problems.length) bad++;
+        console.log([`${problems.length ? "FAIL" : "ok  "} ${basename(f)}`, ...problems.map((p) => `     ${p}`)].join("\n"));
+      }
+      console.log(`${files.length - bad}/${files.length} consistent`);
+      if (bad) process.exitCode = 2;
+      break;
+    }
+    case "set": {
+      const d = await load(positional[0] ?? die("co set needs a .co"));
+      const values: Record<string, unknown> = {};
+      for (const pair of positional.slice(1)) {
+        const eq = pair.indexOf("=");
+        if (eq < 1) die(`${pair}: expected Property=value`);
+        const raw = pair.slice(eq + 1);
+        let value: unknown = raw;
+        try { value = JSON.parse(raw); } catch { /* plain text */ }
+        values[pair.slice(0, eq)] = value;
+      }
+      try { setCoValues(d, values); } catch (e) { die((e as Error).message); }
+      await save(d, output);
+      break;
+    }
+    case "rename": {
+      const d = await load(positional[0] ?? die("co rename needs a .co"));
+      try { renameCo(d, positional[1] ?? die("co rename needs the new name")); } catch (e) { die((e as Error).message); }
+      await save(d, output);
+      break;
+    }
+    case "build": {
+      const specFile = positional[0] ?? die("co build needs a spec .json");
+      const spec = JSON.parse(readFileSync(specFile, "utf8")) as CoSpec;
+      if (!output) die("give the output file with -o out.co");
+      try { writeFileSync(output!, await buildCo(spec)); } catch (e) { die((e as Error).message); }
+      console.log(`wrote ${output}`);
+      break;
+    }
+    default:
+      die("co inspect <file.co|.pkg> | check <file|dir> | set <in.co> Prop=value... -o out.co | rename <in.co> <Name> -o out.co | build <spec.json> -o out.co");
+  }
+}
+
 const usage = `hmi <command>
   inspect  <file>                    what a project holds
   validate <file>                    every problem at once (exit 2 on errors)
   convert  <old.vxdz> [-o out.eote]  3.1-3.3 project into a new 4.4 one
   library  [symbols|cliparts|cos]    what the installed product ships
+  co       inspect|check|set|rename|build   compound objects (.co)
   bench    <file|dir>                open and simulate in the licensed OTE
   generate --tags <file> "<goal>" [-o out.eote]
   agent    --tags <file> "<goal>" [-o out.eote] [--bench] [--rounds n]
@@ -280,6 +371,9 @@ switch (command) {
   }
   case "library":
     await library(rest[0]);
+    break;
+  case "co":
+    await co(rest[0], rest.slice(1));
     break;
   case "bench":
     bench(rest[0] ?? die("bench needs a file or directory"));

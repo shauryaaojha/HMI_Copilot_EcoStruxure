@@ -1,0 +1,66 @@
+{
+  "name": "HMICopilot_LevelTile",
+  "description": "Built from nothing by HMI Copilot: a labelled level bar with its reading",
+  "layout": "grid",
+  "width": 120,
+  "height": 220,
+  "parts": [
+    {
+      "Type": "Rectangle",
+      "Name": "Panel_Background",
+      "Fill": { "Color": { "ColorIndexEnabled": false, "Value": 15725558 } },
+      "Border": { "Color": { "ColorIndexEnabled": false, "Value": 5924467 } },
+      "Location": { "RowSpan": 10, "ColumnSpan": 8 }
+    },
+    {
+      "Type": "TextBox",
+      "Name": "TextBox_Label",
+      "Text": "Level",
+      "TextColor": { "Color": { "ColorIndexEnabled": false, "Value": 2105376 } },
+      "Font": { "Size": 12, "Type": 0 },
+      "TextLayout": { "Wrap": true },
+      "Location": { "RowSpan": 2, "ColumnSpan": 8 }
+    },
+    {
+      "Type": "Rectangle",
+      "Name": "Bar_Fill",
+      "Fill": { "Color": { "ColorIndexEnabled": false, "Value": 1802196 } },
+      "Border": { "Color": { "ColorIndexEnabled": false, "Value": 5924467 } },
+      "Animation": { "FillLevel": { "Enable": true, "VerticalFill": 50, "BackColor": { "ColorIndexEnabled": false, "Value": 14277081 } } },
+      "Location": { "Row": 2, "RowSpan": 6, "Column": 2, "ColumnSpan": 4 }
+    },
+    {
+      "Type": "NumericDisplay",
+      "Name": "NumericDisplay_Value",
+      "CurrentValue": 0,
+      "TextColor": { "Color": { "ColorIndexEnabled": false, "Value": 2105376 } },
+      "Font": { "Size": 14 },
+      "TextLayout": { "Wrap": true },
+      "Fill": { "Type": 0 },
+      "Border": { "Type": 0 },
+      "Location": { "Row": 8, "RowSpan": 2, "ColumnSpan": 8 }
+    }
+  ],
+  "properties": [
+    { "name": "CurrentValue", "type": "Double", "label": "Current Value", "value": 50 },
+    { "name": "Min", "type": "Double", "label": "Min", "constant": true, "value": 0 },
+    { "name": "Max", "type": "Double", "label": "Max", "constant": true, "value": 100 },
+    { "name": "Label", "type": "String", "label": "Label", "value": "Level", "category": ["Shape", "Text"] },
+    {
+      "name": "Colors",
+      "type": "Struct",
+      "children": [
+        { "name": "ForegroundFill", "type": "Brush", "label": "Bar", "value": { "Color": { "ColorIndexEnabled": false, "Value": 1802196 } } },
+        { "name": "BackgroundFill", "type": "Color", "label": "Bar Background", "value": { "ColorIndexEnabled": false, "Value": 14277081 } }
+      ]
+    }
+  ],
+  "wires": [
+    { "property": "CurrentValue", "part": "Bar_Fill", "partProperty": "Animation.FillLevel.VerticalFill", "scale": "Scale_to_0_100" },
+    { "property": "CurrentValue", "part": "NumericDisplay_Value", "partProperty": "CurrentValue" },
+    { "property": "Label", "part": "TextBox_Label", "partProperty": "Text" },
+    { "property": "Colors.ForegroundFill", "part": "Bar_Fill", "partProperty": "Fill" },
+    { "property": "Colors.BackgroundFill", "part": "Bar_Fill", "partProperty": "Animation.FillLevel.BackColor" }
+  ],
+  "scales": [{ "name": "Scale_to_0_100", "to": [0, 100], "fromMin": "Min", "fromMax": "Max" }]
+}

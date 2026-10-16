@@ -21,6 +21,7 @@ Then drag each imported object onto a screen to see it render.
 | `HMICopilot_TankLevel.co` | Vertical bar, **blue** (`#1B7FD4`) on grey, filled to 75% | Identity rewrite and recolouring survive import |
 | `HMICopilot_PumpSpeed.co` | Arc gauge, **amber** (`#E3A008`), two layered arches | The packager generalises across template types, and multi-child binding wiring holds |
 | `HMICopilot_FlowTile.co` | Horizontal green bar **on a light backing panel with a grey border** | We authored a new object into the tree — the panel does not exist in any shipped object |
+| `HMICopilot_LevelTile.co` | A tile: label "Level" on top, a blue vertical bar half full, the reading below | **Built from nothing** by `lib/ote/co-build.ts` from `specs/HMICopilot_LevelTile.json` — no shipped object was copied. Its properties (Current Value, Min, Max, Label, Bar, Bar Background) should appear in the Properties pane |
 
 The third file is the important one. The first two prove we can rewrite an object;
 `HMICopilot_FlowTile` proves we can **add geometry that Schneider never shipped**
@@ -39,10 +40,15 @@ and each one failing tells us something different:
 - **Import succeeds but the object renders wrong** → the file is valid and only the
   geometry or colour mapping needs adjusting. This is the best kind of failure.
 
+**Result, 16 October 2026:** `HMICopilot_FlowTile` and `HMICopilot_PumpSpeed` imported into
+the licensed OTE 4.4.20.31. OTE changed only the identity (a new Id and a `1` suffix where
+the name was taken) and the version stamp; docs/CO_FORMAT.md has the comparison.
+
 ## Regenerating
 
 ```
 python tools/make_demo_co.py demo_objects
+cd web && npm run hmi -- co build ../demo_objects/specs/HMICopilot_LevelTile.json -o ../demo_objects/HMICopilot_LevelTile.co
 ```
 
 The script re-reads the shipped library at

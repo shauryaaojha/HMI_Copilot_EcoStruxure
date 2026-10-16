@@ -152,6 +152,9 @@ async function sql(): Promise<SqlJsStatic> {
   return sqlPromise;
 }
 
+/** The engine, for other writers of the product's databases (lib/ote/co-build.ts). */
+export const sqlEngine = sql;
+
 /** A database opened from bytes, for the reader. Caller closes it. */
 /**
  * Always on a copy. sql.js hands the array it is given to its in-memory file
