@@ -141,11 +141,15 @@ export async function* runPipeline(
    */
   const placed = new Set(existing.flatMap((s) => s.include));
   const toPlan = extending ? equipment.filter((u) => !placed.has(u.id)) : equipment;
+  // With a model, an extension is planned against every unit: "one screen
+  // for the two boilers" on a finished application is a new view of units
+  // already placed, and the plan's scope says which kind of request it is.
+  const planAll = extending && configured && !input.programs?.length;
   if (extending) {
     yield log(
       `Extending an application of ${existing.length} screen${existing.length === 1 ? "" : "s"}: ${toPlan.length} of ${equipment.length} units still to place`,
     );
-    if (toPlan.length === 0) {
+    if (toPlan.length === 0 && !planAll) {
       yield step("select", "failed", "every unit is already on a screen");
       yield {
         type: "error",
@@ -167,7 +171,7 @@ export async function* runPipeline(
     // what anything is thinking.
     yield log(`Asking ${waitingOn === "gemini" ? "Gemini" : "Claude"} to read the request`);
     try {
-      const planned = await planScreen(intent, toPlan, limits);
+      const planned = await planScreen(intent, planAll ? equipment : toPlan, limits);
       if (planned) {
         plan = planned.plan;
         provider = planned.provider;
@@ -185,6 +189,23 @@ export async function* runPipeline(
     yield {
       type: "error",
       message: `Nothing was built: the request does not match this tag list. ${plan.rationale}`.trim(),
+    };
+    return;
+  }
+  if (plan && planAll && plan.scope !== "named") {
+    // A whole-application request on a drawn project adds only what is not
+    // on a screen yet; an overview stays a summary of everything.
+    const screens = plan.screens
+      .map((spec) => (spec.level === 1 ? spec : { ...spec, include: spec.include.filter((id) => !placed.has(id)) }))
+      .filter((spec) => spec.level === 1 || spec.include.length > 0);
+    plan = { ...plan, screens };
+  }
+  if (extending && (plan ? plan.screens.length === 0 : toPlan.length === 0)) {
+    yield step("select", "failed", "every unit is already on a screen");
+    yield {
+      type: "error",
+      message:
+        "Every unit in the tag list is already on a screen. Ask for a screen of particular equipment, a change to a screen, or import more tags.",
     };
     return;
   }
@@ -318,7 +339,25 @@ export async function* runPipeline(
       takenNames.add(kpiOverview.name.toLowerCase());
     }
   }
-  const processPrograms = architected.filter((p) => p.process && !takenNames.has(p.name.toLowerCase()));
+  const processPrograms = architected
+    .filter((p) => p.process && !takenNames.has(p.name.toLowerCase()))
+    .map((p) => {
+      // Named after the planned screen that holds the same equipment - the
+      // engineer's words - rather than after its first-stage class: a coffee
+      // machine's water and boilers are not a "Boiler house", nor its milk
+      // system "Pumping".
+      const nodes = p.process!.nodes;
+      const best = plan!.screens
+        .filter((spec) => spec.level === 2)
+        .map((spec) => ({ spec, shared: nodes.filter((id) => spec.include.includes(id)).length }))
+        .sort((a, b) => b.shared - a.shared)[0];
+      if (!best || best.shared * 2 < nodes.length) return p;
+      const stem = best.spec.screenName.replace(/_\d+$/, "");
+      let name = `${stem}Process`;
+      for (let n = 2; takenNames.has(name.toLowerCase()); n++) name = `${stem}Process${n}`;
+      return { ...p, name, title: `${best.spec.title.replace(/ \(\d+\)$/, "")} - process` };
+    });
+  for (const p of processPrograms) takenNames.add(p.name.toLowerCase());
   programs.push(...processPrograms);
 
   const navigation = [

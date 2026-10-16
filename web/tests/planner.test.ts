@@ -141,9 +141,26 @@ describe("placeEveryUnit", () => {
 
     const completed = placeEveryUnit(partial, equipment, new Set(["full"]));
     expect(placedOn(completed).size).toBe(equipment.length);
+    // The two boilers left over are in Full's area (2xx), so they continue
+    // Full rather than start a screen of their own; the chillers (3xx) have
+    // no screen in their area and get one named for their kind.
     const made = completed.slice(1);
     expect(made.length).toBeGreaterThan(0);
-    for (const s of made) expect(s.screenName).toMatch(/^[A-Z][A-Za-z]*Area\d+$/);
+    for (const s of made) expect(s.screenName).toMatch(/^Full_\d+$|^[A-Z][A-Za-z]*Area\d+$/);
+    const chillers = equipment.filter((e) => e.kind === "chiller").map((e) => e.id);
+    expect(completed.find((s) => s.include.includes(chillers[0]))!.screenName).toMatch(/^ChillerArea\d+$/);
+  });
+
+  it("puts a leftover with the screen of its loop area, not a screen of its own kind", () => {
+    // The coffee machine: VLV_122 and FIL_123 belong with BLR_101 on "Water
+    // and Boilers", not on ValveArea1 and FilterArea1 holding one unit each.
+    const equipment = inferEquipment([
+      tag("BLR_101_RUN"), tag("BLR_101_FLT"), tag("VLV_122_OPEN"), tag("VLV_122_CMD"), tag("FIL_123_ALM"),
+      tag("GRD_201_RUN"), tag("GRD_201_FLT"),
+    ]);
+    const completed = placeEveryUnit([screen("WaterAndBoilers", ["BLR_101"]), screen("Grinders", ["GRD_201"])], equipment, new Set());
+    expect(completed).toHaveLength(2);
+    expect(completed[0].include).toEqual(["BLR_101", "VLV_122", "FIL_123"]);
   });
 
   it("keeps every screen name unique, because the name is the hierarchy entry", () => {

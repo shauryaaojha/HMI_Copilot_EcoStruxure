@@ -42,6 +42,21 @@ export const WHITE = 21;
 export const DARK_GREY = 22;
 export const BLACK = 31;
 export const DARK_GREEN = 43;
+/**
+ * The rest of the set by name, for an engineer who asks for a colour the
+ * plant-floor pack does not use: brown, navy, orange. Each is the set's own
+ * entry, so a recoloured screen still follows the project's colour set.
+ */
+export const TAN = 9;
+export const PURPLE = 10;
+export const YELLOW = 14;
+export const LIGHT_BLUE = 16;
+export const CHARCOAL = 32;
+export const BROWN = 39;
+export const ORANGE = 44;
+export const DARK_BLUE = 46;
+export const NAVY = 56;
+export const DARK_BROWN = 59;
 
 /** Palette index -> "#rrggbb". Indices are 1-based, as the product writes them. */
 export function resolveColor(

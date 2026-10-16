@@ -53,6 +53,18 @@ export const COLOR_NAMES = [
   "darkgrey",
   "black",
   "darkgreen",
+  "blue",
+  "darkblue",
+  "navy",
+  "lightblue",
+  "teal",
+  "brown",
+  "darkbrown",
+  "tan",
+  "yellow",
+  "orange",
+  "purple",
+  "charcoal",
 ] as const;
 
 export const ALIGN_MODES = [
@@ -109,6 +121,15 @@ export const Op = z.object({
   bold: z.boolean().optional(),
   decimals: z.number().optional(),
   colorRole: z.enum(["fill", "border", "text"]).optional(),
+  /**
+   * The scope of the change (lib/ai/expand.ts): ["all"] or screen handles and
+   * names. The object named by target is found again on each of them.
+   */
+  screens: z.array(z.string()).optional(),
+  /** In place of target: a role every screen has, or a part type. */
+  select: z.string().optional(),
+  /** Narrows select to objects whose name, text or bound tag contains this. */
+  selectText: z.string().optional(),
   color: z.enum(COLOR_NAMES).optional(),
   mode: z.enum(ALIGN_MODES).optional(),
   message: z.string().optional(),
@@ -177,7 +198,7 @@ export function coerceTurn(value: unknown): Turn | null {
   ];
   const ops = (parsed.data.ops ?? [])
     .filter((op) => {
-      if (needsTarget.includes(op.op) && !op.target) return false;
+      if (needsTarget.includes(op.op) && !op.target && !(op.select && op.op !== "bindTag")) return false;
       if (needsEquipment.includes(op.op) && !op.equipment && !op.target) return false;
       return true;
     })

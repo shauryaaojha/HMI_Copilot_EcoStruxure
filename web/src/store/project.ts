@@ -440,6 +440,12 @@ function touch(s: Draft, ids: Iterable<string>) {
 const editable = (s: Draft, ids: string[]) =>
   ids.filter((id) => !s.objectMeta[id]?.locked);
 
+/** The same alarm condition: a bit alarm on a tag, or a level alarm at one level of a tag. */
+export function sameCondition(a: Alarm, b: Alarm): boolean {
+  if (a.Trigger !== b.Trigger || a.AlarmRecordType !== b.AlarmRecordType) return false;
+  return a.AlarmRecordType === 1 || a.AlarmType === b.AlarmType;
+}
+
 /**
  * A factory rather than a singleton, so a conversational turn can run its ops
  * on a scratch instance and commit the result whole. The application uses the
@@ -1309,7 +1315,12 @@ export function createProjectStore() {
 
     addAlarm: (alarm) =>
       set((s) => {
-        s.alarms.push(alarm);
+        // One alarm per condition: a second "high on TT_401_PV" replaces the
+        // first rather than raising twice. A rebuild of screens that were
+        // already there used to double every alarm (25 became 50).
+        const same = s.alarms.findIndex((a) => sameCondition(a, alarm));
+        if (same >= 0) s.alarms[same] = alarm;
+        else s.alarms.push(alarm);
       }),
 
     addFinding: (finding) =>

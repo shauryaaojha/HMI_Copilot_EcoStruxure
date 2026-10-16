@@ -334,7 +334,31 @@ Ops:
 Screen design, when laying out:
 - ISA-101: a plant overview above unit overviews above detail screens.
   Navigation and the alarm banner in the same place on every screen.
-- Colour is a signal, not decoration.
+- Colour is a signal, not decoration. That is advice for your own choices:
+  when the engineer asks for a colour that is in the palette, apply it. If it
+  departs from ISA-101 (brown backgrounds, a red that is not an alarm), say so
+  in one clause of the reply and still make the change. Never refuse it.
+
+Scope - one op can reach many screens and many objects:
+- You see the active screen's objects and the list of screens. Never invent a
+  handle for an object on another screen; say where and what instead.
+- screens: ["all"] for every screen, or the screens by handle or name
+  (["s3", "s5"], ["Boilers"]). Absent means the active screen.
+- select, in place of target: a role every screen has - background, header,
+  title, navigation, footer, alarms - or a part type: Lamp, NumericDisplay,
+  TextBox, Rectangle, AlarmSummary, TrendGraph, Button. selectText narrows it
+  to objects whose name, text or bound tag contains that text.
+- target with screens: that object is found again on each screen, by name and
+  by position.
+- Examples:
+  "dark grey background on all screens" -> setColor select background, screens ["all"], color darkgrey
+  "bigger lamps on the boilers screen"  -> resizeObject select Lamp, screens ["Boilers"], width, height
+  "remove the footer from s3 and s5"    -> deleteObject select footer, screens ["s3","s5"]
+  "PMP_101 lamps amber everywhere"      -> setColor select Lamp, selectText PMP_101, screens ["all"], color amber
+  "title font 20 on every screen"       -> setText select title, screens ["all"], fontSize 20
+  "add a 'Line 1' label to every screen" -> addObject type TextBox, text "Line 1", place region header, screens ["all"]
+- One op per kind of change. Twelve screens is one op with screens ["all"],
+  never twelve ops.
 
 reply is one or two sentences, in the register an engineer uses with another
 engineer. Never describe your own reasoning process.`;
@@ -372,6 +396,9 @@ const D = {
   bold: "Whether the text is bold; on setText, to restyle without relabelling",
   decimals: "Decimal digits on a numeric display",
   colorRole: "Which colour to set: fill, border or text",
+  screens: 'Where the op applies: ["all"], or screen handles or names. Absent means the active screen',
+  select: "In place of target: background, header, title, navigation, footer, alarms, or a part type such as Lamp or NumericDisplay",
+  selectText: "Narrows select to objects whose name, text or bound tag contains this",
   color: `Palette colour, one of: ${COLOR_NAMES.join(", ")}`,
   mode2: `Alignment, one of: ${ALIGN_MODES.join(", ")}`,
   message: "Alarm message",
@@ -430,6 +457,9 @@ function geminiSchema() {
             bold: B(D.bold),
             decimals: N(D.decimals),
             colorRole: { type: "STRING", enum: ["fill", "border", "text"], description: D.colorRole },
+            screens: { type: "ARRAY", items: { type: "STRING" }, description: D.screens },
+            select: S(D.select),
+            selectText: S(D.selectText),
             color: { type: "STRING", enum: [...COLOR_NAMES], description: D.color },
             mode: { type: "STRING", enum: [...ALIGN_MODES], description: D.mode2 },
             message: S(D.message),
@@ -440,7 +470,7 @@ function geminiSchema() {
             note: S(D.note),
           },
           required: ["op", "note"],
-          propertyOrdering: ["op", "screen", "target", "name", "type", "place", "note"],
+          propertyOrdering: ["op", "screens", "screen", "select", "selectText", "target", "name", "type", "place", "note"],
         },
       },
     },
@@ -494,6 +524,9 @@ const JSON_SCHEMA = {
           bold: { type: "boolean" },
           decimals: { type: "number" },
           colorRole: { type: "string", enum: ["fill", "border", "text"] },
+          screens: { type: "array", items: { type: "string" } },
+          select: { type: "string" },
+          selectText: { type: "string" },
           color: { type: "string", enum: [...COLOR_NAMES] },
           mode: { type: "string", enum: [...ALIGN_MODES] },
           message: { type: "string" },

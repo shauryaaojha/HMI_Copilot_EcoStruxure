@@ -638,6 +638,11 @@ export function placeEveryUnit(
   const detail = out.filter((s) => s.level === 2);
   const kindOf = new Map(equipment.map((e) => [e.id, e.kind]));
 
+  // The hundreds of a loop number name the area a unit is in: VLV_122 and
+  // FIL_123 belong with BLR_101 on "Water and Boilers", not on a screen of
+  // their own called ValveArea1 holding one valve.
+  const areaById = new Map(equipment.map((e) => [e.id, areaOf(e)]));
+
   const homeless: InferredEquipment[] = [];
   for (const unit of missing) {
     const sameKind = detail.find(
@@ -645,7 +650,12 @@ export function placeEveryUnit(
         s.include.length < perScreen &&
         s.include.some((id) => kindOf.get(id) === unit.kind),
     );
-    if (sameKind) sameKind.include.push(unit.id);
+    const area = areaById.get(unit.id);
+    // A full area screen still takes the unit: the overflow becomes its
+    // continuation (Name_2), which is still about that area.
+    const sameArea = area ? detail.find((s) => s.include.some((id) => areaById.get(id) === area)) : undefined;
+    const home = sameKind ?? sameArea;
+    if (home) home.include.push(unit.id);
     else homeless.push(unit);
   }
 
@@ -673,5 +683,13 @@ export function placeEveryUnit(
     }
   }
 
-  return out;
+  return fitToLimits(out, { 1: Number.POSITIVE_INFINITY, 2: perScreen, 3: Number.POSITIVE_INFINITY }, takenNames);
+}
+
+/** "1xx" for loop 101..199, "2x" for 20..29; undefined for a unit with no loop. */
+function areaOf(unit: InferredEquipment): string | undefined {
+  const loop = unit.loop?.match(/^(\d+)/)?.[1];
+  if (!loop) return undefined;
+  const n = Number(loop);
+  return n >= 100 ? `${Math.floor(n / 100)}xx` : `${Math.floor(n / 10)}x`;
 }

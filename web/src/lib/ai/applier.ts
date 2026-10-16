@@ -40,14 +40,26 @@ import {
 import {
   AMBER,
   BLACK,
+  BLUE,
+  BROWN,
+  CHARCOAL,
+  DARK_BLUE,
+  DARK_BROWN,
   DARK_GREEN,
   DARK_GREY,
   GREEN,
   GREY,
   INK,
+  LIGHT_BLUE,
+  NAVY,
+  ORANGE,
   PAPER,
+  PURPLE,
   RED,
+  TAN,
+  TEAL,
   WHITE,
+  YELLOW,
 } from "@/lib/ote/palette";
 import { sizeOf } from "@/lib/ote/schema";
 import type { Alarm, Part, Screen } from "@/lib/ote/schema";
@@ -56,7 +68,8 @@ import { boxOf, panelOf, resolveSlot, type Box, type Slot } from "@/lib/ote/regi
 import { CARD_SIZE, equipmentCard, type LayoutUnit } from "@/lib/ote/layout";
 import { inferEquipment } from "@/lib/ai/infer";
 import type { Op } from "@/lib/ai/ops";
-import { createProjectStore, useProject, type BatchPatch, type ProjectStore } from "@/store/project";
+import { expandOps } from "@/lib/ai/expand";
+import { createProjectStore, sameCondition, useProject, type BatchPatch, type ProjectStore } from "@/store/project";
 import type { ScreenPreview } from "@/store/types";
 
 const COLOR: Record<string, number> = {
@@ -70,6 +83,18 @@ const COLOR: Record<string, number> = {
   darkgrey: DARK_GREY,
   black: BLACK,
   darkgreen: DARK_GREEN,
+  blue: BLUE,
+  darkblue: DARK_BLUE,
+  navy: NAVY,
+  lightblue: LIGHT_BLUE,
+  teal: TEAL,
+  brown: BROWN,
+  darkbrown: DARK_BROWN,
+  tan: TAN,
+  yellow: YELLOW,
+  orange: ORANGE,
+  purple: PURPLE,
+  charcoal: CHARCOAL,
 };
 
 export interface Rejection {
@@ -293,11 +318,32 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
     changes: [],
     problems: [],
   };
+  /**
+   * A fanned-out op (lib/ai/expand.ts) repeats the model's note on every
+   * object it reached. The turn reads one line for it with the count, not
+   * thirteen copies of "set the title to 20 pt".
+   */
+  let currentNote: string | undefined;
+  const firstLine = new Map<string, { at: number; line: string; count: number }>();
   const ok = (line: string) => {
+    const seen = currentNote ? firstLine.get(currentNote) : undefined;
+    if (seen) {
+      seen.count++;
+      return;
+    }
+    if (currentNote) firstLine.set(currentNote, { at: out.applied.length, line, count: 1 });
     out.applied.push(line);
     out.changes.push(line);
   };
+  /** The same for refusals: one line, and how many screens it was refused on. */
+  const firstRefusal = new Map<string, { at: number; count: number }>();
   const reject = (op: Op, reason: string) => {
+    const seen = currentNote ? firstRefusal.get(currentNote) : undefined;
+    if (seen) {
+      seen.count++;
+      return;
+    }
+    if (currentNote) firstRefusal.set(currentNote, { at: out.rejected.length, count: 1 });
     out.rejected.push({ op, reason });
     out.problems.push(reason);
   };
@@ -383,9 +429,14 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
     );
   };
 
-  for (const op of ops) {
+  // Scope first: an op for "all screens" or "every lamp" becomes one plain op
+  // per object, each naming its object by handle (lib/ai/expand.ts).
+  const expansion = expandOps(ops, store.getState());
+  for (const r of expansion.rejected) reject(r.op, r.reason);
+  for (const op of expansion.ops) {
     const s = store.getState();
     const note = op.note?.trim();
+    currentNote = note ? `${op.op} | ${note}` : undefined;
 
     switch (op.op) {
       case "addScreen": {
@@ -823,21 +874,38 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
         }
         const level = [1, 2, 3, 4].includes(op.alarmType ?? 0) ? op.alarmType! : 2;
         const kind = op.alarmKind === 1 || tag.DataType === "BOOL" ? 1 : 2;
+        const draft = { Trigger: tag.Name, AlarmType: level as 1 | 2 | 3 | 4, AlarmRecordType: kind as 1 | 2 } as Alarm;
+        const existing = s.alarms.find((a) => sameCondition(a, draft));
+        // Words an operator reads, from the tag's own comment: "Milk fridge
+        // temperature high", never "TT_401_PV alarm".
+        const said = tag.Comments?.trim() || tag.Name;
+        const word = kind === 1 ? "" : ` ${({ 1: "high high", 2: "high", 3: "low", 4: "low low" } as const)[level as 1 | 2 | 3 | 4]}`;
         const alarm: Alarm = {
-          Message: op.message ?? `${tag.Name} alarm`,
-          Trigger: tag.Name,
-          AlarmType: level as 1 | 2 | 3 | 4,
-          AlarmRecordType: kind as 1 | 2,
-          Severity: Math.min(9, Math.max(1, Math.round(op.severity ?? 5))),
-          Value: kind === 2 ? (op.value ?? "0") : "",
+          ...draft,
+          Message: op.message?.trim() || existing?.Message || `${said}${word}`,
+          Severity: Math.min(9, Math.max(1, Math.round(op.severity ?? existing?.Severity ?? 5))),
+          Value: kind === 2 ? (op.value ?? existing?.Value ?? "0") : "",
         };
         s.addAlarm(alarm);
-        ok(note || `Added alarm "${alarm.Message}" on ${tag.Name}`);
+        ok(note || `${existing ? "Updated" : "Added"} alarm "${alarm.Message}" on ${tag.Name}`);
         break;
       }
     }
   }
 
+  for (const { at, count } of firstRefusal.values()) {
+    if (count < 2) continue;
+    const first = out.rejected[at];
+    const i = out.problems.indexOf(first.reason);
+    first.reason = `${first.reason} - and the same on ${count - 1} more`;
+    if (i >= 0) out.problems[i] = first.reason;
+  }
+  for (const { at, line, count } of firstLine.values()) {
+    if (count < 2) continue;
+    const i = out.changes.indexOf(line);
+    out.applied[at] = `${line} — ${count} objects`;
+    if (i >= 0) out.changes[i] = out.applied[at];
+  }
   return out;
 }
 
