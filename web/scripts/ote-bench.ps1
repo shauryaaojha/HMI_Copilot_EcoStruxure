@@ -186,7 +186,14 @@ try {
     $result.simulated = $true
     $sim.Refresh()
     $hs = [Bench]::WindowsOf([uint32]$sim.Id)
-    if ($hs.Count -gt 0) { $result.shots += Shot $hs[0] "$Out\$name-3-simulator.png" }
+    if ($hs.Count -gt 0) {
+      $result.shots += Shot $hs[0] "$Out\$name-3-simulator.png"
+      # And once more after the runtime has settled: a screen's bindings can
+      # take a while to start on a busy screen, and the first picture is then
+      # the parts' design state, not the tags'.
+      Start-Sleep -Seconds 20
+      $result.shots += Shot $hs[0] "$Out\$name-3-simulator-settled.png"
+    }
   }
 
   # --- the Errors pane, as the editor shows it ------------------------------

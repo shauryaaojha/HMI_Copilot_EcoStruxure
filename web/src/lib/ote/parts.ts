@@ -446,18 +446,37 @@ export function pathPart(
   box: Box,
   opts: { fill?: number; border?: number } = {},
 ): Part {
+  // The product's own encoding (Demo 1.eote, every Path): `Path: {Commands,
+  // Data}`, the points normalised to span 0..3072 on both axes and stretched
+  // over Width x Height. The shipped .path files keep `Commands` and `Points`
+  // at the top level in their own extent; written that way the licensed
+  // editor ignores the geometry and draws its default callout shape
+  // (scripts/ote-bench.ps1, 16 Oct 2026). So the points are rescaled, and the
+  // box is narrowed to the symbol's own aspect, centred where it was asked
+  // for, so the stretch never distorts it.
+  const nums = symbol.Points.split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n));
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (let i = 0; i + 1 < nums.length; i += 2) {
+    minX = Math.min(minX, nums[i]); maxX = Math.max(maxX, nums[i]);
+    minY = Math.min(minY, nums[i + 1]); maxY = Math.max(maxY, nums[i + 1]);
+  }
+  const spanX = Math.max(1, maxX - minX);
+  const spanY = Math.max(1, maxY - minY);
+  const data = nums.map((n, i) => Math.round(((n - (i % 2 === 0 ? minX : minY)) * 3072) / (i % 2 === 0 ? spanX : spanY))).join(",");
+  const aspect = spanX / spanY;
+  const width = Math.min(box.width, Math.round(box.height * aspect));
+  const height = Math.min(box.height, Math.round(box.width / aspect));
   return {
     Type: "Path",
     UniqueId: gid(),
     Name: name,
-    Commands: symbol.Commands,
-    Points: symbol.Points,
+    Path: { Commands: symbol.Commands, Data: data },
     Fill: color(opts.fill ?? GREY),
     Border: color(opts.border ?? DARK_GREY),
     Thickness: 1,
-    Location: { Left: box.left, Top: box.top },
-    Width: box.width,
-    Height: box.height,
+    Location: { Left: box.left + Math.round((box.width - width) / 2), Top: box.top + Math.round((box.height - height) / 2) },
+    Width: width,
+    Height: height,
   };
 }
 

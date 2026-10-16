@@ -46,6 +46,34 @@ opening our export meets a conversion question first. To be fixed by stamping
 the build the file is meant for, once the bench confirms which values avoid
 the prompt.
 
+### 1.3 · What the licensed product rejected, and what changed (16 Oct)
+
+Run over everything the tool produces (`scripts/bench-set.mts`: 8 projects
+generated from `samples/`, 6 converted 3.x templates, 8 opened-and-edited
+templates, a clipart sample):
+
+| Found by the bench | Cause | Fix |
+|---|---|---|
+| **Every generated project failed Simulate**: "An unexpected error occurred" | the product's log: `NullReferenceException` in `BindingScriptGeneratorBase.UpdateConverterDataFromProperties`. Our Scale converter rows had a lower-case `UniqueId` column and a NULL `Description`; Demo 1 writes the column upper case and `''` | rows written the product's way. Four variants benched: lower-case column fails, upper-case passes |
+| **Every vector symbol drew as a speech bubble** at runtime | we wrote `Commands`/`Points` at the top level (the `.path` file form); 4.4 reads `Path: {Commands, Data}` with points spanning 0..3072 (every Path in Demo 1) and draws its default callout otherwise | `pathPart` writes the product's form, the box fitted to the symbol's aspect |
+| Every new file raised "convert to version 4.4?" | `VersionModified: "4.4.0.0"` | `4.4.20.0`: no prompt on 4.4.20.31, no newer than any 4.4.20 build |
+| Converted templates show a security-advice box after conversion | the product's own recommendation (lockout, complex password, no always-on Ethernet transfer, a password) | the bench acknowledges it; generated projects do not raise it |
+
+**After the fixes: 23 of 23 open, validate, build and simulate in the licensed
+editor, Errors pane empty** - including the clipart sample, whose three
+pictures from the product's own library appear at runtime.
+
+**Open:** on a generated Level 1 overview, the KPI tiles' fault lamps show
+their On face ("FAULT") at runtime while the same tag's lamps on the unit
+screens show Off ("NO FAULT"). Ruled out on the bench: device addresses,
+alarm bindings, the Off text, the lamp height, which screen starts, binding
+targets and sources (identical), and settle time. Next: move a tile lamp onto
+a unit screen and back, to separate the part from the screen.
+
+Also seen at runtime, not yet fixed: the navigation strip truncates labels
+("PlantOv" twice, for PlantOverview and PlantOverview_2) and the alarm
+summary keeps the product's default saturated green header.
+
 ---
 
 ## 2 · The product's own libraries, all on disk

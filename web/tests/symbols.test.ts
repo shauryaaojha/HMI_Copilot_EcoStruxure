@@ -107,11 +107,17 @@ describe.skipIf(!hasSkeleton)("a Path part survives packaging", () => {
     expect(written.Type).toBe("Path");
     if (written.Type !== "Path") throw new Error("unreachable");
 
-    // The bytes the product will read must be the library's, unaltered.
-    expect(written.Commands).toBe(symbol.Commands);
-    expect(written.Points).toBe(symbol.Points);
-    // And they must still draw the same shape on the canvas.
-    expect(toPathData(written as { Commands: string; Points: string })).toBe(symbol.d);
+    // Written the way the product writes a Path - Path.Commands and Path.Data
+    // spanning 0..3072 - because the top-level form draws as the editor's
+    // default callout in the licensed product. Same commands, same number of
+    // points, rescaled.
+    expect(written.Commands).toBeUndefined();
+    expect(written.Path?.Commands).toBe(symbol.Commands);
+    const data = written.Path!.Data!.split(",").map(Number);
+    expect(data.length).toBe(symbol.Points.split(",").filter((s) => s.trim() !== "").length);
+    expect(Math.max(...data.filter((_, i) => i % 2 === 0))).toBe(3072);
+    expect(Math.min(...data.filter((_, i) => i % 2 === 0))).toBe(0);
+    expect(toPathData({ Commands: written.Path!.Commands!, Points: written.Path!.Data! })).toMatch(/^M/);
   }, 60_000);
 });
 
