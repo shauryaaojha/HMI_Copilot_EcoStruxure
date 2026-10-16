@@ -21,6 +21,7 @@ import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { pathPart } from "@/lib/ote/parts";
 import { useProject } from "@/store/project";
+import { useCanEdit } from "@/store/access";
 import { Input, Select, cn } from "@/components/ui";
 import { isPlaceable, useSymbols, type Symbol } from "./useSymbols";
 
@@ -34,6 +35,8 @@ export function LibraryPanel() {
   const appendObject = useProject((s) => s.appendObject);
   const select = useProject((s) => s.select);
   const logLine = useProject((s) => s.log);
+  // Browsing the library is reading; placing a symbol is an edit.
+  const canEdit = useCanEdit();
 
   const screen = screens.find((x) => x.UniqueId === activeScreenId) ?? screens[0];
 
@@ -109,10 +112,12 @@ export function LibraryPanel() {
             <li key={`${symbol.category}/${symbol.name}`}>
               <button
                 type="button"
-                disabled={!can || !screen}
+                disabled={!can || !screen || !canEdit}
                 onClick={() => place(symbol)}
                 title={
-                  can
+                  !canEdit
+                    ? `${symbol.name} — view only, so nothing can be placed`
+                    : can
                     ? `Place ${symbol.name} on ${screen?.Name ?? "the screen"}`
                     : `${symbol.name} — the index carries no Commands/Points, so no Path part can be written from it`
                 }

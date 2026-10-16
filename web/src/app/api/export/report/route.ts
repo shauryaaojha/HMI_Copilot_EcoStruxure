@@ -11,6 +11,9 @@
 import { panelOf, type PackageInput } from "@/lib/ote/packager";
 import { renderReport } from "@/lib/validation/report";
 import { validateProject } from "@/lib/validation/rules";
+import { currentUser } from "@/lib/server/session";
+import { errorResponse } from "@/lib/server/errors";
+import { signoffSections } from "@/lib/server/signoff";
 
 export const runtime = "nodejs";
 
@@ -31,11 +34,23 @@ export async function POST(request: Request) {
     return Response.json({ error: "a project needs at least one screen" }, { status: 400 });
   }
 
+  // A shared project names itself, so the report can list what its reviewers
+  // left open. The caller must be able to read that project.
+  let shared: Awaited<ReturnType<typeof signoffSections>> = {};
+  const projectId = (project as PackageInput & { projectId?: unknown }).projectId;
+  if (typeof projectId === "string") {
+    try {
+      shared = await signoffSections(projectId, project, await currentUser(), request);
+    } catch (error) {
+      return errorResponse(error);
+    }
+  }
+
   // No skeleton means no Target.dat to compare against. The report still stands;
   // it just falls back to the panel the project declares.
   const panel = await panelOf().catch(() => null);
   const findings = validateProject(project, panel);
-  const html = renderReport({ project, findings, panel });
+  const html = renderReport({ project, findings, panel, ...shared });
 
   return new Response(html, {
     headers: {

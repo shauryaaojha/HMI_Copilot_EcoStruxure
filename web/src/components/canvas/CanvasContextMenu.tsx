@@ -11,6 +11,7 @@
 
 import { useEffect, useRef } from "react";
 import { useProject } from "@/store/project";
+import { useCanEdit } from "@/store/access";
 import { cn } from "@/components/ui";
 
 export interface ContextTarget {
@@ -72,7 +73,15 @@ export function CanvasContextMenu({
   const anyLocked = selectedIds.some((id) => objectMeta[id]?.locked);
   const anyGrouped = selectedIds.some((id) => objectMeta[id]?.groupId);
 
-  const groups: Entry[][] = [
+  // A read-only project keeps the two entries that only look - Copy and Select
+  // all - and drops the rest, rather than showing a menu of greyed edits.
+  const canEdit = useCanEdit();
+  const readOnlyGroups: Entry[][] = [
+    [{ label: "Copy", shortcut: "Ctrl+C", run: () => copyObjects(selectedIds), disabled: !some }],
+    [{ label: "Select all", shortcut: "Ctrl+A", run: selectAll }],
+  ];
+
+  const editingGroups: Entry[][] = [
     [
       { label: "Cut", shortcut: "Ctrl+X", run: () => cutObjects(selectedIds), disabled: !some },
       { label: "Copy", shortcut: "Ctrl+C", run: () => copyObjects(selectedIds), disabled: !some },
@@ -111,6 +120,7 @@ export function CanvasContextMenu({
       },
     ],
   ];
+  const groups = canEdit ? editingGroups : readOnlyGroups;
 
   return (
     <div

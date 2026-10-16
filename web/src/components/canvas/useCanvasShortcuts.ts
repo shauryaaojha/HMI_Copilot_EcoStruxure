@@ -11,6 +11,7 @@
 
 import { useEffect } from "react";
 import { useProject } from "@/store/project";
+import { useCanEdit } from "@/store/access";
 import { TOOLS, type ToolType } from "./newPart";
 
 /** One key per tool, from the same table the toolbar and the Insert menu read. */
@@ -36,8 +37,25 @@ export function useCanvasShortcuts({
   onFit,
   enabled = true,
 }: CanvasShortcutHandlers) {
+  // Read-only keeps the keys for looking - select all, copy, zoom, pan,
+  // Escape - and drops every key that changes the project.
+  const canEdit = useCanEdit();
+
   useEffect(() => {
     if (!enabled) return;
+
+    /** The keys that would change the project on a read-only canvas. */
+    const EDITING_MOD = new Set(["z", "y", "x", "v", "d", "g"]);
+    const EDITING_KEY = new Set([
+      "ArrowLeft",
+      "ArrowRight",
+      "ArrowUp",
+      "ArrowDown",
+      "Delete",
+      "Backspace",
+      "]",
+      "[",
+    ]);
 
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
@@ -48,6 +66,13 @@ export function useCanvasShortcuts({
       const mod = event.ctrlKey || event.metaKey;
       const key = event.key;
       const take = () => event.preventDefault();
+
+      if (!canEdit) {
+        if (mod ? EDITING_MOD.has(key.toLowerCase()) : EDITING_KEY.has(key)) return;
+        // Drawing tools are editing too; V (select) and H (pan) are not.
+        const lower = key.toLowerCase();
+        if (!mod && TOOL_KEYS[lower] && lower !== "v" && lower !== "h") return;
+      }
 
       if (mod) {
         switch (key.toLowerCase()) {
@@ -166,5 +191,5 @@ export function useCanvasShortcuts({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [enabled, onTool, onPanMode, onZoomStep, onZoom, onFit]);
+  }, [enabled, canEdit, onTool, onPanMode, onZoomStep, onZoom, onFit]);
 }

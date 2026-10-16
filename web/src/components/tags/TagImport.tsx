@@ -15,6 +15,7 @@
 import { useRef, useState } from "react";
 import { CircleAlert, FileSpreadsheet, Loader, TriangleAlert, Upload } from "lucide-react";
 import { useProject } from "@/store/project";
+import { useCanEdit } from "@/store/access";
 import { Badge, Button, Panel, cn } from "@/components/ui";
 import { ACCEPTED, SAMPLES, useTagImport } from "./useTagImport";
 
@@ -29,12 +30,24 @@ export function TagImport({
   const tagImport = useProject((s) => s.tagImport);
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
+  const canEdit = useCanEdit();
 
   const busy = state.status === "parsing";
 
   function take(files: FileList | null) {
     const file = files?.[0];
     if (file) void upload(file);
+  }
+
+  // Importing replaces the project's tags, so a viewer or commenter is told
+  // where the tags came from instead of being offered a drop zone.
+  if (!canEdit) {
+    return (
+      <div className={cn("rounded-md border border-line-subtle p-4 text-xs text-text-muted", className)}>
+        {tagImport ? `Tags imported from ${tagImport.fileName}.` : "No tags imported yet."}{" "}
+        View only — ask an editor to import tags.
+      </div>
+    );
   }
 
   return (

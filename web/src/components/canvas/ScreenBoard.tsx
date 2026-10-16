@@ -20,12 +20,13 @@
  * mode to enter or leave.
  */
 
+import type { Presence } from "@/lib/collab/types";
 import { useMemo, useRef } from "react";
 import { rootBox } from "@/lib/ote/schema";
 import type { Screen } from "@/lib/ote/schema";
 import type { ForeignPart, ObjectMeta, ScreenPreview } from "@/store/types";
 import { cn } from "@/components/ui";
-import { ScreenRenderer, type Box, type DrawTool } from "./ScreenRenderer";
+import { ScreenRenderer, type Box, type CommentPin, type DrawTool } from "./ScreenRenderer";
 import type { AlarmRow } from "./parts";
 
 /**
@@ -154,7 +155,26 @@ export interface ScreenBoardProps {
   smartGuides?: boolean;
   /** False while panning, so a drag across the board does not move an object. */
   interactive?: boolean;
+  /**
+   * The person looking may not change the project: screens still focus,
+   * select and zoom, but frames do not drag and objects do not move, resize
+   * or get drawn. See ScreenRenderer's prop of the same name.
+   */
+  readOnly?: boolean;
   tool?: DrawTool;
+  /** Comment pins, keyed by screen id. */
+  comments?: Record<string, CommentPin[]>;
+  /** Other people in a shared project; each frame draws those on its screen. */
+  presence?: Presence[];
+  /** This person's pointer on the live screen. */
+  onCursor?: (at: { x: number; y: number }) => void;
+  onPin?: (id: string) => void;
+  /**
+   * Comments mode: a click on any frame places a comment there. Every frame
+   * takes the click, not only the live one, because a reviewer pointing at
+   * the screen next door should not have to click it twice.
+   */
+  onPlaceComment?: (screenId: string, at: { x: number; y: number }, objectId?: string) => void;
 
   onFocus: (screenId: string) => void;
   /** Double-click a frame: fill the viewport with it, or go back to the board. */
@@ -185,7 +205,13 @@ export function ScreenBoard({
   snap,
   smartGuides,
   interactive = true,
+  readOnly = false,
   tool,
+  comments,
+  presence,
+  onCursor,
+  onPin,
+  onPlaceComment,
   onFocus,
   onZoomTo,
   onSelect,
@@ -252,7 +278,7 @@ export function ScreenBoard({
                 if (!drag.current?.moved) onFocus(screen.UniqueId);
               }}
               onPointerDown={(event) => {
-                if (event.button !== 0 || !onPlace) return;
+                if (event.button !== 0 || !onPlace || readOnly) return;
                 event.preventDefault();
                 (event.currentTarget as Element).setPointerCapture?.(event.pointerId);
                 onFocus(screen.UniqueId);
@@ -284,9 +310,14 @@ export function ScreenBoard({
                 drag.current = null;
               }}
               onDoubleClick={() => onZoomTo?.(screen.UniqueId)}
-              title={screen.Name + " - drag to move, double-click to zoom to it"}
+              title={
+                readOnly
+                  ? screen.Name + " - double-click to zoom to it"
+                  : screen.Name + " - drag to move, double-click to zoom to it"
+              }
               className={cn(
-                "focus-ring flex w-full cursor-grab items-baseline gap-2 truncate px-0.5 text-left transition active:cursor-grabbing",
+                "focus-ring flex w-full items-baseline gap-2 truncate px-0.5 text-left transition",
+                !readOnly && "cursor-grab active:cursor-grabbing",
                 live ? "text-brand-400" : "text-text-muted hover:text-text-secondary",
               )}
               style={{ height: BOARD_LABEL * scale, fontSize: Math.max(10, 13 * scale) }}
@@ -332,8 +363,18 @@ export function ScreenBoard({
                 // Only the live screen takes edits. Everything else is drawn
                 // from the same JSON but inert, so a drag cannot land on the
                 // screen next to the one being worked on.
-                interactive={live && interactive}
+                interactive={(live || !!onPlaceComment) && interactive}
+                readOnly={readOnly}
                 tool={live ? tool : null}
+                comments={comments?.[screen.UniqueId]}
+                presence={presence}
+                onCursor={live ? onCursor : undefined}
+                onPin={onPin}
+                onPlaceComment={
+                  onPlaceComment
+                    ? (at, objectId) => onPlaceComment(screen.UniqueId, at, objectId)
+                    : undefined
+                }
                 onSelect={onSelect}
                 onHover={onHover}
                 onMove={onMove}

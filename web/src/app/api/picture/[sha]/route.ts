@@ -10,15 +10,20 @@
  * Node runtime: reads the installation and the stored project.
  */
 
+import { currentUser } from "@/lib/server/session";
+import { hasMongo } from "@/lib/db/mongo";
+import { readSource } from "@/lib/server/access";
+import { shareTokens } from "@/lib/server/shares";
+import { errorResponse } from "@/lib/server/errors";
 import JSZip from "jszip";
 import { cliparts } from "@/lib/ote/cliparts";
 import { getImport } from "@/lib/ote/imports";
 
 export const runtime = "nodejs";
 
-const png = (bytes: Uint8Array) =>
+const png = (bytes: Uint8Array, privateSource = false) =>
   new Response(Buffer.from(bytes), {
-    headers: { "content-type": "image/png", "cache-control": "public, max-age=31536000, immutable" },
+    headers: { "content-type": "image/png", "cache-control": privateSource ? "private, no-store" : "public, max-age=31536000, immutable" },
   });
 
 export async function GET(request: Request, { params }: { params: Promise<{ sha: string }> }) {
@@ -32,12 +37,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ sha:
 
   const source = new URL(request.url).searchParams.get("source");
   if (source) {
-    const bytes = await getImport(source).catch(() => null);
+    try {
+    const stored = (hasMongo() || !process.env.VERCEL) ? await readSource(source, await currentUser(), "read", undefined, shareTokens(request)) : null;
+    const bytes = stored?.bytes ?? await getImport(source);
     if (bytes) {
       const zip = await JSZip.loadAsync(bytes);
       const entry = Object.keys(zip.files).find((n) => n.replace(/\\/g, "/").toLowerCase() === `resources/${key}.png`);
-      if (entry) return png(await zip.file(entry)!.async("uint8array"));
+      if (entry) return png(await zip.file(entry)!.async("uint8array"), true);
     }
+    } catch (error) { return errorResponse(error); }
   }
   return new Response("no such picture here", { status: 404 });
 }

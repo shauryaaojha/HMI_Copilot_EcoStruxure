@@ -1,5 +1,6 @@
 /**
- * Where an opened .eote lives between being opened and being exported.
+ * Where an anonymous opened .eote lives between import and export.
+ * Signed-in originals and chunked uploads use lib/server/repo.ts instead.
  *
  * Exporting a project that was opened from a file writes back into *that
  * file's* own entries, so everything the reader did not model comes back
@@ -118,13 +119,20 @@ export async function getImport(id: string): Promise<Uint8Array | null> {
   if (!hasMongo()) {
     const fs = await import("node:fs/promises");
     const path = await import("node:path");
-    const file = await fs.readFile(path.join(await importDir(), `${id}.eote`)).catch(() => null);
+    const filePath = path.join(await importDir(), `${id}.eote`);
+    const stat = await fs.stat(filePath).catch(() => null);
+    if (!stat) return null;
+    if (stat.mtimeMs + IMPORT_TTL_SECONDS * 1000 <= Date.now()) {
+      await fs.unlink(filePath).catch(() => undefined);
+      return null;
+    }
+    const file = await fs.readFile(filePath).catch(() => null);
     return file ? new Uint8Array(file) : null;
   }
 
   const collection = await imports();
   const found = await collection.findOne({ _id: id });
-  return found ? new Uint8Array(found.bytes.buffer) : null;
+  return found && found.createdAt.getTime() + IMPORT_TTL_SECONDS * 1000 > Date.now() ? new Uint8Array(found.bytes.buffer) : null;
 }
 
 /** What to tell an engineer whose opened file is gone. */

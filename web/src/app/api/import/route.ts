@@ -24,6 +24,11 @@
  * Node runtime: sql.js reads the databases.
  */
 
+import { currentUser } from "@/lib/server/session";
+import { repo } from "@/lib/server/repo";
+import { uploadedSource } from "@/lib/server/uploads";
+import { json, sameOrigin, errorResponse } from "@/lib/server/http";
+import { ServerError } from "@/lib/server/errors";
 import { readProject } from "@/lib/ote/reader";
 import { importStore, putImport } from "@/lib/ote/imports";
 import { readStructProject } from "@/lib/ote/struct";
@@ -31,22 +36,30 @@ import { IngestError, fileNameFrom, ingestResponse } from "@/lib/ingest/errors";
 import { readBody } from "@/lib/ingest/body";
 import { refuse, sniff } from "@/lib/ingest/sniff";
 import { learnFromProject } from "@/lib/knowledge/learn";
+import { mayLearnImport } from "@/lib/knowledge/privacy";
 import { inventoryVdz } from "@/lib/vijeo/vdz";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
-  const fileName = fileNameFrom(request, "project.eote");
+  let fileName = fileNameFrom(request, "project.eote");
   try {
-    const bytes = await readBody(request);
+    sameOrigin(request);
+    const user = await currentUser();
+    const uploaded = request.headers.get("content-type")?.includes("application/json")
+      ? await uploadedSource((await json(request)).uploadId, user) : null;
+    if (uploaded) fileName = uploaded.meta.fileName;
+    const bytes = uploaded?.bytes ?? await readBody(request);
+    // Private account imports must not enter the shared retrieval corpus.
+    const learn = () => mayLearnImport(user) ? learnFromProject(bytes, fileName).catch(() => null) : Promise.resolve(null);
     const kind = await sniff(bytes, fileName);
     const refused = refuse(kind, fileName);
     if (refused) {
       // A Vijeo backup cannot be opened, but it can still teach: scan it, and
       // tell the engineer what it holds.
       const learned =
-        kind.kind === "vijeo-designer" && kind.variant === "vdz" ? await learnFromProject(bytes, fileName).catch(() => null) : null;
+        kind.kind === "vijeo-designer" && kind.variant === "vdz" ? await learn() : null;
       if (kind.kind === "vijeo-designer" && kind.variant === "vdz") {
         const inv = await inventoryVdz(bytes).catch(() => null);
         if (inv) {
@@ -82,9 +95,10 @@ export async function POST(request: Request) {
 
     if (kind.layout === "struct") {
       const read = await readStructProject(bytes, fileName);
-      const learned = await learnFromProject(bytes, fileName).catch(() => null);
+      const learned = await learn();
       return Response.json({
         source: null,
+        sourceId: uploaded?.meta._id ?? (user ? await repo().sources.put(bytes, fileName, user.id) : undefined),
         store: null,
         converted: true,
         name: read.name,
@@ -108,11 +122,13 @@ export async function POST(request: Request) {
     }
 
     const read = await readProject(bytes, fileName);
-    const id = await putImport(bytes, fileName);
-    const learned = await learnFromProject(bytes, fileName).catch(() => null);
+    const id = uploaded?.meta._id ?? (user ? await repo().sources.put(bytes, fileName, user.id) : await putImport(bytes, fileName));
+    const learned = await learn();
 
     return Response.json({
       source: id,
+      sourceId: id,
+      permanent: !!user,
       /** Where the opened file is kept, so the UI can say how long it lasts. */
       store: importStore(),
       name: read.name,
@@ -136,6 +152,7 @@ export async function POST(request: Request) {
       ...(learned ? { knowledge: { id: learned.id, isNew: learned.isNew } } : {}),
     });
   } catch (error) {
+    if (error instanceof ServerError) return errorResponse(error);
     return ingestResponse(error, "could not open the project");
   }
 }

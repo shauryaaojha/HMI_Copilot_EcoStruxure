@@ -24,6 +24,26 @@ export interface ReportInput {
   /** The panel Target.dat declares, when the caller knows it. */
   panel?: { model: string; width: number; height: number } | null;
   generatedAt?: Date;
+  /**
+   * Unresolved review comments per screen, for a shared project. Work still
+   * under discussion is part of what a reviewer signs, so it is listed rather
+   * than left in the editor. Absent for a project nobody else can see.
+   */
+  comments?: { screen: string; unresolved: number }[];
+  /**
+   * Every decision on a Copilot proposal in a shared project: what was
+   * asked, by whom, which suggestions were accepted and who accepted them.
+   * Under management of change, an AI edit is a named person's decision.
+   */
+  aiDecisions?: {
+    at: number;
+    request: string;
+    requestedBy: string;
+    decision: "accepted" | "partially-accepted" | "discarded";
+    by: string;
+    accepted: string[];
+    author: string;
+  }[];
 }
 
 const ESCAPES: Record<string, string> = {
@@ -116,6 +136,51 @@ ${rows}
 ${notes ? `<ul class="scope">
 ${notes}
 </ul>` : ""}`;
+}
+
+/** Open threads per screen; a clean slate is stated, so silence is never ambiguous. */
+function commentTable(comments: ReportInput["comments"]): string {
+  if (!comments) return "";
+  const open = comments.filter((c) => c.unresolved > 0);
+  if (open.length === 0) {
+    return `<h2>Review comments</h2>
+<div class="clean">No unresolved comments on any screen.</div>`;
+  }
+  const total = open.reduce((n, c) => n + c.unresolved, 0);
+  const rows = open
+    .map((c) => `    <tr><td>${esc(c.screen)}</td><td>${c.unresolved}</td></tr>`)
+    .join("\n");
+  return `<h2>Review comments</h2>
+<p>${total} unresolved comment${total === 1 ? "" : "s"}, to be resolved or accepted before sign-off.</p>
+<table>
+  <thead><tr><th>Screen</th><th>Unresolved</th></tr></thead>
+  <tbody>
+${rows}
+  </tbody>
+</table>`;
+}
+
+/** The audit table of AI-suggested changes; absent for a project nobody shares. */
+function decisionTable(decisions: ReportInput["aiDecisions"]): string {
+  if (!decisions) return "";
+  if (decisions.length === 0) {
+    return `<h2>AI-suggested changes and who accepted them</h2>
+<div class="clean">No Copilot proposals have been decided on this project.</div>`;
+  }
+  const when = (at: number) => new Date(at).toISOString().replace("T", " ").replace(/\.\d+Z$/, " UTC");
+  const rows = decisions
+    .map((d) => {
+      const accepted = d.accepted.length ? d.accepted.map((line) => esc(line)).join("<br>") : "&mdash;";
+      return `    <tr><td>${esc(when(d.at))}</td><td>${esc(d.request)}<div class="fix">asked by ${esc(d.requestedBy)}; suggested by <code>${esc(d.author)}</code></div></td><td>${accepted}</td><td>${esc(d.decision)}</td><td>${esc(d.by)}</td></tr>`;
+    })
+    .join("\n");
+  return `<h2>AI-suggested changes and who accepted them</h2>
+<table>
+  <thead><tr><th>When</th><th>Request</th><th>Accepted changes</th><th>Decision</th><th>Decided by</th></tr></thead>
+  <tbody>
+${rows}
+  </tbody>
+</table>`;
 }
 
 export function renderReport(input: ReportInput): string {
@@ -281,6 +346,10 @@ ${partTypes
 </dl>
 
 ${alarmTable(project)}
+
+${commentTable(input.comments)}
+
+${decisionTable(input.aiDecisions)}
 
 <h2>What was checked</h2>
 <ul class="scope">

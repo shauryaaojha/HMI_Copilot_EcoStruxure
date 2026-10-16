@@ -12,6 +12,14 @@
  * Phase 7 of docs/BUILD_PLAN.md - the moment the whole pitch rests on.
  */
 
+import { currentUser } from "@/lib/server/session";
+import { hasMongo } from "@/lib/db/mongo";
+import { readSource, requireReader } from "@/lib/server/access";
+import { repo } from "@/lib/server/repo";
+import { shareTokens } from "@/lib/server/shares";
+import { packageInputOf } from "@/lib/collab/package";
+import { ServerError } from "@/lib/server/errors";
+import { errorResponse, sameOrigin } from "@/lib/server/http";
 import { panelOf, type PackageInput } from "@/lib/ote/packager";
 import { backendFor, unsupportedParts, type FormatId } from "@/lib/backend";
 import { readProject } from "@/lib/ote/reader";
@@ -20,6 +28,15 @@ import { preflight, selfCheck } from "@/lib/ote/preflight";
 import { isIngestError } from "@/lib/ingest/errors";
 
 export const runtime = "nodejs";
+
+/** The server snapshot of a shared project at `rev`, for a caller allowed to export it. */
+async function sharedInput(projectId: string, rev: unknown, request: Request) {
+  await requireReader(await currentUser(), projectId, request, "export");
+  if (!Number.isSafeInteger(rev) || Number(rev) < 1) throw new ServerError(400, "invalid", "Export of a shared project names a revision");
+  const snapshot = await repo().live.at(projectId, rev as number);
+  if (!snapshot) throw new ServerError(409, "rev-gone", "That revision is no longer available; export the current one");
+  return packageInputOf(snapshot);
+}
 
 /** A filename the OS will accept, derived from the project name. */
 function safeName(name: string): string {
@@ -30,9 +47,22 @@ function safeName(name: string): string {
 export async function POST(request: Request) {
   let input: PackageInput & { source?: string; format?: FormatId };
   try {
+    sameOrigin(request);
     input = (await request.json()) as typeof input;
-  } catch {
-    return Response.json({ error: "expected a JSON project" }, { status: 400 });
+  } catch (error) {
+    if (error instanceof ServerError) return errorResponse(error);
+    return Response.json({ error: "expected a JSON project", code: "invalid" }, { status: 400 });
+  }
+
+  // A shared project exports the server's snapshot at the revision the client
+  // names, never the browser's possibly half-synced copy (Phase C).
+  const shared = input as unknown as { projectId?: unknown; rev?: unknown; format?: FormatId };
+  if (typeof shared?.projectId === "string") {
+    try {
+      input = { ...await sharedInput(shared.projectId, shared.rev, request), format: shared.format };
+    } catch (error) {
+      return errorResponse(error);
+    }
   }
 
   if (!input?.screens?.length) {
@@ -83,7 +113,8 @@ export async function POST(request: Request) {
     let panelLabel: string | null = null;
 
     if (input.source && /^[0-9a-f-]{36}$/i.test(input.source)) {
-      const original = await getImport(input.source);
+      const stored = (hasMongo() || !process.env.VERCEL) ? await readSource(input.source, await currentUser(), "export", undefined, shareTokens(request)) : null;
+      const original = stored?.bytes ?? await getImport(input.source);
       if (!original) {
         return Response.json({ error: importGoneMessage() }, { status: 409 });
       }
@@ -121,6 +152,7 @@ export async function POST(request: Request) {
     if (panelLabel) headers["X-OTE-Panel"] = panelLabel;
     return new Response(bytes as unknown as BodyInit, { headers });
   } catch (error) {
+    if (error instanceof ServerError) return errorResponse(error);
     // The stored original turned out unreadable: say so as the reader does.
     if (isIngestError(error)) return Response.json(error.toJSON(), { status: error.status });
     const message = error instanceof Error ? error.message : "export failed";

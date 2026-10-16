@@ -1,3 +1,5 @@
 .next-build/
 
 .vercel
+
+.data/

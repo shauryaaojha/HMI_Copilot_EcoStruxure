@@ -17,10 +17,14 @@
  * recedes and the work sits on top of it rather than beside it.
  */
 
+import { AccountControl } from "./AccountControl";
+import { PresenceAvatars } from "@/components/collab/PresenceAvatars";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Command, Download, Monitor, Pencil, SquarePen } from "lucide-react";
+import { Command, Download, Monitor, Pencil, SquarePen, Users } from "lucide-react";
 import { useProject } from "@/store/project";
+import { useAccess, useCanEdit } from "@/store/access";
+import { ShareDialog } from "./ShareDialog";
 import { Input, cn } from "@/components/ui";
 import { SchneiderMark } from "./SchneiderMark";
 import { useNewProject } from "./useNewProject";
@@ -55,41 +59,26 @@ function useActualPanel(): Panel | null {
   return panel;
 }
 
-/** "2 min ago". Client-only, so the server and the client cannot disagree. */
-function useSavedLabel(savedAt: number | undefined) {
-  const [label, setLabel] = useState<string>();
-
-  useEffect(() => {
-    if (savedAt === undefined) {
-      setLabel(undefined);
-      return;
-    }
-    const render = () => {
-      const secs = Math.max(0, Math.round((Date.now() - savedAt) / 1000));
-      if (secs < 45) return setLabel("saved");
-      const mins = Math.round(secs / 60);
-      if (mins < 60) return setLabel(`saved ${mins}m ago`);
-      const hours = Math.round(mins / 60);
-      return setLabel(`saved ${hours}h ago`);
-    };
-    render();
-    const timer = setInterval(render, 15_000);
-    return () => clearInterval(timer);
-  }, [savedAt]);
-
-  return label;
-}
-
 function ProjectNameField() {
   const name = useProject((s) => s.name);
   const rename = useProject((s) => s.rename);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
   const input = useRef<HTMLInputElement>(null);
+  // Renaming is an edit like any other: a read-only project shows its name.
+  const canEdit = useCanEdit();
 
   useEffect(() => {
     if (editing) input.current?.select();
   }, [editing]);
+
+  if (!canEdit) {
+    return (
+      <span className="flex h-7 min-w-0 items-center px-2 text-sm font-semibold text-text-primary">
+        <span className="truncate">{name}</span>
+      </span>
+    );
+  }
 
   function commit() {
     const next = draft.trim();
@@ -148,10 +137,12 @@ export function TopBar({ onExport, className }: TopBarProps) {
   const projectId = useProject((s) => s.id);
   const target = useProject((s) => s.target);
   const actual = useActualPanel();
-  const savedAt = useProject((s) => s.savedAt);
-  const saved = useSavedLabel(savedAt);
   const newProject = useNewProject();
   const palette = useCommandPalette();
+  // Sharing exists only for a project with a server copy: a browser-only
+  // project has nobody to share it through.
+  const cloud = useAccess((s) => s.access !== null && s.projectId === projectId);
+  const [sharing, setSharing] = useState(false);
 
   // The label has to be the file's, not the dropdown's. Saying HMIGTO6310 over
   // a project whose Target.dat reads HMIST6500AWADI is exactly the kind of
@@ -195,15 +186,24 @@ export function TopBar({ onExport, className }: TopBarProps) {
 
         <div className="flex min-w-0 items-center gap-2">
           <ProjectNameField />
-          {saved && (
-            <span className="hidden shrink-0 items-center gap-1 text-[11px] text-text-faint lg:flex">
-              <Check size={11} aria-hidden className="text-brand-400" />
-              {saved}
-            </span>
-          )}
+
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-1">
+          {/* Who else is in this shared project right now (Phase C). */}
+          <PresenceAvatars />
+          <AccountControl projectId={projectId} />
+          {cloud && (
+            <button
+              type="button"
+              onClick={() => setSharing(true)}
+              title="Share this project: members, roles and links"
+              className="focus-ring flex items-center gap-1.5 rounded-md border border-line-subtle px-2 py-1 text-[11px] text-text-muted transition hover:border-line hover:text-text-secondary"
+            >
+              <Users size={12} aria-hidden />
+              Share
+            </button>
+          )}
           {/* The panel the file will target. A read-out, not a control - the
               control is in the palette, because it is set once. */}
           <button
@@ -262,6 +262,7 @@ export function TopBar({ onExport, className }: TopBarProps) {
       </header>
 
       <CommandPalette open={palette.open} onClose={() => palette.setOpen(false)} />
+      {sharing && cloud && <ShareDialog projectId={projectId} onClose={() => setSharing(false)} />}
     </>
   );
 }
