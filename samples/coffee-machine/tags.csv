@@ -1,0 +1,107 @@
+Name,DataType,Comment,Address
+BLR_101_RUN,Bool,Coffee boiler heater on,%MX500.0
+BLR_101_FLT,Bool,Coffee boiler fault,%MX500.1
+BLR_101_READY,Bool,Coffee boiler at brew temperature,%MX500.2
+BLR_101_KW,Real,Coffee boiler heater power kW,%MD4006
+BLR_101_HRS,Real,Coffee boiler heater run hours,%MD4008
+TT_101_PV,Real,Brew water temperature degC,%MD4010
+TT_101_SP,Real,Brew water temperature setpoint degC,%MD4012
+TT_101_HI,Bool,Brew water temperature high,%MX500.7
+TT_101_LO,Bool,Brew water temperature low,%MX501.0
+PT_101_PV,Real,Coffee boiler pressure bar,%MD4018
+BLR_102_RUN,Bool,Steam boiler heater on,%MX501.2
+BLR_102_FLT,Bool,Steam boiler fault,%MX501.3
+BLR_102_READY,Bool,Steam boiler at pressure,%MX501.4
+BLR_102_KW,Real,Steam boiler heater power kW,%MD4026
+PT_102_PV,Real,Steam boiler pressure bar,%MD4028
+PT_102_SP,Real,Steam boiler pressure setpoint bar,%MD4030
+PT_102_HI,Bool,Steam boiler pressure high - safety valve risk,%MX502.0
+LT_102_PV,Real,Steam boiler water level percent,%MD4034
+LT_102_LO,Bool,Steam boiler water level low - heater interlocked,%MX502.2
+TT_102_PV,Real,Steam boiler temperature degC,%MD4038
+PMP_111_RUN,Bool,Brew water pump running,%MX502.4
+PMP_111_FLT,Bool,Brew water pump fault,%MX502.5
+PMP_111_START,Bool,Brew water pump start command,%MX502.6
+PMP_111_STOP,Bool,Brew water pump stop command,%MX502.7
+PMP_111_HRS,Real,Brew water pump run hours,%MD4048
+PT_111_PV,Real,Brew pressure at group bar,%MD4050
+PT_111_HI,Bool,Brew pressure high - over 12 bar,%MX503.2
+FT_111_PV,Real,Brew water flow ml/min,%MD4054
+TNK_121_LEVEL,Real,Fresh water tank level percent,%MD4056
+LT_121_LO,Bool,Fresh water tank empty,%MX503.5
+VLV_122_OPEN,Bool,Mains water inlet valve open,%MX503.6
+VLV_122_CLOSED,Bool,Mains water inlet valve closed,%MX503.7
+VLV_122_CMD,Bool,Mains water inlet valve open command,%MX504.0
+VLV_122_FLT,Bool,Mains water inlet valve fault,%MX504.1
+FIL_123_TOTAL,Real,Water filter litres since change,%MD4068
+FIL_123_ALM,Bool,Water filter change due,%MX504.3
+AT_124_PV,Real,Water conductivity uS/cm,%MD4072
+AT_124_HI,Bool,Water conductivity high - descale sooner,%MX504.5
+GRD_201_RUN,Bool,Grinder 1 left hopper running,%MX504.6
+GRD_201_FLT,Bool,Grinder 1 left hopper fault - motor overload or blockage,%MX504.7
+GRD_201_START,Bool,Grinder 1 left hopper start command,%MX505.0
+GRD_201_STOP,Bool,Grinder 1 left hopper stop command,%MX505.1
+GRD_201_AMPS,Real,Grinder 1 left hopper motor current A,%MD4084
+GRD_201_HRS,Real,Grinder 1 left hopper run hours,%MD4086
+GRD_201_COUNT,Int,Grinder 1 left hopper grind cycles since burr change,%MW2044
+GRD_201_SP,Real,Grinder 1 left hopper grind time setpoint s,%MD4090
+LT_201_LO,Bool,Grinder 1 left hopper bean hopper empty,%MX505.6
+GRD_202_RUN,Bool,Grinder 2 right hopper running,%MX505.7
+GRD_202_FLT,Bool,Grinder 2 right hopper fault - motor overload or blockage,%MX506.0
+GRD_202_START,Bool,Grinder 2 right hopper start command,%MX506.1
+GRD_202_STOP,Bool,Grinder 2 right hopper stop command,%MX506.2
+GRD_202_AMPS,Real,Grinder 2 right hopper motor current A,%MD4102
+GRD_202_HRS,Real,Grinder 2 right hopper run hours,%MD4104
+GRD_202_COUNT,Int,Grinder 2 right hopper grind cycles since burr change,%MW2053
+GRD_202_SP,Real,Grinder 2 right hopper grind time setpoint s,%MD4108
+LT_202_LO,Bool,Grinder 2 right hopper bean hopper empty,%MX506.7
+MTR_301_RUN,Bool,Brew unit motor running,%MX507.0
+MTR_301_FLT,Bool,Brew unit motor fault - jammed piston,%MX507.1
+MTR_301_POS,Real,Brew unit piston position percent,%MD4116
+MTR_301_AMPS,Real,Brew unit motor current A,%MD4118
+MTR_301_COUNT,Int,Brew unit cycles since service,%MW2060
+MTR_301_STEP,Int,Brew unit sequence step,%MW2061
+VLV_302_OPEN,Bool,Brew valve open,%MX507.6
+VLV_302_CLOSED,Bool,Brew valve closed,%MX507.7
+VLV_302_CMD,Bool,Brew valve open command,%MX508.0
+VLV_302_FLT,Bool,Brew valve fault,%MX508.1
+ZS_303_CLOSED,Bool,Brew unit inserted and locked,%MX508.2
+CHL_401_RUN,Bool,Milk fridge compressor running,%MX508.3
+CHL_401_FLT,Bool,Milk fridge fault,%MX508.4
+TT_401_PV,Real,Milk fridge temperature degC,%MD4138
+TT_401_SP,Real,Milk fridge temperature setpoint degC,%MD4140
+TT_401_HI,Bool,Milk fridge temperature high - over 7 degC,%MX508.7
+PMP_402_RUN,Bool,Milk pump running,%MX509.0
+PMP_402_FLT,Bool,Milk pump fault,%MX509.1
+PMP_402_SPD,Real,Milk pump speed percent,%MD4148
+PMP_402_HRS,Real,Milk pump run hours,%MD4150
+TT_402_PV,Real,Foamed milk outlet temperature degC,%MD4152
+TT_402_SP,Real,Foamed milk temperature setpoint degC,%MD4154
+VLV_403_OPEN,Bool,Milk foam air valve open,%MX509.6
+VLV_403_CMD,Bool,Milk foam air valve open command,%MX509.7
+LT_404_LO,Bool,Milk container empty,%MX510.0
+DOS_501_RUN,Bool,Chocolate powder doser running,%MX510.1
+DOS_501_FLT,Bool,Chocolate powder doser fault,%MX510.2
+DOS_501_COUNT,Int,Chocolate powder doses since refill,%MW2083
+LT_501_LO,Bool,Chocolate powder hopper empty,%MX510.4
+MCH_MODE,Int,Machine mode 0 off 1 standby 2 ready 3 brewing 4 cleaning,%MW2085
+MCH_STEP,Int,Machine product sequence step,%MW2086
+MCH_RECIPE_ID,Int,Selected drink recipe number,%MW2087
+MCH_READY,Bool,Machine ready to serve,%MX511.0
+MCH_ESTOP,Bool,Machine emergency stop pressed,%MX511.1
+MCH_CLEAN_ACTIVE,Bool,Cleaning cycle running,%MX511.2
+MCH_CLEAN_ALM,Bool,Daily cleaning overdue,%MX511.3
+MCH_DESCALE_ALM,Bool,Descaling due,%MX511.4
+MCH_CUPS_COUNT,Int,Drinks served total,%MW2093
+MCH_ESPRESSO_COUNT,Int,Espresso served,%MW2094
+MCH_CAPPUCCINO_COUNT,Int,Cappuccino served,%MW2095
+MCH_LATTE_COUNT,Int,Latte macchiato served,%MW2096
+MCH_HOTWATER_COUNT,Int,Hot water portions served,%MW2097
+LT_601_HI,Bool,Grounds container full,%MX512.2
+ZS_602_CLOSED,Bool,Drip tray in place,%MX512.3
+ZS_603_CLOSED,Bool,Front door closed,%MX512.4
+MCC_701_READY,Bool,Mains supply healthy,%MX512.5
+MCC_701_KW,Real,Machine total power kW,%MD4204
+MCC_701_AMPS,Real,Machine supply current A,%MD4206
+Drip tray level HI,Bool,Drip tray full - legacy name,%MX513.0
+1ST_SHOT_COUNT,Int,First shots discarded after warm-up,%MW2105

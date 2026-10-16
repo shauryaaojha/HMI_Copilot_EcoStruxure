@@ -17,6 +17,7 @@ reported.
 | [`water-treatment`](water-treatment/) | Water treatment works | 174 | 5 | Intake, four rapid gravity filters with backwash, chemical dosing and distribution. |
 | [`chemical-plant`](chemical-plant/) | Chemical plant | 718 | 8 | Eight areas: raw material tank farm, a four-reactor batch train, two distillation columns, utilities, CIP, packaging, effluent treatment and power distribution. |
 | [`microwave-tunnel`](microwave-tunnel/) | Microwave tempering tunnel | 175 | 4 | An industrial 915 MHz tunnel that tempers frozen meat blocks from -18 to about -4 degC: three 75 kW magnetron generators, the tunnel belt and its chilled air, a closed cooling water skid, and the leakage monitors and door interlocks that make up the safety chain. |
+| [`coffee-machine`](coffee-machine/) | Commercial coffee machine | 106 | 4 | A bean-to-cup coffee machine for a canteen or a hotel lobby: a coffee boiler and a steam boiler, two grinders, a brew unit, a refrigerated milk system with its pump, a chocolate powder doser, and the cleaning, descaling and drink counters a service technician reads. |
 
 Each folder holds two files:
 

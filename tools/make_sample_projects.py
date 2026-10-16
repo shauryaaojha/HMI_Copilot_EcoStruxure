@@ -1020,6 +1020,156 @@ def microwave_tunnel() -> Plant:
     )
 
 
+def coffee_machine() -> Plant:
+    """A commercial bean-to-cup coffee machine: one machine, not a plant.
+
+    Written on 17 October 2026 after the microwave tunnel, for the same
+    reason: a process the prompts were never tuned on. Two boilers, two
+    grinders, a brew unit, a refrigerated milk system, a powder doser and the
+    cleaning and counting a service technician reads.
+    """
+    rows: list[tuple] = []
+
+    def add(name: str, data_type: str, comment: str) -> None:
+        rows.append((name, data_type, comment))
+
+    # --- Boilers and water ---------------------------------------------------
+    add("BLR_101_RUN", "Bool", "Coffee boiler heater on")
+    add("BLR_101_FLT", "Bool", "Coffee boiler fault")
+    add("BLR_101_READY", "Bool", "Coffee boiler at brew temperature")
+    add("BLR_101_KW", "Real", "Coffee boiler heater power kW")
+    add("BLR_101_HRS", "Real", "Coffee boiler heater run hours")
+    add("TT_101_PV", "Real", "Brew water temperature degC")
+    add("TT_101_SP", "Real", "Brew water temperature setpoint degC")
+    add("TT_101_HI", "Bool", "Brew water temperature high")
+    add("TT_101_LO", "Bool", "Brew water temperature low")
+    add("PT_101_PV", "Real", "Coffee boiler pressure bar")
+    add("BLR_102_RUN", "Bool", "Steam boiler heater on")
+    add("BLR_102_FLT", "Bool", "Steam boiler fault")
+    add("BLR_102_READY", "Bool", "Steam boiler at pressure")
+    add("BLR_102_KW", "Real", "Steam boiler heater power kW")
+    add("PT_102_PV", "Real", "Steam boiler pressure bar")
+    add("PT_102_SP", "Real", "Steam boiler pressure setpoint bar")
+    add("PT_102_HI", "Bool", "Steam boiler pressure high - safety valve risk")
+    add("LT_102_PV", "Real", "Steam boiler water level percent")
+    add("LT_102_LO", "Bool", "Steam boiler water level low - heater interlocked")
+    add("TT_102_PV", "Real", "Steam boiler temperature degC")
+    add("PMP_111_RUN", "Bool", "Brew water pump running")
+    add("PMP_111_FLT", "Bool", "Brew water pump fault")
+    add("PMP_111_START", "Bool", "Brew water pump start command")
+    add("PMP_111_STOP", "Bool", "Brew water pump stop command")
+    add("PMP_111_HRS", "Real", "Brew water pump run hours")
+    add("PT_111_PV", "Real", "Brew pressure at group bar")
+    add("PT_111_HI", "Bool", "Brew pressure high - over 12 bar")
+    add("FT_111_PV", "Real", "Brew water flow ml/min")
+    add("TNK_121_LEVEL", "Real", "Fresh water tank level percent")
+    add("LT_121_LO", "Bool", "Fresh water tank empty")
+    add("VLV_122_OPEN", "Bool", "Mains water inlet valve open")
+    add("VLV_122_CLOSED", "Bool", "Mains water inlet valve closed")
+    add("VLV_122_CMD", "Bool", "Mains water inlet valve open command")
+    add("VLV_122_FLT", "Bool", "Mains water inlet valve fault")
+    add("FIL_123_TOTAL", "Real", "Water filter litres since change")
+    add("FIL_123_ALM", "Bool", "Water filter change due")
+    add("AT_124_PV", "Real", "Water conductivity uS/cm")
+    add("AT_124_HI", "Bool", "Water conductivity high - descale sooner")
+
+    # --- Grinders and brew unit ---------------------------------------------
+    for loop, label in ((201, "Grinder 1 left hopper"), (202, "Grinder 2 right hopper")):
+        add(f"GRD_{loop}_RUN", "Bool", f"{label} running")
+        add(f"GRD_{loop}_FLT", "Bool", f"{label} fault - motor overload or blockage")
+        add(f"GRD_{loop}_START", "Bool", f"{label} start command")
+        add(f"GRD_{loop}_STOP", "Bool", f"{label} stop command")
+        add(f"GRD_{loop}_AMPS", "Real", f"{label} motor current A")
+        add(f"GRD_{loop}_HRS", "Real", f"{label} run hours")
+        add(f"GRD_{loop}_COUNT", "Int", f"{label} grind cycles since burr change")
+        add(f"GRD_{loop}_SP", "Real", f"{label} grind time setpoint s")
+        add(f"LT_{loop}_LO", "Bool", f"{label} bean hopper empty")
+    add("MTR_301_RUN", "Bool", "Brew unit motor running")
+    add("MTR_301_FLT", "Bool", "Brew unit motor fault - jammed piston")
+    add("MTR_301_POS", "Real", "Brew unit piston position percent")
+    add("MTR_301_AMPS", "Real", "Brew unit motor current A")
+    add("MTR_301_COUNT", "Int", "Brew unit cycles since service")
+    add("MTR_301_STEP", "Int", "Brew unit sequence step")
+    add("VLV_302_OPEN", "Bool", "Brew valve open")
+    add("VLV_302_CLOSED", "Bool", "Brew valve closed")
+    add("VLV_302_CMD", "Bool", "Brew valve open command")
+    add("VLV_302_FLT", "Bool", "Brew valve fault")
+    add("ZS_303_CLOSED", "Bool", "Brew unit inserted and locked")
+
+    # --- Milk system and powder ---------------------------------------------
+    add("CHL_401_RUN", "Bool", "Milk fridge compressor running")
+    add("CHL_401_FLT", "Bool", "Milk fridge fault")
+    add("TT_401_PV", "Real", "Milk fridge temperature degC")
+    add("TT_401_SP", "Real", "Milk fridge temperature setpoint degC")
+    add("TT_401_HI", "Bool", "Milk fridge temperature high - over 7 degC")
+    add("PMP_402_RUN", "Bool", "Milk pump running")
+    add("PMP_402_FLT", "Bool", "Milk pump fault")
+    add("PMP_402_SPD", "Real", "Milk pump speed percent")
+    add("PMP_402_HRS", "Real", "Milk pump run hours")
+    add("TT_402_PV", "Real", "Foamed milk outlet temperature degC")
+    add("TT_402_SP", "Real", "Foamed milk temperature setpoint degC")
+    add("VLV_403_OPEN", "Bool", "Milk foam air valve open")
+    add("VLV_403_CMD", "Bool", "Milk foam air valve open command")
+    add("LT_404_LO", "Bool", "Milk container empty")
+    add("DOS_501_RUN", "Bool", "Chocolate powder doser running")
+    add("DOS_501_FLT", "Bool", "Chocolate powder doser fault")
+    add("DOS_501_COUNT", "Int", "Chocolate powder doses since refill")
+    add("LT_501_LO", "Bool", "Chocolate powder hopper empty")
+
+    # --- Machine, cleaning, counters and power ------------------------------
+    add("MCH_MODE", "Int", "Machine mode 0 off 1 standby 2 ready 3 brewing 4 cleaning")
+    add("MCH_STEP", "Int", "Machine product sequence step")
+    add("MCH_RECIPE_ID", "Int", "Selected drink recipe number")
+    add("MCH_READY", "Bool", "Machine ready to serve")
+    add("MCH_ESTOP", "Bool", "Machine emergency stop pressed")
+    add("MCH_CLEAN_ACTIVE", "Bool", "Cleaning cycle running")
+    add("MCH_CLEAN_ALM", "Bool", "Daily cleaning overdue")
+    add("MCH_DESCALE_ALM", "Bool", "Descaling due")
+    add("MCH_CUPS_COUNT", "Int", "Drinks served total")
+    add("MCH_ESPRESSO_COUNT", "Int", "Espresso served")
+    add("MCH_CAPPUCCINO_COUNT", "Int", "Cappuccino served")
+    add("MCH_LATTE_COUNT", "Int", "Latte macchiato served")
+    add("MCH_HOTWATER_COUNT", "Int", "Hot water portions served")
+    add("LT_601_HI", "Bool", "Grounds container full")
+    add("ZS_602_CLOSED", "Bool", "Drip tray in place")
+    add("ZS_603_CLOSED", "Bool", "Front door closed")
+    add("MCC_701_READY", "Bool", "Mains supply healthy")
+    add("MCC_701_KW", "Real", "Machine total power kW")
+    add("MCC_701_AMPS", "Real", "Machine supply current A")
+    # What a real export carries and OTE will not take as written
+    add("Drip tray level HI", "Bool", "Drip tray full - legacy name")
+    add("1ST_SHOT_COUNT", "Int", "First shots discarded after warm-up")
+
+    return Plant(
+        slug="coffee-machine",
+        title="Commercial coffee machine",
+        summary=(
+            "A bean-to-cup coffee machine for a canteen or a hotel lobby: a coffee boiler "
+            "and a steam boiler, two grinders, a brew unit, a refrigerated milk system "
+            "with its pump, a chocolate powder doser, and the cleaning, descaling and "
+            "drink counters a service technician reads."
+        ),
+        areas=["Boilers and water", "Grinders and brew unit", "Milk system and powder", "Machine, cleaning and counters"],
+        intent=(
+            "Build one screen for the two boilers showing heating, ready, brew water "
+            "temperature against setpoint, steam pressure and steam boiler level, with "
+            "a low level alarm."
+        ),
+        intent_full=(
+            "Build the operator screens for the coffee machine: an overview, then a "
+            "screen for the boilers and water supply, one for the grinders and brew unit, "
+            "one for the milk system and powder doser, and one for cleaning, counters "
+            "and power."
+        ),
+        follow_ups=[
+            "add a high alarm on the milk fridge temperature at 7 degC",
+            "put the drinks served counters on the overview",
+            "show the grounds container, drip tray and front door as lamps",
+        ],
+        rows=rows,
+    )
+
+
 PLANTS = [
     beverage_plant,
     transfer_pump_station,
@@ -1030,6 +1180,7 @@ PLANTS = [
     water_treatment,
     chemical_plant,
     microwave_tunnel,
+    coffee_machine,
 ]
 
 
