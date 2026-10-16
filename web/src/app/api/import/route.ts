@@ -36,6 +36,7 @@ import { IngestError, fileNameFrom, ingestResponse } from "@/lib/ingest/errors";
 import { readBody } from "@/lib/ingest/body";
 import { refuse, sniff } from "@/lib/ingest/sniff";
 import { learnFromProject } from "@/lib/knowledge/learn";
+import { mayLearnImport } from "@/lib/knowledge/privacy";
 import { inventoryVdz } from "@/lib/vijeo/vdz";
 
 export const runtime = "nodejs";
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
     if (uploaded) fileName = uploaded.meta.fileName;
     const bytes = uploaded?.bytes ?? await readBody(request);
     // Private account imports must not enter the shared retrieval corpus.
-    const learn = () => user ? Promise.resolve(null) : learnFromProject(bytes, fileName).catch(() => null);
+    const learn = () => mayLearnImport(user) ? learnFromProject(bytes, fileName).catch(() => null) : Promise.resolve(null);
     const kind = await sniff(bytes, fileName);
     const refused = refuse(kind, fileName);
     if (refused) {

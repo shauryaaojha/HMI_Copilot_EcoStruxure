@@ -19,8 +19,10 @@ import { FileStorage, MemoryStorage, MongoStorage, type Storage, type Row, type 
 export interface User { id: string; email?: string | null; name: string; image?: string | null; createdAt?: number }
 export type Role = "owner" | "editor" | "commenter" | "viewer";
 export type Snapshot = Omit<PersistedProject, "activeScreenId">;
-export type Project = Row & { ownerId: string; name: string; target: PersistedProject["target"]; createdAt: number; updatedAt: number; rev: number; sourceId?: string; layout?: "typed" | "struct" };
-export type Version = Row & { projectId: string; rev: number; authorId: string; label: string; createdAt: number; snapshot: Snapshot };
+export type Project = Row & { ownerId: string; name: string; target: PersistedProject["target"]; createdAt: number; updatedAt: number; rev: number; headRev?: number; sources?: string[]; sourceId?: string; layout?: "typed" | "struct" };
+/** A version without its snapshot: what listings and history trimming read. */
+export type VersionInfo = Row & { projectId: string; rev: number; authorId: string; label: string; createdAt: number };
+export type Version = VersionInfo & { snapshot: Snapshot };
 export type Member = Row & { projectId: string; userId: string; role: Role; addedAt: number };
 export type Source = Row & { ownerId: string | null; fileName: string; createdAt: number; expiresAt?: number };
 export type Upload = Row & { ownerId: string | null; fileName: string; size: number; expiresAt: number; sourceId?: string };
@@ -28,8 +30,10 @@ type Part = Row & { uploadId: string; part: number; size: number; data: string }
 export const PART_BYTES = 4 * 1024 * 1024;
 export const TTL_MS = 24 * 60 * 60 * 1000;
 const missing = () => new ServerError(404, "not-found", "Not found");
+/** Keep route ids safe for both filesystem and database keys. */
 export const validId = (id: string) => /^[a-zA-Z0-9_-]{1,160}$/.test(id);
 
+/** Domain contract shared by routes and isolated collaboration tests. */
 export interface Repo {
   users: { upsert(user: User): Promise<User>; get(id: string): Promise<User | null> };
   projects: {
@@ -39,11 +43,12 @@ export interface Repo {
     save(id: string, rev: number, snapshot: Snapshot, authorId: string, label?: string): Promise<Version>;
     delete(id: string): Promise<void>;
   };
-  versions: { list(projectId: string): Promise<Version[]>; current(projectId: string): Promise<Version | null>; restore(projectId: string, rev: number, authorId: string): Promise<Version> };
+  versions: { list(projectId: string): Promise<VersionInfo[]>; get(projectId: string, rev: number): Promise<Version | null>; current(projectId: string): Promise<Version | null>; restore(projectId: string, rev: number, authorId: string): Promise<Version> };
   members: { get(projectId: string, userId: string): Promise<Member | null>; put(projectId: string, userId: string, role: Role): Promise<void> };
   sources: { info(id: string): Promise<Source | null>; put(bytes: Uint8Array, fileName: string, ownerId: string | null, expiresAt?: number): Promise<string>; get(id: string): Promise<{ meta: Source; bytes: Uint8Array } | null> };
   uploads: { create(fileName: string, size: number, ownerId: string | null): Promise<Upload>; get(id: string): Promise<Upload | null>; part(id: string, part: number, bytes: Uint8Array, ownerId: string | null): Promise<void>; complete(id: string, ownerId: string | null): Promise<string>; sweep(): Promise<void> };
 }
+/** Apply domain invariants inside the storage transaction. */
 export class BaseRepo implements Repo {
   constructor(private storage: Storage, private now = () => Date.now()) {}
   private tx<T>(fn: (data: Data) => Promise<T>) { return this.storage.transaction(fn); }
@@ -56,11 +61,16 @@ export class BaseRepo implements Repo {
     }),
     get: id => this.tx(async d => { const row = await d.get<Row & User>("users", id); if (!row) return null; const { _id, ...user } = row; void _id; return user; }),
   };
-  private async history(d: Data, projectId: string) { return (await d.list<Version>("versions", { projectId })).sort((a, b) => b.rev - a.rev); }
+  private async history(d: Data, projectId: string) {
+    return d.list<VersionInfo>("versions", { projectId }, { projection: { snapshot: 0 }, sort: { rev: -1 } });
+  }
   private async save(d: Data, p: Project, rev: number, snapshot: Snapshot, authorId: string, label: string) {
     const history = await this.history(d, p._id);
-    if (p.rev !== rev) throw new ServerError(409, "conflict", "Changed elsewhere", { rev: p.rev, snapshot: history[0]?.snapshot });
-    const next = { ...p, rev: rev + 1, name: snapshot.name, target: snapshot.target, sourceId: snapshot.sourceId ?? snapshot.source, layout: snapshot.layout ?? p.layout, updatedAt: this.now() };
+    if (p.rev !== rev) {
+      const current = await d.get<Version>("versions", `${p._id}:${p.headRev ?? p.rev}`);
+      throw new ServerError(409, "conflict", "Changed elsewhere", { rev: p.rev, snapshot: current?.snapshot });
+    }
+    const next = { ...p, rev: rev + 1, headRev: rev + 1, sources: [...new Set([...(p.sources ?? []), p.sourceId, snapshot.source, snapshot.sourceId].filter((id): id is string => !!id))], name: snapshot.name, target: snapshot.target, sourceId: snapshot.sourceId ?? snapshot.source, layout: snapshot.layout ?? p.layout, updatedAt: this.now() };
     const version: Version = { _id: `${p._id}:${next.rev}`, projectId: p._id, rev: next.rev, authorId, label, createdAt: this.now(), snapshot: { ...snapshot, id: p._id } };
     await d.put("projects", next);
     await d.put("versions", version);
@@ -89,12 +99,16 @@ export class BaseRepo implements Repo {
     }),
     delete: id => this.tx(async d => {
       await d.remove("projects", id);
-      for (const table of ["versions", "members"]) for (const row of await d.list(table, { projectId: id })) await d.remove(table, row._id);
+      for (const table of ["versions", "members"]) for (const row of await d.list(table, { projectId: id }, { projection: { _id: 1 } })) await d.remove(table, row._id);
     }),
   };
   versions: Repo["versions"] = {
     list: id => this.tx(d => this.history(d, id)),
-    current: id => this.tx(async d => (await this.history(d, id))[0] ?? null),
+    get: (id, rev) => this.tx(d => d.get<Version>("versions", `${id}:${rev}`)),
+    current: id => this.tx(async d => {
+      const p = await d.get<Project>("projects", id);
+      return p ? d.get<Version>("versions", `${id}:${p.headRev ?? p.rev}`) : null;
+    }),
     restore: (id, rev, authorId) => this.tx(async d => {
       const p = await d.get<Project>("projects", id);
       const v = await d.get<Version>("versions", `${id}:${rev}`);
@@ -190,11 +204,15 @@ export class BaseRepo implements Repo {
     },
   };
 }
+/** In-memory repository with the same transaction rules as deployment. */
 export class MemoryRepo extends BaseRepo { constructor(now?: () => number) { super(new MemoryStorage(), now); } }
+/** Durable local repository for an engineer without MongoDB. */
 export class FileRepo extends BaseRepo { constructor(root = path.join(process.cwd(), ".data"), now?: () => number) { super(new FileStorage(root), now); } }
+/** Shared deployment repository backed by MongoDB transactions. */
 export class MongoRepo extends BaseRepo { constructor() { super(new MongoStorage()); } }
 let local: Repo | undefined;
 let mongo: Repo | undefined;
+/** Refuse ephemeral deployment storage rather than silently losing projects. */
 export function repo(): Repo {
   if (hasMongo()) return mongo ??= new MongoRepo();
   if (process.env.VERCEL) throw new ServerError(503, "configuration", "MONGODB_URI is required for server storage on Vercel");

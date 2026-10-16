@@ -14,17 +14,20 @@ const actions: Record<Role, readonly Action[]> = {
   commenter: ["read", "comment", "export"],
   viewer: ["read", "export"],
 };
+/** Resolve membership before allowing an operation on private project data. */
 export async function can(user: User | null, projectId: string, action: Action, storage: Repo = repo()): Promise<boolean> {
   if (!user || !await storage.projects.get(projectId)) return false;
   const member = await storage.members.get(projectId, user.id);
   return !!member && actions[member.role].includes(action);
 }
+/** Give route callers a consistent missing-identity or permission failure. */
 export async function requireAccess(user: User | null, id: string, action: Action) {
   if (!user) throw new ServerError(401, "unauthorized", "Sign in to access projects");
   if (!await repo().projects.get(id)) throw new ServerError(404, "not-found", "Project not found");
   if (!await can(user, id, action)) throw new ServerError(403, "forbidden", "You do not have permission for this action");
   return user;
 }
+/** Authorize source references using small project metadata, never snapshots. */
 export async function sourceInfo(id: string, user: User | null, action: "read" | "export" = "read", storage: Repo = repo()) {
   const source = await storage.sources.info(id);
   if (!source) return null;
@@ -33,7 +36,7 @@ export async function sourceInfo(id: string, user: User | null, action: "read" |
   if (source.ownerId === user.id) return source;
   for (const p of await storage.projects.list(user.id)) {
     if (await can(user, p._id, action, storage)) {
-      if (p.sourceId === id || (await storage.versions.list(p._id)).some(v => v.snapshot.source === id || v.snapshot.sourceId === id)) return source;
+      if (p.sourceId === id || p.sources?.includes(id)) return source;
     }
   }
   throw new ServerError(403, "forbidden", "You do not have access to this source");

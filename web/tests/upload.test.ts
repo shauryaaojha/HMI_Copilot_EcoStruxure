@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({ repo: null as unknown as MemoryRepo }));
 vi.mock("@/lib/server/repo", async original => ({ ...await original<typeof import("@/lib/server/repo")>(), repo: () => state.repo }));
 vi.mock("@/lib/server/session", () => ({ currentUser: async () => ({ id: "alice", name: "Alice" }) }));
 vi.mock("@/lib/knowledge/learn", () => ({ learnFromProject: vi.fn(async () => null) }));
+vi.mock("@/lib/knowledge/store", () => ({ knowledgeStore: () => "mongo" }));
 beforeEach(() => { state.repo = new MemoryRepo(); });
 it("assembles out-of-order parts, tolerates retries, and completes idempotently", async () => {
   const r = state.repo; const u = await r.uploads.create("large.eote", PART_BYTES + 3, "alice");

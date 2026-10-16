@@ -6,13 +6,17 @@
  */
 import type { User } from "./repo";
 import { ServerError } from "./errors";
+/** Only complete provider configurations enable account sign-in. */
 export function providers(): string[] {
   return ["github", "google"].filter(p => process.env[`AUTH_${p.toUpperCase()}_ID`]?.trim() && process.env[`AUTH_${p.toUpperCase()}_SECRET`]?.trim());
 }
+/** A laptop can persist locally; deployments require configured identities. */
 export function cloudEnabled(): boolean { return providers().length > 0 || !process.env.VERCEL; }
+/** Fail closed when provider sessions cannot be signed. */
 export function checkAuthConfig() {
   if (providers().length && !process.env.AUTH_SECRET?.trim()) throw new ServerError(503, "configuration", "AUTH_SECRET is required when an authentication provider is enabled");
 }
+/** Keep the implicit laptop identity out of public deployments. */
 export async function currentUser(): Promise<User | null> {
   if (!providers().length) return process.env.VERCEL ? null : { id: "local", name: "Local engineer" };
   checkAuthConfig();

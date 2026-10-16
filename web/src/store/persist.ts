@@ -14,6 +14,7 @@
  */
 
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
+import { snapshotRequest } from "@/lib/client/snapshot";
 import type { PlantModel } from "@/lib/plant/model";
 import type {
   Binding,
@@ -187,8 +188,7 @@ export async function syncProject(id: string): Promise<void> {
       writeMeta(id, { userId: me.user.id, rev: m?.rev ?? 0, dirty: true });
       announce(id, "Saving…");
       const response = await fetch(m?.rev ? `/api/projects/${id}` : "/api/projects", {
-        method: m?.rev ? "PUT" : "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rev: m?.rev, snapshot: project }),
+        method: m?.rev ? "PUT" : "POST", ...await snapshotRequest(project, m?.rev),
       });
       if (response.status === 409) {
         let current = await response.json();

@@ -1,7 +1,8 @@
 /** Private project index. Membership is the only route into shared projects. */
 import { repo } from "@/lib/server/repo";
 import { can } from "@/lib/server/access";
-import { json, userRequired, snapshot, errorResponse } from "@/lib/server/http";
+import { userRequired, snapshot, errorResponse } from "@/lib/server/http";
+import { snapshotBody } from "@/lib/server/snapshot";
 export const runtime = "nodejs";
 export async function GET() {
   try {
@@ -13,7 +14,7 @@ export async function GET() {
 }
 export async function POST(request: Request) {
   try {
-    const user = await userRequired(); const body = await json(request);
+    const user = await userRequired(); const body = await snapshotBody(request, user);
     const p = await snapshot(body.snapshot, user);
     const layout = body.layout === "typed" || body.layout === "struct" ? body.layout : undefined;
     return Response.json({ project: await repo().projects.create(user.id, p, layout) }, { status: 201 });

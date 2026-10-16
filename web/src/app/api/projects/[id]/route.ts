@@ -2,7 +2,8 @@
 import { repo } from "@/lib/server/repo";
 import { requireAccess } from "@/lib/server/access";
 import { currentUser } from "@/lib/server/session";
-import { json, snapshot, revision, label, sameOrigin, errorResponse, type Context } from "@/lib/server/http";
+import { snapshot, revision, label, sameOrigin, errorResponse, type Context } from "@/lib/server/http";
+import { snapshotBody } from "@/lib/server/snapshot";
 export const runtime = "nodejs";
 export async function GET(_request: Request, context: Context) {
   try {
@@ -14,7 +15,7 @@ export async function GET(_request: Request, context: Context) {
 export async function PUT(request: Request, context: Context) {
   try {
     const { id } = await context.params; const user = await requireAccess(await currentUser(), id, "edit");
-    const body = await json(request);
+    const body = await snapshotBody(request, user);
     const value = await snapshot(body.snapshot, user);
     return Response.json(await repo().projects.save(id, revision(body.rev), value, user.id, label(body.label)));
   } catch (e) { return errorResponse(e); }

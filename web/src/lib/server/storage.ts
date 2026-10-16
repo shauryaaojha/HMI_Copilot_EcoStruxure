@@ -13,12 +13,20 @@ import { mongoClient, mongoDb } from "@/lib/db/mongo";
 import { ServerError } from "./errors";
 
 export type Row = { _id: string } & Record<string, unknown>;
+/** Bound metadata queries before materializing large snapshot records. */
+export interface ListOptions {
+  projection?: Record<string, 0 | 1>;
+  sort?: Record<string, 1 | -1>;
+  limit?: number;
+}
+/** Transaction-local operations keep repository invariants atomic. */
 export interface Data {
   get<T extends Row>(table: string, id: string): Promise<T | null>;
-  list<T extends Row>(table: string, query?: Record<string, unknown>): Promise<T[]>;
+  list<T extends Row>(table: string, query?: Record<string, unknown>, options?: ListOptions): Promise<T[]>;
   put(table: string, row: Row): Promise<void>;
   remove(table: string, id: string): Promise<void>;
 }
+/** Metadata transactions and binary storage have separate lifecycles. */
 export interface Storage {
   transaction<T>(fn: (data: Data) => Promise<T>): Promise<T>;
   bytes: { put(id: string, bytes: Uint8Array): Promise<void>; get(id: string): Promise<Uint8Array | null>; remove(id: string): Promise<void> };
@@ -27,13 +35,26 @@ type State = Record<string, Record<string, Row>>;
 function dataFor(state: State): Data {
   return {
     async get<T extends Row>(table: string, id: string): Promise<T | null> { return structuredClone((state[table]?.[id] as T | undefined) ?? null); },
-    async list<T extends Row>(table: string, query: Record<string, unknown> = {}) {
-      return structuredClone(Object.values(state[table] ?? {}).filter(r => Object.entries(query).every(([k, v]) => r[k] === v)) as T[]);
+    async list<T extends Row>(table: string, query: Record<string, unknown> = {}, options: ListOptions = {}) {
+      let rows = Object.values(state[table] ?? {}).filter(r => Object.entries(query).every(([k, v]) => r[k] === v));
+      for (const [key, direction] of Object.entries(options.sort ?? {}).reverse()) {
+        rows.sort((a, b) => (a[key] === b[key] ? 0 : (a[key] as number) < (b[key] as number) ? -1 : 1) * direction);
+      }
+      if (options.limit !== undefined) rows = rows.slice(0, options.limit);
+      const projection = options.projection;
+      if (projection) rows = rows.map(row => {
+        const inclusive = Object.entries(projection).some(([key, value]) => key !== "_id" && value === 1);
+        return Object.fromEntries(Object.entries(row).filter(([key]) => inclusive
+          ? projection[key] === 1 || (key === "_id" && projection._id !== 0)
+          : projection[key] !== 0)) as Row;
+      });
+      return structuredClone(rows) as T[];
     },
     async put(table, row) { (state[table] ??= {})[row._id] = structuredClone(row); },
     async remove(table, id) { delete state[table]?.[id]; },
   };
 }
+/** Isolated transactional storage for deterministic repository tests. */
 export class MemoryStorage implements Storage {
   private state: State = {};
   private tail: Promise<unknown> = Promise.resolve();
@@ -54,6 +75,7 @@ export class MemoryStorage implements Storage {
     return result;
   }
 }
+/** The local journal survives interrupted writes across Next workers. */
 export class FileStorage implements Storage {
   constructor(private root: string) {}
   private file(id: string) {
@@ -122,11 +144,17 @@ export class FileStorage implements Storage {
 function mongoData(db: Db, session: ClientSession): Data {
   return {
     async get<T extends Row>(table: string, id: string) { return await db.collection<Row>(table).findOne({ _id: id }, { session }) as T | null; },
-    async list<T extends Row>(table: string, query: Record<string, unknown> = {}) { return await db.collection<Row>(table).find(query, { session }).toArray() as T[]; },
+    async list<T extends Row>(table: string, query: Record<string, unknown> = {}, options: ListOptions = {}) {
+      const cursor = db.collection<Row>(table).find(query, { session, projection: options.projection });
+      if (options.sort) cursor.sort(options.sort);
+      if (options.limit !== undefined) cursor.limit(options.limit);
+      return await cursor.toArray() as T[];
+    },
     async put(table, row) { await db.collection<Row>(table).replaceOne({ _id: row._id }, row, { upsert: true, session }); },
     async remove(table, id) { await db.collection<Row>(table).deleteOne({ _id: id }, { session }); },
   };
 }
+/** Durable deployment storage; transactions retry competing project writes. */
 export class MongoStorage implements Storage {
   private ready?: Promise<void>;
   private indexes() {
