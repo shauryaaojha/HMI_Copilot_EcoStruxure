@@ -179,6 +179,15 @@ export async function* runPipeline(
       );
     }
   }
+  if (plan?.scope === "unrelated") {
+    // The request is for some other plant. Relabelling this one as it would
+    // be a wrong answer with every screen bound - so nothing is built.
+    yield {
+      type: "error",
+      message: `Nothing was built: the request does not match this tag list. ${plan.rationale}`.trim(),
+    };
+    return;
+  }
   plan ??= fallbackPlan(intent, toPlan, limits);
   // Whatever wrote the plan, no screen holds more than its level holds on this
   // panel: the overflow becomes the next screen rather than being laid out
@@ -267,7 +276,9 @@ export async function* runPipeline(
   // stay unique across the application. The navigation lists them all before
   // anything is laid out.
   const readings = [...new Set(plan.screens.flatMap((s) => s.readings ?? []))];
-  const architected = explicit ? [] : architectPrograms(plant, { readings });
+  // A scoped request ("one screen for the generators") is that screen: no
+  // overview KPIs and no process views of equipment it did not name.
+  const architected = explicit || plan.scope === "named" ? [] : architectPrograms(plant, { readings });
   const programs: ScreenProgram[] = explicit ? explicit.map((p) => ({ ...p })) : plan.screens.map((spec) => programOf(spec, plan!.rationale));
   const takenNames = new Set([...existing.map((s) => s.name.toLowerCase()), ...programs.map((p) => p.name.toLowerCase())]);
 

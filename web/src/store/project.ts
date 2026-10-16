@@ -31,6 +31,7 @@ import type { Box } from "@/lib/ote/parts";
 import { modelPlant, type PlantModel } from "@/lib/plant/model";
 import type { Range } from "@/lib/plant/units";
 import { refreshNavigation as refreshNavigationParts } from "@/lib/ote/layout";
+import { DEFAULT_PANEL } from "@/lib/backend/panels";
 import type {
   Binding,
   ChatMessage,
@@ -449,7 +450,7 @@ export function createProjectStore() {
   immer((set, get) => ({
     id: "",
     name: "Untitled",
-    target: { model: "HMIGTO6310", width: 1024, height: 768 },
+    target: { model: DEFAULT_PANEL.model, width: DEFAULT_PANEL.width, height: DEFAULT_PANEL.height },
     screens: [],
     variables: [],
     alarms: [],

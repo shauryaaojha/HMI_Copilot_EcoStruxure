@@ -16,6 +16,14 @@ export function unitOf(comment: string, role: string): string {
   if (/\bpsi\b/i.test(comment)) return "psi";
   if (/deg\s?c|°c|celsius/i.test(comment)) return "degC";
   if (/\bkw\b/i.test(comment)) return "kW";
+  if (/\bkv\b/i.test(comment)) return "kV";
+  // Written in comments as they are on the instrument: a belt in m/min, a
+  // draught in Pa, conductivity in uS/cm, microwave leakage in mW/cm2. Each
+  // used to come out as "%" or as nothing.
+  if (/\bm\/min\b/i.test(comment)) return "m/min";
+  if (/\bmw\/cm2\b/i.test(comment)) return "mW/cm2";
+  if (/\bus\/cm\b/i.test(comment)) return "uS/cm";
+  if (/\bpa\b/i.test(comment)) return "Pa";
   if (/\brpm\b/i.test(comment)) return "rpm";
   if (/\bhz\b|hertz/i.test(comment)) return "Hz";
   if (/\bm3\b/i.test(comment)) return "m3";
@@ -35,6 +43,7 @@ export function unitOf(comment: string, role: string): string {
   if (role === "efficiency" || role === "modulation") return "%";
   if (role === "frequency") return "Hz";
   if (role === "power") return "kW";
+  if (/\bvolts?\b|\bvoltage\b/i.test(comment) || role === "voltage") return "V";
   return "";
 }
 

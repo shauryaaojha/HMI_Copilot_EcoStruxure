@@ -17,7 +17,7 @@
  */
 
 import { useCallback, useRef, useState } from "react";
-import type { GenerationEvent } from "@/types/events";
+import type { GenerationEvent, PipelineStep } from "@/types/events";
 import type { ExistingScreen } from "@/lib/ai/pipeline";
 import type { ScreenProgram } from "@/lib/program/program";
 import { useProject } from "@/store/project";
@@ -141,13 +141,20 @@ export function useGeneration() {
 
       case "error":
         s.log(`Pipeline error: ${event.message}`);
+        // A run that stopped leaves no step spinning: the timeline would
+        // otherwise say "running" for ever over a run that has ended.
+        for (const [step, state] of Object.entries(s.steps)) {
+          if (state === "running") s.setStep(step as PipelineStep, "failed");
+        }
         break;
     }
   }, [store]);
 
   const generate = useCallback(
-    async (intent: string, options: GenerateOptions = {}) => {
+    /** Resolves to the pipeline's own error, when it stopped with one. */
+    async (intent: string, options: GenerateOptions = {}): Promise<string | undefined> => {
       if (running.current) return;
+      let pipelineError: string | undefined;
       running.current = true;
 
       const s = store.getState();
@@ -195,6 +202,7 @@ export function useGeneration() {
                 break;
               }
               events.push(event);
+              if (event.type === "error") pipelineError = event.message;
               try {
                 apply(event);
               } catch (caught) {
@@ -235,6 +243,7 @@ export function useGeneration() {
         store.getState().setGenerating(false);
         running.current = false;
       }
+      return pipelineError;
     },
     [apply, store],
   );

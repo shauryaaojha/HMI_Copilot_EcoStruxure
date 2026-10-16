@@ -50,6 +50,9 @@ const EXPECTED: Record<string, Expected> = {
   "packaging-line": { tags: 124, kinds: ["conveyor", "motor"], minUnits: 14, minScreens: 3 },
   "tank-farm": { tags: 129, kinds: ["tank", "pump", "valve"], minUnits: 16, minScreens: 3 },
   "water-treatment": { tags: 174, kinds: ["pump", "filter", "doser", "tank"], minUnits: 20, minScreens: 4 },
+  // A process none of the prompts were tuned on: magnetron generators read
+  // as heaters, the tunnel as an oven, and a safety chain of bare switches.
+  "microwave-tunnel": { tags: 175, kinds: ["heater", "oven", "conveyor", "fan", "chiller", "pump", "tank"], minUnits: 20, minScreens: 4 },
   "chemical-plant": {
     tags: 718,
     // Both here: CMP_41xx really are air compressors, CHL_42xx are chillers.

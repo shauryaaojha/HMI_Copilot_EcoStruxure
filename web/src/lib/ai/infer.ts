@@ -137,6 +137,8 @@ const ROLES: [RegExp, string][] = [
   [/_(EFFICIENCY|OEE|EFF)$/i, "efficiency"],
   [/_(FREQUENCY|FREQ|HZ)$/i, "frequency"],
   [/_(POWER|KW)$/i, "power"],
+  // A magnetron's anode voltage is HTR_101_ANODE_KV in a real export.
+  [/_(VOLTAGE|VOLTS|VOLT|KV|VLL|VLN)$/i, "voltage"],
   [/_(FACTOR|PF)$/i, "factor"],
   [/_(MODULATION|MOD)$/i, "modulation"],
 ];

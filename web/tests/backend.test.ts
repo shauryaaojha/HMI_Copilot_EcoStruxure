@@ -127,7 +127,7 @@ describe("panels as data", () => {
 
   it("round-trips a panel through the value string the UI stores", () => {
     for (const p of PANELS) expect(panelFromValue(panelValue(p))).toEqual(p);
-    expect(panelNamed("HMIGTO6310")?.width).toBe(1024);
+    expect(panelNamed("HMIGTO6310")).toMatchObject({ width: 800, height: 600 });
     expect(panelNamed("nothing")).toBeUndefined();
   });
 
@@ -139,7 +139,7 @@ describe("panels as data", () => {
 
   it("is the single list the menus show", () => {
     expect(TARGETS.map((t) => t.value)).toEqual(PANELS.map(panelValue));
-    expect(TARGETS[0].label).toBe("HMIGTO6310 · 1024 × 768");
+    expect(TARGETS[0].label).toBe("HMIST6500AWADI · 1024 × 600");
   });
 });
 

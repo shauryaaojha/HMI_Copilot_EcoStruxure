@@ -46,6 +46,15 @@ describe("units and ranges from comments", () => {
     expect(unitOf("Pump 1 speed", "speed")).toBe("%");
   });
 
+  it("reads the units the microwave tunnel's export writes, which used to come out as % or nothing", () => {
+    expect(unitOf("Infeed conveyor speed feedback m/min", "speed")).toBe("m/min");
+    expect(unitOf("Cavity differential pressure Pa", "pressure")).toBe("Pa");
+    expect(unitOf("Cooling water conductivity uS/cm", "analysis")).toBe("uS/cm");
+    expect(unitOf("Microwave leakage at infeed choke mW/cm2", "analysis")).toBe("mW/cm2");
+    expect(unitOf("Microwave generator 1 magnetron anode voltage kV", "voltage")).toBe("kV");
+    expect(unitOf("Incomer voltage", "voltage")).toBe("V");
+  });
+
   it("reads a range an export states, and falls back to the class with a normal band inside it", () => {
     expect(rangeInComment("Boiler pressure 0-10 bar")).toEqual({ min: 0, max: 10 });
     expect(rangeInComment("Level 20..80 %")).toEqual({ min: 20, max: 80 });

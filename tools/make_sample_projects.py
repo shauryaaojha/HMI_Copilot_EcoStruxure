@@ -852,6 +852,174 @@ def beverage_plant() -> Plant:
     )
 
 
+def microwave_tunnel() -> Plant:
+    """Not a pump-and-tank plant: magnetron generators, a tunnel and its safety chain.
+
+    Written on 17 October 2026 as a test the other samples cannot be - a
+    process the prompts were never tuned on. The generators read as heaters
+    (HTR) and the tunnel as an oven (OVN), which is what they are.
+    """
+    rows: list[tuple] = []
+
+    def add(name: str, data_type: str, comment: str) -> None:
+        rows.append((name, data_type, comment))
+
+    # --- 1. Microwave generators: 3 x 75 kW, 915 MHz magnetron transmitters ---
+    for n in (1, 2, 3):
+        L = 100 + n
+        g = f"Microwave generator {n}"
+        add(f"HTR_{L}_RUN", "Bool", f"{g} HV on - microwave power on")
+        add(f"HTR_{L}_READY", "Bool", f"{g} ready - filament warmed up")
+        add(f"HTR_{L}_FLT", "Bool", f"{g} fault")
+        add(f"HTR_{L}_AVAIL", "Bool", f"{g} available - in remote")
+        add(f"HTR_{L}_START", "Bool", f"{g} HV on command")
+        add(f"HTR_{L}_STOP", "Bool", f"{g} HV off command")
+        add(f"HTR_{L}_RESET_CMD", "Bool", f"{g} fault reset command")
+        add(f"HTR_{L}_FWD_KW", "Real", f"{g} forward power kW")
+        add(f"HTR_{L}_KW_SP", "Real", f"{g} forward power setpoint kW")
+        add(f"HTR_{L}_REFL_KW", "Real", f"{g} reflected power kW")
+        add(f"HTR_{L}_REFL_HI", "Bool", f"{g} reflected power high")
+        add(f"HTR_{L}_ANODE_AMPS", "Real", f"{g} magnetron anode current A")
+        add(f"HTR_{L}_ANODE_KV", "Real", f"{g} magnetron anode voltage kV")
+        add(f"HTR_{L}_FILAMENT_AMPS", "Real", f"{g} magnetron filament current A")
+        add(f"HTR_{L}_ARC_ALM", "Bool", f"{g} waveguide arc detected")
+        add(f"HTR_{L}_HRS", "Real", f"{g} magnetron run hours")
+        add(f"TT_{L}_PV", "Real", f"{g} magnetron cooling water outlet temperature degC")
+        add(f"TT_{L}_HI", "Bool", f"{g} magnetron cooling water temperature high")
+        add(f"FT_{L}_PV", "Real", f"{g} magnetron cooling water flow LPM")
+        add(f"FT_{L}_LO", "Bool", f"{g} magnetron cooling water flow low")
+        add(f"TT_{L}_WL_PV", "Real", f"{g} circulator water load temperature degC")
+
+    # --- 2. Tunnel: cavity, belt, infeed and outfeed conveyors, chilled air ---
+    add("OVN_201_RUN", "Bool", "Microwave tunnel in production")
+    add("OVN_201_FLT", "Bool", "Microwave tunnel fault")
+    add("OVN_201_READY", "Bool", "Microwave tunnel ready to heat")
+    add("OVN_201_MODE", "Int", "Microwave tunnel mode 0 off 1 manual 2 auto 3 clean")
+    add("OVN_201_STEP", "Int", "Microwave tunnel sequence step")
+    add("OVN_201_RECIPE_ID", "Int", "Microwave tunnel active recipe number")
+    add("OVN_201_TOTAL_KW", "Real", "Microwave tunnel total forward power kW")
+    add("OVN_201_ARC_ALM", "Bool", "Microwave tunnel cavity arc detected - optical sensor")
+    add("TT_201_PV", "Real", "Tunnel cavity air temperature degC")
+    add("TT_201_SP", "Real", "Tunnel cavity air temperature setpoint degC")
+    add("TT_201_HI", "Bool", "Tunnel cavity air temperature high")
+
+    for L, label in ((211, "Infeed conveyor"), (212, "Tunnel belt"), (213, "Outfeed conveyor")):
+        add(f"CNV_{L}_RUN", "Bool", f"{label} running")
+        add(f"CNV_{L}_FLT", "Bool", f"{label} fault")
+        add(f"CNV_{L}_AVAIL", "Bool", f"{label} available")
+        add(f"CNV_{L}_START", "Bool", f"{label} start command")
+        add(f"CNV_{L}_STOP", "Bool", f"{label} stop command")
+        add(f"CNV_{L}_SPD", "Real", f"{label} speed feedback m/min")
+        add(f"CNV_{L}_SPD_SP", "Real", f"{label} speed setpoint m/min")
+        add(f"CNV_{L}_AMPS", "Real", f"{label} motor current A")
+        add(f"CNV_{L}_HRS", "Real", f"{label} run hours")
+    add("CNV_212_JAM", "Bool", "Tunnel belt product jam at outfeed photo-eye")
+    add("CNV_212_TRACK_ALM", "Bool", "Tunnel belt tracking fault")
+    add("CNV_213_COUNT", "Int", "Outfeed blocks counted this shift")
+    add("TT_211_PV", "Real", "Product infeed core temperature degC")
+    add("TT_213_PV", "Real", "Product outfeed surface temperature - IR pyrometer degC")
+    add("TT_213_SP", "Real", "Product outfeed target temperature degC")
+    add("TT_213_HI", "Bool", "Product outfeed temperature high - overheating")
+    add("TT_213_LO", "Bool", "Product outfeed temperature low - still frozen")
+
+    add("FAN_221_RUN", "Bool", "Cavity chilled air fan running")
+    add("FAN_221_FLT", "Bool", "Cavity chilled air fan fault")
+    add("FAN_221_START", "Bool", "Cavity chilled air fan start command")
+    add("FAN_221_STOP", "Bool", "Cavity chilled air fan stop command")
+    add("FAN_221_SPD", "Real", "Cavity chilled air fan speed percent")
+    add("FAN_221_HRS", "Real", "Cavity chilled air fan run hours")
+    add("FAN_222_RUN", "Bool", "Cavity exhaust fan running")
+    add("FAN_222_FLT", "Bool", "Cavity exhaust fan fault")
+    add("FAN_222_START", "Bool", "Cavity exhaust fan start command")
+    add("FAN_222_STOP", "Bool", "Cavity exhaust fan stop command")
+    add("PT_222_PV", "Real", "Cavity differential pressure Pa")
+
+    add("CHL_231_RUN", "Bool", "Chilled air refrigeration unit running")
+    add("CHL_231_FLT", "Bool", "Chilled air refrigeration unit fault")
+    add("CHL_231_START", "Bool", "Chilled air refrigeration unit start command")
+    add("CHL_231_STOP", "Bool", "Chilled air refrigeration unit stop command")
+    add("TT_231_PV", "Real", "Chilled air supply temperature degC")
+    add("TT_231_SP", "Real", "Chilled air supply temperature setpoint degC")
+
+    # --- 3. Cooling water skid: chiller, duty/standby pumps, header ---
+    add("CHL_301_RUN", "Bool", "Cooling water chiller running")
+    add("CHL_301_FLT", "Bool", "Cooling water chiller fault")
+    add("CHL_301_START", "Bool", "Cooling water chiller start command")
+    add("CHL_301_STOP", "Bool", "Cooling water chiller stop command")
+    add("CHL_301_KW", "Real", "Cooling water chiller electrical power kW")
+    add("TT_301_PV", "Real", "Cooling water supply temperature degC")
+    add("TT_301_SP", "Real", "Cooling water supply temperature setpoint degC")
+    add("TT_301_HI", "Bool", "Cooling water supply temperature high")
+    add("TT_301_RTN_PV", "Real", "Cooling water return temperature degC")
+    for L, label in ((311, "Cooling water pump 1"), (312, "Cooling water pump 2")):
+        add(f"PMP_{L}_RUN", "Bool", f"{label} running")
+        add(f"PMP_{L}_FLT", "Bool", f"{label} fault")
+        add(f"PMP_{L}_AVAIL", "Bool", f"{label} available")
+        add(f"PMP_{L}_START", "Bool", f"{label} start command")
+        add(f"PMP_{L}_STOP", "Bool", f"{label} stop command")
+        add(f"PMP_{L}_HRS", "Real", f"{label} run hours")
+    add("PMP_311_LEAD", "Int", "Cooling water duty pump selected 1 or 2")
+    add("PT_313_PV", "Real", "Cooling water header pressure bar")
+    add("PT_313_LO", "Bool", "Cooling water header pressure low")
+    add("FT_313_PV", "Real", "Cooling water header total flow LPM")
+    add("FT_313_LO", "Bool", "Cooling water header flow low")
+    add("AT_314_PV", "Real", "Cooling water conductivity uS/cm")
+    add("AT_314_HI", "Bool", "Cooling water conductivity high")
+    add("TNK_315_LEVEL", "Real", "Cooling water expansion tank level percent")
+    add("LT_315_LO", "Bool", "Cooling water expansion tank level low")
+
+    # --- 4. Safety and power: leakage monitors, interlocks, supply ---
+    add("AT_401_PV", "Real", "Microwave leakage at infeed choke mW/cm2")
+    add("AT_401_HI", "Bool", "Microwave leakage at infeed choke high - over 5 mW/cm2")
+    add("AT_402_PV", "Real", "Microwave leakage at outfeed choke mW/cm2")
+    add("AT_402_HI", "Bool", "Microwave leakage at outfeed choke high - over 5 mW/cm2")
+    add("ZS_411_CLOSED", "Bool", "Tunnel access door 1 closed")
+    add("ZS_412_CLOSED", "Bool", "Tunnel access door 2 closed")
+    add("ZS_413_CLOSED", "Bool", "Tunnel access door 3 closed")
+    add("ZS_414_CLOSED", "Bool", "Waveguide inspection cover closed")
+    add("SAFETY_CHAIN_HEALTHY", "Bool", "Microwave safety chain healthy - all interlocks made")
+    add("SAFETY_RESET_CMD", "Bool", "Safety relay reset command")
+    add("PLANT_ESTOP", "Bool", "Emergency stop pressed")
+    add("MCC_501_READY", "Bool", "Main incomer closed")
+    add("MCC_501_KW", "Real", "Main incomer active power kW")
+    add("MCC_501_PF", "Real", "Main incomer power factor")
+    add("MCC_501_AMPS", "Real", "Main incomer current A")
+    add("PT_502_PV", "Real", "Compressed air supply pressure bar")
+    add("PT_502_LO", "Bool", "Compressed air supply pressure low")
+    # What a real export carries and OTE will not take as written
+    add("Door 3 Open", "Bool", "Tunnel access door 3 open - legacy name")
+    add("2ND_SHIFT_COUNT", "Int", "Blocks counted second shift")
+
+    return Plant(
+        slug="microwave-tunnel",
+        title="Microwave tempering tunnel",
+        summary=(
+            "An industrial 915 MHz tunnel that tempers frozen meat blocks from -18 to "
+            "about -4 degC: three 75 kW magnetron generators, the tunnel belt and its "
+            "chilled air, a closed cooling water skid, and the leakage monitors and "
+            "door interlocks that make up the safety chain."
+        ),
+        areas=["Microwave generators", "Tunnel, conveyors and chilled air", "Cooling water skid", "Safety and power"],
+        intent=(
+            "Build one screen for the three microwave generators showing HV on, forward "
+            "and reflected power, anode current and magnetron cooling water temperature "
+            "and flow."
+        ),
+        intent_full=(
+            "Build the operator screens for the microwave tempering tunnel: a plant "
+            "overview, then a screen for the three microwave generators, one for the "
+            "tunnel with its conveyors and chilled air, one for the cooling water skid, "
+            "and one for safety and power."
+        ),
+        follow_ups=[
+            "add a high alarm on each generator's reflected power at 15 kW",
+            "put the product outfeed temperature and total forward power on the overview",
+            "show the door switches and the safety chain as lamps",
+        ],
+        rows=rows,
+    )
+
+
 PLANTS = [
     beverage_plant,
     transfer_pump_station,
@@ -861,6 +1029,7 @@ PLANTS = [
     tank_farm,
     water_treatment,
     chemical_plant,
+    microwave_tunnel,
 ]
 
 

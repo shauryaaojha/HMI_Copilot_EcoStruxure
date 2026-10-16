@@ -200,13 +200,27 @@ export function useChat() {
           return;
         }
         const before = useProject.getState().screens.length;
-        await generate(intent, fresh ? { fresh: true } : { fresh: false, existing: existingScreens() });
+        const stopped = await generate(intent, fresh ? { fresh: true } : { fresh: false, existing: existingScreens() });
         // The older screens' strips do not know about the new screens yet.
         if (!fresh) useProject.getState().refreshNavigation();
-        nameIfUnnamed(intent, suggestedName);
         const after = useProject.getState();
         const added = after.screens.slice(fresh ? 0 : before);
         const objects = added.reduce((n, s) => n + s.Children[0].Children.length, 0);
+        const declined = added.every((x) => x.Children[0].Children.length === 0) && stopped;
+        if (declined) {
+          // The pipeline declined (a request for another plant, nothing left
+          // to place): its reason is the answer, not "Nothing was added". A
+          // fresh run cleared the blank first screen; give it back.
+          if (useProject.getState().screens.length === 0) useProject.getState().addScreen();
+          patch({
+            pending: false,
+            text: stopped,
+            turn: { mode: fresh ? "build" : "extend", applied: [], rejected: [{ op: "build", reason: stopped }], renamed: [] },
+          });
+          return;
+        }
+        // Named after what was built, and only once something was.
+        nameIfUnnamed(intent, suggestedName);
         const label = added.length
           ? `${fresh ? "Built" : "Added"} ${added.map((s) => s.Name).join(", ")} — ${objects} objects`
           : "Nothing was added";

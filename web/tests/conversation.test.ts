@@ -662,6 +662,21 @@ describe("buildsInstead", () => {
     expect(buildsInstead(edit([{ op: "addEquipment" }, { op: "addEquipment" }]), empty)).toBe(true);
   });
 
+  it("runs the pipeline when a first request comes back as bindings onto objects that do not exist", () => {
+    // "one screen with only the two leakage monitors" answered with bindTag ops.
+    const bind = coerceTurn({
+      mode: "edit",
+      reply: "Binding the leakage monitors.",
+      ops: [
+        { op: "bindTag", target: "o3", tag: "AT_401_PV", property: "CurrentValue", note: "n" },
+        { op: "bindTag", target: "o4", tag: "AT_402_PV", property: "CurrentValue", note: "n" },
+      ],
+    })!;
+    expect(bind.ops).toHaveLength(2);
+    expect(buildsInstead(bind, empty)).toBe(true);
+    expect(buildsInstead(bind, { hasContent: true, hasTags: true })).toBe(false);
+  });
+
   it("leaves a drawn project, a project with no tags, and other edits alone", () => {
     expect(buildsInstead(edit([{ op: "addEquipment" }]), { hasContent: true, hasTags: true })).toBe(false);
     expect(buildsInstead(edit([{ op: "addEquipment" }]), { hasContent: false, hasTags: false })).toBe(false);

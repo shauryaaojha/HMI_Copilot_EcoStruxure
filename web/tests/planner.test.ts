@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { fallbackPlan, placeEveryUnit, type ScreenSpec } from "@/lib/ai/plan";
+import { fallbackPlan, finishPlan, placeEveryUnit, type ScreenSpec } from "@/lib/ai/plan";
 import { inferEquipment } from "@/lib/ai/infer";
 import type { Variable } from "@/lib/ote/schema";
 
@@ -118,6 +118,20 @@ describe("placeEveryUnit", () => {
     for (const boiler of boilers) expect(boilerScreen.include).toContain(boiler.id);
   });
 
+  it("never drops a different kind of equipment onto a screen just because it has room", () => {
+    // The microwave tunnel: a door switch and a shift counter landed on
+    // "Microwave Generators" because it had room left.
+    const equipment = mixed();
+    const pumps = equipment.filter((e) => e.kind === "pump");
+    const partial = [screen("PumpArea", pumps.slice(0, 2).map((e) => e.id))];
+
+    const completed = placeEveryUnit(partial, equipment, new Set(["pumparea"]));
+    const pumpArea = completed.find((s) => s.screenName === "PumpArea")!;
+    const kinds = new Set(pumpArea.include.map((id) => equipment.find((e) => e.id === id)!.kind));
+    expect([...kinds]).toEqual(["pump"]);
+    expect(placedOn(completed).size).toBe(equipment.length);
+  });
+
   it("groups whatever is still homeless by kind, and names the screen for it", () => {
     const equipment = mixed();
     // Every existing screen is full, so the chillers need somewhere new.
@@ -148,5 +162,38 @@ describe("the offline plan already placed everything", () => {
     const plan = fallbackPlan("the whole plant", equipment);
     const placed = new Set(plan.screens.flatMap((s) => s.include));
     for (const unit of equipment) expect(placed.has(unit.id)).toBe(true);
+  });
+});
+
+describe("finishPlan: a plan covers what the request asked for", () => {
+  const equipment = mixed();
+  const boilers = equipment.filter((e) => e.kind === "boiler").map((e) => e.id);
+
+  it("places every unit when the whole application was asked for", () => {
+    const plan = finishPlan({ scope: "whole", rationale: "r", screens: [screen("BoilerArea", boilers)] }, equipment);
+    expect(placedOn(plan.screens).size).toBe(equipment.length);
+  });
+
+  it("builds only the named equipment when the request named some, and adds nothing", () => {
+    const plan = finishPlan({ scope: "named", rationale: "r", screens: [screen("BoilerArea", boilers)] }, equipment);
+    expect(plan.screens).toHaveLength(1);
+    expect([...placedOn(plan.screens)].sort()).toEqual([...boilers].sort());
+  });
+
+  it("treats an unscoped plan as whole, as before", () => {
+    const plan = finishPlan({ rationale: "r", screens: [screen("BoilerArea", boilers)] }, equipment);
+    expect(placedOn(plan.screens).size).toBe(equipment.length);
+  });
+
+  it("builds nothing for a request about a different plant", () => {
+    const plan = finishPlan({ scope: "unrelated", rationale: "The tags describe pumps, boilers and chillers.", screens: [screen("CarWash", boilers)] }, equipment);
+    expect(plan.screens).toEqual([]);
+    expect(plan.scope).toBe("unrelated");
+  });
+
+  it("says so, rather than building the plant, when nothing a scoped request names exists", () => {
+    const plan = finishPlan({ scope: "named", rationale: "r", screens: [screen("Turbine", ["TRB_900"])] }, equipment);
+    expect(plan.screens).toEqual([]);
+    expect(plan.scope).toBe("unrelated");
   });
 });

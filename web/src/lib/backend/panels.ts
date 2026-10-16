@@ -12,7 +12,12 @@
  * for, and the top bar flags a disagreement rather than showing a label the
  * file contradicts.
  *
- * Every row below is an OTE panel, read from the product. There are
+ * Every row below is an OTE panel, read from the product: the Width and Height
+ * features of its model in Buildtime\BuildtimeData\DeviceInfo\Models-*.xml.
+ * HMIGTO6310 was listed at 1024x768 and HMIGTO5310 at 800x480 until those
+ * files were read on 17 October 2026; the product says 800x600 and 640x480.
+ * HMIST6500AWADI leads because it is the panel the shipped skeleton's
+ * Target.dat names, so a new project is designed for the panel its file says. There are
  * deliberately no Vijeo Designer rows: the ST6 and STM6 families are that
  * product's, but pairing a model with a resolution from a product page rather
  * than from an installation's target list is how a layout ends up designed for
@@ -22,8 +27,9 @@
 import type { FormatId, PanelProfile } from "./types";
 
 export const PANELS: readonly PanelProfile[] = [
-  { model: "HMIGTO6310", width: 1024, height: 768, formats: ["eote"], viewing: "touch" },
-  { model: "HMIGTO5310", width: 800, height: 480, formats: ["eote"], viewing: "touch" },
+  { model: "HMIST6500AWADI", width: 1024, height: 600, formats: ["eote"], viewing: "touch" },
+  { model: "HMIGTO6310", width: 800, height: 600, formats: ["eote"], viewing: "touch" },
+  { model: "HMIGTO5310", width: 640, height: 480, formats: ["eote"], viewing: "touch" },
   { model: "HMIGTO4310", width: 640, height: 480, formats: ["eote"], viewing: "touch" },
   { model: "HMISTU855", width: 320, height: 240, formats: ["eote"], viewing: "touch" },
 ];

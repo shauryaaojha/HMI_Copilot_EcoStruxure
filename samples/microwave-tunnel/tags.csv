@@ -1,0 +1,176 @@
+Name,DataType,Comment,Address
+HTR_101_RUN,Bool,Microwave generator 1 HV on - microwave power on,%MX500.0
+HTR_101_READY,Bool,Microwave generator 1 ready - filament warmed up,%MX500.1
+HTR_101_FLT,Bool,Microwave generator 1 fault,%MX500.2
+HTR_101_AVAIL,Bool,Microwave generator 1 available - in remote,%MX500.3
+HTR_101_START,Bool,Microwave generator 1 HV on command,%MX500.4
+HTR_101_STOP,Bool,Microwave generator 1 HV off command,%MX500.5
+HTR_101_RESET_CMD,Bool,Microwave generator 1 fault reset command,%MX500.6
+HTR_101_FWD_KW,Real,Microwave generator 1 forward power kW,%MD4014
+HTR_101_KW_SP,Real,Microwave generator 1 forward power setpoint kW,%MD4016
+HTR_101_REFL_KW,Real,Microwave generator 1 reflected power kW,%MD4018
+HTR_101_REFL_HI,Bool,Microwave generator 1 reflected power high,%MX501.2
+HTR_101_ANODE_AMPS,Real,Microwave generator 1 magnetron anode current A,%MD4022
+HTR_101_ANODE_KV,Real,Microwave generator 1 magnetron anode voltage kV,%MD4024
+HTR_101_FILAMENT_AMPS,Real,Microwave generator 1 magnetron filament current A,%MD4026
+HTR_101_ARC_ALM,Bool,Microwave generator 1 waveguide arc detected,%MX501.6
+HTR_101_HRS,Real,Microwave generator 1 magnetron run hours,%MD4030
+TT_101_PV,Real,Microwave generator 1 magnetron cooling water outlet temperature degC,%MD4032
+TT_101_HI,Bool,Microwave generator 1 magnetron cooling water temperature high,%MX502.1
+FT_101_PV,Real,Microwave generator 1 magnetron cooling water flow LPM,%MD4036
+FT_101_LO,Bool,Microwave generator 1 magnetron cooling water flow low,%MX502.3
+TT_101_WL_PV,Real,Microwave generator 1 circulator water load temperature degC,%MD4040
+HTR_102_RUN,Bool,Microwave generator 2 HV on - microwave power on,%MX502.5
+HTR_102_READY,Bool,Microwave generator 2 ready - filament warmed up,%MX502.6
+HTR_102_FLT,Bool,Microwave generator 2 fault,%MX502.7
+HTR_102_AVAIL,Bool,Microwave generator 2 available - in remote,%MX503.0
+HTR_102_START,Bool,Microwave generator 2 HV on command,%MX503.1
+HTR_102_STOP,Bool,Microwave generator 2 HV off command,%MX503.2
+HTR_102_RESET_CMD,Bool,Microwave generator 2 fault reset command,%MX503.3
+HTR_102_FWD_KW,Real,Microwave generator 2 forward power kW,%MD4056
+HTR_102_KW_SP,Real,Microwave generator 2 forward power setpoint kW,%MD4058
+HTR_102_REFL_KW,Real,Microwave generator 2 reflected power kW,%MD4060
+HTR_102_REFL_HI,Bool,Microwave generator 2 reflected power high,%MX503.7
+HTR_102_ANODE_AMPS,Real,Microwave generator 2 magnetron anode current A,%MD4064
+HTR_102_ANODE_KV,Real,Microwave generator 2 magnetron anode voltage kV,%MD4066
+HTR_102_FILAMENT_AMPS,Real,Microwave generator 2 magnetron filament current A,%MD4068
+HTR_102_ARC_ALM,Bool,Microwave generator 2 waveguide arc detected,%MX504.3
+HTR_102_HRS,Real,Microwave generator 2 magnetron run hours,%MD4072
+TT_102_PV,Real,Microwave generator 2 magnetron cooling water outlet temperature degC,%MD4074
+TT_102_HI,Bool,Microwave generator 2 magnetron cooling water temperature high,%MX504.6
+FT_102_PV,Real,Microwave generator 2 magnetron cooling water flow LPM,%MD4078
+FT_102_LO,Bool,Microwave generator 2 magnetron cooling water flow low,%MX505.0
+TT_102_WL_PV,Real,Microwave generator 2 circulator water load temperature degC,%MD4082
+HTR_103_RUN,Bool,Microwave generator 3 HV on - microwave power on,%MX505.2
+HTR_103_READY,Bool,Microwave generator 3 ready - filament warmed up,%MX505.3
+HTR_103_FLT,Bool,Microwave generator 3 fault,%MX505.4
+HTR_103_AVAIL,Bool,Microwave generator 3 available - in remote,%MX505.5
+HTR_103_START,Bool,Microwave generator 3 HV on command,%MX505.6
+HTR_103_STOP,Bool,Microwave generator 3 HV off command,%MX505.7
+HTR_103_RESET_CMD,Bool,Microwave generator 3 fault reset command,%MX506.0
+HTR_103_FWD_KW,Real,Microwave generator 3 forward power kW,%MD4098
+HTR_103_KW_SP,Real,Microwave generator 3 forward power setpoint kW,%MD4100
+HTR_103_REFL_KW,Real,Microwave generator 3 reflected power kW,%MD4102
+HTR_103_REFL_HI,Bool,Microwave generator 3 reflected power high,%MX506.4
+HTR_103_ANODE_AMPS,Real,Microwave generator 3 magnetron anode current A,%MD4106
+HTR_103_ANODE_KV,Real,Microwave generator 3 magnetron anode voltage kV,%MD4108
+HTR_103_FILAMENT_AMPS,Real,Microwave generator 3 magnetron filament current A,%MD4110
+HTR_103_ARC_ALM,Bool,Microwave generator 3 waveguide arc detected,%MX507.0
+HTR_103_HRS,Real,Microwave generator 3 magnetron run hours,%MD4114
+TT_103_PV,Real,Microwave generator 3 magnetron cooling water outlet temperature degC,%MD4116
+TT_103_HI,Bool,Microwave generator 3 magnetron cooling water temperature high,%MX507.3
+FT_103_PV,Real,Microwave generator 3 magnetron cooling water flow LPM,%MD4120
+FT_103_LO,Bool,Microwave generator 3 magnetron cooling water flow low,%MX507.5
+TT_103_WL_PV,Real,Microwave generator 3 circulator water load temperature degC,%MD4124
+OVN_201_RUN,Bool,Microwave tunnel in production,%MX507.7
+OVN_201_FLT,Bool,Microwave tunnel fault,%MX508.0
+OVN_201_READY,Bool,Microwave tunnel ready to heat,%MX508.1
+OVN_201_MODE,Int,Microwave tunnel mode 0 off 1 manual 2 auto 3 clean,%MW2066
+OVN_201_STEP,Int,Microwave tunnel sequence step,%MW2067
+OVN_201_RECIPE_ID,Int,Microwave tunnel active recipe number,%MW2068
+OVN_201_TOTAL_KW,Real,Microwave tunnel total forward power kW,%MD4138
+OVN_201_ARC_ALM,Bool,Microwave tunnel cavity arc detected - optical sensor,%MX508.6
+TT_201_PV,Real,Tunnel cavity air temperature degC,%MD4142
+TT_201_SP,Real,Tunnel cavity air temperature setpoint degC,%MD4144
+TT_201_HI,Bool,Tunnel cavity air temperature high,%MX509.1
+CNV_211_RUN,Bool,Infeed conveyor running,%MX509.2
+CNV_211_FLT,Bool,Infeed conveyor fault,%MX509.3
+CNV_211_AVAIL,Bool,Infeed conveyor available,%MX509.4
+CNV_211_START,Bool,Infeed conveyor start command,%MX509.5
+CNV_211_STOP,Bool,Infeed conveyor stop command,%MX509.6
+CNV_211_SPD,Real,Infeed conveyor speed feedback m/min,%MD4158
+CNV_211_SPD_SP,Real,Infeed conveyor speed setpoint m/min,%MD4160
+CNV_211_AMPS,Real,Infeed conveyor motor current A,%MD4162
+CNV_211_HRS,Real,Infeed conveyor run hours,%MD4164
+CNV_212_RUN,Bool,Tunnel belt running,%MX510.3
+CNV_212_FLT,Bool,Tunnel belt fault,%MX510.4
+CNV_212_AVAIL,Bool,Tunnel belt available,%MX510.5
+CNV_212_START,Bool,Tunnel belt start command,%MX510.6
+CNV_212_STOP,Bool,Tunnel belt stop command,%MX510.7
+CNV_212_SPD,Real,Tunnel belt speed feedback m/min,%MD4176
+CNV_212_SPD_SP,Real,Tunnel belt speed setpoint m/min,%MD4178
+CNV_212_AMPS,Real,Tunnel belt motor current A,%MD4180
+CNV_212_HRS,Real,Tunnel belt run hours,%MD4182
+CNV_213_RUN,Bool,Outfeed conveyor running,%MX511.4
+CNV_213_FLT,Bool,Outfeed conveyor fault,%MX511.5
+CNV_213_AVAIL,Bool,Outfeed conveyor available,%MX511.6
+CNV_213_START,Bool,Outfeed conveyor start command,%MX511.7
+CNV_213_STOP,Bool,Outfeed conveyor stop command,%MX512.0
+CNV_213_SPD,Real,Outfeed conveyor speed feedback m/min,%MD4194
+CNV_213_SPD_SP,Real,Outfeed conveyor speed setpoint m/min,%MD4196
+CNV_213_AMPS,Real,Outfeed conveyor motor current A,%MD4198
+CNV_213_HRS,Real,Outfeed conveyor run hours,%MD4200
+CNV_212_JAM,Bool,Tunnel belt product jam at outfeed photo-eye,%MX512.5
+CNV_212_TRACK_ALM,Bool,Tunnel belt tracking fault,%MX512.6
+CNV_213_COUNT,Int,Outfeed blocks counted this shift,%MW2103
+TT_211_PV,Real,Product infeed core temperature degC,%MD4208
+TT_213_PV,Real,Product outfeed surface temperature - IR pyrometer degC,%MD4210
+TT_213_SP,Real,Product outfeed target temperature degC,%MD4212
+TT_213_HI,Bool,Product outfeed temperature high - overheating,%MX513.3
+TT_213_LO,Bool,Product outfeed temperature low - still frozen,%MX513.4
+FAN_221_RUN,Bool,Cavity chilled air fan running,%MX513.5
+FAN_221_FLT,Bool,Cavity chilled air fan fault,%MX513.6
+FAN_221_START,Bool,Cavity chilled air fan start command,%MX513.7
+FAN_221_STOP,Bool,Cavity chilled air fan stop command,%MX514.0
+FAN_221_SPD,Real,Cavity chilled air fan speed percent,%MD4226
+FAN_221_HRS,Real,Cavity chilled air fan run hours,%MD4228
+FAN_222_RUN,Bool,Cavity exhaust fan running,%MX514.3
+FAN_222_FLT,Bool,Cavity exhaust fan fault,%MX514.4
+FAN_222_START,Bool,Cavity exhaust fan start command,%MX514.5
+FAN_222_STOP,Bool,Cavity exhaust fan stop command,%MX514.6
+PT_222_PV,Real,Cavity differential pressure Pa,%MD4238
+CHL_231_RUN,Bool,Chilled air refrigeration unit running,%MX515.0
+CHL_231_FLT,Bool,Chilled air refrigeration unit fault,%MX515.1
+CHL_231_START,Bool,Chilled air refrigeration unit start command,%MX515.2
+CHL_231_STOP,Bool,Chilled air refrigeration unit stop command,%MX515.3
+TT_231_PV,Real,Chilled air supply temperature degC,%MD4248
+TT_231_SP,Real,Chilled air supply temperature setpoint degC,%MD4250
+CHL_301_RUN,Bool,Cooling water chiller running,%MX515.6
+CHL_301_FLT,Bool,Cooling water chiller fault,%MX515.7
+CHL_301_START,Bool,Cooling water chiller start command,%MX516.0
+CHL_301_STOP,Bool,Cooling water chiller stop command,%MX516.1
+CHL_301_KW,Real,Cooling water chiller electrical power kW,%MD4260
+TT_301_PV,Real,Cooling water supply temperature degC,%MD4262
+TT_301_SP,Real,Cooling water supply temperature setpoint degC,%MD4264
+TT_301_HI,Bool,Cooling water supply temperature high,%MX516.5
+TT_301_RTN_PV,Real,Cooling water return temperature degC,%MD4268
+PMP_311_RUN,Bool,Cooling water pump 1 running,%MX516.7
+PMP_311_FLT,Bool,Cooling water pump 1 fault,%MX517.0
+PMP_311_AVAIL,Bool,Cooling water pump 1 available,%MX517.1
+PMP_311_START,Bool,Cooling water pump 1 start command,%MX517.2
+PMP_311_STOP,Bool,Cooling water pump 1 stop command,%MX517.3
+PMP_311_HRS,Real,Cooling water pump 1 run hours,%MD4280
+PMP_312_RUN,Bool,Cooling water pump 2 running,%MX517.5
+PMP_312_FLT,Bool,Cooling water pump 2 fault,%MX517.6
+PMP_312_AVAIL,Bool,Cooling water pump 2 available,%MX517.7
+PMP_312_START,Bool,Cooling water pump 2 start command,%MX518.0
+PMP_312_STOP,Bool,Cooling water pump 2 stop command,%MX518.1
+PMP_312_HRS,Real,Cooling water pump 2 run hours,%MD4292
+PMP_311_LEAD,Int,Cooling water duty pump selected 1 or 2,%MW2147
+PT_313_PV,Real,Cooling water header pressure bar,%MD4296
+PT_313_LO,Bool,Cooling water header pressure low,%MX518.5
+FT_313_PV,Real,Cooling water header total flow LPM,%MD4300
+FT_313_LO,Bool,Cooling water header flow low,%MX518.7
+AT_314_PV,Real,Cooling water conductivity uS/cm,%MD4304
+AT_314_HI,Bool,Cooling water conductivity high,%MX519.1
+TNK_315_LEVEL,Real,Cooling water expansion tank level percent,%MD4308
+LT_315_LO,Bool,Cooling water expansion tank level low,%MX519.3
+AT_401_PV,Real,Microwave leakage at infeed choke mW/cm2,%MD4312
+AT_401_HI,Bool,Microwave leakage at infeed choke high - over 5 mW/cm2,%MX519.5
+AT_402_PV,Real,Microwave leakage at outfeed choke mW/cm2,%MD4316
+AT_402_HI,Bool,Microwave leakage at outfeed choke high - over 5 mW/cm2,%MX519.7
+ZS_411_CLOSED,Bool,Tunnel access door 1 closed,%MX520.0
+ZS_412_CLOSED,Bool,Tunnel access door 2 closed,%MX520.1
+ZS_413_CLOSED,Bool,Tunnel access door 3 closed,%MX520.2
+ZS_414_CLOSED,Bool,Waveguide inspection cover closed,%MX520.3
+SAFETY_CHAIN_HEALTHY,Bool,Microwave safety chain healthy - all interlocks made,%MX520.4
+SAFETY_RESET_CMD,Bool,Safety relay reset command,%MX520.5
+PLANT_ESTOP,Bool,Emergency stop pressed,%MX520.6
+MCC_501_READY,Bool,Main incomer closed,%MX520.7
+MCC_501_KW,Real,Main incomer active power kW,%MD4336
+MCC_501_PF,Real,Main incomer power factor,%MD4338
+MCC_501_AMPS,Real,Main incomer current A,%MD4340
+PT_502_PV,Real,Compressed air supply pressure bar,%MD4342
+PT_502_LO,Bool,Compressed air supply pressure low,%MX521.4
+Door 3 Open,Bool,Tunnel access door 3 open - legacy name,%MX521.5
+2ND_SHIFT_COUNT,Int,Blocks counted second shift,%MW2174

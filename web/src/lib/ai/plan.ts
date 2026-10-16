@@ -31,10 +31,20 @@ import type { InferredEquipment } from "./infer";
 
 export type { ScreenSpec } from "@/lib/ote/layout";
 
+/**
+ * What the request covers. "whole": the application, every unit placed.
+ * "named": only the equipment the request names - nothing is added to it.
+ * "unrelated": the request describes a different plant than the tag list,
+ * and building anything from these tags would answer a question nobody asked.
+ */
+export type PlanScope = "whole" | "named" | "unrelated";
+
 export interface ScreenPlan {
   screens: ScreenSpec[];
   /** One sentence for the build timeline, in engineering language. */
   rationale: string;
+  /** Absent means "whole": the deterministic plan always covers every unit. */
+  scope?: PlanScope;
 }
 
 export type { Provider } from "./provider";
@@ -85,6 +95,8 @@ const DESCRIPTIONS = {
   screens: "The screens this application needs, overview first",
   rationale:
     "One sentence naming what was decided and why, in engineering language",
+  scope:
+    'What the request covers: "whole" for the application or plant, or a request that names no particular equipment; "named" when it names particular equipment, an area or one screen; "unrelated" when it describes a different plant or process than this equipment (a car wash for a tag list of pumps and tanks)',
 } as const;
 
 const system = (limits: Limits) => `You lay out industrial HMI applications for EcoStruxure Operator Terminal Expert.
@@ -107,7 +119,16 @@ Rules:
 - Produce a level 1 overview only when there are more than ${OVERVIEW_THRESHOLD}
   units, or when the engineer asked for an overview or for a whole plant. One
   station with two pumps is one screen, not three.
-- If the engineer named specific equipment, build for that and nothing else.
+- If the engineer named specific equipment, an area or one screen, build for
+  that and nothing else, and set scope "named". Units left out stay out.
+- Read the tag comments: they say what each unit is ("Microwave leakage at
+  infeed choke") when its id and kind ("AT 401", instrument) do not.
+- If the request describes a different plant or process than this equipment -
+  a car wash, a bakery or a website for a tag list of generators and
+  conveyors - set scope "unrelated", return no screens, and say in rationale
+  what the tag list does describe. Never relabel this equipment as the plant
+  that was asked for. Use "unrelated" only when no unit in the list is what
+  the request asks for; if any is, the scope is "named".
 - "status" shows running and fault lamps. "process" shows numeric readings.
   "alarms" is the active alarm summary along the bottom. Give the alarm section
   to every screen where any unit has a fault or a level reading.
@@ -155,8 +176,9 @@ const JSON_SCHEMA = {
       },
     },
     rationale: { type: "string", description: DESCRIPTIONS.rationale },
+    scope: { type: "string", enum: ["whole", "named", "unrelated"], description: DESCRIPTIONS.scope },
   },
-  required: ["screens", "rationale"],
+  required: ["screens", "rationale", "scope"],
   additionalProperties: false,
 } as const;
 
@@ -201,9 +223,10 @@ function geminiSchema() {
         },
       },
       rationale: { type: "STRING", description: DESCRIPTIONS.rationale },
+      scope: { type: "STRING", enum: ["whole", "named", "unrelated"], description: DESCRIPTIONS.scope },
     },
-    required: ["screens", "rationale"],
-    propertyOrdering: ["screens", "rationale"],
+    required: ["screens", "rationale", "scope"],
+    propertyOrdering: ["scope", "screens", "rationale"],
   };
 }
 
@@ -221,7 +244,7 @@ function prompt(intent: string, equipment: InferredEquipment[]): string {
     .map(
       (unit) =>
         `- id "${unit.id}": ${unit.kind} "${unit.label}" — ` +
-        unit.roles.map((r) => `${r.tag} (${r.role}, ${r.dataType})`).join(", "),
+        unit.roles.map((r) => `${r.tag} (${r.role}, ${r.dataType}${r.comment ? `: ${r.comment}` : ""})`).join(", "),
     )
     .join("\n");
   return `Equipment found in the tag list (${equipment.length} units):\n${inventory}\n\nEngineer's request:\n"${intent}"`;
@@ -261,12 +284,14 @@ function coerce(value: unknown): ScreenPlan | null {
     ];
   });
 
+  const scope: PlanScope | undefined =
+    raw.scope === "whole" || raw.scope === "named" || raw.scope === "unrelated" ? raw.scope : undefined;
+  const rationale = typeof raw.rationale === "string" ? raw.rationale : "";
+  // An unrelated request is an answer with no screens, not a failed plan.
+  if (scope === "unrelated") return { screens: [], rationale, scope };
   if (screens.length === 0) return null;
 
-  return {
-    screens,
-    rationale: typeof raw.rationale === "string" ? raw.rationale : "",
-  };
+  return { screens, rationale, ...(scope ? { scope } : {}) };
 }
 
 async function planWithGemini(
@@ -455,36 +480,55 @@ export async function planScreen(
       : await planWithClaude(intent, equipment, limits);
 
   if (!plan) return null;
+  return { provider, plan: finishPlan(plan, equipment, limits) };
+}
 
-  // No schema can express "must be one of these ids", so it is checked here
-  // rather than trusted. A hallucinated id would place an empty card, and a
-  // hallucinated tag would be a reading nothing drives.
+/**
+ * The model's plan, checked against the equipment and completed by its scope.
+ *
+ * No schema can express "must be one of these ids", so ids and tags are
+ * checked here rather than trusted: a hallucinated id would place an empty
+ * card, and a hallucinated tag would be a reading nothing drives. Every unit
+ * is placed only when the whole application was asked for - a request for one
+ * screen of three generators is that screen, not the plant.
+ */
+export function finishPlan(plan: ScreenPlan, equipment: InferredEquipment[], limits: Limits = DEFAULT_LIMITS): ScreenPlan {
+  if (plan.scope === "unrelated") return { ...plan, screens: [] };
+  const named = plan.scope === "named";
+
   const known = new Set(equipment.map((e) => e.id));
   const tags = new Set(equipment.flatMap((e) => e.roles.map((r) => r.tag)));
   const seen = new Set<string>();
 
-  const screens = plan.screens.map((spec, i) => {
+  const screens = plan.screens.flatMap((spec, i) => {
     const include = spec.include.filter((id) => known.has(id));
+    // A scoped request's screen that names nothing real is dropped, not
+    // filled with the whole plant.
+    if (named && include.length === 0 && spec.level !== 1) return [];
     // Screen names have to be unique: they name the entry in the project's own
     // hierarchy, and two screens called Overview is a project that does not open.
     let name = spec.screenName || `Screen${i + 1}`;
     for (let n = 2; seen.has(name.toLowerCase()); n++) name = `${spec.screenName}${n}`;
     seen.add(name.toLowerCase());
 
-    return {
+    return [{
       ...spec,
       screenName: name,
       include: include.length > 0 || spec.level === 1 ? include : [...known],
       // No sections said is both halves of a faceplate, not the lamps alone.
       sections: spec.sections.length > 0 ? spec.sections : (["status", "process"] as ScreenSpec["sections"]),
       readings: (spec.readings ?? []).filter((t) => tags.has(t)),
-    };
+    }];
   });
 
-  return {
-    provider,
-    plan: { ...plan, screens: placeEveryUnit(screens, equipment, seen, limits[2]) },
-  };
+  if (named) {
+    // Nothing the request named exists: saying so beats building the plant.
+    if (screens.every((s) => s.include.length === 0)) {
+      return { screens: [], scope: "unrelated", rationale: "None of the equipment the request names is in the tag list." };
+    }
+    return { ...plan, screens };
+  }
+  return { ...plan, screens: placeEveryUnit(screens, equipment, seen, limits[2]) };
 }
 
 /** Words that ask for a unit's detail display rather than its overview. */
@@ -572,10 +616,11 @@ export function fitToLimits(screens: ScreenSpec[], limits: Limits, taken: Set<st
  * build timeline reads as a bug because it is one.
  *
  * The model's grouping is kept - it read the request and knows which area is
- * which. Leftovers fill the screens it already made, preferring one that
- * already holds the same kind of equipment because that is the best available
- * guess at which area a unit belongs to, and whatever is still homeless gets
- * screens of its own, grouped by kind.
+ * which. Leftovers fill a screen it already made only when that screen holds
+ * the same kind of equipment, the best available guess at which area a unit
+ * belongs to. Anything else gets screens of its own, grouped by kind: a door
+ * switch and a shift counter dropped onto "Microwave Generators" because it
+ * had room is a screen that no longer means what its title says.
  */
 export function placeEveryUnit(
   screens: ScreenSpec[],
@@ -600,9 +645,7 @@ export function placeEveryUnit(
         s.include.length < perScreen &&
         s.include.some((id) => kindOf.get(id) === unit.kind),
     );
-    const anyRoom = detail.find((s) => s.include.length < perScreen);
-    const home = sameKind ?? anyRoom;
-    if (home) home.include.push(unit.id);
+    if (sameKind) sameKind.include.push(unit.id);
     else homeless.push(unit);
   }
 
