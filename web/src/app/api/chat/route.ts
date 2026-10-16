@@ -11,8 +11,9 @@
  * and the digest; `repair` marks the one retry after rejected ops.
  */
 
+import { describeModelError } from "@/lib/ai/model-error";
 import { converse, type Catalog, type HistoryItem, type ProjectDigest } from "@/lib/ai/converse";
-import { resolveProvider } from "@/lib/ai/provider";
+import { providerName, resolveProvider } from "@/lib/ai/provider";
 import type { Turn } from "@/lib/ai/ops";
 import type { StructureHint } from "@/lib/ai/infer";
 import { backendFor } from "@/lib/backend";
@@ -105,9 +106,9 @@ export async function POST(request: Request) {
       usage: result.usage,
     });
   } catch (error) {
-    return Response.json(
-      { error: error instanceof Error ? error.message : "the model call failed" },
-      { status: 502 },
-    );
+    // The provider's own error is JSON or an SDK object; the engineer gets a
+    // sentence, and the client gets a code it can act on (lib/ai/model-error).
+    const failed = describeModelError(error, choice.provider ? providerName(choice.provider) : undefined);
+    return Response.json({ error: failed.message, code: failed.code, retryable: failed.retryable }, { status: 502 });
   }
 }

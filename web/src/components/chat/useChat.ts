@@ -22,6 +22,7 @@ import { useCallback, useRef } from "react";
 import { describeOp, digestOf, type HistoryItem } from "@/lib/ai/converse";
 import { isUnnamed, nameProject } from "@/lib/ai/name";
 import { buildsInstead, type Op, type Turn } from "@/lib/ai/ops";
+import { buildsWithoutModel, type ModelErrorCode } from "@/lib/ai/model-error";
 import { inferEquipment } from "@/lib/ai/infer";
 import type { ExistingScreen } from "@/lib/ai/pipeline";
 import { commit, dryRun, previewOf, type DryRun, type OpOutcome } from "@/lib/ai/applier";
@@ -33,6 +34,13 @@ import { proposeShared, releaseScreen, runSharedAgent, sharedTurn, takeScreen } 
 
 /** Exchanges sent verbatim; older ones become one anchor line server-side. */
 const HISTORY_MESSAGES = 24;
+
+/** The chat route could not get an answer from the model (lib/ai/model-error). */
+class ModelCallFailed extends Error {
+  constructor(message: string, readonly code: ModelErrorCode) {
+    super(message);
+  }
+}
 
 const START_OVER = "Yes, start over and discard the current screens";
 
@@ -136,8 +144,9 @@ export function useChat() {
       }),
     });
     if (!response.ok) {
-      const body = (await response.json().catch(() => null)) as { error?: string } | null;
-      throw new Error(body?.error ?? `the chat route answered ${response.status}`);
+      const body = (await response.json().catch(() => null)) as { error?: string; code?: ModelErrorCode } | null;
+      const message = body?.error ?? `the chat route answered ${response.status}`;
+      throw body?.code ? new ModelCallFailed(message, body.code) : new Error(message);
     }
     return (await response.json()) as {
       provider: string | null;
@@ -383,6 +392,28 @@ export function useChat() {
         });
       } catch (caught) {
         const message = caught instanceof Error ? caught.message : "the turn could not be completed";
+        // The model is down, but a first build does not need it: the pipeline
+        // lays the screens out from the tag names, as it does with no model
+        // configured. Anything else changes nothing and says why.
+        const now = useProject.getState();
+        if (
+          caught instanceof ModelCallFailed &&
+          buildsWithoutModel({
+            hasContent: now.screens.some((x) => x.Children[0].Children.length > 0),
+            hasTags: now.variables.length > 0,
+          })
+        ) {
+          try {
+            await runGeneration(request, true);
+            patch({
+              text: `${message.replace(/ Nothing in the project changed\.| Try again in a minute\./g, "")} The screens were laid out from the tag names alone; ask for changes once the model answers again.`,
+              provider: "local",
+            });
+            return;
+          } catch {
+            // fall through to the plain report
+          }
+        }
         patch({ pending: false, text: "", error: message });
       } finally {
         if (shared && !handedOver) void releaseScreen(shared);
