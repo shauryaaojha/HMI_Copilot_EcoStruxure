@@ -88,7 +88,7 @@ in each tab, so another tab's cache metadata cannot silently advance them.
 Conflicts preserve the local copy and pause writes until Reload or Keep yours.
 Going online retries pending work; dirty work is checked again on reload.
 The Projects screen lists server projects first and offers Upload to cloud for
-device-only projects. No sharing UI is exposed yet.
+device-only projects. Sharing arrived in Phase B, below.
 
 Files above 4 MiB use POST `/api/upload`, numbered raw PUT parts of at most
 4 MiB, then POST `/complete`; `/api/import` accepts the returned uploadId.
@@ -113,3 +113,77 @@ Phase B can add invitations, sharing links and membership management on these
 records. Phase C can add live operations and merging, including an AI agent
 acting with explicit membership. This phase deliberately uses whole snapshots
 and conflict prompts; it does not implement live merging or agent collaboration.
+
+## Phase B: share links and comments
+
+### Share links
+
+An owner opens **Share** in the project header. The dialog lists the members
+(the owner can change a role or remove someone; the owner stays owner), the
+project's links, and a form for a new one: a role (viewer, commenter or
+editor), an expiry in days (default 14, at most 90) and whether the link may
+export (default off for a viewer link, on otherwise).
+
+A link is `/s/<token>`, where the token is 32 random bytes in base64url. The
+`shares` collection keeps only its SHA-256 (`_id`), with the project, role,
+creator, creation and expiry times, the export flag and `revokedAt`. Because
+the server cannot give a token back, the dialog shows it once and keeps a copy
+in the creating browser's localStorage so Copy works there; in another browser
+the link says it was created on another device. Revoking keeps the record.
+Expiry and revocation are judged by the repository's clock.
+
+| Visitor | Link | Result |
+| --- | --- | --- |
+| Signed in | any live link | Added to `members` with the link's role, never lowering a higher one; redirected to `/project/<id>` |
+| Signed out | viewer | Read-only view at `/s/<token>`; `POST /api/shares/open` sets the HttpOnly `hmi_share` cookie holding the token |
+| Signed out | commenter / editor | A sign-in request that returns to the link |
+| Anyone | expired, revoked, unknown | A page saying which, and that the owner can send a new one |
+
+`accessOf()` and `can()` in `src/lib/server/access.ts` take the request's cookie
+tokens. A live viewer link grants read (and export only if the link allows it)
+on its own project to a signed-out visitor; a cookie never grants comment,
+edit or manage. A member who joined through a link without export keeps that
+restriction (`exportDenied` on the membership). `GET /api/projects/[id]` now
+also returns `access: { role, actions, via }`, which the editor keeps in
+`src/store/access.ts`. Pictures of an opened file are readable through the
+viewer link of a project that references the file.
+
+### Read-only editing surface
+
+`useCanEdit()` (src/store/access.ts) is the one question every editing
+affordance asks: canvas tools, Insert, the screen strip, move/resize/draw on
+the canvas (`readOnly` on ScreenRenderer and ScreenBoard, separate from
+`interactive` so selection and the inspector still work), the context menu,
+editing shortcuts, inspector editors (a disabled fieldset), the layers panel,
+the library, the chat composer and proposal buttons, the project name, tag
+import and the start pane. Browser-only and laptop projects have no access
+record and behave as before. The routes' checks remain the rule.
+
+### Comments
+
+`comments` records: project, optional screen, object (UniqueId) and canvas
+point, author, plain-text body (at most 4,000 characters), creation and edit
+times, `resolvedAt`/`resolvedBy`, and `parentId` for one level of replies. A
+reply sits where its thread is pinned.
+
+| Route | Who |
+| --- | --- |
+| `GET /api/projects/[id]/comments` | anyone who can read, including a viewer link |
+| `POST /api/projects/[id]/comments` | signed-in commenter, editor or owner |
+| `PATCH .../comments/[cid]` `{ resolved }` | commenter and up; `{ body }` the author only |
+| `DELETE .../comments/[cid]` | the author, or the owner; a thread takes its replies |
+
+The canvas Comments toggle turns a click into a new pinned comment. Pins are
+numbered and drawn above the objects, outside the object groups, so they are
+never selected or exported. A side list per screen holds threads, replies,
+resolve/reopen and a "show resolved" filter. Comments are fetched when the
+list opens and every 10 s while it is open.
+
+The sign-off report lists unresolved comments per screen for a shared project:
+the editor sends the project id and the report route checks read access.
+
+Other routes: `GET /api/projects/[id]/members`, `PATCH|DELETE
+/api/projects/[id]/members/[userId]`, `GET|POST /api/projects/[id]/shares`,
+`DELETE /api/projects/[id]/shares/[shareId]`, `POST /api/shares/open`, and the
+page `/s/[token]`. Tests: `tests/shares.test.ts`, `tests/comments.test.ts`,
+`tests/readonly.test.ts`.

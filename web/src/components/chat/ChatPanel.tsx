@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useProject } from "@/store/project";
+import { useCanEdit } from "@/store/access";
 import { useNewProject } from "@/components/shell/useNewProject";
 import { SAMPLES } from "@/components/tags";
 import { cn } from "@/components/ui";
@@ -75,6 +76,10 @@ export function ChatPanel() {
   const tagImport = useProject((s) => s.tagImport);
   const restore = useProject((s) => s.restore);
   const projectId = useProject((s) => s.id);
+  // Every turn edits the project, so a viewer or commenter reads the
+  // conversation but cannot add to it, apply what it proposed, revert to a
+  // turn or clear it.
+  const canEdit = useCanEdit();
 
   /**
    * Once a known sample is loaded, the objection to a worked example goes away:
@@ -167,7 +172,7 @@ export function ChatPanel() {
         )}
 
         <div className="ml-auto flex items-center gap-0.5">
-          {chat.length > 0 && (
+          {chat.length > 0 && canEdit && (
             <button
               type="button"
               onClick={clearChat}
@@ -368,7 +373,7 @@ export function ChatPanel() {
                         return (
                           <li key={i}>
                             <label className="flex cursor-pointer gap-2 text-[11px] leading-relaxed text-text-secondary">
-                              <input type="checkbox" checked={on} onChange={() => toggleOp(message.id, n, i)} className="mt-0.5 accent-[var(--color-brand-500)]" />
+                              <input type="checkbox" checked={on} disabled={!canEdit} onChange={() => toggleOp(message.id, n, i)} className="mt-0.5 accent-[var(--color-brand-500)]" />
                               <span className="min-w-0">{label}</span>
                             </label>
                           </li>
@@ -396,7 +401,7 @@ export function ChatPanel() {
                       ))}
                     </ul>
                   )}
-                  {message.proposal.status === "pending" && (
+                  {message.proposal.status === "pending" && canEdit && (
                     <div className="flex gap-2 pt-1">
                       <button
                         type="button"
@@ -454,7 +459,7 @@ export function ChatPanel() {
                       )}
                     </span>
                   )}
-                  {message.versionAt && (
+                  {message.versionAt && canEdit && (
                     <button
                       type="button"
                       onClick={() => restore(message.versionAt!)}
@@ -472,76 +477,85 @@ export function ChatPanel() {
         )}
       </div>
 
-      {/* The composer, pinned to the foot of the same column. */}
-      <div className="relative shrink-0 border-t border-line-subtle p-3">
-        {missing && chat.length > 0 && (
-          <p className="pb-2 text-[11px] leading-snug text-text-faint">
-            {requirements
-              .filter((r) => r.id !== "subject" && !r.met)
-              .map((r) => r.detail)
-              .join(" ")}
-          </p>
-        )}
-
-        <div
-          className={cn(
-            "relative rounded-xl border bg-surface-raised transition",
-            working ? "border-brand-500/40" : "border-line focus-within:border-brand-500/60",
-          )}
-          style={{ boxShadow: working ? "var(--glow-brand)" : "var(--elev-1)" }}
-        >
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              // Enter sends; Shift+Enter is a newline, which is the convention
-              // everywhere an engineer has typed into a box before.
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                submit();
-              }
-            }}
-            maxLength={MAX_INTENT}
-            rows={3}
-            disabled={working}
-            aria-label="Describe what you need"
-            placeholder={
-              hasContent
-                ? "Ask for a change, or another screen…"
-                : "Describe the screen you need…"
-            }
-            className="w-full resize-none bg-transparent px-3 py-2.5 pr-11 text-[13px] leading-relaxed text-text-primary outline-none placeholder:text-text-faint disabled:opacity-60"
-          />
-
-          <button
-            type="button"
-            disabled={!draft.trim() || working}
-            onClick={submit}
-            aria-label="Send"
-            title="Send (Enter)"
-            className={cn(
-              "focus-ring absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-lg transition",
-              draft.trim() && !working
-                ? "bg-brand-500 text-text-onbrand hover:bg-brand-600"
-                : "bg-surface-hover text-text-faint",
-            )}
-          >
-            {working ? (
-              <span className="h-3 w-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" />
-            ) : (
-              <ArrowUp size={14} aria-hidden />
-            )}
-          </button>
-        </div>
-
-        <p className="pt-1.5 text-[10px] text-text-faint">
-          <kbd className="rounded border border-line-subtle px-1">Enter</kbd> to send
-          {" · "}
-          <kbd className="rounded border border-line-subtle px-1">Shift</kbd>+
-          <kbd className="rounded border border-line-subtle px-1">Enter</kbd> for a new
-          line
+      {/* A read-only project has no composer, only a line saying why. */}
+      {!canEdit && (
+        <p className="relative shrink-0 border-t border-line-subtle px-3 py-3 text-[11px] text-text-muted">
+          View only — ask an editor for changes.
         </p>
-      </div>
+      )}
+
+      {/* The composer, pinned to the foot of the same column. */}
+      {canEdit && (
+        <div className="relative shrink-0 border-t border-line-subtle p-3">
+          {missing && chat.length > 0 && (
+            <p className="pb-2 text-[11px] leading-snug text-text-faint">
+              {requirements
+                .filter((r) => r.id !== "subject" && !r.met)
+                .map((r) => r.detail)
+                .join(" ")}
+            </p>
+          )}
+
+          <div
+            className={cn(
+              "relative rounded-xl border bg-surface-raised transition",
+              working ? "border-brand-500/40" : "border-line focus-within:border-brand-500/60",
+            )}
+            style={{ boxShadow: working ? "var(--glow-brand)" : "var(--elev-1)" }}
+          >
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter sends; Shift+Enter is a newline, which is the convention
+                // everywhere an engineer has typed into a box before.
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  submit();
+                }
+              }}
+              maxLength={MAX_INTENT}
+              rows={3}
+              disabled={working}
+              aria-label="Describe what you need"
+              placeholder={
+                hasContent
+                  ? "Ask for a change, or another screen…"
+                  : "Describe the screen you need…"
+              }
+              className="w-full resize-none bg-transparent px-3 py-2.5 pr-11 text-[13px] leading-relaxed text-text-primary outline-none placeholder:text-text-faint disabled:opacity-60"
+            />
+
+            <button
+              type="button"
+              disabled={!draft.trim() || working}
+              onClick={submit}
+              aria-label="Send"
+              title="Send (Enter)"
+              className={cn(
+                "focus-ring absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-lg transition",
+                draft.trim() && !working
+                  ? "bg-brand-500 text-text-onbrand hover:bg-brand-600"
+                  : "bg-surface-hover text-text-faint",
+              )}
+            >
+              {working ? (
+                <span className="h-3 w-3 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" />
+              ) : (
+                <ArrowUp size={14} aria-hidden />
+              )}
+            </button>
+          </div>
+
+          <p className="pt-1.5 text-[10px] text-text-faint">
+            <kbd className="rounded border border-line-subtle px-1">Enter</kbd> to send
+            {" · "}
+            <kbd className="rounded border border-line-subtle px-1">Shift</kbd>+
+            <kbd className="rounded border border-line-subtle px-1">Enter</kbd> for a new
+            line
+          </p>
+        </div>
+      )}
     </aside>
   );
 }

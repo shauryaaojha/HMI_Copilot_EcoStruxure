@@ -20,8 +20,10 @@
 import { AccountControl } from "./AccountControl";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Command, Download, Monitor, Pencil, SquarePen } from "lucide-react";
+import { Command, Download, Monitor, Pencil, SquarePen, Users } from "lucide-react";
 import { useProject } from "@/store/project";
+import { useAccess, useCanEdit } from "@/store/access";
+import { ShareDialog } from "./ShareDialog";
 import { Input, cn } from "@/components/ui";
 import { SchneiderMark } from "./SchneiderMark";
 import { useNewProject } from "./useNewProject";
@@ -62,10 +64,20 @@ function ProjectNameField() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
   const input = useRef<HTMLInputElement>(null);
+  // Renaming is an edit like any other: a read-only project shows its name.
+  const canEdit = useCanEdit();
 
   useEffect(() => {
     if (editing) input.current?.select();
   }, [editing]);
+
+  if (!canEdit) {
+    return (
+      <span className="flex h-7 min-w-0 items-center px-2 text-sm font-semibold text-text-primary">
+        <span className="truncate">{name}</span>
+      </span>
+    );
+  }
 
   function commit() {
     const next = draft.trim();
@@ -126,6 +138,10 @@ export function TopBar({ onExport, className }: TopBarProps) {
   const actual = useActualPanel();
   const newProject = useNewProject();
   const palette = useCommandPalette();
+  // Sharing exists only for a project with a server copy: a browser-only
+  // project has nobody to share it through.
+  const cloud = useAccess((s) => s.access !== null && s.projectId === projectId);
+  const [sharing, setSharing] = useState(false);
 
   // The label has to be the file's, not the dropdown's. Saying HMIGTO6310 over
   // a project whose Target.dat reads HMIST6500AWADI is exactly the kind of
@@ -174,6 +190,17 @@ export function TopBar({ onExport, className }: TopBarProps) {
 
         <div className="ml-auto flex shrink-0 items-center gap-1">
           <AccountControl projectId={projectId} />
+          {cloud && (
+            <button
+              type="button"
+              onClick={() => setSharing(true)}
+              title="Share this project: members, roles and links"
+              className="focus-ring flex items-center gap-1.5 rounded-md border border-line-subtle px-2 py-1 text-[11px] text-text-muted transition hover:border-line hover:text-text-secondary"
+            >
+              <Users size={12} aria-hidden />
+              Share
+            </button>
+          )}
           {/* The panel the file will target. A read-out, not a control - the
               control is in the palette, because it is set once. */}
           <button
@@ -232,6 +259,7 @@ export function TopBar({ onExport, className }: TopBarProps) {
       </header>
 
       <CommandPalette open={palette.open} onClose={() => palette.setOpen(false)} />
+      {sharing && cloud && <ShareDialog projectId={projectId} onClose={() => setSharing(false)} />}
     </>
   );
 }

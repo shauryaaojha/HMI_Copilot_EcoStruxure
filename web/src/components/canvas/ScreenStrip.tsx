@@ -22,6 +22,7 @@ import { useEffect, useRef, useState } from "react";
 import { Copy, Import, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useProject } from "@/store/project";
 import { cn } from "@/components/ui";
+import { useCanEdit } from "@/store/access";
 import { ImportScreensDialog } from "./ImportScreensDialog";
 import { RegenerateDialog } from "./RegenerateDialog";
 
@@ -34,6 +35,10 @@ export function ScreenStrip() {
   const renameScreen = useProject((s) => s.renameScreen);
   const removeScreen = useProject((s) => s.removeScreen);
   const reorderScreens = useProject((s) => s.reorderScreens);
+  // Read-only keeps the strip as a way to switch screens and drops every way
+  // to manage them: no add, import, rename, reorder, duplicate, regenerate or
+  // delete.
+  const canEdit = useCanEdit();
 
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -65,13 +70,13 @@ export function ScreenStrip() {
           return (
             <div
               key={screen.UniqueId}
-              draggable={!editing}
+              draggable={canEdit && !editing}
               onDragStart={() => {
                 dragFrom.current = index;
               }}
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => {
-                if (dragFrom.current !== null) reorderScreens(dragFrom.current, index);
+                if (canEdit && dragFrom.current !== null) reorderScreens(dragFrom.current, index);
                 dragFrom.current = null;
               }}
               className={cn(
@@ -99,10 +104,11 @@ export function ScreenStrip() {
                   type="button"
                   onClick={() => setActiveScreen(screen.UniqueId)}
                   onDoubleClick={() => {
+                    if (!canEdit) return;
                     setEditing(screen.UniqueId);
                     setDraft(screen.Name);
                   }}
-                  title={`${screen.Name}${screen.Type === "Content" ? " (content screen: embedded in a screen, not navigated to)" : ""} - ${count} object${count === 1 ? "" : "s"}. Double-click to rename.`}
+                  title={`${screen.Name}${screen.Type === "Content" ? " (content screen: embedded in a screen, not navigated to)" : ""} - ${count} object${count === 1 ? "" : "s"}.${canEdit ? " Double-click to rename." : ""}`}
                   className="focus-ring max-w-[11rem] truncate font-medium"
                 >
                   {screen.Type === "Content" && <span className="mr-1 text-[9px] uppercase tracking-wide opacity-60">content</span>}
@@ -112,7 +118,7 @@ export function ScreenStrip() {
 
               <span className="text-figure shrink-0 text-[9px] opacity-60">{count}</span>
 
-              {isActive && (
+              {isActive && canEdit && (
                 <span className="flex shrink-0 items-center gap-0.5">
                   <button
                     type="button"
@@ -153,41 +159,45 @@ export function ScreenStrip() {
         })}
       </div>
 
-      <button
-        type="button"
-        onClick={() => addScreen()}
-        title="Add a screen"
-        aria-label="Add a screen"
-        className="focus-ring flex h-6 shrink-0 items-center gap-1 rounded-full border border-line-subtle px-2 text-[11px] text-text-muted transition hover:border-brand-500/50 hover:text-brand-400"
-      >
-        <Plus size={12} aria-hidden />
-        Screen
-      </button>
+      {canEdit && (
+        <>
+          <button
+            type="button"
+            onClick={() => addScreen()}
+            title="Add a screen"
+            aria-label="Add a screen"
+            className="focus-ring flex h-6 shrink-0 items-center gap-1 rounded-full border border-line-subtle px-2 text-[11px] text-text-muted transition hover:border-brand-500/50 hover:text-brand-400"
+          >
+            <Plus size={12} aria-hidden />
+            Screen
+          </button>
 
-      {/* Screens from another project. The file is read, the engineer picks,
-          and the picked screens land here with their bindings re-pointed. */}
-      <input
-        ref={picker}
-        type="file"
-        accept=".eote"
-        className="hidden"
-        aria-hidden
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = "";
-          if (file) setImporting(file);
-        }}
-      />
-      <button
-        type="button"
-        onClick={() => picker.current?.click()}
-        title="Import screens from another .eote project"
-        aria-label="Import screens from another project"
-        className="focus-ring flex h-6 shrink-0 items-center gap-1 rounded-full border border-line-subtle px-2 text-[11px] text-text-muted transition hover:border-brand-500/50 hover:text-brand-400"
-      >
-        <Import size={12} aria-hidden />
-        Import
-      </button>
+          {/* Screens from another project. The file is read, the engineer picks,
+              and the picked screens land here with their bindings re-pointed. */}
+          <input
+            ref={picker}
+            type="file"
+            accept=".eote"
+            className="hidden"
+            aria-hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) setImporting(file);
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => picker.current?.click()}
+            title="Import screens from another .eote project"
+            aria-label="Import screens from another project"
+            className="focus-ring flex h-6 shrink-0 items-center gap-1 rounded-full border border-line-subtle px-2 text-[11px] text-text-muted transition hover:border-brand-500/50 hover:text-brand-400"
+          >
+            <Import size={12} aria-hidden />
+            Import
+          </button>
+        </>
+      )}
 
       {importing && <ImportScreensDialog file={importing} onClose={() => setImporting(null)} />}
       {regenerating && <RegenerateDialog screenId={regenerating} onClose={() => setRegenerating(null)} />}

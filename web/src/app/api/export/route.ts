@@ -15,6 +15,7 @@
 import { currentUser } from "@/lib/server/session";
 import { hasMongo } from "@/lib/db/mongo";
 import { readSource } from "@/lib/server/access";
+import { shareTokens } from "@/lib/server/shares";
 import { ServerError } from "@/lib/server/errors";
 import { errorResponse, sameOrigin } from "@/lib/server/http";
 import { panelOf, type PackageInput } from "@/lib/ote/packager";
@@ -90,7 +91,7 @@ export async function POST(request: Request) {
     let panelLabel: string | null = null;
 
     if (input.source && /^[0-9a-f-]{36}$/i.test(input.source)) {
-      const stored = (hasMongo() || !process.env.VERCEL) ? await readSource(input.source, await currentUser(), "export") : null;
+      const stored = (hasMongo() || !process.env.VERCEL) ? await readSource(input.source, await currentUser(), "export", undefined, shareTokens(request)) : null;
       const original = stored?.bytes ?? await getImport(input.source);
       if (!original) {
         return Response.json({ error: importGoneMessage() }, { status: 409 });

@@ -20,6 +20,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useProject } from "@/store/project";
+import { useCanEdit } from "@/store/access";
 import { StartPane } from "./StartPane";
 import { useProjectHydration } from "./useProjectHydration";
 import { CanvasPane } from "@/components/canvas/CanvasPane";
@@ -37,6 +38,7 @@ const WorkspaceShell = dynamic(
 
 export function Workspace({ projectId }: { projectId: string }) {
   useProjectHydration(projectId);
+  const canEdit = useCanEdit();
 
   /**
    * An empty project opens on the start pane rather than on an empty grid.
@@ -59,7 +61,9 @@ export function Workspace({ projectId }: { projectId: string }) {
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
-      {start && <StartPane projectId={projectId} onDone={() => setStart(false)} />}
+      {/* Every answer the start pane offers builds something, so a viewer of
+          an empty shared project lands on the empty canvas instead. */}
+      {start && canEdit && <StartPane projectId={projectId} onDone={() => setStart(false)} />}
       <WorkspaceShell
       projectId={projectId}
       intent={<ChatPanel />}

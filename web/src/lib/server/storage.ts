@@ -13,6 +13,8 @@ import { mongoClient, mongoDb } from "@/lib/db/mongo";
 import { ServerError } from "./errors";
 
 export type Row = { _id: string } & Record<string, unknown>;
+/** Keep route ids safe for both filesystem and database keys. */
+export const validId = (id: string) => /^[a-zA-Z0-9_-]{1,160}$/.test(id);
 /** Bound metadata queries before materializing large snapshot records. */
 export interface ListOptions {
   projection?: Record<string, 0 | 1>;
@@ -32,11 +34,25 @@ export interface Storage {
   bytes: { put(id: string, bytes: Uint8Array): Promise<void>; get(id: string): Promise<Uint8Array | null>; remove(id: string): Promise<void> };
 }
 type State = Record<string, Record<string, Row>>;
+
+/**
+ * Equality, plus the one range operator the collaboration log needs: reading
+ * the changes after a revision. Written in MongoDB's own shape (`{ $gt: n }`)
+ * so the same query object works unchanged against the database.
+ */
+function matches(actual: unknown, wanted: unknown): boolean {
+  if (wanted && typeof wanted === "object" && "$gt" in wanted) {
+    const bound = (wanted as { $gt: number }).$gt;
+    return typeof actual === "number" && actual > bound;
+  }
+  return actual === wanted;
+}
+
 function dataFor(state: State): Data {
   return {
     async get<T extends Row>(table: string, id: string): Promise<T | null> { return structuredClone((state[table]?.[id] as T | undefined) ?? null); },
     async list<T extends Row>(table: string, query: Record<string, unknown> = {}, options: ListOptions = {}) {
-      let rows = Object.values(state[table] ?? {}).filter(r => Object.entries(query).every(([k, v]) => r[k] === v));
+      let rows = Object.values(state[table] ?? {}).filter(r => Object.entries(query).every(([k, v]) => matches(r[k], v)));
       for (const [key, direction] of Object.entries(options.sort ?? {}).reverse()) {
         rows.sort((a, b) => (a[key] === b[key] ? 0 : (a[key] as number) < (b[key] as number) ? -1 : 1) * direction);
       }
@@ -108,7 +124,11 @@ export class FileStorage implements Storage {
     try {
       // A write-ahead journal makes a multi-directory commit recoverable.
       // Readers take the same lock and finish an interrupted commit first.
-      const tables = ["users", "projects", "versions", "members", "sources", "uploads", "uploadParts"];
+      const tables = [
+        "users", "projects", "versions", "members", "sources", "uploads", "uploadParts",
+        // Collaboration phases B, C and D.
+        "shares", "comments", "changes", "heads", "presence", "proposals", "decisions", "agentLocks",
+      ];
       const journal = path.join(this.root, "journal.json");
       const readJson = async (file: string) => {
         try { return JSON.parse(await readFile(file, "utf8")); }
@@ -164,6 +184,12 @@ export class MongoStorage implements Storage {
       await db.collection("members").createIndex({ userId: 1, projectId: 1 });
       await db.collection("uploadParts").createIndex({ uploadId: 1, part: 1 }, { unique: true });
       await db.collection("sources.files").createIndex({ filename: 1 });
+      await db.collection("shares").createIndex({ projectId: 1 });
+      await db.collection("comments").createIndex({ projectId: 1, createdAt: 1 });
+      await db.collection("changes").createIndex({ projectId: 1, rev: 1 }, { unique: true });
+      await db.collection("presence").createIndex({ projectId: 1 });
+      await db.collection("proposals").createIndex({ projectId: 1, createdAt: -1 });
+      await db.collection("decisions").createIndex({ projectId: 1, at: 1 });
     })().catch(error => { this.ready = undefined; throw error; });
   }
   async transaction<T>(fn: (data: Data) => Promise<T>): Promise<T> {

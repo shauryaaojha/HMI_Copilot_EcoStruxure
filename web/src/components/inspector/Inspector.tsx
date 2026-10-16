@@ -18,6 +18,7 @@ import { useState } from "react";
 import { BoxSelect, Lock, MousePointerSquareDashed, Trash2, Unlock } from "lucide-react";
 import { isSizedByParent } from "@/lib/ote/schema";
 import { useProject } from "@/store/project";
+import { useCanEdit } from "@/store/access";
 import { TagTable } from "@/components/tags";
 import { LibraryPanel } from "@/components/library/LibraryPanel";
 import { Button, EmptyState, Field, Panel, Tabs, type TabItem } from "@/components/ui";
@@ -115,6 +116,25 @@ function FieldRow({
   );
 }
 
+/**
+ * Property editors that show their values but take no input on a read-only
+ * project.
+ *
+ * A disabled fieldset disables every native control inside it - inputs,
+ * selects, textareas, buttons - which is exactly the generated editors, the
+ * binding picker and the composite form, without threading a flag through
+ * each of them. It wraps the editors and not the panels, so a viewer can still
+ * open and close the property groups.
+ */
+function Editable({ children }: { children: React.ReactNode }) {
+  const canEdit = useCanEdit();
+  return (
+    <fieldset disabled={!canEdit} className="m-0 min-w-0 border-0 p-0">
+      {children}
+    </fieldset>
+  );
+}
+
 export function Inspector() {
   const [tab, setTab] = useState<InspectorTab>("properties");
   const screens = useProject((s) => s.screens);
@@ -128,6 +148,7 @@ export function Inspector() {
   const removeObjects = useProject((s) => s.removeObjects);
   const setBox = useProject((s) => s.setBox);
   const setMeta = useProject((s) => s.setMeta);
+  const canEdit = useCanEdit();
 
   // The inspector edits one object; a marquee selection of several reports the
   // count instead, because a property panel over a heterogeneous selection is a
@@ -181,7 +202,9 @@ export function Inspector() {
         ) : tab === "layers" ? (
           <LayersPanel />
         ) : composite ? (
-          <CompositeEditor instance={composite} />
+          <Editable>
+            <CompositeEditor instance={composite} />
+          </Editable>
         ) : selectedIds.length > 1 ? (
           <EmptyState
             icon={BoxSelect}
@@ -215,25 +238,29 @@ export function Inspector() {
                   #{part.Name}
                 </p>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                iconOnly
-                aria-pressed={locked}
-                aria-label={locked ? "Unlock object" : "Lock object"}
-                title={locked ? "Unlock object" : "Lock object"}
-                onClick={() => setMeta([part.UniqueId], { locked: !locked })}
-                icon={locked ? <Lock size={15} /> : <Unlock size={15} />}
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                iconOnly
-                aria-label="Delete object"
-                title="Delete object"
-                onClick={() => removeObjects([part.UniqueId])}
-                icon={<Trash2 size={15} />}
-              />
+              {canEdit && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    iconOnly
+                    aria-pressed={locked}
+                    aria-label={locked ? "Unlock object" : "Lock object"}
+                    title={locked ? "Unlock object" : "Lock object"}
+                    onClick={() => setMeta([part.UniqueId], { locked: !locked })}
+                    icon={locked ? <Lock size={15} /> : <Unlock size={15} />}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    iconOnly
+                    aria-label="Delete object"
+                    title="Delete object"
+                    onClick={() => removeObjects([part.UniqueId])}
+                    icon={<Trash2 size={15} />}
+                  />
+                </>
+              )}
             </div>
 
             {/* Geometry first: it is what an engineer reaches for most, and
@@ -253,50 +280,52 @@ export function Inspector() {
                   Sized by its parent, not by its own width and height.
                 </p>
               )}
-              <div className="grid grid-cols-2 gap-1.5">
-                {(
-                  [
-                    ["X", part.Location.Left, "left"],
-                    ["Y", part.Location.Top, "top"],
-                    ["W", part.Width, "width"],
-                    ["H", part.Height, "height"],
-                  ] as const
-                ).map(([axis, value, key]) => (
-                  <label
-                    key={key}
-                    title={
-                      { left: "X position", top: "Y position", width: "Width", height: "Height" }[key]
-                    }
-                    className="flex h-8 min-w-0 items-center gap-1.5 rounded-md border border-line bg-surface-raised px-2 transition focus-within:border-brand-500/60"
-                  >
-                    <span aria-hidden className="shrink-0 text-[11px] font-medium text-text-faint">
-                      {axis}
-                    </span>
-                    <input
-                      type="number"
-                      value={value}
-                      disabled={locked}
-                      aria-label={
+              <Editable>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(
+                    [
+                      ["X", part.Location.Left, "left"],
+                      ["Y", part.Location.Top, "top"],
+                      ["W", part.Width, "width"],
+                      ["H", part.Height, "height"],
+                    ] as const
+                  ).map(([axis, value, key]) => (
+                    <label
+                      key={key}
+                      title={
                         { left: "X position", top: "Y position", width: "Width", height: "Height" }[key]
                       }
-                      onChange={(e) => {
-                        const next = Number(e.target.value);
-                        if (!Number.isFinite(next)) return;
-                        setBox(part.UniqueId, {
-                          left: part.Location.Left,
-                          top: part.Location.Top,
-                          width: (part.Width ?? 0),
-                          height: (part.Height ?? 0),
-                          [key]: key === "width" || key === "height"
-                            ? Math.max(1, next)
-                            : next,
-                        });
-                      }}
-                      className="text-figure w-full min-w-0 bg-transparent text-sm text-text-primary outline-none disabled:opacity-50"
-                    />
-                  </label>
-                ))}
-              </div>
+                      className="flex h-8 min-w-0 items-center gap-1.5 rounded-md border border-line bg-surface-raised px-2 transition focus-within:border-brand-500/60"
+                    >
+                      <span aria-hidden className="shrink-0 text-[11px] font-medium text-text-faint">
+                        {axis}
+                      </span>
+                      <input
+                        type="number"
+                        value={value}
+                        disabled={locked}
+                        aria-label={
+                          { left: "X position", top: "Y position", width: "Width", height: "Height" }[key]
+                        }
+                        onChange={(e) => {
+                          const next = Number(e.target.value);
+                          if (!Number.isFinite(next)) return;
+                          setBox(part.UniqueId, {
+                            left: part.Location.Left,
+                            top: part.Location.Top,
+                            width: (part.Width ?? 0),
+                            height: (part.Height ?? 0),
+                            [key]: key === "width" || key === "height"
+                              ? Math.max(1, next)
+                              : next,
+                          });
+                        }}
+                        className="text-figure w-full min-w-0 bg-transparent text-sm text-text-primary outline-none disabled:opacity-50"
+                      />
+                    </label>
+                  ))}
+                </div>
+              </Editable>
             </Panel>
 
             {flagged.length > 0 && (
@@ -313,21 +342,25 @@ export function Inspector() {
             )}
 
             <Panel title="Data binding" collapsible>
-              <BindingEditor part={part} bound={bound} variables={variables} locked={locked} />
+              <Editable>
+                <BindingEditor part={part} bound={bound} variables={variables} locked={locked} />
+              </Editable>
             </Panel>
 
             {groupsOf(part.Type).map((group) => (
               <Panel key={group.title} title={group.title} collapsible>
-                <div className="space-y-2">
-                  {group.fields.map((field) => (
-                    <FieldRow
-                      key={field.path.join(".")}
-                      field={field}
-                      part={part}
-                      onChange={(path, value) => setProperty(part.UniqueId, path, value)}
-                    />
-                  ))}
-                </div>
+                <Editable>
+                  <div className="space-y-2">
+                    {group.fields.map((field) => (
+                      <FieldRow
+                        key={field.path.join(".")}
+                        field={field}
+                        part={part}
+                        onChange={(path, value) => setProperty(part.UniqueId, path, value)}
+                      />
+                    ))}
+                  </div>
+                </Editable>
               </Panel>
             ))}
           </>

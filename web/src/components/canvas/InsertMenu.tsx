@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Plus } from "lucide-react";
 import { cn } from "@/components/ui";
+import { useCanEdit } from "@/store/access";
 import { TOOLS, type ToolGroup, type ToolType } from "./newPart";
 import { TOOL_ICON } from "./toolIcons";
 
@@ -28,6 +29,7 @@ export function InsertMenu({
   onTool: (tool: ToolType | null) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const canEdit = useCanEdit();
   /**
    * Where the menu goes, in viewport pixels. The button lives inside the
    * toolbar's horizontal scroller, and a container that scrolls on one axis
@@ -73,6 +75,10 @@ export function InsertMenu({
       window.removeEventListener("scroll", scrolled, true);
     };
   }, [open]);
+
+  // Everything in this menu places a part. The toolbar already leaves it out
+  // of a read-only canvas; this keeps the menu honest wherever it is mounted.
+  if (!canEdit) return null;
 
   return (
     <div ref={root} className="relative shrink-0">

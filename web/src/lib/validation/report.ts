@@ -24,6 +24,12 @@ export interface ReportInput {
   /** The panel Target.dat declares, when the caller knows it. */
   panel?: { model: string; width: number; height: number } | null;
   generatedAt?: Date;
+  /**
+   * Unresolved review comments per screen, for a shared project. Work still
+   * under discussion is part of what a reviewer signs, so it is listed rather
+   * than left in the editor. Absent for a project nobody else can see.
+   */
+  comments?: { screen: string; unresolved: number }[];
 }
 
 const ESCAPES: Record<string, string> = {
@@ -116,6 +122,28 @@ ${rows}
 ${notes ? `<ul class="scope">
 ${notes}
 </ul>` : ""}`;
+}
+
+/** Open threads per screen; a clean slate is stated, so silence is never ambiguous. */
+function commentTable(comments: ReportInput["comments"]): string {
+  if (!comments) return "";
+  const open = comments.filter((c) => c.unresolved > 0);
+  if (open.length === 0) {
+    return `<h2>Review comments</h2>
+<div class="clean">No unresolved comments on any screen.</div>`;
+  }
+  const total = open.reduce((n, c) => n + c.unresolved, 0);
+  const rows = open
+    .map((c) => `    <tr><td>${esc(c.screen)}</td><td>${c.unresolved}</td></tr>`)
+    .join("\n");
+  return `<h2>Review comments</h2>
+<p>${total} unresolved comment${total === 1 ? "" : "s"}, to be resolved or accepted before sign-off.</p>
+<table>
+  <thead><tr><th>Screen</th><th>Unresolved</th></tr></thead>
+  <tbody>
+${rows}
+  </tbody>
+</table>`;
 }
 
 export function renderReport(input: ReportInput): string {
@@ -281,6 +309,8 @@ ${partTypes
 </dl>
 
 ${alarmTable(project)}
+
+${commentTable(input.comments)}
 
 <h2>What was checked</h2>
 <ul class="scope">

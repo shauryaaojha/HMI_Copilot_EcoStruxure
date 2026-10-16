@@ -23,6 +23,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Check, RefreshCw, X } from "lucide-react";
 import { useProject } from "@/store/project";
+import { useCanEdit } from "@/store/access";
 import { Button, cn } from "@/components/ui";
 import { expectJson } from "@/lib/ingest/client";
 import { inferEquipment } from "@/lib/ai/infer";
@@ -52,6 +53,9 @@ export function RegenerateDialog({ screenId, onClose }: { screenId: string; onCl
   const structure = useProject((s) => s.tagImport?.structure);
   const setPreview = useProject((s) => s.setPreview);
   const applyRegeneration = useProject((s) => s.applyRegeneration);
+  // The strip does not offer this dialog on a read-only project; if it is
+  // open anyway, comparing is harmless and applying is refused here.
+  const canEdit = useCanEdit();
 
   const equipment = useMemo(() => inferEquipment(variables, structure), [variables, structure]);
   const [program, setProgram] = useState<ScreenProgram | undefined>(stored ? structuredClone(stored) : undefined);
@@ -297,7 +301,7 @@ export function RegenerateDialog({ screenId, onClose }: { screenId: string; onCl
             <Button variant="ghost" onClick={() => setStage("recipe")}>
               Back
             </Button>
-            <Button variant="primary" disabled={ticked.size === 0} onClick={apply}>
+            <Button variant="primary" disabled={ticked.size === 0 || !canEdit} onClick={apply}>
               Apply {ticked.size > 0 ? ticked.size : ""}
             </Button>
           </>

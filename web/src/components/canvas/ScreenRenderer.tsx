@@ -64,6 +64,21 @@ export type { Box };
 /** What the toolbar can arm. Every one of these is a part the packager emits. */
 export type DrawTool = ToolType | null;
 
+/**
+ * A comment's pin, as the canvas draws it. Only what the drawing needs: the
+ * thread itself stays with the comments list, so the renderer never learns
+ * what a comment says or who wrote it.
+ */
+export interface CommentPin {
+  id: string;
+  /** The number on the pin, which is the thread's place in the screen's list. */
+  n: number;
+  /** Screen units, the same space as every Location on the screen. */
+  x: number;
+  y: number;
+  resolved: boolean;
+}
+
 export interface ScreenRendererProps {
   screen: Screen;
   /**
@@ -105,6 +120,28 @@ export interface ScreenRendererProps {
   smartGuides?: boolean;
   /** Read-only mode drops every interaction, for thumbnails and the report. */
   interactive?: boolean;
+  /**
+   * The person looking may not change the project. Unlike `interactive`, this
+   * keeps the canvas live - hover, click-to-select, marquee and the context
+   * menu all still work - and drops only what edits: drag-move, the resize
+   * handles and draw-to-place. Driven by useCanEdit() in CanvasPane.
+   */
+  readOnly?: boolean;
+  /**
+   * Comment pins, drawn above everything the project owns. Like the carried
+   * placeholders and the proposal ghosts, they sit outside the object groups
+   * and carry no data-object-id, so no hit test, selection or export can
+   * mistake one for an object.
+   */
+  comments?: CommentPin[];
+  /** A pin was clicked. */
+  onPin?: (id: string) => void;
+  /**
+   * Comments mode. While this is set, a click places a comment instead of
+   * selecting or dragging: the point in screen units, and the object under the
+   * pointer when there is one.
+   */
+  onPlaceComment?: (at: { x: number; y: number }, objectId?: string) => void;
   /** Armed drawing tool: a drag on the background places one of these. */
   tool?: DrawTool;
 
@@ -213,6 +250,10 @@ export function ScreenRenderer({
   snap = false,
   smartGuides = false,
   interactive = true,
+  readOnly = false,
+  comments,
+  onPin,
+  onPlaceComment,
   tool = null,
   onSelect,
   onHover,
@@ -239,6 +280,9 @@ export function ScreenRenderer({
   // every zoom, so everything cosmetic is divided by the scale.
   const px = (n: number) => n / scale;
   const tolerance = GUIDE_TOLERANCE / Math.max(scale, 0.25);
+  // A read-only canvas never arms a tool, whatever the caller passed.
+  const armed = readOnly ? null : tool;
+  const placing = interactive && !!onPlaceComment;
 
   /** Client coordinates -> screen units, via the SVG's own box. */
   const toScreen = useCallback(
@@ -362,7 +406,7 @@ export function ScreenRenderer({
       } else onSelect?.([]);
     }
 
-    if (drag.kind === "draw" && tool) {
+    if (drag.kind === "draw" && armed) {
       const box = dragBox(drag);
       // A click with a tool armed places a sensible default rather than a
       // zero-sized object nobody can grab.
@@ -373,8 +417,8 @@ export function ScreenRenderer({
             width: Math.max(8, round(box.width)),
             height: Math.max(8, round(box.height)),
           }
-        : { left: round(box.left), top: round(box.top), ...defaultSize(tool) };
-      onDraw?.(tool, placed);
+        : { left: round(box.left), top: round(box.top), ...defaultSize(armed) };
+      onDraw?.(armed, placed);
     }
 
     setDrag(null);
@@ -397,12 +441,23 @@ export function ScreenRenderer({
       aria-label={`HMI screen ${screen.Name}`}
       style={{
         background: PAPER,
-        cursor: tool ? "crosshair" : drag?.kind === "marquee" ? "crosshair" : undefined,
+        cursor: placing ? "cell" : armed ? "crosshair" : drag?.kind === "marquee" ? "crosshair" : undefined,
         touchAction: "none",
       }}
       onPointerDown={(e) => {
         if (e.button !== 0) return;
-        startDrag(e, tool ? "draw" : "marquee");
+        if (placing) {
+          // Comments mode: the press is a place to talk about, not a gesture.
+          // The object under it, if any, is found the way the context menu
+          // finds one - by its group's data-object-id.
+          e.stopPropagation();
+          const id = (e.target as Element)
+            .closest("[data-object-id]")
+            ?.getAttribute("data-object-id");
+          onPlaceComment?.(toScreen(e), id ?? undefined);
+          return;
+        }
+        startDrag(e, armed ? "draw" : "marquee");
       }}
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}
@@ -460,14 +515,23 @@ export function ScreenRenderer({
             data-object-name={part.Name}
             data-object-type={part.Type}
             style={{
-              cursor: !interactive || locked ? "default" : isSelected ? "move" : "pointer",
+              cursor: placing
+                ? "cell"
+                : !interactive || locked
+                  ? "default"
+                  : isSelected && !readOnly
+                    ? "move"
+                    : "pointer",
             }}
             onPointerEnter={() => interactive && onHover?.(part.UniqueId)}
             onPointerDown={(e) => {
               if (e.button !== 0 || !interactive || locked) return;
+              // Comments mode: let the press reach the screen, which places the
+              // comment with this object's id.
+              if (placing) return;
               // A tool is armed: the background gesture wins, so an engineer
               // drawing a rectangle over an existing panel gets a rectangle.
-              if (tool) return;
+              if (armed) return;
               // Clicking an unselected object selects it before the drag, so a
               // press-and-drag in one gesture moves what was pressed.
               const group = meta[part.UniqueId]?.groupId;
@@ -479,6 +543,13 @@ export function ScreenRenderer({
 
               if (!isSelected) onSelect?.(family, e.shiftKey);
               else if (e.shiftKey) onSelect?.(family, true);
+
+              // Selecting is reading; moving is editing. A read-only canvas
+              // stops here, and the press does not fall through to a marquee.
+              if (readOnly) {
+                e.stopPropagation();
+                return;
+              }
 
               const moving = isSelected && !e.shiftKey ? selectedIds : family;
               startDrag(e, "move", {
@@ -572,6 +643,7 @@ export function ScreenRenderer({
       {/* Handles only on a single selection: resizing eight objects at once is
           an editor feature nobody asked for and a source of silent damage. */}
       {interactive &&
+        !readOnly &&
         selectedIds.length === 1 &&
         !meta[selectedIds[0]]?.locked &&
         visible
@@ -639,6 +711,18 @@ export function ScreenRenderer({
         />
       )}
 
+      {/* Comment pins, above everything the project owns. The layer itself
+          takes no pointer events and only each pin's shape does, so objects
+          under a pin are still reachable around it, and nothing here has a
+          data-object-id for a hit test or the export to find. */}
+      {comments && comments.length > 0 && (
+        <g pointerEvents="none" data-comment-pins>
+          {comments.map((pin) => (
+            <CommentPinMark key={pin.id} pin={pin} radius={px(10)} stroke={px(1.5)} onPin={onPin} />
+          ))}
+        </g>
+      )}
+
       {/* render_screen.py frames the whole screen; without this the browser
           render is a pixel short of the picture in the deck. */}
       <rect
@@ -701,6 +785,60 @@ function dragBox(drag: Drag): Box {
     width: Math.abs(drag.x - drag.originX),
     height: Math.abs(drag.y - drag.originY),
   };
+}
+
+/**
+ * One numbered comment pin: a circle with one square corner, the corner on the
+ * point being talked about - the shape design tools use for the same thing.
+ *
+ * Only the shape takes the pointer, and it stops the press there, so clicking
+ * a pin neither starts a marquee nor places a second comment on top of it.
+ */
+function CommentPinMark({
+  pin,
+  radius: r,
+  stroke,
+  onPin,
+}: {
+  pin: CommentPin;
+  radius: number;
+  stroke: number;
+  onPin?: (id: string) => void;
+}) {
+  return (
+    <g
+      data-comment-pin={pin.id}
+      transform={`translate(${pin.x} ${pin.y})`}
+      opacity={pin.resolved ? 0.5 : 1}
+    >
+      <path
+        d={`M 0 0 L 0 ${-r} A ${r} ${r} 0 1 1 ${r} 0 Z`}
+        fill={pin.resolved ? "var(--color-surface-active)" : "var(--color-brand-500)"}
+        stroke="#ffffff"
+        strokeWidth={stroke}
+        pointerEvents="visiblePainted"
+        style={{ cursor: "pointer" }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          onPin?.(pin.id);
+        }}
+      >
+        <title>{`Comment ${pin.n}${pin.resolved ? " (resolved)" : ""}`}</title>
+      </path>
+      <text
+        x={r}
+        y={-r}
+        fill={pin.resolved ? "var(--color-text-secondary)" : "#ffffff"}
+        fontSize={r}
+        fontWeight={600}
+        textAnchor="middle"
+        dominantBaseline="central"
+        pointerEvents="none"
+      >
+        {pin.n}
+      </text>
+    </g>
+  );
 }
 
 function Outline({

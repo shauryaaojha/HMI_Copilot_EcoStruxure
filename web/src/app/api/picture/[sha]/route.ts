@@ -13,6 +13,7 @@
 import { currentUser } from "@/lib/server/session";
 import { hasMongo } from "@/lib/db/mongo";
 import { readSource } from "@/lib/server/access";
+import { shareTokens } from "@/lib/server/shares";
 import { errorResponse } from "@/lib/server/errors";
 import JSZip from "jszip";
 import { cliparts } from "@/lib/ote/cliparts";
@@ -37,7 +38,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ sha:
   const source = new URL(request.url).searchParams.get("source");
   if (source) {
     try {
-    const stored = (hasMongo() || !process.env.VERCEL) ? await readSource(source, await currentUser()) : null;
+    const stored = (hasMongo() || !process.env.VERCEL) ? await readSource(source, await currentUser(), "read", undefined, shareTokens(request)) : null;
     const bytes = stored?.bytes ?? await getImport(source);
     if (bytes) {
       const zip = await JSZip.loadAsync(bytes);

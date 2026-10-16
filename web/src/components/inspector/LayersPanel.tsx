@@ -18,6 +18,7 @@ import { useRef, useState } from "react";
 import { Eye, EyeOff, Layers, Lock, PackageOpen, Unlock } from "lucide-react";
 import { TOOL_ICON } from "@/components/canvas/toolIcons";
 import { useProject } from "@/store/project";
+import { useCanEdit } from "@/store/access";
 import { cn, EmptyState } from "@/components/ui";
 
 export function LayersPanel() {
@@ -31,6 +32,9 @@ export function LayersPanel() {
   const hover = useProject((s) => s.hover);
   const setMeta = useProject((s) => s.setMeta);
   const restackObjects = useProject((s) => s.restackObjects);
+  // Read-only keeps the list for finding and selecting objects. Reordering is
+  // a change to the file, and lock and hide are project state, so those go.
+  const canEdit = useCanEdit();
 
   const [dragging, setDragging] = useState<string | null>(null);
   const from = useRef<number | null>(null);
@@ -85,13 +89,13 @@ export function LayersPanel() {
           return (
             <li key={part.UniqueId}>
               <div
-                draggable
+                draggable={canEdit}
                 onDragStart={() => {
                   from.current = row;
                   setDragging(part.UniqueId);
                 }}
                 onDragOver={(e) => e.preventDefault()}
-                onDrop={() => drop(row)}
+                onDrop={() => canEdit && drop(row)}
                 onDragEnd={() => {
                   from.current = null;
                   setDragging(null);
@@ -157,30 +161,43 @@ export function LayersPanel() {
                   </span>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => setMeta([part.UniqueId], { hidden: !meta.hidden })}
-                  title={meta.hidden ? "Show" : "Hide"}
-                  aria-label={meta.hidden ? `Show ${part.Name}` : `Hide ${part.Name}`}
-                  className={cn(
-                    "focus-ring shrink-0 rounded p-0.5 text-text-faint hover:text-text-primary",
-                    !meta.hidden && "opacity-0 group-hover:opacity-100 focus:opacity-100",
-                  )}
-                >
-                  {meta.hidden ? <EyeOff size={11} /> : <Eye size={11} />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMeta([part.UniqueId], { locked: !meta.locked })}
-                  title={meta.locked ? "Unlock" : "Lock"}
-                  aria-label={meta.locked ? `Unlock ${part.Name}` : `Lock ${part.Name}`}
-                  className={cn(
-                    "focus-ring shrink-0 rounded p-0.5 text-text-faint hover:text-text-primary",
-                    !meta.locked && "opacity-0 group-hover:opacity-100 focus:opacity-100",
-                  )}
-                >
-                  {meta.locked ? <Lock size={11} /> : <Unlock size={11} />}
-                </button>
+                {/* Read-only: the state, not the switch. A hidden or locked
+                    object still says so; nothing offers to change it. */}
+                {!canEdit && meta.hidden && (
+                  <EyeOff size={11} aria-label="hidden" className="shrink-0 text-text-faint" />
+                )}
+                {!canEdit && meta.locked && (
+                  <Lock size={11} aria-label="locked" className="shrink-0 text-text-faint" />
+                )}
+
+                {canEdit && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setMeta([part.UniqueId], { hidden: !meta.hidden })}
+                      title={meta.hidden ? "Show" : "Hide"}
+                      aria-label={meta.hidden ? `Show ${part.Name}` : `Hide ${part.Name}`}
+                      className={cn(
+                        "focus-ring shrink-0 rounded p-0.5 text-text-faint hover:text-text-primary",
+                        !meta.hidden && "opacity-0 group-hover:opacity-100 focus:opacity-100",
+                      )}
+                    >
+                      {meta.hidden ? <EyeOff size={11} /> : <Eye size={11} />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMeta([part.UniqueId], { locked: !meta.locked })}
+                      title={meta.locked ? "Unlock" : "Lock"}
+                      aria-label={meta.locked ? `Unlock ${part.Name}` : `Lock ${part.Name}`}
+                      className={cn(
+                        "focus-ring shrink-0 rounded p-0.5 text-text-faint hover:text-text-primary",
+                        !meta.locked && "opacity-0 group-hover:opacity-100 focus:opacity-100",
+                      )}
+                    >
+                      {meta.locked ? <Lock size={11} /> : <Unlock size={11} />}
+                    </button>
+                  </>
+                )}
               </div>
             </li>
           );

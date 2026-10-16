@@ -13,6 +13,7 @@
  * Phase 7 of docs/BUILD_PLAN.md.
  */
 
+import { useAccess } from "@/store/access";
 import { useCallback, useState } from "react";
 import type { Wire } from "@/lib/ote/bindings";
 import type { Alarm } from "@/lib/ote/schema";
@@ -214,10 +215,12 @@ export function useExport() {
 
       if (options.report) {
         try {
+          // A shared project names itself, so the report lists its open review comments.
+          const shared = useAccess.getState().access ? { projectId: s.id } : {};
           const response = await fetch("/api/export/report", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(packageInput(s)),
+            body: JSON.stringify({ ...packageInput(s), ...shared }),
           });
 
           if (response.ok) {

@@ -13,6 +13,12 @@
  * Everything that edits goes through the store, never through local state, so
  * the toolbar, the keyboard, the context menu, the layers panel and the chat
  * are all editing the same project by the same route.
+ *
+ * A server project opened by a viewer or commenter is drawn the same way and
+ * stays selectable, but every route that edits is closed (useCanEdit), and a
+ * server project of any role has a comments mode: numbered pins on the
+ * screens, the threads in a list beside them, and - for a commenter and up -
+ * a click on the canvas to start a new one.
  */
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -24,7 +30,10 @@ import type { ToolType } from "./newPart";
 import { useSimulation } from "./useSimulation";
 import { Tabs, cn, type TabItem } from "@/components/ui";
 import { BindingMap } from "@/components/bindings/BindingMap";
-import { ScreenRenderer, type Box } from "./ScreenRenderer";
+import { ScreenRenderer, type Box, type CommentPin } from "./ScreenRenderer";
+import { useAccess, useCan, useCanEdit } from "@/store/access";
+import { threadsOf, useComments } from "@/components/comments/useComments";
+import { CommentComposer, CommentsPanel, type NumberedThread } from "@/components/comments/CommentsPanel";
 import { ScreenBoard, boardExtent, placementOf } from "./ScreenBoard";
 import { ScreenStrip } from "./ScreenStrip";
 import { RunOverlay } from "@/components/timeline/RunOverlay";
@@ -55,7 +64,25 @@ type CanvasView = "board" | "screen";
 const ZOOMS = [25, 50, 75, 100, 125, 150, 200, 300, 400];
 const FIT_PADDING = 48;
 
-export function CanvasPane() {
+/** Where a new comment is being placed, until it is posted or cancelled. */
+interface CommentDraft {
+  screenId: string;
+  x: number;
+  y: number;
+  objectId?: string;
+  /** Viewport pixels of the click, for the composer popover. */
+  client: { x: number; y: number };
+}
+
+export interface CanvasPaneProps {
+  /**
+   * Open on comments mode. The signed-out shared view does: a reviewer there
+   * came to read, and the threads are most of what there is to read.
+   */
+  defaultCommenting?: boolean;
+}
+
+export function CanvasPane({ defaultCommenting = false }: CanvasPaneProps = {}) {
   const [tab, setTab] = useState<CanvasTab>("design");
   const [view, setView] = useState<CanvasView>("board");
   const [zoom, setZoom] = useState(100);
@@ -92,6 +119,26 @@ export function CanvasPane() {
   // reference screen 5 sets them and every screen in the project follows.
   const standards = useProject((s) => s.standards);
   const setSimulating = useProject((s) => s.setSimulating);
+  const projectId = useProject((s) => s.id);
+
+  /**
+   * Who is looking. Read-only is decided once, here, and handed down as a
+   * prop to the renderer and the board; the toolbar, strip, menu and keys ask
+   * useCanEdit() themselves. Comments exist only for a server project, which
+   * is exactly the one with an access record.
+   */
+  const canEdit = useCanEdit();
+  const canComment = useCan("comment");
+  const canManage = useCan("manage");
+  const cloud = useAccess((s) => s.access !== null);
+  const [commenting, setCommenting] = useState(defaultCommenting);
+  const commentsOpen = cloud && commenting;
+  const [showResolved, setShowResolved] = useState(false);
+  const [activeThread, setActiveThread] = useState<string | null>(null);
+  const [draft, setDraft] = useState<CommentDraft | null>(null);
+  const comments = useComments(projectId, commentsOpen);
+  /** The last press inside the viewport, so the composer opens where the click was. */
+  const lastPress = useRef({ x: 0, y: 0 });
 
   /**
    * An empty screen of the project's own size, for the moment between a route
@@ -130,6 +177,98 @@ export function CanvasPane() {
   // One screen is not a board. Below that the board's frame and label are pure
   // overhead, so a single-screen project just shows the screen.
   const showBoard = view === "board" && screens.length > 1;
+
+  /**
+   * Threads per screen, numbered in the order they were started, and the pins
+   * drawn from them. Numbers count resolved threads too, so "comment 3" stays
+   * comment 3 after comment 2 is settled; resolved pins are only hidden.
+   */
+  const { threadsByScreen, general, pins } = useMemo(() => {
+    const byScreen: Record<string, NumberedThread[]> = {};
+    const loose: NumberedThread[] = [];
+    for (const thread of threadsOf(comments.comments)) {
+      const id = thread.comment.screenId;
+      const list = id ? (byScreen[id] ??= []) : loose;
+      list.push({ ...thread, n: list.length + 1 });
+    }
+    const drawn: Record<string, CommentPin[]> = {};
+    for (const [id, list] of Object.entries(byScreen)) {
+      drawn[id] = list
+        .filter((t) => t.comment.x !== undefined && t.comment.y !== undefined)
+        .filter((t) => showResolved || !t.comment.resolvedAt)
+        .map((t) => ({
+          id: t.comment._id,
+          n: t.n,
+          x: t.comment.x!,
+          y: t.comment.y!,
+          resolved: !!t.comment.resolvedAt,
+        }));
+    }
+    return { threadsByScreen: byScreen, general: loose, pins: drawn };
+  }, [comments.comments, showResolved]);
+
+  /** The pins as drawn, with the one being placed shown before it is posted. */
+  const shownPins = useMemo(() => {
+    if (!commentsOpen) return undefined;
+    if (!draft) return pins;
+    const next = (threadsByScreen[draft.screenId]?.length ?? 0) + 1;
+    return {
+      ...pins,
+      [draft.screenId]: [
+        ...(pins[draft.screenId] ?? []),
+        { id: "draft", n: next, x: draft.x, y: draft.y, resolved: false },
+      ],
+    };
+  }, [commentsOpen, pins, draft, threadsByScreen]);
+
+  const openThreads = Object.values(threadsByScreen)
+    .flat()
+    .concat(general)
+    .filter((t) => !t.comment.resolvedAt).length;
+
+  /** A click in comments mode: open the composer at that point. */
+  const placeComment = useCallback(
+    (screenId: string, at: { x: number; y: number }, objectId?: string) => {
+      setActiveScreen(screenId);
+      setDraft({
+        screenId,
+        x: Math.round(at.x),
+        y: Math.round(at.y),
+        objectId,
+        client: { ...lastPress.current },
+      });
+    },
+    [setActiveScreen],
+  );
+
+  /** A pin was clicked: its screen goes live and its thread is picked in the list. */
+  const pickPin = useCallback(
+    (id: string) => {
+      if (id === "draft") return;
+      const found = comments.comments.find((c) => c._id === id);
+      if (found?.screenId) setActiveScreen(found.screenId);
+      setActiveThread(id);
+    },
+    [comments.comments, setActiveScreen],
+  );
+
+  const objectName = useCallback(
+    (objectId: string) =>
+      screens
+        .flatMap((s) => s.Children[0].Children)
+        .find((p) => p.UniqueId === objectId)?.Name,
+    [screens],
+  );
+
+  // Placing a comment and drawing a shape are both "the next click"; the two
+  // modes cannot both own it.
+  useEffect(() => {
+    if (commentsOpen) setTool(null);
+    else setDraft(null);
+  }, [commentsOpen]);
+
+  /** Only a commenter places; a viewer in comments mode reads the pins and the list. */
+  const placing = commentsOpen && canComment && !panMode;
 
   // The engine drives tags; the bindings project them onto screen objects.
   const sim = useSimulation();
@@ -385,6 +524,9 @@ export function CanvasPane() {
           view={view}
           onView={setView}
           canBoard={screens.length > 1}
+          commenting={commentsOpen}
+          onCommenting={cloud ? setCommenting : undefined}
+          openComments={openThreads}
           tabs={
             <Tabs
               items={TABS}
@@ -413,116 +555,166 @@ export function CanvasPane() {
           kind of control than the toolbar above it. */}
       {tab === "design" && <ScreenStrip />}
 
-      <div
-        ref={viewport}
-        onWheel={onWheel}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endPan}
-        onPointerCancel={endPan}
-        onAuxClick={(e) => e.button === 1 && e.preventDefault()}
-        onDoubleClick={(event) => {
-          // Empty board, not a frame: back out to the whole thing.
-          if ((event.target as Element).closest("[data-screen-frame]")) return;
-          if (zoomedTo.current) {
-            zoomedTo.current = null;
-            fit();
-          }
-        }}
-        className={cn(
-          "relative min-h-0 flex-1",
-          tab === "design"
-            ? cn(
-                "canvas-grid overflow-auto p-8",
-                panMode && "cursor-grab active:cursor-grabbing",
-              )
-            : "overflow-hidden",
-        )}
-      >
-        {tab === "bindings" ? (
-          <BindingMap />
-        ) : tab === "json" ? (
-          <ScreenJson screen={screen} />
-        ) : showBoard ? (
-          <div className="flex min-h-full min-w-full items-start justify-center p-4">
-            <ScreenBoard
-              screens={screens}
-              activeScreenId={screen.UniqueId}
-              scale={scale}
-              placements={screenPlacement}
-              onPlace={placeScreen}
-              selectedIds={selectedIds}
-              hoveredId={hoveredId}
-              objectMeta={objectMeta}
-              values={live}
-              alarms={rows}
-              preview={preview?.screens}
-              foreign={foreign}
-              showGrid={standards.showGrid}
-              gridSize={standards.gridSize}
-              snap={standards.snap}
-              smartGuides={standards.smartGuides}
-              interactive={!panMode}
-              tool={tool}
-              onFocus={setActiveScreen}
-              onZoomTo={zoomTo}
-              onSelect={select}
-              onHover={hover}
-              onMove={nudge}
-              onResize={setBox}
-              onDraw={onDraw}
-              onContextMenu={(at, objectId) => setMenu({ ...at, objectId })}
-            />
-          </div>
-        ) : (
-          <div className="flex min-h-full min-w-full items-center justify-center">
-            <div
-              className="relative shrink-0"
-              style={{ marginLeft: rulers ? RULER : 0, marginTop: rulers ? RULER : 0 }}
-            >
-              {rulers && (
-                <Rulers width={panel.width} height={panel.height} scale={scale} />
-              )}
+      {/* The viewport, and in comments mode the threads beside it. */}
+      <div className="flex min-h-0 flex-1">
+        <div
+          ref={viewport}
+          onWheel={onWheel}
+          onPointerDownCapture={(e) => {
+            lastPress.current = { x: e.clientX, y: e.clientY };
+          }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endPan}
+          onPointerCancel={endPan}
+          onAuxClick={(e) => e.button === 1 && e.preventDefault()}
+          onDoubleClick={(event) => {
+            // Empty board, not a frame: back out to the whole thing.
+            if ((event.target as Element).closest("[data-screen-frame]")) return;
+            if (zoomedTo.current) {
+              zoomedTo.current = null;
+              fit();
+            }
+          }}
+          className={cn(
+            "relative min-h-0 min-w-0 flex-1",
+            tab === "design"
+              ? cn(
+                  "canvas-grid overflow-auto p-8",
+                  panMode && "cursor-grab active:cursor-grabbing",
+                )
+              : "overflow-hidden",
+          )}
+        >
+          {tab === "bindings" ? (
+            <BindingMap />
+          ) : tab === "json" ? (
+            <ScreenJson screen={screen} />
+          ) : showBoard ? (
+            <div className="flex min-h-full min-w-full items-start justify-center p-4">
+              <ScreenBoard
+                screens={screens}
+                activeScreenId={screen.UniqueId}
+                scale={scale}
+                placements={screenPlacement}
+                onPlace={placeScreen}
+                selectedIds={selectedIds}
+                hoveredId={hoveredId}
+                objectMeta={objectMeta}
+                values={live}
+                alarms={rows}
+                preview={preview?.screens}
+                foreign={foreign}
+                showGrid={standards.showGrid}
+                gridSize={standards.gridSize}
+                snap={standards.snap}
+                smartGuides={standards.smartGuides}
+                interactive={!panMode}
+                readOnly={!canEdit}
+                tool={tool}
+                comments={shownPins}
+                onPin={pickPin}
+                onPlaceComment={placing ? placeComment : undefined}
+                onFocus={setActiveScreen}
+                onZoomTo={zoomTo}
+                onSelect={select}
+                onHover={hover}
+                onMove={nudge}
+                onResize={setBox}
+                onDraw={onDraw}
+                onContextMenu={(at, objectId) => setMenu({ ...at, objectId })}
+              />
+            </div>
+          ) : (
+            <div className="flex min-h-full min-w-full items-center justify-center">
               <div
-                className="canvas-screen"
-                style={{ width: panel.width * scale, height: panel.height * scale }}
+                className="relative shrink-0"
+                style={{ marginLeft: rulers ? RULER : 0, marginTop: rulers ? RULER : 0 }}
               >
-                <ScreenRenderer
-                  screen={screen}
-                  selectedIds={selectedIds}
-                  hoveredId={hoveredId}
-                  objectMeta={objectMeta}
-                  values={live}
-                  alarms={rows}
-                  preview={preview?.screens[screen.UniqueId]}
-                  foreign={foreign[screen.UniqueId]}
-                  scale={scale}
-                  showGrid={standards.showGrid}
-                  gridSize={standards.gridSize}
-                  snap={standards.snap}
-                  smartGuides={standards.smartGuides}
-                  interactive={!panMode}
-                  tool={tool}
-                  onSelect={select}
-                  onHover={hover}
-                  onMove={nudge}
-                  onResize={setBox}
-                  onDraw={onDraw}
-                  onContextMenu={(at, objectId) => setMenu({ ...at, objectId })}
-                />
+                {rulers && (
+                  <Rulers width={panel.width} height={panel.height} scale={scale} />
+                )}
+                <div
+                  className="canvas-screen"
+                  style={{ width: panel.width * scale, height: panel.height * scale }}
+                >
+                  <ScreenRenderer
+                    screen={screen}
+                    selectedIds={selectedIds}
+                    hoveredId={hoveredId}
+                    objectMeta={objectMeta}
+                    values={live}
+                    alarms={rows}
+                    preview={preview?.screens[screen.UniqueId]}
+                    foreign={foreign[screen.UniqueId]}
+                    scale={scale}
+                    showGrid={standards.showGrid}
+                    gridSize={standards.gridSize}
+                    snap={standards.snap}
+                    smartGuides={standards.smartGuides}
+                    interactive={!panMode}
+                    readOnly={!canEdit}
+                    tool={tool}
+                    comments={shownPins?.[screen.UniqueId]}
+                    onPin={pickPin}
+                    onPlaceComment={
+                      placing ? (at, objectId) => placeComment(screen.UniqueId, at, objectId) : undefined
+                    }
+                    onSelect={select}
+                    onHover={hover}
+                    onMove={nudge}
+                    onResize={setBox}
+                    onDraw={onDraw}
+                    onContextMenu={(at, objectId) => setMenu({ ...at, objectId })}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* The build timeline, over the work rather than under it. It shows
-            itself when a run starts and settles to one line when it ends. */}
-        {tab === "design" && (
-          <div className="pointer-events-none sticky bottom-0 left-0 flex justify-start pt-4">
-            <RunOverlay />
-          </div>
+          {/* The build timeline, over the work rather than under it. It shows
+              itself when a run starts and settles to one line when it ends. */}
+          {tab === "design" && (
+            <div className="pointer-events-none sticky bottom-0 left-0 flex justify-start pt-4">
+              <RunOverlay />
+            </div>
+          )}
+        </div>
+
+        {commentsOpen && tab === "design" && (
+          <CommentsPanel
+            data={comments}
+            threads={threadsByScreen[screen.UniqueId] ?? []}
+            general={general}
+            screenName={screen.Name}
+            showResolved={showResolved}
+            onShowResolved={setShowResolved}
+            activeId={activeThread}
+            onActive={setActiveThread}
+            canComment={canComment}
+            canManage={canManage}
+            objectName={objectName}
+            onClose={() => setCommenting(false)}
+          />
         )}
       </div>
+
+      {draft && commentsOpen && (
+        <CommentComposer
+          at={draft.client}
+          onCancel={() => setDraft(null)}
+          onSubmit={async (body) => {
+            const posted = await comments.create(
+              { screenId: draft.screenId, objectId: draft.objectId, x: draft.x, y: draft.y },
+              body,
+            );
+            if (!posted) return false;
+            setDraft(null);
+            setActiveThread(posted._id);
+            return true;
+          }}
+        />
+      )}
 
       {menu && <CanvasContextMenu at={menu} onClose={() => setMenu(null)} />}
     </section>

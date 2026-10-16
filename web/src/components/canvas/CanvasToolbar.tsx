@@ -41,6 +41,7 @@ import {
   Lock,
   Magnet,
   Maximize2,
+  MessageSquare,
   Minus,
   MousePointer2,
   Play,
@@ -56,6 +57,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useProject } from "@/store/project";
+import { useCanEdit } from "@/store/access";
 import { Badge, Button, cn } from "@/components/ui";
 import { InsertMenu } from "./InsertMenu";
 import { QUICK_TOOLS, TOOLS, type ToolType } from "./newPart";
@@ -84,6 +86,15 @@ export interface CanvasToolbarProps {
   canBoard: boolean;
   /** Design / Bindings / JSON, pinned beside the run state. */
   tabs?: ReactNode;
+  /** Whether comments mode is on: pins shown, the list open, clicks place comments. */
+  commenting?: boolean;
+  /**
+   * Turns comments mode on or off. Absent for a project with no server copy,
+   * which has no comments, and then the toggle is not drawn at all.
+   */
+  onCommenting?: (on: boolean) => void;
+  /** Unresolved threads, shown on the toggle so a reviewer sees there is something to read. */
+  openComments?: number;
 }
 
 /** A divider between groups, so the bar reads as sections not as a list. */
@@ -106,7 +117,15 @@ export function CanvasToolbar({
   onView,
   canBoard,
   tabs,
+  commenting = false,
+  onCommenting,
+  openComments = 0,
 }: CanvasToolbarProps) {
+  // A viewer or commenter keeps the pointer, the pan and the zoom - the tools
+  // for looking - and loses every tool for changing. Hidden rather than
+  // disabled: twenty greyed buttons say "you are missing out", not "this is a
+  // view".
+  const canEdit = useCanEdit();
   const selectedIds = useProject((s) => s.selectedIds);
   const objectMeta = useProject((s) => s.objectMeta);
   const standards = useProject((s) => s.standards);
@@ -210,115 +229,119 @@ export function CanvasToolbar({
             onPanMode(true);
           }, { pressed: panMode })}
 
-          <Sep />
+          {canEdit && (
+            <>
+              <Sep />
 
-          {QUICK.map((t) =>
-            icon(`${t.label} (${t.key.toUpperCase()})`, TOOL_ICON[t.type], () => {
-              onPanMode(false);
-              onTool(tool === t.type ? null : t.type);
-            }, { pressed: tool === t.type }),
+              {QUICK.map((t) =>
+                icon(`${t.label} (${t.key.toUpperCase()})`, TOOL_ICON[t.type], () => {
+                  onPanMode(false);
+                  onTool(tool === t.type ? null : t.type);
+                }, { pressed: tool === t.type }),
+              )}
+              <InsertMenu
+                tool={tool}
+                onTool={(next) => {
+                  onPanMode(false);
+                  onTool(next);
+                }}
+              />
+
+              <Sep />
+
+              {/* --- history ---------------------------------------------------- */}
+              {icon("Undo (Ctrl+Z)", Undo2, undo, { disabled: !canUndo })}
+              {icon("Redo (Ctrl+Shift+Z)", Redo2, redo, { disabled: !canRedo })}
+
+              <Sep />
+
+              {/* --- act on the selection --------------------------------------- */}
+              {icon("Align left", AlignStartVertical, () => align(selectedIds, "left"), {
+                disabled: !some,
+              })}
+              {icon("Align centres", AlignCenterVertical, () => align(selectedIds, "centre"), {
+                disabled: !some,
+              })}
+              {icon("Align right", AlignEndVertical, () => align(selectedIds, "right"), {
+                disabled: !some,
+              })}
+              {icon("Align top", AlignStartHorizontal, () => align(selectedIds, "top"), {
+                disabled: !some,
+              })}
+              {icon("Align middles", AlignCenterHorizontal, () => align(selectedIds, "middle"), {
+                disabled: !some,
+              })}
+              {icon("Align bottom", AlignEndHorizontal, () => align(selectedIds, "bottom"), {
+                disabled: !some,
+              })}
+              {icon(
+                "Even horizontal gaps",
+                AlignHorizontalSpaceAround,
+                () => spread(selectedIds, "horizontal"),
+                { disabled: !spreadable },
+              )}
+              {icon(
+                "Even vertical gaps",
+                AlignVerticalSpaceAround,
+                () => spread(selectedIds, "vertical"),
+                { disabled: !spreadable },
+              )}
+
+              <Sep />
+
+              {icon("Bring to front (])", BringToFront, () => restackObjects(selectedIds, "front"), {
+                disabled: !some,
+              })}
+              {icon("Send to back ([)", SendToBack, () => restackObjects(selectedIds, "back"), {
+                disabled: !some,
+              })}
+              {icon("Group (Ctrl+G)", Group, () => group(selectedIds), { disabled: !many })}
+              {icon("Ungroup (Ctrl+Shift+G)", Ungroup, () => ungroup(selectedIds), {
+                disabled: !anyGrouped,
+              })}
+              {icon(
+                anyLocked ? "Unlock" : "Lock",
+                anyLocked ? Unlock : Lock,
+                () => setMeta(selectedIds, { locked: !anyLocked }),
+                { disabled: !some, pressed: anyLocked },
+              )}
+              {icon(
+                anyHidden ? "Show" : "Hide",
+                anyHidden ? EyeOff : Eye,
+                () => setMeta(selectedIds, { hidden: !anyHidden }),
+                { disabled: !some, pressed: anyHidden },
+              )}
+              {icon("Delete (Del)", Trash2, () => removeObjects(selectedIds), {
+                disabled: !some,
+                danger: true,
+              })}
+
+              <Sep />
+
+              {/* --- the view --------------------------------------------------- */}
+              {icon(
+                `${standards.showGrid ? "Hide" : "Show"} the ${standards.gridSize}px grid`,
+                Grid3x3,
+                () => setStandards({ showGrid: !standards.showGrid }),
+                { pressed: standards.showGrid },
+              )}
+              {icon(
+                `Snap to the ${standards.gridSize}px grid`,
+                Magnet,
+                () => setStandards({ snap: !standards.snap }),
+                { pressed: standards.snap },
+              )}
+              {icon(
+                "Snap to other objects, and show the guide",
+                AlignCenterVertical,
+                () => setStandards({ smartGuides: !standards.smartGuides }),
+                { pressed: standards.smartGuides },
+              )}
+              {icon("Rulers", Ruler, () => setStandards({ showRulers: !standards.showRulers }), {
+                pressed: standards.showRulers,
+              })}
+            </>
           )}
-          <InsertMenu
-            tool={tool}
-            onTool={(next) => {
-              onPanMode(false);
-              onTool(next);
-            }}
-          />
-
-          <Sep />
-
-          {/* --- history ---------------------------------------------------- */}
-          {icon("Undo (Ctrl+Z)", Undo2, undo, { disabled: !canUndo })}
-          {icon("Redo (Ctrl+Shift+Z)", Redo2, redo, { disabled: !canRedo })}
-
-          <Sep />
-
-          {/* --- act on the selection --------------------------------------- */}
-          {icon("Align left", AlignStartVertical, () => align(selectedIds, "left"), {
-            disabled: !some,
-          })}
-          {icon("Align centres", AlignCenterVertical, () => align(selectedIds, "centre"), {
-            disabled: !some,
-          })}
-          {icon("Align right", AlignEndVertical, () => align(selectedIds, "right"), {
-            disabled: !some,
-          })}
-          {icon("Align top", AlignStartHorizontal, () => align(selectedIds, "top"), {
-            disabled: !some,
-          })}
-          {icon("Align middles", AlignCenterHorizontal, () => align(selectedIds, "middle"), {
-            disabled: !some,
-          })}
-          {icon("Align bottom", AlignEndHorizontal, () => align(selectedIds, "bottom"), {
-            disabled: !some,
-          })}
-          {icon(
-            "Even horizontal gaps",
-            AlignHorizontalSpaceAround,
-            () => spread(selectedIds, "horizontal"),
-            { disabled: !spreadable },
-          )}
-          {icon(
-            "Even vertical gaps",
-            AlignVerticalSpaceAround,
-            () => spread(selectedIds, "vertical"),
-            { disabled: !spreadable },
-          )}
-
-          <Sep />
-
-          {icon("Bring to front (])", BringToFront, () => restackObjects(selectedIds, "front"), {
-            disabled: !some,
-          })}
-          {icon("Send to back ([)", SendToBack, () => restackObjects(selectedIds, "back"), {
-            disabled: !some,
-          })}
-          {icon("Group (Ctrl+G)", Group, () => group(selectedIds), { disabled: !many })}
-          {icon("Ungroup (Ctrl+Shift+G)", Ungroup, () => ungroup(selectedIds), {
-            disabled: !anyGrouped,
-          })}
-          {icon(
-            anyLocked ? "Unlock" : "Lock",
-            anyLocked ? Unlock : Lock,
-            () => setMeta(selectedIds, { locked: !anyLocked }),
-            { disabled: !some, pressed: anyLocked },
-          )}
-          {icon(
-            anyHidden ? "Show" : "Hide",
-            anyHidden ? EyeOff : Eye,
-            () => setMeta(selectedIds, { hidden: !anyHidden }),
-            { disabled: !some, pressed: anyHidden },
-          )}
-          {icon("Delete (Del)", Trash2, () => removeObjects(selectedIds), {
-            disabled: !some,
-            danger: true,
-          })}
-
-          <Sep />
-
-          {/* --- the view --------------------------------------------------- */}
-          {icon(
-            `${standards.showGrid ? "Hide" : "Show"} the ${standards.gridSize}px grid`,
-            Grid3x3,
-            () => setStandards({ showGrid: !standards.showGrid }),
-            { pressed: standards.showGrid },
-          )}
-          {icon(
-            `Snap to the ${standards.gridSize}px grid`,
-            Magnet,
-            () => setStandards({ snap: !standards.snap }),
-            { pressed: standards.snap },
-          )}
-          {icon(
-            "Snap to other objects, and show the guide",
-            AlignCenterVertical,
-            () => setStandards({ smartGuides: !standards.smartGuides }),
-            { pressed: standards.smartGuides },
-          )}
-          {icon("Rulers", Ruler, () => setStandards({ showRulers: !standards.showRulers }), {
-            pressed: standards.showRulers,
-          })}
 
           <Sep />
 
@@ -352,7 +375,7 @@ export function CanvasToolbar({
         {/* Board or one screen. Pinned outside the scrolling half, because
             losing the way back to the whole project behind a scrollbar is the
             fault this bar was already fixed for once. */}
-        {canBoard && rearranged && view === "board" && (
+        {canEdit && canBoard && rearranged && view === "board" && (
           <Button
             variant="ghost"
             size="sm"
@@ -405,6 +428,24 @@ export function CanvasToolbar({
           </Badge>
         )}
         {tabs}
+
+        {onCommenting && (
+          <Button
+            variant={commenting ? "secondary" : "ghost"}
+            size="sm"
+            aria-pressed={commenting}
+            onClick={() => onCommenting(!commenting)}
+            icon={<MessageSquare size={14} />}
+            title={commenting ? "Leave comments mode" : "Comments: read the threads on this screen, or click the canvas to start one"}
+          >
+            Comments
+            {openComments > 0 && (
+              <span className="text-figure rounded-full bg-brand-500/15 px-1.5 text-[10px] text-brand-400">
+                {openComments}
+              </span>
+            )}
+          </Button>
+        )}
 
         <Button
           variant={simulating ? "secondary" : "ghost"}

@@ -14,7 +14,12 @@ import type { PersistedProject } from "@/store/persist";
 import { hasMongo } from "@/lib/db/mongo";
 import { DEFAULT_LIMITS } from "@/lib/ingest/zip";
 import { ServerError } from "./errors";
-import { FileStorage, MemoryStorage, MongoStorage, type Storage, type Row, type Data } from "./storage";
+import { FileStorage, MemoryStorage, MongoStorage, validId, type Storage, type Row, type Data } from "./storage";
+import { sharesRepo, commentsRepo, putMember, ROLE_RANK, type SharesRepo, type CommentsRepo } from "./repo-collab";
+export * from "./repo-collab";
+
+/** Every collection whose records belong to one project and go when it is deleted. */
+const PROJECT_TABLES = ["versions", "members", "shares", "comments", "changes", "heads", "presence", "proposals", "decisions", "agentLocks"];
 
 export interface User { id: string; email?: string | null; name: string; image?: string | null; createdAt?: number }
 export type Role = "owner" | "editor" | "commenter" | "viewer";
@@ -23,15 +28,15 @@ export type Project = Row & { ownerId: string; name: string; target: PersistedPr
 /** A version without its snapshot: what listings and history trimming read. */
 export type VersionInfo = Row & { projectId: string; rev: number; authorId: string; label: string; createdAt: number };
 export type Version = VersionInfo & { snapshot: Snapshot };
-export type Member = Row & { projectId: string; userId: string; role: Role; addedAt: number };
+/** `exportDenied` is set when someone joined through a link that withheld export. */
+export type Member = Row & { projectId: string; userId: string; role: Role; addedAt: number; exportDenied?: boolean };
 export type Source = Row & { ownerId: string | null; fileName: string; createdAt: number; expiresAt?: number };
 export type Upload = Row & { ownerId: string | null; fileName: string; size: number; expiresAt: number; sourceId?: string };
 type Part = Row & { uploadId: string; part: number; size: number; data: string };
 export const PART_BYTES = 4 * 1024 * 1024;
 export const TTL_MS = 24 * 60 * 60 * 1000;
 const missing = () => new ServerError(404, "not-found", "Not found");
-/** Keep route ids safe for both filesystem and database keys. */
-export const validId = (id: string) => /^[a-zA-Z0-9_-]{1,160}$/.test(id);
+export { validId };
 
 /** Domain contract shared by routes and isolated collaboration tests. */
 export interface Repo {
@@ -44,7 +49,14 @@ export interface Repo {
     delete(id: string): Promise<void>;
   };
   versions: { list(projectId: string): Promise<VersionInfo[]>; get(projectId: string, rev: number): Promise<Version | null>; current(projectId: string): Promise<Version | null>; restore(projectId: string, rev: number, authorId: string): Promise<Version> };
-  members: { get(projectId: string, userId: string): Promise<Member | null>; put(projectId: string, userId: string, role: Role): Promise<void> };
+  members: {
+    get(projectId: string, userId: string): Promise<Member | null>;
+    put(projectId: string, userId: string, role: Role, options?: { exportDenied?: boolean }): Promise<void>;
+    list(projectId: string): Promise<Member[]>;
+    remove(projectId: string, userId: string): Promise<void>;
+  };
+  shares: SharesRepo;
+  comments: CommentsRepo;
   sources: { info(id: string): Promise<Source | null>; put(bytes: Uint8Array, fileName: string, ownerId: string | null, expiresAt?: number): Promise<string>; get(id: string): Promise<{ meta: Source; bytes: Uint8Array } | null> };
   uploads: { create(fileName: string, size: number, ownerId: string | null): Promise<Upload>; get(id: string): Promise<Upload | null>; part(id: string, part: number, bytes: Uint8Array, ownerId: string | null): Promise<void>; complete(id: string, ownerId: string | null): Promise<string>; sweep(): Promise<void> };
 }
@@ -99,7 +111,9 @@ export class BaseRepo implements Repo {
     }),
     delete: id => this.tx(async d => {
       await d.remove("projects", id);
-      for (const table of ["versions", "members"]) for (const row of await d.list(table, { projectId: id }, { projection: { _id: 1 } })) await d.remove(table, row._id);
+      for (const table of PROJECT_TABLES) {
+        for (const row of await d.list(table, { projectId: id }, { projection: { _id: 1 } })) await d.remove(table, row._id);
+      }
     }),
   };
   versions: Repo["versions"] = {
@@ -118,12 +132,23 @@ export class BaseRepo implements Repo {
   };
   members: Repo["members"] = {
     get: (projectId, userId) => this.tx(d => d.get<Member>("members", `${projectId}:${userId}`)),
-    put: (projectId, userId, role) => this.tx(async d => {
+    put: (projectId, userId, role, options = {}) => this.tx(async d => {
       const p = await d.get<Project>("projects", projectId); if (!p) throw missing();
-      if ((p.ownerId === userId) !== (role === "owner")) throw new ServerError(400, "owner", "A project has one owner");
-      await d.put("members", { _id: `${projectId}:${userId}`, projectId, userId, role, addedAt: this.now() });
+      await putMember(d, p, userId, role, this.now(), options.exportDenied);
+    }),
+    list: projectId => this.tx(async d => {
+      const members = await d.list<Member>("members", { projectId });
+      return members.sort((a, b) => ROLE_RANK[b.role] - ROLE_RANK[a.role] || a.addedAt - b.addedAt);
+    }),
+    remove: (projectId, userId) => this.tx(async d => {
+      const p = await d.get<Project>("projects", projectId);
+      if (!p) throw missing();
+      if (p.ownerId === userId) throw new ServerError(400, "owner", "The owner cannot be removed from a project");
+      await d.remove("members", `${projectId}:${userId}`);
     }),
   };
+  shares = sharesRepo(fn => this.tx(fn), () => this.now());
+  comments = commentsRepo(fn => this.tx(fn), () => this.now());
   sources: Repo["sources"] = {
     put: async (bytes, fileName, ownerId, expiresAt) => {
       if (bytes.length > DEFAULT_LIMITS.maxBytes) throw new ServerError(413, "too-large", "File exceeds 100 MB");

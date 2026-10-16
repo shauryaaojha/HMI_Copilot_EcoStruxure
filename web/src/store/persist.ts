@@ -15,6 +15,7 @@
 
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
 import { snapshotRequest } from "@/lib/client/snapshot";
+import { useAccess } from "./access";
 import type { PlantModel } from "@/lib/plant/model";
 import type {
   Binding,
@@ -226,11 +227,15 @@ export function loadCloudProject(id: string): Promise<PersistedProject | null> {
   if (e.loading) return e.loading;
   e.loading = (async () => {
     try {
+      // Another project's role must never linger over this one, even offline.
+      if (useAccess.getState().projectId !== id) useAccess.getState().set(id, null);
       const me = await getAccount();
-      if (!me.cloud || !me.user) return null;
+      if (!me.cloud || !me.user) { useAccess.getState().set(id, null); return null; }
       const response = await fetch(`/api/projects/${id}`, { cache: "no-store" });
-      if (response.status === 404) return null;
+      if (response.status === 404) { useAccess.getState().set(id, null); return null; }
       const current = await responseJson(response);
+      // The role decides which editing affordances the workspace shows.
+      useAccess.getState().set(id, current.access ?? null);
       const m = meta(id);
       if (m?.userId === me.user.id && m.dirty) {
         if (m.rev !== current.rev) { e.conflict = current; announce(id, "Changed elsewhere"); }
