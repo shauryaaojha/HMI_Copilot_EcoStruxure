@@ -18,6 +18,7 @@
  * the engineer acted. Plain CSS: one transition on `clip-path`.
  */
 
+import { importFile } from "@/lib/client/upload";
 import { expectJson } from "@/lib/ingest/client";
 import { useGeneration } from "@/components/generation/useGeneration";
 import type { MigrationPlan } from "@/lib/vijeo/migrate";
@@ -187,11 +188,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
     setBusy(file.name);
     setError(null);
     try {
-      const response = await fetch("/api/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/octet-stream", "X-File-Name": encodeURIComponent(file.name) },
-        body: await file.arrayBuffer(),
-      });
+      const response = await importFile(file);
       const data = await expectJson<Imported>(response, "Opening that file");
 
       const payload = {
@@ -209,6 +206,8 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
         versions: [],
         chat: [],
         source: data.source ?? undefined,
+        sourceId: data.sourceId,
+        layout: data.layout,
         foreign: data.foreign ?? {},
       };
       hydrate(payload);

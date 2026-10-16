@@ -17,9 +17,10 @@
  * recedes and the work sits on top of it rather than beside it.
  */
 
+import { AccountControl } from "./AccountControl";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Command, Download, Monitor, Pencil, SquarePen } from "lucide-react";
+import { Command, Download, Monitor, Pencil, SquarePen } from "lucide-react";
 import { useProject } from "@/store/project";
 import { Input, cn } from "@/components/ui";
 import { SchneiderMark } from "./SchneiderMark";
@@ -53,31 +54,6 @@ function useActualPanel(): Panel | null {
   }, []);
 
   return panel;
-}
-
-/** "2 min ago". Client-only, so the server and the client cannot disagree. */
-function useSavedLabel(savedAt: number | undefined) {
-  const [label, setLabel] = useState<string>();
-
-  useEffect(() => {
-    if (savedAt === undefined) {
-      setLabel(undefined);
-      return;
-    }
-    const render = () => {
-      const secs = Math.max(0, Math.round((Date.now() - savedAt) / 1000));
-      if (secs < 45) return setLabel("saved");
-      const mins = Math.round(secs / 60);
-      if (mins < 60) return setLabel(`saved ${mins}m ago`);
-      const hours = Math.round(mins / 60);
-      return setLabel(`saved ${hours}h ago`);
-    };
-    render();
-    const timer = setInterval(render, 15_000);
-    return () => clearInterval(timer);
-  }, [savedAt]);
-
-  return label;
 }
 
 function ProjectNameField() {
@@ -148,8 +124,6 @@ export function TopBar({ onExport, className }: TopBarProps) {
   const projectId = useProject((s) => s.id);
   const target = useProject((s) => s.target);
   const actual = useActualPanel();
-  const savedAt = useProject((s) => s.savedAt);
-  const saved = useSavedLabel(savedAt);
   const newProject = useNewProject();
   const palette = useCommandPalette();
 
@@ -195,15 +169,11 @@ export function TopBar({ onExport, className }: TopBarProps) {
 
         <div className="flex min-w-0 items-center gap-2">
           <ProjectNameField />
-          {saved && (
-            <span className="hidden shrink-0 items-center gap-1 text-[11px] text-text-faint lg:flex">
-              <Check size={11} aria-hidden className="text-brand-400" />
-              {saved}
-            </span>
-          )}
+
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-1">
+          <AccountControl projectId={projectId} />
           {/* The panel the file will target. A read-out, not a control - the
               control is in the palette, because it is set once. */}
           <button

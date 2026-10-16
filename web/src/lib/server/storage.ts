@@ -1,0 +1,169 @@
+/**
+ * The small storage vocabulary underneath Repo. Project metadata, membership
+ * and history change in one transaction: a failed history write must never
+ * advance the project's revision. Mongo uses database transactions; the laptop
+ * store uses an exclusive filesystem lock and an atomically replaced journal.
+ * That lock also covers separate Next workers, not just promises in one process.
+ * Binary sources are separate files or GridFS streams, never BSON documents.
+ */
+import { mkdir, readFile, writeFile, rename, rm } from "node:fs/promises";
+import path from "node:path";
+import { GridFSBucket, ObjectId, type ClientSession, type Db } from "mongodb";
+import { mongoClient, mongoDb } from "@/lib/db/mongo";
+import { ServerError } from "./errors";
+
+export type Row = { _id: string } & Record<string, unknown>;
+export interface Data {
+  get<T extends Row>(table: string, id: string): Promise<T | null>;
+  list<T extends Row>(table: string, query?: Record<string, unknown>): Promise<T[]>;
+  put(table: string, row: Row): Promise<void>;
+  remove(table: string, id: string): Promise<void>;
+}
+export interface Storage {
+  transaction<T>(fn: (data: Data) => Promise<T>): Promise<T>;
+  bytes: { put(id: string, bytes: Uint8Array): Promise<void>; get(id: string): Promise<Uint8Array | null>; remove(id: string): Promise<void> };
+}
+type State = Record<string, Record<string, Row>>;
+function dataFor(state: State): Data {
+  return {
+    async get<T extends Row>(table: string, id: string): Promise<T | null> { return structuredClone((state[table]?.[id] as T | undefined) ?? null); },
+    async list<T extends Row>(table: string, query: Record<string, unknown> = {}) {
+      return structuredClone(Object.values(state[table] ?? {}).filter(r => Object.entries(query).every(([k, v]) => r[k] === v)) as T[]);
+    },
+    async put(table, row) { (state[table] ??= {})[row._id] = structuredClone(row); },
+    async remove(table, id) { delete state[table]?.[id]; },
+  };
+}
+export class MemoryStorage implements Storage {
+  private state: State = {};
+  private tail: Promise<unknown> = Promise.resolve();
+  private blobs = new Map<string, Uint8Array>();
+  bytes = {
+    put: async (id: string, bytes: Uint8Array) => { this.blobs.set(id, new Uint8Array(bytes)); },
+    get: async (id: string) => this.blobs.get(id)?.slice() ?? null,
+    remove: async (id: string) => { this.blobs.delete(id); },
+  };
+  transaction<T>(fn: (data: Data) => Promise<T>): Promise<T> {
+    const result = this.tail.then(async () => {
+      const next = structuredClone(this.state);
+      const result = await fn(dataFor(next));
+      this.state = next;
+      return result;
+    });
+    this.tail = result.catch(() => undefined);
+    return result;
+  }
+}
+export class FileStorage implements Storage {
+  constructor(private root: string) {}
+  private file(id: string) {
+    if (!/^[a-zA-Z0-9-]+$/.test(id)) throw new ServerError(400, "invalid", "Invalid source id");
+    return path.join(this.root, "sources", `${id}.bin`);
+  }
+  bytes = {
+    put: async (id: string, bytes: Uint8Array) => {
+      await mkdir(path.join(this.root, "sources"), { recursive: true });
+      await writeFile(this.file(id), bytes, { flag: "wx" });
+    },
+    get: async (id: string) => {
+      try { return new Uint8Array(await readFile(this.file(id))); }
+      catch (e) { if ((e as NodeJS.ErrnoException).code === "ENOENT") return null; throw e; }
+    },
+    remove: async (id: string) => { await rm(this.file(id), { force: true }); },
+  };
+  async transaction<T>(fn: (data: Data) => Promise<T>): Promise<T> {
+    await mkdir(this.root, { recursive: true });
+    const lock = path.join(this.root, ".lock");
+    const deadline = Date.now() + 10000;
+    for (;;) {
+      try { await mkdir(lock); break; }
+      catch (e) {
+        if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
+        if (Date.now() > deadline) throw new ServerError(503, "storage-busy", "Local storage is locked; retry, or remove .data/.lock if its writer stopped");
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+    }
+    try {
+      // A write-ahead journal makes a multi-directory commit recoverable.
+      // Readers take the same lock and finish an interrupted commit first.
+      const tables = ["users", "projects", "versions", "members", "sources", "uploads", "uploadParts"];
+      const journal = path.join(this.root, "journal.json");
+      const readJson = async (file: string) => {
+        try { return JSON.parse(await readFile(file, "utf8")); }
+        catch (e) { if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e; return null; }
+      };
+      const apply = async (state: State) => {
+        for (const table of Object.keys(state)) {
+          if (!tables.includes(table)) throw new Error("Invalid journal table");
+          const dir = path.join(this.root, table);
+          await mkdir(dir, { recursive: true });
+          await writeFile(path.join(dir, "records.tmp"), JSON.stringify(state[table]));
+          await rename(path.join(dir, "records.tmp"), path.join(dir, "records.json"));
+        }
+        await rm(journal, { force: true });
+      };
+      const pending = await readJson(journal) as State | null;
+      if (pending) await apply(pending);
+      const state: State = {};
+      for (const table of tables) state[table] = await readJson(path.join(this.root, table, "records.json")) ?? {};
+      const before = Object.fromEntries(tables.map(table => [table, JSON.stringify(state[table])]));
+      const result = await fn(dataFor(state));
+      const changes = Object.fromEntries(tables.filter(table => before[table] !== JSON.stringify(state[table])).map(table => [table, state[table]]));
+      if (Object.keys(changes).length) {
+        const temp = path.join(this.root, "journal.tmp");
+        await writeFile(temp, JSON.stringify(changes));
+        await rename(temp, journal);
+        await apply(changes);
+      }
+      return result;
+    } finally { await rm(lock, { recursive: true }); }
+  }
+}
+function mongoData(db: Db, session: ClientSession): Data {
+  return {
+    async get<T extends Row>(table: string, id: string) { return await db.collection<Row>(table).findOne({ _id: id }, { session }) as T | null; },
+    async list<T extends Row>(table: string, query: Record<string, unknown> = {}) { return await db.collection<Row>(table).find(query, { session }).toArray() as T[]; },
+    async put(table, row) { await db.collection<Row>(table).replaceOne({ _id: row._id }, row, { upsert: true, session }); },
+    async remove(table, id) { await db.collection<Row>(table).deleteOne({ _id: id }, { session }); },
+  };
+}
+export class MongoStorage implements Storage {
+  private ready?: Promise<void>;
+  private indexes() {
+    return this.ready ??= (async () => {
+      const db = await mongoDb();
+      await db.collection("versions").createIndex({ projectId: 1, rev: -1 }, { unique: true });
+      await db.collection("members").createIndex({ userId: 1, projectId: 1 });
+      await db.collection("uploadParts").createIndex({ uploadId: 1, part: 1 }, { unique: true });
+      await db.collection("sources.files").createIndex({ filename: 1 });
+    })().catch(error => { this.ready = undefined; throw error; });
+  }
+  async transaction<T>(fn: (data: Data) => Promise<T>): Promise<T> {
+    await this.indexes();
+    const session = (await mongoClient()).startSession();
+    try { return await session.withTransaction(async () => fn(mongoData(await mongoDb(), session))); }
+    finally { await session.endSession(); }
+  }
+  bytes = {
+    put: async (id: string, bytes: Uint8Array) => {
+      const bucket = new GridFSBucket(await mongoDb(), { bucketName: "sources" });
+      await new Promise<void>((resolve, reject) => {
+        const stream = bucket.openUploadStream(id, { metadata: { sourceId: id } });
+        stream.on("error", reject).on("finish", resolve);
+        stream.end(Buffer.from(bytes));
+      });
+    },
+    get: async (id: string) => {
+      const bucket = new GridFSBucket(await mongoDb(), { bucketName: "sources" });
+      const file = await bucket.find({ filename: id }).next();
+      if (!file) return null;
+      const chunks: Buffer[] = [];
+      for await (const chunk of bucket.openDownloadStream(file._id)) chunks.push(Buffer.from(chunk));
+      return new Uint8Array(Buffer.concat(chunks));
+    },
+    remove: async (id: string) => {
+      const bucket = new GridFSBucket(await mongoDb(), { bucketName: "sources" });
+      for await (const file of bucket.find({ filename: id })) await bucket.delete(file._id as ObjectId);
+    },
+  };
+}

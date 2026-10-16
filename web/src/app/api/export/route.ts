@@ -12,6 +12,11 @@
  * Phase 7 of docs/BUILD_PLAN.md - the moment the whole pitch rests on.
  */
 
+import { currentUser } from "@/lib/server/session";
+import { hasMongo } from "@/lib/db/mongo";
+import { readSource } from "@/lib/server/access";
+import { ServerError } from "@/lib/server/errors";
+import { errorResponse, sameOrigin } from "@/lib/server/http";
 import { panelOf, type PackageInput } from "@/lib/ote/packager";
 import { backendFor, unsupportedParts, type FormatId } from "@/lib/backend";
 import { readProject } from "@/lib/ote/reader";
@@ -30,9 +35,11 @@ function safeName(name: string): string {
 export async function POST(request: Request) {
   let input: PackageInput & { source?: string; format?: FormatId };
   try {
+    sameOrigin(request);
     input = (await request.json()) as typeof input;
-  } catch {
-    return Response.json({ error: "expected a JSON project" }, { status: 400 });
+  } catch (error) {
+    if (error instanceof ServerError) return errorResponse(error);
+    return Response.json({ error: "expected a JSON project", code: "invalid" }, { status: 400 });
   }
 
   if (!input?.screens?.length) {
@@ -83,7 +90,8 @@ export async function POST(request: Request) {
     let panelLabel: string | null = null;
 
     if (input.source && /^[0-9a-f-]{36}$/i.test(input.source)) {
-      const original = await getImport(input.source);
+      const stored = (hasMongo() || !process.env.VERCEL) ? await readSource(input.source, await currentUser(), "export") : null;
+      const original = stored?.bytes ?? await getImport(input.source);
       if (!original) {
         return Response.json({ error: importGoneMessage() }, { status: 409 });
       }
@@ -121,6 +129,7 @@ export async function POST(request: Request) {
     if (panelLabel) headers["X-OTE-Panel"] = panelLabel;
     return new Response(bytes as unknown as BodyInit, { headers });
   } catch (error) {
+    if (error instanceof ServerError) return errorResponse(error);
     // The stored original turned out unreadable: say so as the reader does.
     if (isIngestError(error)) return Response.json(error.toJSON(), { status: error.status });
     const message = error instanceof Error ? error.message : "export failed";

@@ -1,0 +1,115 @@
+# Collaboration Phase A
+
+Accounts, private server projects, permanent original files, revision history and
+chunked uploads now sit behind `web/src/lib/server/repo.ts`. The existing zustand
+store and localStorage format remain the editor's device cache. The format
+reader, writer, schema and canvas are unchanged.
+
+## Running it
+
+- Without OAuth providers, a laptop uses the implicit `local` engineer. Without
+  MongoDB it writes under `web/.data/`, which is gitignored. Nothing requires an
+  external service for this mode.
+- With providers configured, Auth.js v5 uses JWT sessions. GitHub and Google
+  account ids identify users; matching email addresses do not automatically
+  link accounts. Sign in and sign out are available in the shell and Projects.
+- On Vercel, no providers means browser-only projects and no implicit user.
+  Server storage requires MongoDB; it never falls back to ephemeral disk.
+  OAuth users who are signed out retain the existing anonymous import path.
+
+Environment variables (also documented in `web/.env.example`):
+
+| Variable | Meaning |
+| --- | --- |
+| `MONGODB_URI` | Existing MongoDB connection; required for server storage on Vercel |
+| `MONGODB_DB` | Optional database name; defaults to `hmi_copilot` |
+| `AUTH_SECRET` | Required JWT secret when any OAuth provider is enabled |
+| `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET` | Enable GitHub when both are present |
+| `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | Enable Google when both are present |
+| `AUTH_URL` | Optional canonical URL for custom proxy deployments |
+| `AUTH_TRUST_HOST` | Optional trusted-proxy setting; Vercel is inferred |
+| `VERCEL` | Host-provided deployment flag; do not set for laptop local mode |
+
+Register OAuth callbacks as `/api/auth/callback/github` and
+`/api/auth/callback/google` on the application's origin. No credentials belong
+in browser variables. See the [Auth.js setup reference](https://authjs.dev/reference/nextjs).
+MongoDB must support transactions (a replica set, including Atlas, or a sharded
+cluster). All callers reuse the existing cached MongoClient.
+
+## Data and access
+
+`Repo` exposes users, projects, versions, members, sources and upload staging.
+`MongoRepo`, `FileRepo` and `MemoryRepo` implement the same contract. Another
+database implementation can be added without changing API or editor callers.
+
+| Collection / directory | Records |
+| --- | --- |
+| `users` | Stable id, email, name, image and creation time |
+| `projects` | Owner, name, target, timestamps, integer rev, sourceId and layout |
+| `versions` | Project, revision, author, label, timestamp and persisted snapshot |
+| `members` | Project/user pair, owner/editor/commenter/viewer role and addedAt |
+| `sources` | Private source metadata and original bytes; permanent for accounts |
+| `uploads`, `uploadParts` | Declared size, uploader, numbered parts, expiry and completion handle |
+
+Mongo bytes live in the `sources` GridFS bucket. Local bytes live in
+`.data/sources/<id>.bin`; metadata lives in named directories with an atomic
+write-ahead journal and an exclusive filesystem lock. If a local process dies
+holding `.data/.lock`, stop its writer before removing that lock; the next
+transaction replays any committed journal. The FileRepo is for local use, not
+shared network filesystems.
+
+The owner membership is created with the initial version. `access.ts` is the
+single role matrix: everyone may read/export, commenters may comment, editors
+may edit, only owners may manage/delete. Uploads have no project yet, so they
+check uploader identity instead. Anonymous handles are unguessable bearer
+capabilities. Permanent source reads require the uploader or membership in a
+project/version referencing the source. Project pictures use the same checks
+and private cache headers. Private account imports do not enter the shared
+knowledge index.
+
+Legacy struct imports retain their original as `sourceId`, but keep `source`
+unset: their established export behavior still creates a converted project.
+Typed imports use `source` for writing back into the original archive.
+Uploading an existing local project promotes an available anonymous original
+to permanent storage. An expired original must be reopened first.
+
+## Saving and uploads
+
+`/api/me` discovers identity and cloud availability. `/api/projects` lists owned
+and shared projects and creates them. The per-project endpoint reads, saves or
+deletes; `/versions` lists history and restores an earlier revision as a new
+authored save. Saves and history commit together, retaining the latest 50.
+PUT compares the supplied revision and returns 409 with the current revision
+and snapshot on a mismatch.
+
+The editor keeps localStorage as a write-through offline cache and debounces
+server saves for 1.5 seconds after a persisted change. Revision baselines stay
+in each tab, so another tab's cache metadata cannot silently advance them.
+Conflicts preserve the local copy and pause writes until Reload or Keep yours.
+Going online retries pending work; dirty work is checked again on reload.
+The Projects screen lists server projects first and offers Upload to cloud for
+device-only projects. No sharing UI is exposed yet.
+
+Files above 4 MiB use POST `/api/upload`, numbered raw PUT parts of at most
+4 MiB, then POST `/complete`; `/api/import` accepts the returned uploadId.
+Completion is idempotent and checks every part against the declared size and
+the existing 100 MiB aggregate ceiling. Incomplete uploads and anonymous
+sources expire after 24 hours. Expiry is checked on access; staging bytes are
+reclaimed opportunistically on later upload creation. Permanent sources are
+retained independently of project deletion. Anonymous small imports keep the
+existing 24-hour store, including its legacy BSON size bound; large browser
+uploads use the new binary path.
+
+## Verification and later phases
+
+Vitest covers MemoryRepo and temporary FileRepo, concurrent saves, 50-version
+retention, restore, the role matrix, source isolation, API errors, session modes,
+chunk assembly/expiry and importing the demo file through uploadId. Client
+tests cover debounce, two-tab conflicts and offline recovery without network.
+OAuth provider redirects and real MongoDB transactions require an environment
+with credentials and were not exercised by those tests.
+
+Phase B can add invitations, sharing links and membership management on these
+records. Phase C can add live operations and merging, including an AI agent
+acting with explicit membership. This phase deliberately uses whole snapshots
+and conflict prompts; it does not implement live merging or agent collaboration.

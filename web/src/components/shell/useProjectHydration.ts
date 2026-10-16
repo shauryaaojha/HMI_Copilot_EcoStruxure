@@ -28,7 +28,7 @@ import type { Screen } from "@/lib/ote/schema";
 import type { BindingGraph } from "@/lib/ote/bindings";
 import { useProject } from "@/store/project";
 import type { Binding } from "@/store/types";
-import { loadProject, saveProject } from "@/store/persist";
+import { loadProject, saveProject, loadCloudProject, syncProject } from "@/store/persist";
 import { loadProjects, touchProject } from "@/store/projects";
 import { DEFAULT_PANEL } from "@/lib/backend/panels";
 
@@ -116,86 +116,108 @@ export function useProjectHydration(projectId: string) {
     if (hydratedFor === projectId) return;
     hydratedFor = projectId;
 
-    const saved = loadProject(projectId);
-    if (saved) {
+    let live = true;
+    let complete = false;
+    void (async () => {
+      const cloud = await loadCloudProject(projectId);
+      if (!live) return;
+      complete = true;
+      useProject.getState().reset();
+      const saved = cloud ?? loadProject(projectId);
+      if (saved) {
+        hydrate({
+          id: saved.id,
+          name: saved.name,
+          target: saved.target,
+          screens: saved.screens,
+          activeScreenId: saved.activeScreenId ?? saved.screens[0]?.UniqueId,
+          variables: saved.variables,
+          alarms: saved.alarms,
+          bindings: saved.bindings,
+          objectMeta: saved.objectMeta ?? {},
+          screenPlacement: saved.screenPlacement ?? {},
+          handles: saved.handles ?? {},
+          handleSeq: saved.handleSeq ?? 0,
+          source: saved.source,
+          sourceId: saved.sourceId,
+          layout: saved.layout,
+          foreign: saved.foreign ?? {},
+          composites: saved.composites ?? {},
+          programs: saved.programs ?? {},
+          plant: saved.plant,
+          standards: saved.standards,
+          versions: saved.versions ?? [],
+          chat: saved.chat ?? [],
+          tagImport: saved.tagImport,
+        });
+        return;
+      }
+
+
+      // A new project: one empty screen and nothing else. Not zero screens -
+      // the canvas, the layers panel and the packager all need somewhere to put
+      // the first object, and "add a screen before you can draw" is a step that
+      // exists for no reason.
+      // One panel, stated once: the default profile until the server says what
+      // the skeleton's Target.dat is for. "HMIGTO6310 at 1024x600" used to be
+      // written here - a model at a resolution it does not have.
+      const target = { model: DEFAULT_PANEL.model, width: DEFAULT_PANEL.width, height: DEFAULT_PANEL.height };
       hydrate({
-        id: saved.id,
-        name: saved.name,
-        target: saved.target,
-        screens: saved.screens,
-        activeScreenId: saved.activeScreenId ?? saved.screens[0]?.UniqueId,
-        variables: saved.variables,
-        alarms: saved.alarms,
-        bindings: saved.bindings,
-        objectMeta: saved.objectMeta ?? {},
-        screenPlacement: saved.screenPlacement ?? {},
-        handles: saved.handles ?? {},
-        handleSeq: saved.handleSeq ?? 0,
-        source: saved.source,
-        foreign: saved.foreign ?? {},
-        composites: saved.composites ?? {},
-        programs: saved.programs ?? {},
-        plant: saved.plant,
-        standards: saved.standards,
-        versions: saved.versions ?? [],
-        chat: saved.chat ?? [],
-        tagImport: saved.tagImport,
+        id: projectId,
+        name: nameFor(projectId),
+        target,
+        screens: [blankScreen(target)],
+        variables: [],
+        alarms: [],
+        bindings: [],
+        objectMeta: {},
+        screenPlacement: {},
+        versions: [],
+        chat: [],
       });
-      return;
-    }
+      // hydrate() cannot set activeScreenId before it knows the screen's id, so
+      // it is read back from what was just written.
+      const created = useProject.getState().screens[0];
+      if (created) hydrate({ activeScreenId: created.UniqueId });
 
+      // The exported file can only target the panel in the skeleton's Target.dat,
+      // so a new project starts on that panel when this installation has one:
+      // the layout, the label and the file then agree from the first object.
+      // Only while the project is untouched - a panel chosen, or anything drawn,
+      // is the engineer's and is never moved under them.
+      fetch("/api/panel")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((body: { panel?: { model: string; width: number; height: number } | null } | null) => {
+          const panel = body?.panel;
+          const s = useProject.getState();
+          const untouched =
+            s.id === projectId &&
+            s.target.model === target.model &&
+            s.target.width === target.width &&
+            s.target.height === target.height &&
+            s.screens.length === 1 &&
+            s.screens[0].Children[0].Children.length === 0;
+          if (!panel || !untouched) return;
+          const screen = blankScreen(panel);
+          hydrate({ target: { model: panel.model, width: panel.width, height: panel.height }, screens: [screen], activeScreenId: screen.UniqueId });
+        })
+        .catch(() => {
+          // No skeleton, or no route: the default profile stands, and the top
+          // bar does not claim a file panel it cannot confirm.
+        });
+    })();
+    return () => { live = false; if (!complete && hydratedFor === projectId) hydratedFor = null; };
+  }, [projectId, hydrate]);
 
-    // A new project: one empty screen and nothing else. Not zero screens -
-    // the canvas, the layers panel and the packager all need somewhere to put
-    // the first object, and "add a screen before you can draw" is a step that
-    // exists for no reason.
-    // One panel, stated once: the default profile until the server says what
-    // the skeleton's Target.dat is for. "HMIGTO6310 at 1024x600" used to be
-    // written here - a model at a resolution it does not have.
-    const target = { model: DEFAULT_PANEL.model, width: DEFAULT_PANEL.width, height: DEFAULT_PANEL.height };
-    hydrate({
-      id: projectId,
-      name: nameFor(projectId),
-      target,
-      screens: [blankScreen(target)],
-      variables: [],
-      alarms: [],
-      bindings: [],
-      objectMeta: {},
-      screenPlacement: {},
-      versions: [],
-      chat: [],
-    });
-    // hydrate() cannot set activeScreenId before it knows the screen's id, so
-    // it is read back from what was just written.
-    const created = useProject.getState().screens[0];
-    if (created) hydrate({ activeScreenId: created.UniqueId });
-
-    // The exported file can only target the panel in the skeleton's Target.dat,
-    // so a new project starts on that panel when this installation has one:
-    // the layout, the label and the file then agree from the first object.
-    // Only while the project is untouched - a panel chosen, or anything drawn,
-    // is the engineer's and is never moved under them.
-    fetch("/api/panel")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((body: { panel?: { model: string; width: number; height: number } | null } | null) => {
-        const panel = body?.panel;
-        const s = useProject.getState();
-        const untouched =
-          s.id === projectId &&
-          s.target.model === target.model &&
-          s.target.width === target.width &&
-          s.target.height === target.height &&
-          s.screens.length === 1 &&
-          s.screens[0].Children[0].Children.length === 0;
-        if (!panel || !untouched) return;
-        const screen = blankScreen(panel);
-        hydrate({ target: { model: panel.model, width: panel.width, height: panel.height }, screens: [screen], activeScreenId: screen.UniqueId });
-      })
-      .catch(() => {
-        // No skeleton, or no route: the default profile stands, and the top
-        // bar does not claim a file panel it cannot confirm.
-      });
+  useEffect(() => {
+    const online = () => { void syncProject(projectId); };
+    const promoted = (event: Event) => {
+      const detail = (event as CustomEvent<{ id: string; source: string }>).detail;
+      if (detail.id === projectId) hydrate({ source: detail.source, sourceId: detail.source });
+    };
+    window.addEventListener("online", online);
+    window.addEventListener("hmi-source-promoted", promoted);
+    return () => { window.removeEventListener("online", online); window.removeEventListener("hmi-source-promoted", promoted); };
   }, [projectId, hydrate]);
 
   /**
@@ -209,12 +231,13 @@ export function useProjectHydration(projectId: string) {
     // rather than tracking a dirty flag also means a change that cancels itself
     // out - drag away and back - costs nothing.
     let lastWritten = "";
+    let pending: (() => void) | undefined;
 
     const unsubscribe = useProject.subscribe((state) => {
       if (state.id !== projectId || state.screens.length === 0) return;
       if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => {
-        const s = useProject.getState();
+      pending = () => {
+        const s = state;
         const payload = {
           id: s.id,
           name: s.name,
@@ -229,6 +252,8 @@ export function useProjectHydration(projectId: string) {
           handles: s.handles,
           handleSeq: s.handleSeq,
           source: s.source,
+          sourceId: s.sourceId,
+          layout: s.layout,
           foreign: s.foreign,
           composites: s.composites,
           programs: s.programs,
@@ -241,7 +266,8 @@ export function useProjectHydration(projectId: string) {
         const serialised = JSON.stringify(payload);
         if (serialised === lastWritten) return;
         lastWritten = serialised;
-        s.markSaved(saveProject(payload));
+        const savedAt = saveProject(payload, 1500 - AUTOSAVE_MS);
+        if (useProject.getState().id === projectId) s.markSaved(savedAt);
         // The Projects page reads a separate index, so a card would otherwise
         // keep claiming "0 screens" over a project with four. Everything here
         // is a count the project already knows - the card never has to load a
@@ -259,12 +285,14 @@ export function useProjectHydration(projectId: string) {
           target: `${s.target.model} · ${s.target.width} × ${s.target.height}`,
           intent: s.chat.find((m) => m.role === "user")?.text.slice(0, 120),
         });
-      }, AUTOSAVE_MS);
+      };
+      timer.current = setTimeout(() => { const write = pending; pending = undefined; write?.(); }, AUTOSAVE_MS);
     });
 
     return () => {
       unsubscribe();
       if (timer.current) clearTimeout(timer.current);
+      pending?.();
     };
   }, [projectId]);
 }

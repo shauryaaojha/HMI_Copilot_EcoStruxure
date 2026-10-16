@@ -104,6 +104,9 @@ interface ProjectState {
    * everything the reader did not model survives. docs/PLAN_PHASE1.md.
    */
   source?: string;
+  /** Original upload retained even when a legacy project exports by conversion. */
+  sourceId?: string;
+  layout?: "typed" | "struct";
 
   screens: Screen[];
   activeScreenId?: string;
@@ -1372,6 +1375,8 @@ export function createProjectStore() {
     reset: () =>
       set((s) => {
         s.source = undefined;
+        s.sourceId = undefined;
+        s.layout = undefined;
         s.screens = [];
         s.foreign = {};
         s.composites = {};

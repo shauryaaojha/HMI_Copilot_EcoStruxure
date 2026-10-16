@@ -3,13 +3,16 @@
 /**
  * Projects - reference screen 2.
  *
- * The list is kept in localStorage rather than mocked, so New Project genuinely
- * creates one and it is still there after a reload. There is no backend to put
- * it in yet; when there is, this becomes a fetch and nothing above it changes.
+ * Server projects, including shared memberships, appear before the device
+ * index. The existing localStorage cards remain available offline and can be
+ * explicitly uploaded after sign-in; opening either kind uses one editor.
  *
  * Phase 9 of docs/BUILD_PLAN.md.
  */
 
+import { AccountControl } from "@/components/shell/AccountControl";
+import type { Project } from "@/lib/server/repo";
+import { importFile } from "@/lib/client/upload";
 import { expectJson } from "@/lib/ingest/client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -23,7 +26,7 @@ import {
   touchProject,
   type ProjectRecord,
 } from "@/store/projects";
-import { clearProject, saveProject } from "@/store/persist";
+import { clearProject, saveProject, getAccount, uploadProject } from "@/store/persist";
 import { DEFAULT_STANDARDS, useProject } from "@/store/project";
 import { useNewProject } from "@/components/shell/useNewProject";
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
@@ -33,6 +36,7 @@ import type { Binding, ForeignPart } from "@/store/types";
 export interface Imported {
   /** Null for a converted file: there is nothing to write back into. */
   source: string | null;
+  sourceId?: string;
   name: string;
   target: { model: string; width: number; height: number };
   screens: Screen[];
@@ -72,6 +76,19 @@ function when(at: number) {
 }
 
 export function ProjectsScreen() {
+  const [cloudProjects, setCloudProjects] = useState<Project[]>([]);
+  const [cloud, setCloud] = useState(false);
+  async function refreshCloud() {
+    const me = await getAccount();
+    setCloud(!!me.user && me.cloud);
+    if (me.user && me.cloud) {
+      const response = await fetch("/api/projects", { cache: "no-store" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error);
+      setCloudProjects(body.projects);
+    }
+  }
+  useEffect(() => { void refreshCloud().catch(e => setOpenError(e.message)); }, []);
   const newProject = useNewProject();
   const router = useRouter();
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
@@ -94,14 +111,7 @@ export function ProjectsScreen() {
     setOpenError(null);
     setOpening(file.name);
     try {
-      const response = await fetch("/api/import", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/octet-stream",
-          "X-File-Name": encodeURIComponent(file.name),
-        },
-        body: await file.arrayBuffer(),
-      });
+      const response = await importFile(file);
       const data = await expectJson<Imported>(response, "Opening the project");
 
       const record = createProject(data.name);
@@ -121,6 +131,8 @@ export function ProjectsScreen() {
         versions: [],
         chat: [],
         source: data.source ?? undefined,
+        sourceId: data.sourceId,
+        layout: data.layout,
         foreign: data.foreign ?? {},
       });
       const grid = data.carried.roots?.Grid ?? 0;
@@ -181,7 +193,7 @@ export function ProjectsScreen() {
     clearProject(id);
   }
 
-  const all = projects;
+  const all = projects.filter(p => !cloudProjects.some(c => c._id === p.id));
   const shown =
     filter === "starred"
       ? all.filter((p) => p.starred)
@@ -191,6 +203,16 @@ export function ProjectsScreen() {
 
   return (
     <div className="space-y-6">
+      <AccountControl />
+      {cloud && <section className="space-y-3" aria-label="Cloud projects">
+        <h2 className="text-sm font-semibold">Saved on the server</h2>
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {cloudProjects.map(p => <li key={p._id} className="rounded-panel border border-line-subtle bg-surface-raised p-4">
+            <Link className="focus-ring text-sm font-semibold hover:text-brand-400" href={`/project/${p._id}`}>{p.name}</Link>
+            <p className="mt-2 text-xs text-text-muted">Version {p.rev} ? {p.target.model}</p>
+          </li>)}
+        </ul>
+      </section>}
       <div className="flex flex-wrap items-center gap-3">
         <Tabs
           items={FILTERS}
@@ -328,6 +350,9 @@ export function ProjectsScreen() {
               )}
             </Link>
 
+            {cloud && <button className="focus-ring mt-2 text-xs text-brand-400" onClick={() => {
+              void uploadProject(project.id).then(refreshCloud).catch(e => setOpenError(e.message));
+            }}>Upload to cloud</button>}
             {(
               <button
                 type="button"
@@ -360,7 +385,7 @@ export function ProjectsScreen() {
       <p className="text-xs text-text-faint">
         Projects are stored in this browser. Export writes an .eote, whichever
         format the project was opened from, because .eote is what we write;
-        nothing is uploaded anywhere.
+        signed-in projects also save privately on this server.
       </p>
     </div>
   );
