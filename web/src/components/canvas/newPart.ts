@@ -95,6 +95,8 @@ const STEM: Record<PartType, string> = {
   Arch: "Arch",
   Doughnut: "Doughnut",
   ContentDisplay: "Content",
+  ClipArt: "Clip",
+  Image: "Image",
 };
 
 export function partFromTool(type: PartType, box: Box): Part {
@@ -151,6 +153,11 @@ export function partFromTool(type: PartType, box: Box): Part {
     case "Arch":
     case "Doughnut":
       return { ...rectangle(name, box), Type: type } as Part;
+    case "ClipArt":
+    case "Image":
+      // Placed from the clipart library with its picture (symbolPart's twin);
+      // a bare tool click has no picture to give it, so it starts as a panel.
+      return rectangle(name, box);
     case "ContentDisplay": {
       const { Fill: _f, Border: _b, Thickness: _t, ...rest } = rectangle(name, box) as Extract<Part, { Type: "Rectangle" }>;
       return { ...rest, Type: "ContentDisplay", ScreenId: 1 } as Part;

@@ -162,6 +162,9 @@ export function validateProject(
 
   // A part that displays a value but is driven by nothing shows a constant.
   for (const part of parts) {
+    // A pipe with one state is drawn, not driven: the generator lays process
+    // lines with no flow tag, and those are not missing a binding.
+    if (part.Type === "Pipe" && part.States.length <= 1) continue;
     if (VALUE_PROPERTY[part.Type] && !wiredParts.has(part.UniqueId)) {
       findings.push({
         severity: "warning",

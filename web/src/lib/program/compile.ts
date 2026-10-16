@@ -132,7 +132,15 @@ export function compileProgram(
         start.y === end.y
           ? [start, end]
           : [start, { x: midX, y: start.y }, { x: midX, y: end.y }, end];
-      place.add(pipeRun(`Pipe_${safe(edge.from)}_${safe(edge.to)}`, points));
+      // A line between units shows flow: it is bound to whichever end has a
+      // running signal (the pump that moves the product), so it fills with the
+      // running colour when that runs. A line with no such end is drawn in its
+      // idle state only, rather than offering a flow state nothing drives.
+      const runOf = (id: string) => byId.get(id)?.roles.find((r) => r.role === "running")?.tag;
+      const flowTag = runOf(edge.from) ?? runOf(edge.to);
+      const pipe = pipeRun(`Pipe_${safe(edge.from)}_${safe(edge.to)}`, points);
+      if (!flowTag && pipe.Type === "Pipe") pipe.States = [pipe.States[0]];
+      place.add(pipe, flowTag);
     }
 
     for (const p of placed) {

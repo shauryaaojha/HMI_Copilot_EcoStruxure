@@ -32,7 +32,7 @@ import type { ToolType } from "./newPart";
 import { resolveColor } from "@/lib/ote/palette";
 import type { ForeignPart, ObjectMeta, ScreenPreview } from "@/store/types";
 import { snapDelta, snapTargets, unionOf, type Box } from "@/store/edits";
-import { ContentScreens, contentsById, PartNode, type AlarmRow } from "./parts";
+import { ContentScreens, contentsById, PartNode, PictureSource, type AlarmRow } from "./parts";
 import { useProject } from "@/store/project";
 
 /** Palette index 2 is the paper the product draws a screen on; 22 its frame. */
@@ -226,6 +226,9 @@ export function ScreenRenderer({
   const svg = useRef<SVGSVGElement>(null);
   const projectScreens = useProject((s) => s.screens);
   const contentScreens = contentsById(contents ?? projectScreens);
+  // Pictures that came in with an opened file are served from that file.
+  const source = useProject((s) => s.source);
+  const pictureUrl = useCallback((sha: string) => `/api/picture/${sha}${source ? `?source=${encodeURIComponent(source)}` : ""}`, [source]);
   const [drag, setDrag] = useState<Drag | null>(null);
   /** The guide lines that actually caught, so the engineer sees what snapped. */
   const [shown, setShown] = useState<{ v?: number; h?: number }>({});
@@ -384,6 +387,7 @@ export function ScreenRenderer({
 
   return (
     <ContentScreens.Provider value={{ byId: contentScreens, depth: 0 }}>
+    <PictureSource.Provider value={pictureUrl}>
     <svg
       ref={svg}
       viewBox={`0 0 ${box.width} ${box.height}`}
@@ -648,6 +652,7 @@ export function ScreenRenderer({
         pointerEvents="none"
       />
     </svg>
+    </PictureSource.Provider>
     </ContentScreens.Provider>
   );
 }

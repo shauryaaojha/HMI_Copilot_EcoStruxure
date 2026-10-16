@@ -10,6 +10,7 @@
  * Thickness of 2 stays 2 pixels whatever the stretch.
  */
 
+import { createContext, useContext } from "react";
 import { toPathData } from "@/lib/ote/graphics";
 import { fill, insetStroke, type PartOf } from "./geometry";
 
@@ -162,4 +163,25 @@ export function AngleShapePart({ part }: { part: AngleShape }) {
   return (
     <path d={d} fillRule="evenodd" fill={fill(part, "Fill", "#ffffff")} stroke={fill(part, "Border", "#515151")} strokeWidth={stroke} />
   );
+}
+
+/**
+ * Where a picture's bytes are served from, by SHA-1. Context, like the content
+ * screens: the opened project's id is needed to find pictures that came in
+ * with the file, and a part does not know which project it is in.
+ */
+export const PictureSource = createContext<(sha: string) => string | null>((sha) => `/api/picture/${sha}`);
+
+export function PicturePart({ part }: { part: PartOf<"ClipArt"> | PartOf<"Image"> }) {
+  const url = useContext(PictureSource);
+  const sha = part.ImagePath?.Value;
+  const href = sha && /^[0-9a-f]{40}$/i.test(sha) ? url(sha.toLowerCase()) : null;
+  const { Left: x, Top: y } = part.Location;
+  const w = part.Width ?? 0;
+  const h = part.Height ?? 0;
+  if (!href) {
+    return <rect x={x + 0.5} y={y + 0.5} width={Math.max(0, w - 1)} height={Math.max(0, h - 1)} fill="none" stroke="#8a8f98" strokeDasharray="3 3" />;
+  }
+  const opacity = part.Transparency !== undefined ? Math.max(0, Math.min(1, 1 - part.Transparency / 100)) : 1;
+  return <image href={href} x={x} y={y} width={w} height={h} preserveAspectRatio="xMidYMid meet" opacity={opacity} />;
 }

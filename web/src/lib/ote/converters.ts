@@ -71,10 +71,10 @@ export function syncConverters(db: Database, scales: Scale[]): { ids: Record<str
     if (ids[name]) continue;
     const existing = byName.get(name);
     if (existing) {
-      ids[name] = existing;
+      ids[name] = existing.toLowerCase();
       continue;
     }
-    const id = scale.id ?? gid();
+    const id = (scale.id ?? gid()).toLowerCase();
     order += 1;
     const data = {
       Type: "Converter",
@@ -88,12 +88,18 @@ export function syncConverters(db: Database, scales: Scale[]): { ids: Record<str
       ToMin: scale.toMin ?? 0,
       ToMax: scale.toMax ?? 100,
     };
+    // As the product writes a row (Demo 1, Demo 2): the column id in upper
+    // case, the id inside Data and on every binding in lower case, and an empty
+    // Description rather than NULL. Written the other way, the licensed editor
+    // fails Simulate with a NullReferenceException in
+    // BindingScriptGeneratorBase.UpdateConverterDataFromProperties
+    // (scripts/ote-bench.ps1, 16 Oct 2026: lower-case column fails, upper passes).
     db.run('INSERT INTO Converters ("UniqueId", "Name", "Order", "ConverterType", "Description", "Data") VALUES (?, ?, ?, ?, ?, ?)', [
-      id,
+      id.toUpperCase(),
       name,
       order,
       "Scale",
-      null,
+      "",
       JSON.stringify(data),
     ]);
     byName.set(name, id);

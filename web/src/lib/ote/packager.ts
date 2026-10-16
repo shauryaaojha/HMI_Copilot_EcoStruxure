@@ -42,6 +42,8 @@ import {
   type Preserved,
 } from "./reader";
 import { mergeTree } from "./containers";
+import { cliparts } from "./cliparts";
+import { addPictures, picturesUsed, type PictureSource } from "./resources";
 
 export interface PackageInput {
   name: string;
@@ -75,6 +77,26 @@ const SCREENS_HIERARCHY = "Screens\\Hierarchy.dat";
 
 /** `Screens\<guid>\<file>` - the only place a screen entry name is built. */
 const screenEntry = (id: string, file: string) => `Screens\\${id}\\${file}`;
+
+/** Picture bytes by SHA-1, from the product's clipart library on this machine. */
+async function pictureLibrary(): Promise<(sha: string) => PictureSource | undefined> {
+  const { list, bytes } = await cliparts();
+  const byHash = new Map(list.map((c) => [c.sha1, c]));
+  return (sha) => {
+    const b = bytes.get(sha);
+    return b ? { bytes: b, path: byHash.get(sha)?.path ?? `${sha}.png` } : undefined;
+  };
+}
+
+/**
+ * The version a new project says it was last saved by. The shipped Blank.eote
+ * says "4.4.0.0", and the licensed 4.4.20.31 meets a file saying that with
+ * "The project file was edited in version ... Convert the project file to
+ * version 4.4?" before anything else (scripts/ote-bench.ps1). "4.4.20.0" opens
+ * with no question there, and is no newer than any 4.4.20 build - a file
+ * claiming a newer build than the engineer's own is the worse failure.
+ */
+export const VERSION_MODIFIED = "4.4.20.0";
 
 let sqlPromise: Promise<SqlJsStatic> | null = null;
 
@@ -479,6 +501,17 @@ async function packagePreserved(input: PackageInput, kept: Preserved): Promise<U
     changed = true;
   }
 
+  // --- pictures -------------------------------------------------------------
+  // A ClipArt placed from the product's library brings its PNG; a picture
+  // that came in with the file is already there and is left as it was.
+  if (picturesUsed(input.screens).size > 0) {
+    const library = await pictureLibrary();
+    const before = entries.size;
+    const datBefore = entries.get(nameOf("Resources.dat"));
+    addPictures(entries, input.screens, library, nameOf);
+    if (entries.size !== before || entries.get(nameOf("Resources.dat")) !== datBefore) changed = true;
+  }
+
   // --- project identity ---------------------------------------------------
   if (changed) {
     const name = nameOf("Project.dat");
@@ -610,6 +643,9 @@ export async function packageProject(
   // the demo down for a caption.
   if (!entries.has("Target.dat")) throw new Error("skeleton has no Target.dat");
 
+  // --- pictures -------------------------------------------------------------
+  if (picturesUsed(input.screens).size > 0) addPictures(entries, input.screens, await pictureLibrary());
+
   // --- project identity ---------------------------------------------------
   const projectEntry = entries.get("Project.dat");
   if (!projectEntry) throw new Error("skeleton has no Project.dat");
@@ -617,7 +653,7 @@ export async function packageProject(
   project.UniqueId = gid();
   project.RuntimeProjectId = gid();
   project.ModifiedDateTime = new Date().toISOString().replace(/\.\d+Z$/, "Z");
-  project.VersionModified = "4.4.0.0";
+  project.VersionModified = VERSION_MODIFIED;
   entries.set("Project.dat", jsonEntry(project));
 
   // --- pack ---------------------------------------------------------------

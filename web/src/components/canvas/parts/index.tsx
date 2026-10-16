@@ -30,10 +30,11 @@ import {
 } from "./DataParts";
 import { AlarmSummaryPart, type AlarmRow } from "./AlarmSummaryPart";
 import { PathPartNode } from "./GraphicObject";
-import { AngleShapePart, EllipsePart, LinePart, PolygonPart } from "./Shapes";
+import { AngleShapePart, EllipsePart, LinePart, PicturePart, PolygonPart } from "./Shapes";
 import { ContentDisplayPart } from "./ContentDisplay";
 
 export { ContentScreens, contentsById } from "./ContentDisplay";
+export { PictureSource } from "./Shapes";
 
 export { AlarmSummaryPart, type AlarmRow } from "./AlarmSummaryPart";
 export { GraphicObject } from "./GraphicObject";
@@ -142,6 +143,10 @@ export function PartNode({ part, values, alarms }: PartNodeProps) {
 
     case "ContentDisplay":
       return <ContentDisplayPart part={part} alarms={alarms} />;
+
+    case "ClipArt":
+    case "Image":
+      return <PicturePart part={part} />;
 
     case "Polygon":
       return <PolygonPart part={part} />;

@@ -5,5 +5,5 @@
     "module": "esnext",
     "moduleResolution": "bundler"
   },
-  "include": ["./**/*.mts", "../src/**/*.ts", "../src/**/*.tsx"]
+  "include": ["./**/*.mts", "../bin/**/*.mts", "../src/**/*.ts", "../src/**/*.tsx"]
 }

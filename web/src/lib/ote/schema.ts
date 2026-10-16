@@ -421,6 +421,29 @@ export const Doughnut = z.object({
 });
 
 /**
+ * A picture, by the SHA-1 of its PNG: the bytes are `Resources\<sha1>.png` in
+ * the project (lib/ote/resources.ts). DisplayValue is where it came from.
+ */
+export const ImagePath = z
+  .object({
+    Value: z.string(),
+    DisplayValue: z.string().optional(),
+  })
+  .passthrough();
+
+const picture = {
+  ImagePath: ImagePath.optional(),
+  ImageLayout: z.object({}).passthrough().optional(),
+  Transparency: z.number().optional(),
+};
+
+/** One of the product's 200 cliparts (lib/ote/cliparts.ts), or any picture placed as one. */
+export const ClipArt = z.object({ Type: z.literal("ClipArt"), ...base, ...picture });
+
+/** A picture the engineer brought. Drawn and written the same way as a ClipArt. */
+export const Image = z.object({ Type: z.literal("Image"), ...base, ...picture });
+
+/**
  * A window onto a content screen: `ScreenId` is the content's ContentID. The
  * product's templates are made of these; the reader lays a content screen out
  * at the size of the display that shows it.
@@ -654,6 +677,8 @@ export const Part = z.discriminatedUnion("Type", [
   Arch,
   Doughnut,
   ContentDisplay,
+  ClipArt,
+  Image,
 ]);
 
 export const ViewBox = z.object({
@@ -801,6 +826,8 @@ export const PART_TYPES = [
   "Arch",
   "Doughnut",
   "ContentDisplay",
+  "ClipArt",
+  "Image",
 ] as const satisfies readonly PartType[];
 export type ViewBox = z.infer<typeof ViewBox>;
 export type Screen = z.infer<typeof Screen>;

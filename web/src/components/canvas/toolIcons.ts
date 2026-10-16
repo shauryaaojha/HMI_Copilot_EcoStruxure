@@ -11,6 +11,7 @@ import {
   Circle,
   CircleDashed,
   CircleDot,
+  Image as ImageIcon,
   PanelsTopLeft,
   PieChart,
   Cog,
@@ -64,4 +65,6 @@ export const TOOL_ICON: Record<PartType | CompositeKind, LucideIcon> = {
   Arch: Gauge,
   Doughnut: CircleDot,
   ContentDisplay: PanelsTopLeft,
+  ClipArt: ImageIcon,
+  Image: ImageIcon,
 };

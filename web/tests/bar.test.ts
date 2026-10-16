@@ -128,7 +128,10 @@ describe("a bar in an opened project", () => {
     expect(name).toBe("HMIC_Scale_0_6");
     const graph = JSON.parse(new TextDecoder().decode(await entry(out, "Bindings.dat")).replace(/^﻿/, ""));
     const row = graph.Bindings.find((b: { ConverterId: string | null }) => b.ConverterId);
-    expect(row).toMatchObject({ ConverterId: id, ConverterName: "HMIC_Scale_0_6", TargetProperty: "Animation.FillLevel.HorizontalFill" });
+    // The product's own shape: the column id upper case, the binding's lower.
+    // Lower case in the column fails the licensed editor's Simulate.
+    expect(id).toBe(id.toUpperCase());
+    expect(row).toMatchObject({ ConverterId: id.toLowerCase(), ConverterName: "HMIC_Scale_0_6", TargetProperty: "Animation.FillLevel.HorizontalFill" });
     const target = graph.Targets[row.Target];
     expect(target).toMatchObject({ SubType: "Rectangle", ObjectFullName: "Ind_TNK_Bar" });
   });
