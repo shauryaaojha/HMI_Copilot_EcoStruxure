@@ -47,6 +47,7 @@ import { SAMPLES } from "@/components/tags";
 import { cn } from "@/components/ui";
 import { anythingMissing, requirementsOf } from "./requirements";
 import { useChat } from "./useChat";
+import { SharedProposals } from "./SharedProposals";
 
 const MAX_INTENT = 600;
 
@@ -290,6 +291,9 @@ export function ChatPanel() {
             </div>
           </div>
         )}
+
+        {/* A shared project's proposals belong to everyone on it (Phase D). */}
+        <SharedProposals />
 
         {chat.map((message) =>
           message.role === "user" ? (

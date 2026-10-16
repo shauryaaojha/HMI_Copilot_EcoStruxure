@@ -276,3 +276,54 @@ is a soft lock: the part stays editable.
 
 Tests: `tests/collab-changes.test.ts`, `tests/collab-server.test.ts`,
 `tests/collab-sync.test.ts`, `tests/presence-ui.test.ts`.
+
+## Phase D: the Copilot as a collaborator
+
+**Identity.** The agent's author id is `agent:<provider>:<model>` (or
+`agent:none:local` with no model) and its display name "HMI Copilot". Every
+change it makes carries that author in the Phase C log, with `acceptedBy` set
+to the editor who accepted it. Parts it creates, and generator-placed parts it
+changes, keep `origin: "generated"` in ObjectMeta.
+
+**Proposals are shared.** In a shared project a chat edit is never committed
+to the document. The browser sends the model's ops to
+`POST /api/projects/[id]/proposals`; the server dry-runs them with the chat's
+own applier on a scratch store built from the latest snapshot and stores a
+`proposals` record: project, screen, requester, request text, ops, one label
+per op, the resulting StoreChanges, what could not be done, timestamps and
+`status: open | accepted | partially-accepted | discarded` with `decidedBy`,
+`decidedAt`, `acceptedOpIndexes` and the landing rev. Proposals are broadcast
+as `proposal` events on the project stream; the chat panel lists them for
+every member and the newest open one is drawn as ghosts with the existing
+preview rendering.
+
+**Who decides.** Editors and the owner accept (ticking ops) or discard, via
+`POST /api/projects/[id]/proposals/[pid]` `{ action, indexes? }`. Accepting
+runs only the ticked ops again on the snapshot as it is then, and sends the
+result through the normal change path authored by the agent. Commenters can
+comment on a proposal (a project comment carrying `proposalId`); viewers see
+it. Every decision is appended to `decisions`, and the sign-off report gains
+the table "AI-suggested changes and who accepted them".
+
+**One agent turn per screen.** `agentLocks` rows `{ projectId, screenId,
+holder, expiresAt (90 s) }`. A chat turn takes its screen with
+`POST /api/projects/[id]/agent/lock` before asking the model and gives it back
+when its proposal is made (or with `DELETE`); a second person is told
+"Copilot is working on this screen for Ravi" (409, code `busy`). A crashed
+turn holds the screen for at most 90 s.
+
+**Server-side runs.** `POST /api/projects/[id]/agent` `{ screenId, mode:
+"build" | "repair", goal }` takes the screen, answers 202, and runs
+`runAgent` (src/lib/agent/loop.ts) after the response with Next's `after`
+(waitUntil on Vercel). `build` builds from the project's tags; `repair` starts
+from the server snapshot (`from`) and repairs it. No bench and no packaging on
+the server (`prove: false`). Its steps are written onto the screen's lock row
+and reach the requester as `agent` events on the stream; its result is a
+proposal whose changes are one fixed group, accepted or discarded whole.
+
+Browser-only projects keep today's behaviour: commit, or a local proposal on
+the chat message.
+
+Tests: `tests/proposals.test.ts`, `tests/agent-lock.test.ts`,
+`tests/collab-agent.test.ts` (two simulated browsers receive the proposal and
+see only the accepted change). No test calls a model (`AI_PROVIDER=none`).

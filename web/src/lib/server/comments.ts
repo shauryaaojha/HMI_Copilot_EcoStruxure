@@ -44,6 +44,7 @@ export async function createComment(user: User | null, projectId: string, draft:
     x: draft.x as number | undefined,
     y: draft.y as number | undefined,
     parentId: draft.parentId as string | undefined,
+    proposalId: draft.proposalId as string | undefined,
   });
 }
 

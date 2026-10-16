@@ -52,10 +52,12 @@ export type Comment = Row & {
   resolvedAt?: number;
   resolvedBy?: string;
   parentId?: string;
+  /** Set when the thread discusses a Copilot proposal (Phase D). */
+  proposalId?: string;
 };
 
 /** What a new comment may say; the repository fills in identity and time. */
-export type CommentDraft = Partial<Pick<Comment, "screenId" | "objectId" | "x" | "y" | "parentId">> & { body: unknown };
+export type CommentDraft = Partial<Pick<Comment, "screenId" | "objectId" | "x" | "y" | "parentId" | "proposalId">> & { body: unknown };
 
 /** Lower ranks are weaker; joining by link never moves someone down this list. */
 export const ROLE_RANK: Record<Role, number> = { viewer: 0, commenter: 1, editor: 2, owner: 3 };
@@ -181,7 +183,7 @@ function commentBody(value: unknown): string {
 
 /** Copy where a new top-level comment is pinned, refusing anything malformed. */
 function pinInto(comment: Comment, draft: CommentDraft) {
-  for (const key of ["screenId", "objectId"] as const) {
+  for (const key of ["screenId", "objectId", "proposalId"] as const) {
     const value = draft[key];
     if (value === undefined || value === null) continue;
     if (typeof value !== "string" || !validId(value)) throw new ServerError(400, "invalid", `Invalid ${key}`);
@@ -216,7 +218,7 @@ export function commentsRepo(tx: Tx, now: Clock): CommentsRepo {
         if (parent.parentId) throw new ServerError(400, "invalid", "Replies are one level deep: reply to the thread instead");
         // A reply belongs where its thread is pinned, not somewhere new.
         comment.parentId = parent._id;
-        for (const key of ["screenId", "objectId", "x", "y"] as const) {
+        for (const key of ["screenId", "objectId", "x", "y", "proposalId"] as const) {
           if (parent[key] !== undefined) Object.assign(comment, { [key]: parent[key] });
         }
       } else {

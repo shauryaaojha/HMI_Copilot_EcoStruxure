@@ -1,6 +1,7 @@
 /**
  * What a shared project adds to its sign-off report: the review threads still
- * open on each screen. Only a server project has other people's comments, so
+ * open on each screen, and every decision on a Copilot proposal with the name
+ * of the person who made it. Only a server project has other people's comments, so
  * a report for a browser-only project carries none of this and reads as before.
  */
 import type { PackageInput } from "@/lib/ote/packager";
@@ -16,7 +17,7 @@ export async function signoffSections(
   user: User | null,
   request: Request,
   storage: Repo = repo(),
-): Promise<Pick<ReportInput, "comments">> {
+): Promise<Pick<ReportInput, "comments" | "aiDecisions">> {
   await requireReader(user, projectId, request);
   const counts = await unresolvedByScreen(projectId, storage);
   const names = new Map(project.screens.map((s) => [s.UniqueId, s.Name]));
@@ -26,5 +27,14 @@ export async function signoffSections(
     .filter(([screenId]) => !names.has(screenId))
     .reduce((n, [, count]) => n + count, 0);
   if (elsewhere > 0) comments.push({ screen: "Project (no screen)", unresolved: elsewhere });
-  return { comments };
+  const aiDecisions = (await storage.proposals.decisions(projectId)).map((d) => ({
+    at: d.at,
+    request: d.request,
+    requestedBy: d.requestedByName,
+    decision: d.decision,
+    by: d.byName,
+    accepted: d.accepted,
+    author: d.author,
+  }));
+  return { comments, aiDecisions };
 }

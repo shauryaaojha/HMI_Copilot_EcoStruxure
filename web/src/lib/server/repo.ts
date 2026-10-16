@@ -17,7 +17,9 @@ import { ServerError } from "./errors";
 import { FileStorage, MemoryStorage, MongoStorage, validId, type Storage, type Row, type Data } from "./storage";
 import { sharesRepo, commentsRepo, putMember, ROLE_RANK, type SharesRepo, type CommentsRepo } from "./repo-collab";
 import { latestVersion, liveRepo, type LiveRepo } from "./repo-live";
+import { locksRepo, proposalsRepo, type LocksRepo, type ProposalsRepo } from "./repo-agent";
 export * from "./repo-collab";
+export * from "./repo-agent";
 
 /** Every collection whose records belong to one project and go when it is deleted. */
 const PROJECT_TABLES = ["versions", "members", "shares", "comments", "changes", "heads", "presence", "proposals", "decisions", "agentLocks"];
@@ -59,6 +61,8 @@ export interface Repo {
   shares: SharesRepo;
   comments: CommentsRepo;
   live: LiveRepo;
+  proposals: ProposalsRepo;
+  locks: LocksRepo;
   sources: { info(id: string): Promise<Source | null>; put(bytes: Uint8Array, fileName: string, ownerId: string | null, expiresAt?: number): Promise<string>; get(id: string): Promise<{ meta: Source; bytes: Uint8Array } | null> };
   uploads: { create(fileName: string, size: number, ownerId: string | null): Promise<Upload>; get(id: string): Promise<Upload | null>; part(id: string, part: number, bytes: Uint8Array, ownerId: string | null): Promise<void>; complete(id: string, ownerId: string | null): Promise<string>; sweep(): Promise<void> };
 }
@@ -153,6 +157,8 @@ export class BaseRepo implements Repo {
   shares = sharesRepo(fn => this.tx(fn), () => this.now());
   comments = commentsRepo(fn => this.tx(fn), () => this.now());
   live = liveRepo(fn => this.tx(fn), () => this.now());
+  proposals = proposalsRepo(fn => this.tx(fn), () => this.now());
+  locks = locksRepo(fn => this.tx(fn), () => this.now());
   sources: Repo["sources"] = {
     put: async (bytes, fileName, ownerId, expiresAt) => {
       if (bytes.length > DEFAULT_LIMITS.maxBytes) throw new ServerError(413, "too-large", "File exceeds 100 MB");

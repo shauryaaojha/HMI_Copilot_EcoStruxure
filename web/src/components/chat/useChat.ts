@@ -29,6 +29,7 @@ import { useProject } from "@/store/project";
 import type { ChatMessage } from "@/store/types";
 import { loadProjects, touchProject } from "@/store/projects";
 import { useGeneration } from "@/components/generation/useGeneration";
+import { proposeShared, releaseScreen, runSharedAgent, sharedTurn, takeScreen } from "./shared";
 
 /** Exchanges sent verbatim; older ones become one anchor line server-side. */
 const HISTORY_MESSAGES = 24;
@@ -169,8 +170,26 @@ export function useChat() {
       store.addMessage({ id: answerId, role: "assistant", at: Date.now(), text: "", pending: true });
 
       const patch = (p: Partial<ChatMessage>) => useProject.getState().patchMessage(answerId, p);
+      // In a shared project the turn takes its screen, and its result becomes
+      // a proposal for every member rather than a commit (Phase D).
+      const shared = sharedTurn();
+      /** Set once a server-side run holds the screen: this turn must not release it. */
+      let handedOver = false;
 
       const runGeneration = async (intent: string, fresh: boolean, suggestedName?: string) => {
+        if (shared) {
+          // The build runs on the server against the shared snapshot; the
+          // screen passes from this turn to that run.
+          await releaseScreen(shared);
+          handedOver = true;
+          await runSharedAgent(shared, "build", intent);
+          patch({
+            pending: false,
+            changes: ["Building on the server. The result will appear as a proposal for an editor to accept."],
+            turn: { mode: fresh ? "build" : "extend", applied: [], rejected: [], renamed: [], decision: "proposed" },
+          });
+          return;
+        }
         const before = useProject.getState().screens.length;
         await generate(intent, fresh ? { fresh: true } : { fresh: false, existing: existingScreens() });
         // The older screens' strips do not know about the new screens yet.
@@ -192,6 +211,13 @@ export function useChat() {
       };
 
       try {
+        if (shared) {
+          const busy = await takeScreen(shared);
+          if (busy) {
+            patch({ pending: false, error: busy });
+            return;
+          }
+        }
         // The confirmation for a start-over is a turn like any other, but it
         // does not need the model: the question was ours.
         if (awaitingStartOver.current && request === START_OVER) {
@@ -303,6 +329,18 @@ export function useChat() {
 
         // Clean edits commit at once, unless the project asks for every AI edit
         // to be reviewed (lib/ai/review.ts).
+        if (shared) {
+          const proposal = await proposeShared(shared, request, ops);
+          const n = proposal.labels.length;
+          patch({
+            pending: false,
+            changes: [`Proposed to everyone on this project: ${n} change${n === 1 ? "" : "s"} for an editor to accept`],
+            turn: { ...record, decision: "proposed" },
+            ...(proposal.rejected.length ? { error: proposal.rejected.join(" ") } : {}),
+          });
+          return;
+        }
+
         const clean = commitsWithoutReview(run.outcome, useProject.getState().standards);
         if (clean) {
           commit(run, run.outcome.applied[0]?.slice(0, 60) || "Conversational edit");
@@ -339,6 +377,7 @@ export function useChat() {
         const message = caught instanceof Error ? caught.message : "the turn could not be completed";
         patch({ pending: false, text: "", error: message });
       } finally {
+        if (shared && !handedOver) void releaseScreen(shared);
         busy.current = false;
       }
     },

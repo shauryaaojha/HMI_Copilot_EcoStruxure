@@ -30,7 +30,7 @@ import type { Wire } from "@/lib/ote/bindings";
 
 export type AgentStep =
   | { kind: "look" | "act" | "check" | "repair" | "prove" | "note"; message: string; data?: unknown }
-  | { kind: "done"; message: string; bytes: Uint8Array; report: AgentReport };
+  | { kind: "done"; message: string; bytes: Uint8Array; report: AgentReport; input: PackageInput };
 
 export interface Finding {
   severity: string;
@@ -72,6 +72,17 @@ export interface AgentOptions {
   rounds?: number;
   /** Prove it in the licensed editor; given by the caller that can (CLI on Windows). */
   bench?: (bytes: Uint8Array) => Promise<BenchResult | null>;
+  /**
+   * Check and repair this project instead of building one from the tags: a
+   * shared project's server snapshot (Phase D), whose screens already exist.
+   */
+  from?: PackageInput;
+  /**
+   * Package the result and read it back. On by default; the server's run for
+   * a shared project turns it off, because the result becomes a proposal, not
+   * bytes, and the skeleton may not be on that machine.
+   */
+  prove?: boolean;
 }
 
 /** Every check the project can be put through without the product. */
@@ -125,9 +136,15 @@ export async function* runAgent(options: AgentOptions): AsyncGenerator<AgentStep
   yield { kind: "look", message: `${options.variables.length} tags, panel ${options.panel.model} ${options.panel.width}x${options.panel.height}; model: ${provider.provider ? `${provider.model}` : "none"}` };
 
   // --- build ------------------------------------------------------------------
-  const built = await buildFromTags({ name: options.name, intent: options.goal, variables: options.variables, panel: options.panel });
-  let input = built.input;
-  yield { kind: "act", message: `built ${input.screens.length} screens, ${input.wires.length} bindings, ${input.alarms.length} alarms`, data: built.log };
+  let input: PackageInput;
+  if (options.from) {
+    input = options.from;
+    yield { kind: "act", message: `checking the project as it stands: ${input.screens.length} screens, ${input.wires.length} bindings` };
+  } else {
+    const built = await buildFromTags({ name: options.name, intent: options.goal, variables: options.variables, panel: options.panel });
+    input = built.input;
+    yield { kind: "act", message: `built ${input.screens.length} screens, ${input.wires.length} bindings, ${input.alarms.length} alarms`, data: built.log };
+  }
 
   // --- check and repair ---------------------------------------------------------
   let findings = check(input);
@@ -183,9 +200,12 @@ export async function* runAgent(options: AgentOptions): AsyncGenerator<AgentStep
   }
 
   // --- prove --------------------------------------------------------------------
-  const bytes = await packageProject(input);
-  await selfCheck(bytes, input);
-  yield { kind: "prove", message: `packaged ${(bytes.length / 1024).toFixed(0)} KB and read it back: it opens as written` };
+  let bytes: Uint8Array = new Uint8Array();
+  if (options.prove !== false) {
+    bytes = await packageProject(input);
+    await selfCheck(bytes, input);
+    yield { kind: "prove", message: `packaged ${(bytes.length / 1024).toFixed(0)} KB and read it back: it opens as written` };
+  }
 
   let bench: BenchResult | null | undefined;
   if (options.bench) {
@@ -214,5 +234,5 @@ export async function* runAgent(options: AgentOptions): AsyncGenerator<AgentStep
     bench: bench ?? null,
     provider: provider.provider ? `${provider.provider}:${provider.model}` : null,
   };
-  yield { kind: "done", message: `${input.screens.length} screens; ${report.errors} errors, ${report.warnings} warnings left${bench ? (bench.simulated ? "; simulates in OTE" : "; OTE did not simulate it") : ""}`, bytes, report };
+  yield { kind: "done", message: `${input.screens.length} screens; ${report.errors} errors, ${report.warnings} warnings left${bench ? (bench.simulated ? "; simulates in OTE" : "; OTE did not simulate it") : ""}`, bytes, report, input };
 }

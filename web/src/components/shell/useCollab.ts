@@ -15,6 +15,7 @@ import { useAccess } from "@/store/access";
 import { usePresence } from "@/store/presence";
 import { useProject } from "@/store/project";
 import { cloudRev, getAccount, liveSaved, setLiveProject } from "@/store/persist";
+import { loadProposals, useProposals } from "@/store/proposals";
 
 /** The running session, for the canvas to report the pointer and for tests. */
 let current: CollabSession | null = null;
@@ -53,7 +54,10 @@ export function useCollab(projectId: string, rev?: number) {
           if (author) void liveSaved(projectId, status.rev, status.pending, status.error);
         },
         onPresence: (users) => usePresence.getState().set(users),
+        onProposal: (body) => useProposals.getState().receive(body),
+        onAgent: (body) => useProposals.getState().agentStep(body),
       });
+      void loadProposals(projectId);
       session.start();
       current = session;
     })();
@@ -63,6 +67,7 @@ export function useCollab(projectId: string, rev?: number) {
       if (current === session) current = null;
       setLiveProject(projectId, false);
       usePresence.getState().clear();
+      useProposals.getState().clear();
     };
   }, [projectId, access, loaded, rev]);
 }

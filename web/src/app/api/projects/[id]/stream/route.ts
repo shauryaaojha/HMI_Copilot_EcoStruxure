@@ -1,12 +1,14 @@
 /**
  * Server-Sent Events for one project: `change` events from the log after
  * `?since=rev`, `presence` when who-is-where changes, `reset` with the whole
- * snapshot when the client is further behind than the log reaches. Each connection lasts at most 55 s;
+ * snapshot when the client is further behind than the log reaches, and the
+ * Copilot's `proposal` and `agent` events (Phase D). Each connection lasts at most 55 s;
  * EventSource reconnects and the client resumes from its last revision.
  */
 import { requireReader } from "@/lib/server/access";
 import { currentUser } from "@/lib/server/session";
 import { projectEvents, sse } from "@/lib/server/stream";
+import { proposalEvents } from "@/lib/server/proposals";
 import { errorResponse, type Context } from "@/lib/server/http";
 import { ServerError } from "@/lib/server/errors";
 export const runtime = "nodejs";
@@ -23,7 +25,7 @@ export async function GET(request: Request, context: Context) {
     const since = raw === null ? 0 : Number(raw);
     if (!Number.isSafeInteger(since) || since < 0) throw new ServerError(400, "invalid", "since is a revision number");
     const encoder = new TextEncoder();
-    const events = projectEvents(id, since, { signal: request.signal });
+    const events = projectEvents(id, since, { signal: request.signal, extras: [proposalEvents(id, user?.id ?? null)] });
     const body = new ReadableStream<Uint8Array>({
       async pull(controller) {
         try {
