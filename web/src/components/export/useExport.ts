@@ -15,9 +15,8 @@
 
 import { useAccess } from "@/store/access";
 import { useCallback, useState } from "react";
-import type { Wire } from "@/lib/ote/bindings";
-import type { Alarm } from "@/lib/ote/schema";
-import { alarmTriggers } from "@/lib/sim/alarms";
+import { packageInputOf } from "@/lib/collab/package";
+import { liveSession } from "@/components/shell/useCollab";
 import { useProject } from "@/store/project";
 import { variablesCsv } from "./variablesCsv";
 
@@ -36,50 +35,8 @@ export type ExportState =
 
 /** Everything /api/export and /api/validate need, from what the store holds. */
 export function packageInput(state: ReturnType<typeof useProject.getState>) {
-  // Keyed with the screen, not just the part: a Target carries ScreenId, so a
-  // multi-screen project has to bind each object to the screen it is on.
-  const byId = new Map(
-    state.screens.flatMap((screen) =>
-      screen.Children[0].Children.map(
-        (part) => [part.UniqueId, { part, screenId: screen.UniqueId }] as const,
-      ),
-    ),
-  );
-
-  const wires: Wire[] = state.bindings.flatMap((binding) => {
-    const found = byId.get(binding.targetId);
-    return found
-      ? [
-          {
-            part: found.part,
-            tag: binding.tag,
-            property: binding.property,
-            screenId: found.screenId,
-            ...(binding.converter ? { converter: binding.converter } : {}),
-          },
-        ]
-      : [];
-  });
-
-  // The product stores an alarm's trigger as a binding, not a column, so it is
-  // recovered from the bindings before the packager is asked to write it back.
-  const triggers = alarmTriggers(state.bindings);
-  const alarms: Alarm[] = state.alarms.map((alarm, i) => ({
-    ...alarm,
-    Trigger: alarm.Trigger || triggers.get(i + 1) || "",
-  }));
-
-  return {
-    name: state.name,
-    target: state.target,
-    screens: state.screens,
-    variables: state.variables,
-    alarms,
-    wires,
-    plant: state.plant,
-    // Set when the project was opened from a file: export writes back into it.
-    source: state.source,
-  };
+  // The same function the server uses on a shared project's snapshot.
+  return packageInputOf(state);
 }
 
 const NEWLINE = String.fromCharCode(10);
@@ -183,10 +140,20 @@ export function useExport() {
 
       if (options.eote) {
         try {
+          // A shared project is packaged by the server from its own snapshot at
+          // the revision this tab has confirmed, never from a half-synced copy.
+          const session = liveSession();
+          if (session && session.unconfirmed > 0) {
+            const message = "Your latest changes are still being saved. Export again in a moment.";
+            setArtifacts(made);
+            setState({ status: "failed", message, setup: false });
+            return;
+          }
+          const body = session ? { projectId: s.id, rev: session.revision } : packageInput(s);
           const response = await fetch("/api/export", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(packageInput(s)),
+            body: JSON.stringify(body),
           });
 
           if (!response.ok) {

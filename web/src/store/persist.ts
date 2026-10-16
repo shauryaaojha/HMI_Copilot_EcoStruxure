@@ -161,7 +161,43 @@ async function responseJson(response: Response) {
   if (!response.ok) throw new Error(body.error ?? "Could not save project");
   return body;
 }
+/**
+ * Projects with a live co-editing session (lib/collab/sync.ts). Their edits
+ * travel as changes, so the whole-snapshot save stands down: two writers on
+ * one revision counter would only produce conflicts.
+ */
+const live = new Set<string>();
+
+/** Turn the whole-snapshot save off (or back on) while a live session runs. */
+export function setLiveProject(id: string, on: boolean) {
+  if (on) {
+    live.add(id);
+    const e = entry(id);
+    if (e.timer) clearTimeout(e.timer);
+    e.latest = undefined;
+  } else live.delete(id);
+}
+
+/**
+ * A live session reports where it stands: the revision this tab has applied
+ * and whether any of its changes are still unconfirmed. The device cache
+ * metadata follows, so a reload with nothing pending is not a conflict.
+ */
+export async function liveSaved(id: string, rev: number, pending: number, error?: string) {
+  const me = await getAccount().catch(() => null);
+  if (me?.user) writeMeta(id, { userId: me.user.id, rev, dirty: pending > 0 });
+  entry(id).error = error;
+  announce(id, error ? "Offline - saved on this device" : pending > 0 ? "Saving…" : "Saved");
+}
+
+/** The server revision this device last loaded or saved, for a session to start from. */
+export function cloudRev(id: string): number | undefined {
+  return meta(id)?.rev;
+}
+
 function scheduleCloud(project: PersistedProject, delay = 1500) {
+  // A live project's edits are already on their way as changes.
+  if (live.has(project.id)) return;
   const e = entry(project.id);
   e.latest = project;
   const m = meta(project.id);

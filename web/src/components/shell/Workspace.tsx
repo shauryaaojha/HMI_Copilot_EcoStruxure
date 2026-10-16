@@ -23,6 +23,7 @@ import { useProject } from "@/store/project";
 import { useCanEdit } from "@/store/access";
 import { StartPane } from "./StartPane";
 import { useProjectHydration } from "./useProjectHydration";
+import { useCollab } from "./useCollab";
 import { CanvasPane } from "@/components/canvas/CanvasPane";
 import { Inspector } from "@/components/inspector/Inspector";
 import { ChatPanel } from "@/components/chat/ChatPanel";
@@ -38,6 +39,8 @@ const WorkspaceShell = dynamic(
 
 export function Workspace({ projectId }: { projectId: string }) {
   useProjectHydration(projectId);
+  // A shared project goes live once it has loaded; any other is unaffected.
+  useCollab(projectId);
   const canEdit = useCanEdit();
 
   /**

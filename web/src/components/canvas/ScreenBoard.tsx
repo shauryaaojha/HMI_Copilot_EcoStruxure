@@ -20,6 +20,7 @@
  * mode to enter or leave.
  */
 
+import type { Presence } from "@/lib/collab/types";
 import { useMemo, useRef } from "react";
 import { rootBox } from "@/lib/ote/schema";
 import type { Screen } from "@/lib/ote/schema";
@@ -163,6 +164,10 @@ export interface ScreenBoardProps {
   tool?: DrawTool;
   /** Comment pins, keyed by screen id. */
   comments?: Record<string, CommentPin[]>;
+  /** Other people in a shared project; each frame draws those on its screen. */
+  presence?: Presence[];
+  /** This person's pointer on the live screen. */
+  onCursor?: (at: { x: number; y: number }) => void;
   onPin?: (id: string) => void;
   /**
    * Comments mode: a click on any frame places a comment there. Every frame
@@ -203,6 +208,8 @@ export function ScreenBoard({
   readOnly = false,
   tool,
   comments,
+  presence,
+  onCursor,
   onPin,
   onPlaceComment,
   onFocus,
@@ -360,6 +367,8 @@ export function ScreenBoard({
                 readOnly={readOnly}
                 tool={live ? tool : null}
                 comments={comments?.[screen.UniqueId]}
+                presence={presence}
+                onCursor={live ? onCursor : undefined}
                 onPin={onPin}
                 onPlaceComment={
                   onPlaceComment

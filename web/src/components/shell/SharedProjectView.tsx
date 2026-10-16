@@ -28,6 +28,7 @@ import { CanvasPane } from "@/components/canvas/CanvasPane";
 import { Inspector } from "@/components/inspector/Inspector";
 import { Button } from "@/components/ui";
 import { SchneiderMark } from "./SchneiderMark";
+import { useCollab } from "./useCollab";
 
 /** What a signed-out link visitor may do until the server says otherwise. */
 const VIEW_ONLY: ProjectAccess = { role: "viewer", actions: ["read"], via: "share" };
@@ -81,6 +82,9 @@ export function SharedProjectView({ token, projectId }: { token: string; project
   const [stage, setStage] = useState<Stage>({ kind: "opening" });
   const [providers, setProviders] = useState<string[]>([]);
   const name = useProject((s) => s.name);
+  const [rev, setRev] = useState<number>();
+  // Live: the visitor sees edits as they land, without sending any.
+  useCollab(projectId, rev);
 
   useEffect(() => {
     let live = true;
@@ -106,7 +110,7 @@ export function SharedProjectView({ token, projectId }: { token: string; project
           if (live) setStage({ kind: "failed", message: explain(body.code, response.status) });
           return;
         }
-        const body = (await response.json()) as { snapshot: PersistedProject; access?: ProjectAccess };
+        const body = (await response.json()) as { rev?: number; snapshot: PersistedProject; access?: ProjectAccess };
         if (!live) return;
 
         // Straight into the store, and only the store: no saveProject, no
@@ -119,6 +123,7 @@ export function SharedProjectView({ token, projectId }: { token: string; project
           ...access,
           actions: access.actions.filter((a) => a !== "edit" && a !== "manage"),
         });
+        setRev(body.rev);
         setStage({ kind: "ready" });
       } catch {
         if (live) setStage({ kind: "failed", message: explain(undefined, 0) });

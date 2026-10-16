@@ -14,8 +14,10 @@
 
 import { currentUser } from "@/lib/server/session";
 import { hasMongo } from "@/lib/db/mongo";
-import { readSource } from "@/lib/server/access";
+import { readSource, requireReader } from "@/lib/server/access";
+import { repo } from "@/lib/server/repo";
 import { shareTokens } from "@/lib/server/shares";
+import { packageInputOf } from "@/lib/collab/package";
 import { ServerError } from "@/lib/server/errors";
 import { errorResponse, sameOrigin } from "@/lib/server/http";
 import { panelOf, type PackageInput } from "@/lib/ote/packager";
@@ -26,6 +28,15 @@ import { preflight, selfCheck } from "@/lib/ote/preflight";
 import { isIngestError } from "@/lib/ingest/errors";
 
 export const runtime = "nodejs";
+
+/** The server snapshot of a shared project at `rev`, for a caller allowed to export it. */
+async function sharedInput(projectId: string, rev: unknown, request: Request) {
+  await requireReader(await currentUser(), projectId, request, "export");
+  if (!Number.isSafeInteger(rev) || Number(rev) < 1) throw new ServerError(400, "invalid", "Export of a shared project names a revision");
+  const snapshot = await repo().live.at(projectId, rev as number);
+  if (!snapshot) throw new ServerError(409, "rev-gone", "That revision is no longer available; export the current one");
+  return packageInputOf(snapshot);
+}
 
 /** A filename the OS will accept, derived from the project name. */
 function safeName(name: string): string {
@@ -41,6 +52,17 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ServerError) return errorResponse(error);
     return Response.json({ error: "expected a JSON project", code: "invalid" }, { status: 400 });
+  }
+
+  // A shared project exports the server's snapshot at the revision the client
+  // names, never the browser's possibly half-synced copy (Phase C).
+  const shared = input as unknown as { projectId?: unknown; rev?: unknown; format?: FormatId };
+  if (typeof shared?.projectId === "string") {
+    try {
+      input = { ...await sharedInput(shared.projectId, shared.rev, request), format: shared.format };
+    } catch (error) {
+      return errorResponse(error);
+    }
   }
 
   if (!input?.screens?.length) {

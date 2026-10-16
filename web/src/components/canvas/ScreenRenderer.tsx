@@ -34,6 +34,8 @@ import type { ForeignPart, ObjectMeta, ScreenPreview } from "@/store/types";
 import { snapDelta, snapTargets, unionOf, type Box } from "@/store/edits";
 import { ContentScreens, contentsById, PartNode, PictureSource, type AlarmRow } from "./parts";
 import { useProject } from "@/store/project";
+import type { Presence } from "@/lib/collab/types";
+import { PresenceOverlay } from "@/components/collab/PresenceOverlay";
 
 /** Palette index 2 is the paper the product draws a screen on; 22 its frame. */
 /** When no panel is given: the most common ST6 size in the corpus. */
@@ -134,6 +136,14 @@ export interface ScreenRendererProps {
    * mistake one for an object.
    */
   comments?: CommentPin[];
+  /**
+   * Other people in a shared project (Phase C): their selections outlined
+   * with their name, and their pointers, drawn like the ghosts - above the
+   * objects, outside the object groups, never hit-testable.
+   */
+  presence?: Presence[];
+  /** Where this person's pointer is, in screen units, for their own heartbeat. */
+  onCursor?: (at: { x: number; y: number }) => void;
   /** A pin was clicked. */
   onPin?: (id: string) => void;
   /**
@@ -252,6 +262,8 @@ export function ScreenRenderer({
   interactive = true,
   readOnly = false,
   comments,
+  presence,
+  onCursor,
   onPin,
   onPlaceComment,
   tool = null,
@@ -459,7 +471,10 @@ export function ScreenRenderer({
         }
         startDrag(e, armed ? "draw" : "marquee");
       }}
-      onPointerMove={onPointerMove}
+      onPointerMove={(e) => {
+        onCursor?.(toScreen(e));
+        onPointerMove(e);
+      }}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
       onPointerLeave={() => onHover?.(undefined)}
@@ -611,6 +626,10 @@ export function ScreenRenderer({
 
       {/* The design grid is ours, not the project's, so it is drawn above the
           objects but never exported - nothing here has a UniqueId. */}
+      {presence && presence.length > 0 && (
+        <PresenceOverlay users={presence} screenId={screen.UniqueId} parts={visible} scale={scale} />
+      )}
+
       {showGrid && (
         <GridOverlay
           width={box.width}

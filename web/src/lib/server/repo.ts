@@ -16,6 +16,7 @@ import { DEFAULT_LIMITS } from "@/lib/ingest/zip";
 import { ServerError } from "./errors";
 import { FileStorage, MemoryStorage, MongoStorage, validId, type Storage, type Row, type Data } from "./storage";
 import { sharesRepo, commentsRepo, putMember, ROLE_RANK, type SharesRepo, type CommentsRepo } from "./repo-collab";
+import { latestVersion, liveRepo, type LiveRepo } from "./repo-live";
 export * from "./repo-collab";
 
 /** Every collection whose records belong to one project and go when it is deleted. */
@@ -57,6 +58,7 @@ export interface Repo {
   };
   shares: SharesRepo;
   comments: CommentsRepo;
+  live: LiveRepo;
   sources: { info(id: string): Promise<Source | null>; put(bytes: Uint8Array, fileName: string, ownerId: string | null, expiresAt?: number): Promise<string>; get(id: string): Promise<{ meta: Source; bytes: Uint8Array } | null> };
   uploads: { create(fileName: string, size: number, ownerId: string | null): Promise<Upload>; get(id: string): Promise<Upload | null>; part(id: string, part: number, bytes: Uint8Array, ownerId: string | null): Promise<void>; complete(id: string, ownerId: string | null): Promise<string>; sweep(): Promise<void> };
 }
@@ -79,7 +81,7 @@ export class BaseRepo implements Repo {
   private async save(d: Data, p: Project, rev: number, snapshot: Snapshot, authorId: string, label: string) {
     const history = await this.history(d, p._id);
     if (p.rev !== rev) {
-      const current = await d.get<Version>("versions", `${p._id}:${p.headRev ?? p.rev}`);
+      const current = await latestVersion(d, p);
       throw new ServerError(409, "conflict", "Changed elsewhere", { rev: p.rev, snapshot: current?.snapshot });
     }
     const next = { ...p, rev: rev + 1, headRev: rev + 1, sources: [...new Set([...(p.sources ?? []), p.sourceId, snapshot.source, snapshot.sourceId].filter((id): id is string => !!id))], name: snapshot.name, target: snapshot.target, sourceId: snapshot.sourceId ?? snapshot.source, layout: snapshot.layout ?? p.layout, updatedAt: this.now() };
@@ -121,7 +123,8 @@ export class BaseRepo implements Repo {
     get: (id, rev) => this.tx(d => d.get<Version>("versions", `${id}:${rev}`)),
     current: id => this.tx(async d => {
       const p = await d.get<Project>("projects", id);
-      return p ? d.get<Version>("versions", `${id}:${p.headRev ?? p.rev}`) : null;
+      // Live edits (Phase C) move a head ahead of the last saved version.
+      return p ? latestVersion(d, p) : null;
     }),
     restore: (id, rev, authorId) => this.tx(async d => {
       const p = await d.get<Project>("projects", id);
@@ -149,6 +152,7 @@ export class BaseRepo implements Repo {
   };
   shares = sharesRepo(fn => this.tx(fn), () => this.now());
   comments = commentsRepo(fn => this.tx(fn), () => this.now());
+  live = liveRepo(fn => this.tx(fn), () => this.now());
   sources: Repo["sources"] = {
     put: async (bytes, fileName, ownerId, expiresAt) => {
       if (bytes.length > DEFAULT_LIMITS.maxBytes) throw new ServerError(413, "too-large", "File exceeds 100 MB");

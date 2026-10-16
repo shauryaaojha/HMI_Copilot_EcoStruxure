@@ -18,6 +18,7 @@
  */
 
 import { AccountControl } from "./AccountControl";
+import { PresenceAvatars } from "@/components/collab/PresenceAvatars";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Command, Download, Monitor, Pencil, SquarePen, Users } from "lucide-react";
@@ -189,6 +190,8 @@ export function TopBar({ onExport, className }: TopBarProps) {
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-1">
+          {/* Who else is in this shared project right now (Phase C). */}
+          <PresenceAvatars />
           <AccountControl projectId={projectId} />
           {cloud && (
             <button

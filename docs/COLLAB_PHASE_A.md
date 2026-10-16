@@ -187,3 +187,92 @@ Other routes: `GET /api/projects/[id]/members`, `PATCH|DELETE
 `DELETE /api/projects/[id]/shares/[shareId]`, `POST /api/shares/open`, and the
 page `/s/[token]`. Tests: `tests/shares.test.ts`, `tests/comments.test.ts`,
 `tests/readonly.test.ts`.
+
+## Phase C: live co-editing
+
+### Design
+
+Vercel functions are stateless and cannot hold WebSockets, and no realtime
+vendor is used. Editing is a **server-authoritative operation log over plain
+HTTP**, pushed with **Server-Sent Events**. Expected latency is about one
+second (the stream polls the log once a second), which suits engineering work.
+
+**Edit unit.** A `Change` is `{ id (client uuid), base: rev, author, ops }`,
+where each op is a `StoreChange` (src/lib/collab/types.ts) at the granularity
+of one part or one record: `setPart` (the whole part), `removePart`,
+`reorderParts`, `addScreen`, `removeScreen`, `renameScreen`, `setScreenProps`,
+`reorderScreens`, `setVariable`/`removeVariable` (by name),
+`setAlarm`/`removeAlarm` (by `alarmKey`, with a message-based fallback when an
+alarm has no trigger), `setBinding`/`removeBinding` (by target id + property),
+`setEntry`/`removeEntry` for keyed maps (objectMeta, screenPlacement, handles,
+composites, programs, foreign) and `setField` for whole values (name, target,
+standards, plant, tagImport, source, sourceId, layout, handleSeq). The shared
+document is the snapshot minus what is personal: the conversation, the in-app
+version list, the save stamp and the active screen stay in each browser.
+
+Changes are not produced by rewriting store actions. `src/lib/collab/changes.ts`
+(pure, tested) diffs the shared slice before and after every committed store
+action (reference comparison first, so it is cheap with immer's structural
+sharing) and applies changes idempotently. A pure reordering of variables,
+alarms or bindings is not synced; duplicate keys collapse to the last one.
+
+**Conflict rule: last writer wins per part or record.** The server applies
+changes in the order they arrive, whatever base they were made against. A
+whole-part `setPart` replaces the part; so `removePart` beats a concurrent
+`setPart` on the same part only when it is newer by rev, and a `setPart`
+arriving after a removal brings the part back. A change that cannot apply (a
+part on a deleted screen, a malformed op) is rejected with a reason.
+
+### Server
+
+`POST /api/projects/[id]/changes` `{ base, changes[] }` (editors): applied in
+order to the latest snapshot, one revision per accepted change, appended to
+`changes` (`{ projectId, rev, change, author, at }`), answering
+`{ rev, accepted, rejected: [{ id, reason }] }`. The author is always the
+signed-in user. A retried change id is accepted without being applied twice.
+The latest snapshot lives in `heads`; `versions.current()` returns whichever of
+head and last saved version is newer, so Phase A readers see live edits. The
+log keeps 2,000 changes per project; older ones are already in the head. A
+live session leaves a "Live edits" version in history at most every 10
+minutes (50 versions are kept, as before).
+
+The per-project lock is the storage transaction around read-apply-write:
+MongoDB retries the transaction when two writers touch the same project
+document (in effect a compare-and-set on its rev), the file store holds its
+exclusive process lock, and the memory store queues. A `findOneAndUpdate`
+loop was not added because the transaction already provides it.
+
+`GET /api/projects/[id]/stream?since=rev` (anyone who can read): SSE with
+`change` events after `since`, `presence` when who-is-where changes, and
+`reset` with the head snapshot when `since` is older than the retained log or
+the project was saved or restored whole. Each connection ends within 55 s
+(`maxDuration = 60`) with a `ping`; the client reconnects from its last rev.
+
+`POST /api/projects/[id]/presence` `{ screenId, selection, cursor? }`: a
+heartbeat every 5 s (and at most once a second while the pointer moves),
+counted for 15 s and broadcast on the stream.
+
+Export of a shared project sends `{ projectId, rev }`; the export route
+packages the server snapshot at that revision (rebuilt from a version and the
+log if needed), never the browser's copy. Export refuses while this tab still
+has unconfirmed changes.
+
+### Client
+
+`src/lib/collab/sync.ts` (`CollabSession`) subscribes to the store, queues
+local changes and POSTs them merged every 300 ms; remote changes are applied
+without being captured again, and pending local changes are replayed on top
+(rebase). Undo stays per person: while a session runs, the store's undo/redo
+are replaced by ones that send the inverse of this person's own last change.
+A refused change makes the session reload the server snapshot and say so.
+The whole-snapshot PUT save stands down for a live project.
+
+`useCollab` starts a session only for a server project (one with an access
+record); browser-only and laptop projects are unchanged. Viewers and
+signed-out link visitors listen without sending. The header shows who else is
+here; the canvas outlines other people's selections in their colour with
+"<name> is editing" and shows their pointer on the same screen. The outline
+is a soft lock: the part stays editable.
+
+Tests: `tests/collab-changes.test.ts`, `tests/collab-server.test.ts`,
+`tests/collab-sync.test.ts`, `tests/presence-ui.test.ts`.

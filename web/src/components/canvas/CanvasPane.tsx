@@ -23,6 +23,8 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useProject } from "@/store/project";
+import { others, usePresence } from "@/store/presence";
+import { liveSession } from "@/components/shell/useCollab";
 import { activeAlarms } from "@/lib/sim/alarms";
 import { rootBox, type Screen } from "@/lib/ote/schema";
 import { isCompositeKind, propsFor } from "@/lib/composites";
@@ -119,6 +121,13 @@ export function CanvasPane({ defaultCommenting = false }: CanvasPaneProps = {}) 
   // reference screen 5 sets them and every screen in the project follows.
   const standards = useProject((s) => s.standards);
   const setSimulating = useProject((s) => s.setSimulating);
+
+  // Other people in a shared project, outlined on the canvas with their names
+  // (Phase C). Read as the raw list, filtered here, so the selector is stable.
+  const presenceUsers = usePresence((s) => s.users);
+  const me = usePresence((s) => s.me);
+  const presence = useMemo(() => others({ users: presenceUsers, me }), [presenceUsers, me]);
+  const reportCursor = useCallback((at: { x: number; y: number }) => liveSession()?.setCursor(at), []);
   const projectId = useProject((s) => s.id);
 
   /**
@@ -617,6 +626,8 @@ export function CanvasPane({ defaultCommenting = false }: CanvasPaneProps = {}) 
                 onPlaceComment={placing ? placeComment : undefined}
                 onFocus={setActiveScreen}
                 onZoomTo={zoomTo}
+                presence={presence}
+                onCursor={reportCursor}
                 onSelect={select}
                 onHover={hover}
                 onMove={nudge}
@@ -660,6 +671,8 @@ export function CanvasPane({ defaultCommenting = false }: CanvasPaneProps = {}) 
                     onPlaceComment={
                       placing ? (at, objectId) => placeComment(screen.UniqueId, at, objectId) : undefined
                     }
+                    presence={presence}
+                    onCursor={reportCursor}
                     onSelect={select}
                     onHover={hover}
                     onMove={nudge}
