@@ -11,7 +11,7 @@
 import { sizeOf } from "@/lib/ote/schema";
 import { rootBox } from "@/lib/ote/schema";
 import { beforeEach, describe, expect, it } from "vitest";
-import { coerceTurn } from "@/lib/ai/ops";
+import { buildsInstead, coerceTurn } from "@/lib/ai/ops";
 import { fallbackPlan } from "@/lib/ai/plan";
 import { digestOf } from "@/lib/ai/converse";
 import { applyOps } from "@/components/chat/applyOps";
@@ -182,6 +182,34 @@ describe("applyOps", () => {
     expect(bit.Value).toBe("");
     expect(level.AlarmRecordType).toBe(2);
     expect(level.Value).toBe("85");
+  });
+
+  it("takes the tag from the op's other fields when a model leaves `tag` empty", () => {
+    const real = s().variables.find((v) => v.DataType !== "BOOL" && v.DataType !== "STRING")!;
+    const before = s().alarms.length;
+
+    const out = applyOps([
+      { op: "addAlarm", target: real.Name, message: "Tank high", alarmKind: 2, value: "85", note: `High alarm on ${real.Name}.` },
+    ]);
+
+    expect(out.rejected).toHaveLength(0);
+    expect(s().alarms).toHaveLength(before + 1);
+    expect(s().alarms.at(-1)!.Value).toBe("85");
+  });
+
+  it("says no tag was named, rather than 'undefined is not in the tag list'", () => {
+    const out = applyOps([{ op: "addAlarm", message: "Something high", alarmKind: 2, value: "85", note: "n" }]);
+
+    expect(out.rejected).toHaveLength(1);
+    expect(out.rejected[0].reason).toMatch(/^No tag was named/);
+    expect(out.rejected[0].reason).not.toMatch(/undefined/);
+  });
+
+  it("does not guess when the other fields name two tags", () => {
+    const [a, b] = s().variables;
+    const out = applyOps([{ op: "addAlarm", message: `${a.Name} or ${b.Name}`, alarmKind: 1, note: "n" }]);
+
+    expect(out.rejected).toHaveLength(1);
   });
 });
 
@@ -622,5 +650,22 @@ describe("adding a whole piece of equipment", () => {
       { op: "addEquipment", equipment: "BLR_9999", note: "n" },
     ]);
     expect(problems[0]).toContain("BLR_9999");
+  });
+});
+
+describe("buildsInstead", () => {
+  const edit = (ops: { op: string }[]) =>
+    coerceTurn({ mode: "edit", reply: "Placed the pumps.", ops: ops.map((o) => ({ ...o, equipment: "PMP_101", note: "n" })) })!;
+  const empty = { hasContent: false, hasTags: true };
+
+  it("runs the pipeline when a first request comes back as equipment edits on an empty project", () => {
+    expect(buildsInstead(edit([{ op: "addEquipment" }, { op: "addEquipment" }]), empty)).toBe(true);
+  });
+
+  it("leaves a drawn project, a project with no tags, and other edits alone", () => {
+    expect(buildsInstead(edit([{ op: "addEquipment" }]), { hasContent: true, hasTags: true })).toBe(false);
+    expect(buildsInstead(edit([{ op: "addEquipment" }]), { hasContent: false, hasTags: false })).toBe(false);
+    expect(buildsInstead(edit([{ op: "addScreen" }]), empty)).toBe(false);
+    expect(buildsInstead(coerceTurn({ mode: "answer", reply: "Twenty tags." })!, empty)).toBe(false);
   });
 });

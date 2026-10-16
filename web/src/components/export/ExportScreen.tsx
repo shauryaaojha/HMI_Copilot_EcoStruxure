@@ -52,10 +52,14 @@ export function ExportScreen() {
   const building = state.status === "building";
 
   // Validate once on arrival, so the gate below is answering with real findings
-  // rather than with an empty array that looks like a pass.
+  // rather than with an empty array that looks like a pass. Not before the
+  // project has loaded: on a reload of this page the store is still empty for
+  // a moment, and a run then reports "The project has no screens" as the
+  // verdict on a project that has three.
+  const loaded = screens.length > 0;
   useEffect(() => {
-    if (!ranAt) void validate();
-  }, [ranAt, validate]);
+    if (!ranAt && loaded) void validate();
+  }, [ranAt, loaded, validate]);
 
   const facts: [string, string][] = [
     ["Project", name],

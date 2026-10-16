@@ -255,6 +255,30 @@ function buildPart(op: Op, name: string, box: Box): Part | null {
 }
 
 /**
+ * The declared tag an op means. `tag` when the model filled it in. A small
+ * model sometimes leaves `tag` empty and writes the name into another field
+ * instead ("addAlarm", target "TNK_101_LEVEL"), so the op's other text is
+ * searched for a declared tag name, whole and exact. One candidate resolves;
+ * none or several resolve to nothing, and the op is rejected as before.
+ */
+export function tagOf<V extends { Name: string }>(variables: V[], op: Op, others: (string | undefined)[]): V | undefined {
+  const asked = (op.tag ?? "").trim().toLowerCase();
+  if (asked) return variables.find((v) => v.Name.toLowerCase() === asked);
+  // Words as a tag name spells them: letters, digits, _ . [ ] (A[0].B).
+  const words = new Set(
+    others.join(" ").split(/[^A-Za-z0-9_.[\]]+/).map((w) => w.replace(/\.+$/, "").toLowerCase()).filter(Boolean),
+  );
+  const named = variables.filter((v) => words.has(v.Name.toLowerCase()));
+  return named.length === 1 ? named[0] : undefined;
+}
+
+/** Why an op that needed a tag got none. */
+const noTag = (op: Op, outcome: string) =>
+  op.tag?.trim()
+    ? `${op.tag} is not in the tag list, so ${outcome}.`
+    : `No tag was named, so ${outcome}. Name one from the tag list.`;
+
+/**
  * Applies the ops in order, reading the store fresh between each one, because
  * an op can depend on what the one before it created.
  */
@@ -771,13 +795,13 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
 
       case "bindTag": {
         const found = resolve(s, op.target!);
-        const tag = s.variables.find((v) => v.Name.toLowerCase() === (op.tag ?? "").trim().toLowerCase());
+        const tag = tagOf(s.variables, op, [op.name, op.message, op.note]);
         if (!found) {
           reject(op, unresolved(s, op.target!));
           break;
         }
         if (!tag) {
-          reject(op, `${op.tag} is not in the tag list, so nothing was bound.`);
+          reject(op, noTag(op, "nothing was bound"));
           break;
         }
         s.addBinding({
@@ -792,9 +816,9 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
       }
 
       case "addAlarm": {
-        const tag = s.variables.find((v) => v.Name.toLowerCase() === (op.tag ?? "").trim().toLowerCase());
+        const tag = tagOf(s.variables, op, [op.target, op.name, op.message, op.note]);
         if (!tag) {
-          reject(op, `${op.tag} is not in the tag list, so no alarm was added.`);
+          reject(op, noTag(op, "no alarm was added"));
           break;
         }
         const level = [1, 2, 3, 4].includes(op.alarmType ?? 0) ? op.alarmType! : 2;

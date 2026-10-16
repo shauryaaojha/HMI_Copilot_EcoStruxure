@@ -191,3 +191,22 @@ export function coerceTurn(value: unknown): Turn | null {
     );
   return { ...parsed.data, ops };
 }
+
+/**
+ * Whether a turn should run the pipeline, whatever mode the model named.
+ *
+ * The mirror of the rule in useChat that turns a build on a drawn project
+ * into an extension. A small model sometimes answers the first request with
+ * "edit" and a list of addEquipment ops against screens that do not exist
+ * yet, which leaves an empty canvas and a proposal of rejections. Placing
+ * equipment on a project with tags and nothing drawn is a build, and the
+ * pipeline does it whole rather than op by op.
+ */
+export function buildsInstead(turn: Turn, project: { hasContent: boolean; hasTags: boolean }): boolean {
+  return (
+    turn.mode === "edit" &&
+    !project.hasContent &&
+    project.hasTags &&
+    (turn.ops ?? []).some((o) => o.op === "addEquipment")
+  );
+}

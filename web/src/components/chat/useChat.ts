@@ -21,7 +21,7 @@ import { commitsWithoutReview, labelOp, selectedOps } from "@/lib/ai/review";
 import { useCallback, useRef } from "react";
 import { describeOp, digestOf, type HistoryItem } from "@/lib/ai/converse";
 import { isUnnamed, nameProject } from "@/lib/ai/name";
-import type { Op, Turn } from "@/lib/ai/ops";
+import { buildsInstead, type Op, type Turn } from "@/lib/ai/ops";
 import { inferEquipment } from "@/lib/ai/infer";
 import type { ExistingScreen } from "@/lib/ai/pipeline";
 import { commit, dryRun, previewOf, type DryRun, type OpOutcome } from "@/lib/ai/applier";
@@ -239,6 +239,14 @@ export function useChat() {
             turn: { mode: "startOver", applied: [], rejected: [], renamed: [] },
           });
           return;
+        }
+
+        const drawn = useProject.getState();
+        if (buildsInstead(turn, {
+          hasContent: drawn.screens.some((x) => x.Children[0].Children.length > 0),
+          hasTags: drawn.variables.length > 0,
+        })) {
+          turn = { ...turn, mode: "build" };
         }
 
         if (turn.mode === "build" || turn.mode === "extend") {
