@@ -628,7 +628,11 @@ export function placeEveryUnit(
   takenNames: Set<string>,
   perScreen = UNITS_PER_SCREEN,
 ): ScreenSpec[] {
-  const placed = new Set(screens.flatMap((s) => s.include));
+  // On an overview is not on a screen of its own: a level 1 tile is a status
+  // summary, and a unit there and nowhere else has no faceplate, no readings
+  // and no commands. The model put a coffee machine's water valve, filter and
+  // conductivity on the overview only, and they were never laid out.
+  const placed = new Set(screens.filter((s) => s.level !== 1).flatMap((s) => s.include));
   const missing = equipment.filter((unit) => !placed.has(unit.id));
   if (missing.length === 0) return screens;
 

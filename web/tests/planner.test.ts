@@ -151,6 +151,19 @@ describe("placeEveryUnit", () => {
     expect(completed.find((s) => s.include.includes(chillers[0]))!.screenName).toMatch(/^ChillerArea\d+$/);
   });
 
+  it("lays out a unit the model put on the overview only", () => {
+    const equipment = inferEquipment([
+      tag("BLR_101_RUN"), tag("BLR_101_FLT"), tag("VLV_122_OPEN"), tag("VLV_122_CMD"), tag("FIL_123_ALM"),
+    ]);
+    const completed = placeEveryUnit(
+      [screen("PlantOverview", ["BLR_101", "VLV_122", "FIL_123"], 1), screen("WaterSystem", ["BLR_101"])],
+      equipment,
+      new Set(),
+    );
+    expect(completed.find((s) => s.screenName === "WaterSystem")!.include).toEqual(["BLR_101", "VLV_122", "FIL_123"]);
+    expect(completed.find((s) => s.level === 1)!.include).toHaveLength(3);
+  });
+
   it("puts a leftover with the screen of its loop area, not a screen of its own kind", () => {
     // The coffee machine: VLV_122 and FIL_123 belong with BLR_101 on "Water
     // and Boilers", not on ValveArea1 and FilterArea1 holding one unit each.
