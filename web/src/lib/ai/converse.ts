@@ -26,6 +26,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { rootBox } from "@/lib/ote/schema";
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
 import { regionOf, regionsOf, roomReport } from "@/lib/ote/regions";
+import { overlapsOn } from "@/lib/ote/tidy";
 import { ALIGN_MODES, COLOR_NAMES, OP_NAMES, coerceTurn, type Op, type Turn } from "./ops";
 import { PART_TYPES } from "@/lib/ote/schema";
 import { REGIONS, SIDES } from "@/lib/ote/regions";
@@ -62,6 +63,8 @@ export interface ScreenDigest {
   objects?: ObjectDigest[];
   /** Only for the active screen: what still fits, per region. */
   room?: string;
+  /** Only for the active screen: objects that share pixels, by handle. */
+  overlaps?: string[];
 }
 
 export interface EquipmentDigest {
@@ -118,6 +121,8 @@ export interface DigestSource {
   selectedIds: string[];
   handles: Record<string, string>;
   structure?: StructureHint[];
+  /** Composite membership, so a faceplate counts as one object for overlaps. */
+  objectMeta?: Record<string, { groupId?: string }>;
 }
 
 /** Built from the store. `request` steers which tags are retrieved. */
@@ -153,6 +158,13 @@ export function digestOf(project: DigestSource, request = ""): ProjectDigest {
         tag: boundTo.get(p.UniqueId),
       }));
       digest.room = roomReport(parts, panel);
+      const found = overlapsOn(parts, (id) => project.objectMeta?.[id]?.groupId, panel);
+      if (found.length > 0) {
+        digest.overlaps = found
+          .slice(0, 12)
+          .map((o) => `${h(o.mover.ids[0])} ${o.mover.name} overlaps ${h(o.other.ids[0])} ${o.other.name} by ${Math.round(o.width)}x${Math.round(o.height)}px`);
+        if (found.length > 12) digest.overlaps.push(`… and ${found.length - 12} more`);
+      }
     }
     return digest;
   });
@@ -316,8 +328,9 @@ Placing things - never by coordinate:
 - If a region is full you are told so in the room line. Then ask for a new
   screen (addScreen) or say what to remove; do not move other things to make
   room unless the engineer asked for that.
-- moveObject takes a place too. Give left/top only when the engineer typed
-  numbers.
+- moveObject takes a place too. "150 px to the right", "a bit lower" is dx/dy
+  (pixels, right and down positive). Give left/top only when the engineer
+  typed coordinates. Moving a card moves the whole faceplate.
 
 Equipment: use addEquipment with the unit id from the equipment list. One op
 places a whole faceplate - panel, name, lamps, readings, all bound. Never build
@@ -360,6 +373,16 @@ Scope - one op can reach many screens and many objects:
 - One op per kind of change. Twelve screens is one op with screens ["all"],
   never twelve ops.
 
+Overlaps and alignment:
+- The active screen's overlaps are listed for you, by handle. "Fix the
+  overlapping", "things are on top of each other", "tidy this screen" is
+  tidyLayout: the layout engine moves each overlapping object (a faceplate
+  whole) to the nearest clear spot. Add screens ["all"] for every screen.
+  Never guess handles for this.
+- "Line these up", "align the lamps" is alignObjects with mode, and either
+  targets (handles from the objects list) or select (a part type), with
+  screens when it is more than the active screen.
+
 reply is one or two sentences, in the register an engineer uses with another
 engineer. Never describe your own reasoning process.`;
 
@@ -395,6 +418,8 @@ const D = {
   fontSize: "Point size; on setText, to restyle without relabelling",
   bold: "Whether the text is bold; on setText, to restyle without relabelling",
   decimals: "Decimal digits on a numeric display",
+  dx: "moveObject only: pixels to move right (negative: left), when the engineer gives a distance",
+  dy: "moveObject only: pixels to move down (negative: up), when the engineer gives a distance",
   colorRole: "Which colour to set: fill, border or text",
   screens: 'Where the op applies: ["all"], or screen handles or names. Absent means the active screen',
   select: "In place of target: background, header, title, navigation, footer, alarms, or a part type such as Lamp or NumericDisplay",
@@ -456,6 +481,8 @@ function geminiSchema() {
             fontSize: N(D.fontSize),
             bold: B(D.bold),
             decimals: N(D.decimals),
+            dx: N(D.dx),
+            dy: N(D.dy),
             colorRole: { type: "STRING", enum: ["fill", "border", "text"], description: D.colorRole },
             screens: { type: "ARRAY", items: { type: "STRING" }, description: D.screens },
             select: S(D.select),
@@ -523,6 +550,8 @@ const JSON_SCHEMA = {
           fontSize: { type: "number" },
           bold: { type: "boolean" },
           decimals: { type: "number" },
+          dx: { type: "number" },
+          dy: { type: "number" },
           colorRole: { type: "string", enum: ["fill", "border", "text"] },
           screens: { type: "array", items: { type: "string" } },
           select: { type: "string" },
@@ -640,6 +669,7 @@ export function volatileContext(digest: ProjectDigest): string {
   return [
     active ? `Active screen: ${active.handle} ${active.name}` : "No active screen.",
     active ? `Room on it: ${active.room}` : "",
+    active ? `Overlaps on it:${active.overlaps?.length ? `\n${active.overlaps.join("\n")}` : " none"}` : "",
     active ? `Objects on it:\n${objects || "- none"}` : "",
     "",
     `Tags relevant to this request (${digest.variables.length} of ${digest.variableCount}; ask for another by name if it is missing):`,

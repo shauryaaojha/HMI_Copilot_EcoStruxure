@@ -114,6 +114,14 @@ describe("expandOps", () => {
     expect(ops.map((o) => o.screen)).toEqual(screens.map((_, i) => `s${i + 1}`));
   });
 
+  it("aligns a set per screen: one op on each screen, holding that screen's matches", () => {
+    const { ops, rejected } = expandOps([{ op: "alignObjects", select: "Lamp", mode: "top", screens: ["all"] } as Op], state);
+    expect(rejected).toEqual([]);
+    const withLamps = screens.filter((sc) => sc.Children[0].Children.some((p) => p.Type === "Lamp"));
+    expect(ops).toHaveLength(withLamps.length);
+    for (const o of ops) expect(o.targets!.length).toBeGreaterThan(0);
+  });
+
   it("leaves an op with no scope exactly as it was", () => {
     const op = { op: "setText", target: "o3", text: "x" } as Op;
     expect(expandOps([op], state).ops).toEqual([op]);

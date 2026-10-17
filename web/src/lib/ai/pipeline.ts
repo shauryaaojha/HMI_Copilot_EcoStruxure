@@ -210,6 +210,17 @@ export async function* runPipeline(
     return;
   }
   plan ??= fallbackPlan(intent, toPlan, limits);
+  // "One screen for the two grinders and the brew unit": a detail screen holds
+  // fewer units than an overview, and splitting it into three answers a
+  // request for one with three. When the units fit one unit overview, that
+  // is the screen asked for.
+  if (/\b(one|a|single)\s+screen\b/i.test(intent) && plan.screens.length === 1) {
+    const only = plan.screens[0];
+    if (only.level === 3 && only.include.length > limits[3] && only.include.length <= limits[2]) {
+      plan = { ...plan, screens: [{ ...only, level: 2 }] };
+      yield log(`Kept as one screen: ${only.include.length} units do not fit one detail screen on this panel, so they are a unit overview`);
+    }
+  }
   // Whatever wrote the plan, no screen holds more than its level holds on this
   // panel: the overflow becomes the next screen rather than being laid out
   // below the bottom edge and lost.

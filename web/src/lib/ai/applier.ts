@@ -69,6 +69,7 @@ import { CARD_SIZE, equipmentCard, type LayoutUnit } from "@/lib/ote/layout";
 import { inferEquipment } from "@/lib/ai/infer";
 import type { Op } from "@/lib/ai/ops";
 import { expandOps } from "@/lib/ai/expand";
+import { moveSetOf, planTidy } from "@/lib/ote/tidy";
 import { createProjectStore, sameCondition, useProject, type BatchPatch, type ProjectStore } from "@/store/project";
 import type { ScreenPreview } from "@/store/types";
 
@@ -324,6 +325,8 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
    * thirteen copies of "set the title to 20 pt".
    */
   let currentNote: string | undefined;
+  /** Screens a tidyLayout looked at, and how many had anything to move. */
+  const tidied = { screens: 0, found: 0 };
   const firstLine = new Map<string, { at: number; line: string; count: number }>();
   const ok = (line: string) => {
     const seen = currentNote ? firstLine.get(currentNote) : undefined;
@@ -436,7 +439,8 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
   for (const op of expansion.ops) {
     const s = store.getState();
     const note = op.note?.trim();
-    currentNote = note ? `${op.op} | ${note}` : undefined;
+    // A tidy reports per screen what it moved; those lines are not repeats.
+    currentNote = note && op.op !== "tidyLayout" ? `${op.op} | ${note}` : undefined;
 
     switch (op.op) {
       case "addScreen": {
@@ -619,7 +623,14 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
         }
         const size = sizeOf(found.part);
         let box: Box;
-        if (op.left !== undefined || op.top !== undefined) {
+        if (op.dx !== undefined || op.dy !== undefined) {
+          // "180 px to the right" is exactly that, even onto something else:
+          // the engineer asked, and tidyLayout is there if it overlaps.
+          box = clampToPanel(
+            { ...size, left: found.part.Location.Left + (op.dx ?? 0), top: found.part.Location.Top + (op.dy ?? 0) },
+            panelOf(found.screen),
+          );
+        } else if (op.left !== undefined || op.top !== undefined) {
           box = clampToPanel(
             {
               ...size,
@@ -639,9 +650,18 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
           reject(op, `moveObject ${op.target} says neither where nor beside what.`);
           break;
         }
-        s.setBox(found.part.UniqueId, box);
-        touch(s, found.part.UniqueId);
-        ok(note || `Moved ${handleOf(s, found.part.UniqueId)} ${found.part.Name}`);
+        // A faceplate moves whole: the card takes everything drawn on it and a
+        // composite moves with all its parts. Moving the card alone left the
+        // lamps and readings behind on the old spot (lib/ote/tidy.ts).
+        const members = moveSetOf(viewOf(found.screen).Children, found.part.UniqueId, (id) => s.objectMeta[id]?.groupId, panelOf(found.screen));
+        if (members.length > 1) {
+          s.nudge(members, box.left - found.part.Location.Left, box.top - found.part.Location.Top);
+          for (const id of members) touch(s, id);
+        } else {
+          s.setBox(found.part.UniqueId, box);
+          touch(s, found.part.UniqueId);
+        }
+        ok(note || `Moved ${handleOf(s, found.part.UniqueId)} ${found.part.Name}${members.length > 1 ? ` with its ${members.length - 1} parts` : ""}`);
         break;
       }
 
@@ -828,17 +848,64 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
         break;
       }
 
+      case "tidyLayout": {
+        // Overlaps are geometry: found and moved clear by the layout engine
+        // (lib/ote/tidy.ts), a faceplate whole, never by guessed handles.
+        const screen = findScreen(s, op.screen);
+        if (!screen) {
+          reject(op, `No screen called ${op.screen}`);
+          break;
+        }
+        const plan = planTidy(viewOf(screen).Children, panelOf(screen), (id) => s.objectMeta[id]?.groupId);
+        tidied.screens++;
+        if (plan.found.length === 0) break;
+        tidied.found++;
+        for (const move of plan.moves) {
+          s.nudge(move.ids, move.dx, move.dy);
+          for (const id of move.ids) touch(s, id);
+        }
+        const moved = plan.moves.map((m) => m.name);
+        if (moved.length > 0) {
+          ok(`${note ? `${note}: ` : ""}${screen.Name}: moved ${moved.length} clear (${moved.slice(0, 4).join(", ")}${moved.length > 4 ? ", …" : ""})`);
+        }
+        if (plan.stuck.length > 0) {
+          reject(op, `${screen.Name}: no clear spot for ${plan.stuck.join(", ")}; the screen is full - ask for a new screen or say what to remove`);
+        }
+        break;
+      }
+
       case "alignObjects": {
         const ids = (op.targets ?? [])
           .map((name) => resolve(s, name)?.part.UniqueId)
           .filter((id): id is string => !!id);
         if (ids.length === 0) {
-          reject(op, "None of those objects exist, so there was nothing to align.");
+          const asked = (op.targets ?? []).join(", ") || "nothing";
+          const near = nearest(s, op.targets?.[0] ?? "");
+          reject(op, `None of ${asked} exist on any screen, so there was nothing to align${near.length ? `; objects nearby: ${near.join(", ")}` : ""}. To fix overlaps, use tidyLayout.`);
           break;
         }
-        if (op.mode === "spreadHorizontal") s.spread(ids, "horizontal");
-        else if (op.mode === "spreadVertical") s.spread(ids, "vertical");
-        else s.align(ids, (op.mode ?? "left") as "left");
+        // No mode said is not "left": six lamps on three faceplates, asked to
+        // line up "to the top", were all stacked on one x because the model
+        // left mode out and the default moved them sideways. The note usually
+        // says which way; when it does not, ask rather than guess.
+        const said = `${op.note ?? ""} ${op.text ?? ""}`.toLowerCase();
+        const mode =
+          op.mode ??
+          (/\btop\b/.test(said) ? "top"
+          : /\bbottom\b/.test(said) ? "bottom"
+          : /\b(middle|vertical(ly)? cent(re|er))\b/.test(said) ? "middle"
+          : /\bcent(re|er)\b/.test(said) ? "centre"
+          : /\bright\b/.test(said) ? "right"
+          : /\bleft\b/.test(said) ? "left"
+          : /\bspread|distribut/.test(said) ? (/\bvertical/.test(said) ? "spreadVertical" : "spreadHorizontal")
+          : undefined);
+        if (!mode) {
+          reject(op, "Say which way to align: left, centre, right, top, middle or bottom, or spread.");
+          break;
+        }
+        if (mode === "spreadHorizontal") s.spread(ids, "horizontal");
+        else if (mode === "spreadVertical") s.spread(ids, "vertical");
+        else s.align(ids, mode as "left");
         for (const id of ids) touch(s, id);
         ok(note || `Aligned ${ids.length} objects`);
         break;
@@ -893,6 +960,9 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
     }
   }
 
+  if (tidied.screens > 0 && tidied.found === 0) {
+    ok(tidied.screens === 1 ? "Nothing overlaps on this screen" : `Nothing overlaps on any of the ${tidied.screens} screens`);
+  }
   for (const { at, count } of firstRefusal.values()) {
     if (count < 2) continue;
     const first = out.rejected[at];

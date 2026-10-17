@@ -37,6 +37,7 @@ export const OP_NAMES = [
   "bindTag",
   "addAlarm",
   "applyPack",
+  "tidyLayout",
 ] as const;
 
 export type OpName = (typeof OP_NAMES)[number];
@@ -115,6 +116,9 @@ export const Op = z.object({
   property: z.string().optional(),
   left: z.number().optional(),
   top: z.number().optional(),
+  /** moveObject: by how much, when the engineer says "150 px to the right". */
+  dx: z.number().optional(),
+  dy: z.number().optional(),
   width: z.number().optional(),
   height: z.number().optional(),
   fontSize: z.number().optional(),

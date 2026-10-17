@@ -46,6 +46,8 @@ const ROLE_STEM: Record<SelectRole, string> = {
 
 /** Ops that act on an existing object and so can be fanned out over objects. */
 const ON_OBJECTS = new Set<Op["op"]>(["moveObject", "resizeObject", "setText", "setColor", "deleteObject", "duplicateObject"]);
+/** Ops on a set of objects: one op per screen, holding that screen's matches. */
+const ON_SETS = new Set<Op["op"]>(["alignObjects", "groupObjects", "ungroupObjects"]);
 /** Ops that create something on a screen and so can be repeated per screen. */
 const ON_SCREENS = new Set<Op["op"]>(["addObject", "addEquipment"]);
 
@@ -222,6 +224,25 @@ export function expandOps(ops: Op[], state: ExpandState): Expansion {
         out.push({ ...plain, screen: screenRef(state, screen), ...(name ? { name } : {}) });
       }
       notes.push(`${op.op} on ${screens.length} screen${screens.length === 1 ? "" : "s"}`);
+      continue;
+    }
+
+    if (ON_SETS.has(op.op)) {
+      // "Align the lamps", "group the boiler readings": the set on each screen.
+      const anchors = (op.targets ?? []).map((t) => locate(state, t)).filter((f): f is NonNullable<typeof f> => !!f);
+      let reached = 0;
+      for (const screen of screens) {
+        const parts = select
+          ? selectOn(state, screen, select, selectText)
+          : anchors.map((a) => counterpartOn(a, screen)).filter((p): p is Part => !!p);
+        if (parts.length === 0) continue;
+        out.push({ ...plain, targets: parts.map((p) => handleOrName(state, p)), screen: screenRef(state, screen) });
+        reached++;
+      }
+      if (reached === 0) {
+        const what = select ? `${select}${selectText ? ` matching "${selectText}"` : ""}` : (op.targets ?? []).join(", ");
+        rejected.push({ op, reason: `Nothing to ${op.op}: no ${what} on ${screens.map((sc) => sc.Name).join(", ")}` });
+      } else notes.push(`${op.op} on ${reached} screen${reached === 1 ? "" : "s"}`);
       continue;
     }
 
