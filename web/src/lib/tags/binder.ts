@@ -38,7 +38,7 @@ const SAME: Record<string, string> = {
 };
 
 /** Lower-case words of a name, split at underscores, case changes and digits. */
-function words(text: string): string[] {
+export function words(text: string): string[] {
   return text
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/([A-Za-z])(\d)|(\d)([A-Za-z])/g, "$1$3 $2$4")
@@ -117,6 +117,28 @@ export function proposeBindings(project: {
         out.push({ ...base, confidence: "low", reason: "no tag fits its name" });
       }
     }
+  }
+  return out;
+}
+
+/** A BOOL maps only to a BOOL, a number only to a number. */
+export const isBool = (v: Variable) => v.DataType === "BOOL";
+
+/** The rules' match: the one real tag sharing the most words with the placeholder, when it is clear. */
+export function matchByRules(placeholders: Variable[], real: Variable[]): Record<string, string> {
+  const realWords = new Map(real.map((v) => [v.Name, new Set([...words(v.Name), ...words(v.Comments ?? "")])]));
+  for (const e of modelPlant(real).equipment) {
+    for (const r of e.roles) realWords.get(r.tag)?.add(r.role).add(e.class);
+  }
+  const out: Record<string, string> = {};
+  for (const p of placeholders) {
+    const mine = new Set([...words(p.Name), ...words(p.Comments ?? "")]);
+    const scored = real
+      .filter((v) => isBool(v) === isBool(p))
+      .map((v) => ({ v, score: [...realWords.get(v.Name)!].filter((w) => mine.has(w)).length }))
+      .sort((a, b) => b.score - a.score);
+    const [best, next] = scored;
+    if (best && best.score >= 2 && (!next || next.score < best.score)) out[p.Name] = best.v.Name;
   }
   return out;
 }

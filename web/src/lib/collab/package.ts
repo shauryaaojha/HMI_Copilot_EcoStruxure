@@ -13,7 +13,11 @@ import { alarmTriggers } from "@/lib/sim/alarms";
 import type { Doc } from "./types";
 
 /** Everything /api/export and /api/validate need, from a store state or a snapshot. */
-export function packageInputOf(doc: Pick<Doc, "name" | "target" | "screens" | "variables" | "alarms" | "bindings" | "plant" | "source">) {
+export function packageInputOf(doc: Pick<Doc, "name" | "target" | "screens" | "variables" | "alarms" | "bindings" | "plant" | "source"> & Partial<Pick<Doc, "tagImport">>) {
+  // Placeholder tags (screens first) are not the plant's: the file gets the
+  // screens, and no variables, bindings or alarms until the real tags arrive.
+  if (doc.tagImport?.pending) doc = { ...doc, variables: [], alarms: [], bindings: [] };
+
   // Keyed with the screen, not just the part: a Target carries ScreenId, so a
   // multi-screen project has to bind each object to the screen it is on.
   const byId = new Map(

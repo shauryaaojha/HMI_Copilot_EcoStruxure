@@ -10,12 +10,18 @@
  * import changed.
  *
  * Phase 3 of docs/BUILD_PLAN.md.
+ *
+ * Screens first (lib/ai/draft.ts): `draft` gives a described plant placeholder
+ * tags to be drawn against, and an upload into a project that has them matches
+ * each placeholder to a real tag and rebinds the screens, reporting what it
+ * could not match.
  */
 
 import { useCallback, useState } from "react";
 import type { Variable } from "@/lib/ote/schema";
 import { useProject, type TagImport } from "@/store/project";
 import { failureMessage, jsonOrNull } from "@/lib/ingest/client";
+import { matchByRules } from "@/lib/tags/binder";
 
 export const ACCEPTED = ".csv,.txt,.tsv,.xlsx,.xsy,.xvm,.xef,.xml";
 
@@ -217,6 +223,7 @@ export type ImportState =
 export function useTagImport() {
   const [state, setState] = useState<ImportState>({ status: "idle" });
   const importTags = useProject((s) => s.importTags);
+  const adoptTags = useProject((s) => s.adoptTags);
   const snapshot = useProject((s) => s.snapshot);
   const log = useProject((s) => s.log);
 
@@ -239,14 +246,32 @@ export function useTagImport() {
         }
 
         const data = parsed;
-        importTags(data.variables, {
+        const meta: TagImport = {
           fileName: file.name,
           at: Date.now(),
           corrections: data.corrections ?? [],
           skipped: data.skipped ?? [],
           summary: data.summary ?? { total: data.variables.length },
           ...(data.structure?.length ? { structure: data.structure } : {}),
-        });
+        };
+        const { tagImport, variables: placeholders } = useProject.getState();
+        if (tagImport?.pending && placeholders.length > 0) {
+          // The screens were drawn against placeholders: bind them to the real tags.
+          const matched = await fetch("/api/tags/match", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ placeholders, variables: data.variables }),
+          });
+          const result = await jsonOrNull<{ renames: Record<string, string>; by: "model" | "rules" }>(matched);
+          // Unreachable route: the same rules the server falls back to, here.
+          const renames = matched.ok && result ? result.renames : matchByRules(placeholders, data.variables);
+          const bound = Object.entries(renames).map(([from, to]) => ({ from, to }));
+          const unbound = placeholders.map((v) => v.Name).filter((name) => !renames[name]);
+          adoptTags(data.variables, { ...meta, adopted: { bound, unbound, by: result?.by ?? "rules" } }, renames);
+          log(`Bound ${bound.length} of ${placeholders.length} placeholder tags to ${file.name}${unbound.length ? `; ${unbound.length} left unbound, see the list` : ""}`);
+        } else {
+          importTags(data.variables, meta);
+        }
 
         setState({ status: "done", fileName: file.name, count: data.variables.length });
         snapshot(`Imported ${data.variables.length} tags from ${file.name}`);
@@ -270,7 +295,46 @@ export function useTagImport() {
         return null;
       }
     },
-    [importTags, log, snapshot],
+    [importTags, adoptTags, log, snapshot],
+  );
+
+  /**
+   * Screens first: placeholder tags drafted from the description, recorded
+   * as assumed so the export leaves them out. Returns how many, or null.
+   */
+  const draft = useCallback(
+    async (intent: string) => {
+      setState({ status: "parsing", fileName: "the description" });
+      try {
+        const response = await fetch("/api/tags/draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ intent }),
+        });
+        const data = await jsonOrNull<{ variables: Variable[]; by: "model" | "rules"; error?: string }>(response);
+        if (!response.ok || !data || data.variables.length === 0) {
+          const message = data?.error ?? "no equipment recognised in the description";
+          setState({ status: "failed", fileName: "the description", message });
+          return null;
+        }
+        importTags(data.variables, {
+          fileName: "Assumed from the description",
+          at: Date.now(),
+          corrections: [],
+          skipped: [],
+          summary: { total: data.variables.length },
+          pending: true,
+        });
+        setState({ status: "done", fileName: "the description", count: data.variables.length });
+        log(`Assumed ${data.variables.length} placeholder tags from the description (${data.by === "model" ? "by the model" : "by rules"}); import the real export later to bind them`);
+        return data.variables.length;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "drafting failed";
+        setState({ status: "failed", fileName: "the description", message });
+        return null;
+      }
+    },
+    [importTags, log],
   );
 
   /**
@@ -297,5 +361,5 @@ export function useTagImport() {
 
   const reset = useCallback(() => setState({ status: "idle" }), []);
 
-  return { state, upload, useSample, reset };
+  return { state, upload, useSample, draft, reset };
 }

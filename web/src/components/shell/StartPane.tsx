@@ -16,6 +16,13 @@
  * The reveal is a circle clipped out of this pane, collapsing into the point
  * that was clicked, so the canvas underneath is uncovered from exactly where
  * the engineer acted. Plain CSS: one transition on `clip-path`.
+ *
+ * Two workflows start here, chosen first. Tags first: import the export (or
+ * a sample), describe the screens, and the generator builds from the tags.
+ * Screens first: describe the plant with no export at all; placeholder tags
+ * are drafted from the description (lib/ai/draft.ts), the same generator
+ * builds from them, and the real export, imported whenever it exists, is
+ * matched to them and the screens rebound automatically.
  */
 
 import { importFile } from "@/lib/client/upload";
@@ -27,8 +34,10 @@ type MigrationResponse = MigrationPlan & { source: { container: string; panels: 
 import type { Imported } from "@/components/projects/ProjectsScreen";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  LayoutTemplate,
   FileUp,
   FolderOpen,
   Loader2,
@@ -76,7 +85,9 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
   const { generate } = useGeneration();
   const importTags = useProject((s) => s.importTags);
   const rename = useProject((s) => s.rename);
-  const { upload, useSample } = useTagImport();
+  const { upload, useSample, draft: draftTags } = useTagImport();
+  // Which workflow: chosen first, unless tags are already loaded.
+  const [path, setPath] = useState<"tags" | "screens" | null>(null);
   const pane = useCursorLight<HTMLDivElement>();
   const cards = useSpotlights<HTMLDivElement>();
 
@@ -104,10 +115,27 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
   function build(e: { currentTarget: HTMLElement }) {
     const text = draft.trim();
     if (!text) return;
+    if (path === "screens" && variables.length === 0) return void screensFirst(text, originOf(e));
     reveal(originOf(e));
     // The run starts behind the reveal, so the first objects land as the canvas
     // appears rather than after an empty pause.
     void send(text);
+  }
+
+  /** Screens first: placeholder tags from the description, then the ordinary build on them. */
+  async function screensFirst(text: string, from: Origin) {
+    setBusy("the description");
+    setError(null);
+    try {
+      if (!(await draftTags(text))) {
+        setError("No equipment was recognised in that description. Name the units: pumps, tanks, valves, meters.");
+        return;
+      }
+      reveal(from);
+      void send(text);
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function withTags(file: File, from: Origin) {
@@ -236,6 +264,8 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
   if (gone) return null;
   const working = busy !== null;
   const hasTags = variables.length > 0;
+  const choosing = path === null && !hasTags;
+  const screens = path === "screens" && !hasTags;
 
   return (
     <div
@@ -267,10 +297,56 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
           <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-text-muted">
             {hasTags
               ? `${variables.length} tags are loaded. Say which screens you need and the equipment is read from the names.`
-              : "Describe the plant, bring a tag export, or open a project you already have. Any of the three is a start."}
+              : choosing
+                ? "Start from your PLC tag export, or design the screens first and bring the tags later."
+                : screens
+                  ? "Describe the plant. Placeholder tags are assumed from it; import the real export whenever it exists and the screens are bound to it automatically."
+                  : "Bring a tag export or take a sample, then say which screens you need."}
           </p>
         </div>
 
+        {/* --- the choice of workflow ----------------------------------- */}
+        {choosing && (
+          <div className="reveal is-in mt-7 grid gap-3 sm:grid-cols-2" style={{ ["--reveal-delay" as string]: "120ms" }}>
+            {([
+              { id: "tags", icon: FileUp, title: "Start with the tag export", note: "Import the PLC tags, or take a sample, and the screens are generated from them, bound as they are drawn." },
+              { id: "screens", icon: LayoutTemplate, title: "Start with the screens", note: "No tags yet. Describe the plant and design the screens; import the tags later and they are bound for you." },
+            ] as const).map(({ id, icon: Icon, title, note }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setPath(id)}
+                className="spotlight lift focus-ring group rounded-xl border border-line-subtle bg-surface-raised/60 p-5 text-left hover:border-brand-500/50"
+              >
+                <Icon size={18} aria-hidden className="text-brand-400" />
+                <h2 className="mt-3 flex items-center gap-1.5 text-sm font-semibold">
+                  {title}
+                  <ArrowRight size={13} aria-hidden className="opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
+                </h2>
+                <p className="mt-1 text-xs leading-relaxed text-text-muted">{note}</p>
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => filePicker.current?.click()}
+              className="focus-ring justify-self-center text-xs text-text-muted underline-offset-2 hover:text-text-primary hover:underline sm:col-span-2"
+            >
+              Or open a project you already have
+            </button>
+          </div>
+        )}
+
+        {!choosing && !hasTags && (
+          <button
+            type="button"
+            onClick={() => setPath(null)}
+            className="focus-ring mt-6 inline-flex items-center gap-1 self-start text-xs text-text-muted hover:text-text-primary"
+          >
+            <ArrowLeft size={12} aria-hidden /> Choose the other way
+          </button>
+        )}
+
+        {!choosing && (<>
         {/* --- the input ------------------------------------------------ */}
         <div
           className="beam-border reveal is-in mt-7 rounded-2xl border border-line-subtle bg-surface-raised shadow-xl shadow-black/20"
@@ -317,6 +393,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
         )}
 
         {/* --- the other two ways in ------------------------------------ */}
+        {!screens && (
         <div
           ref={cards}
           className="reveal is-in mt-4 grid gap-3 sm:grid-cols-2"
@@ -357,9 +434,10 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
             </p>
           </button>
         </div>
+        )}
 
         {/* --- samples -------------------------------------------------- */}
-        {!hasTags && (
+        {!hasTags && !screens && (
           <div className="reveal is-in pt-6" style={{ ["--reveal-delay" as string]: "280ms" }}>
             <p className="label-eyebrow pb-2 text-center">Or take a sample plant</p>
             <div className="flex flex-wrap justify-center gap-2">
@@ -396,6 +474,8 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
             </div>
           </div>
         )}
+
+        </>)}
 
         {/* --- what happens next ---------------------------------------- */}
         <div

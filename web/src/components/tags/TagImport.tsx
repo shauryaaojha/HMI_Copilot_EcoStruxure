@@ -145,11 +145,13 @@ export function TagImport({
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">{tagImport.fileName}</p>
             <p className="text-xs text-text-muted">
-              {tagImport.summary.total.toLocaleString()} tags detected
+              {tagImport.pending
+                ? `${tagImport.summary.total.toLocaleString()} placeholder tags. Import the real export to bind the screens to it.`
+                : `${tagImport.summary.total.toLocaleString()} tags detected`}
             </p>
           </div>
-          <Badge tone="ok" dot>
-            Parsed
+          <Badge tone={tagImport.pending ? "warn" : "ok"} dot>
+            {tagImport.pending ? "Assumed" : "Parsed"}
           </Badge>
         </div>
       )}
@@ -177,6 +179,36 @@ export function TagImport({
               </li>
             ))}
           </ul>
+        </Panel>
+      )}
+
+      {tagImport?.adopted && (
+        <Panel
+          title={`${tagImport.adopted.bound.length} placeholders bound${tagImport.adopted.unbound.length ? `, ${tagImport.adopted.unbound.length} left unbound` : ""}`}
+          leading={<FileSpreadsheet size={14} aria-hidden className="text-brand-400" />}
+          collapsible
+          defaultOpen={tagImport.adopted.unbound.length > 0}
+          bordered
+          flush
+        >
+          <ul className="max-h-48 divide-y divide-line-subtle overflow-y-auto border-t border-line-subtle text-xs">
+            {tagImport.adopted.unbound.map((name) => (
+              <li key={name} className="px-3 py-2">
+                <p className="font-mono text-text-secondary">{name}</p>
+                <p className="text-text-muted">No real tag matched; its objects are unbound. Bind them below or from the inspector.</p>
+              </li>
+            ))}
+            {tagImport.adopted.bound.map((b) => (
+              <li key={b.from} className="px-3 py-2 font-mono">
+                <span className="text-text-faint">{b.from}</span>
+                <span aria-hidden className="px-1.5 text-text-muted">→</span>
+                <span className="text-text-primary">{b.to}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="border-t border-line-subtle px-3 py-2 text-[11px] text-text-faint">
+            Matched {tagImport.adopted.by === "model" ? "by the model" : "by name"}, checked against the export.
+          </p>
         </Panel>
       )}
 

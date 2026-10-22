@@ -145,6 +145,17 @@ export interface TagImport {
    * every caller passes it, so the generator and the editor agree on units.
    */
   structure?: import("@/lib/ai/infer").StructureHint[];
+  /**
+   * The tags are placeholders drafted from the description (screens first,
+   * lib/ai/draft.ts), not an export. The screens are bound to them, but the
+   * export leaves them out until the real tags arrive and replace them.
+   */
+  pending?: boolean;
+  /**
+   * When this import replaced placeholders: which became which real tag, and
+   * which matched nothing and were unbound. Reported, like the corrections.
+   */
+  adopted?: { bound: { from: string; to: string }[]; unbound: string[]; by: "model" | "rules" };
 }
 
 /* ---------------------------------------------------------------------- */

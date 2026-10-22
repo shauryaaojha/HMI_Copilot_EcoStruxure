@@ -278,6 +278,13 @@ interface ProjectState {
   commitBatch: (label: string, patch: BatchPatch) => void;
 
   importTags: (variables: Variable[], meta: TagImport) => void;
+  /**
+   * The real tags arrive in a project drawn against placeholders: each
+   * placeholder in `renames` becomes its real tag everywhere it is used, and
+   * the rest are unbound, their objects keeping the placeholder as an intent
+   * for the binder. Not an undo step, like importTags: undo does not hold tags.
+   */
+  adoptTags: (variables: Variable[], meta: TagImport, renames: Record<string, string>) => void;
   setStandards: (patch: Partial<Standards>) => void;
   snapshot: (description: string) => number;
   restore: (at: number) => void;
@@ -1198,6 +1205,32 @@ export function createProjectStore() {
       set((s) => {
         s.variables = variables;
         s.tagImport = meta;
+      }),
+
+    adoptTags: (variables, meta, renames) =>
+      set((s) => {
+        const placeholders = new Map(s.variables.map((v) => [v.Name, v]));
+        const dropped = new Set([...placeholders.keys()].filter((name) => !renames[name]));
+        // Every exact use of a placeholder name, wherever a tag is referenced.
+        const retag = <T,>(value: T): T => {
+          if (typeof value === "string") return (renames[value] ?? (dropped.has(value) ? "" : value)) as T;
+          if (Array.isArray(value)) return value.map(retag) as T;
+          if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, retag(v)])) as T;
+          return value;
+        };
+        for (const b of current(s.bindings)) {
+          if (!dropped.has(b.tag)) continue;
+          const intent = placeholders.get(b.tag)?.Comments || b.tag;
+          (s.objectMeta[b.targetId] ??= {}).bindIntent = intent;
+        }
+        s.bindings = current(s.bindings).filter((b) => !dropped.has(b.tag)).map((b) => ({ ...b, tag: renames[b.tag] ?? b.tag }));
+        s.alarms = current(s.alarms).filter((a) => !dropped.has(a.Trigger)).map((a) => ({ ...a, Trigger: renames[a.Trigger] ?? a.Trigger }));
+        s.composites = retag(current(s.composites));
+        s.programs = retag(current(s.programs));
+        s.equipment = retag(current(s.equipment));
+        s.variables = variables;
+        s.tagImport = meta;
+        if (s.plant) s.plant = modelPlant(variables, s.plant.answers, meta.structure);
       }),
 
     setStandards: (patch) =>
