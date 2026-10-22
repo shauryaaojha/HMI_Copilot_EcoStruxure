@@ -161,16 +161,21 @@ export function validateProject(
   }
 
   // A part that displays a value but is driven by nothing shows a constant.
+  // Before any tags are imported that is the expected state of a screens-first
+  // project, so it is reported as a status rather than a warning.
+  const noTags = project.variables.length === 0;
   for (const part of parts) {
     // A pipe with one state is drawn, not driven: the generator lays process
     // lines with no flow tag, and those are not missing a binding.
     if (part.Type === "Pipe" && part.States.length <= 1) continue;
     if (VALUE_PROPERTY[part.Type] && !wiredParts.has(part.UniqueId)) {
       findings.push({
-        severity: "warning",
+        severity: noTags ? "info" : "warning",
         rule: "binding",
         objectId: part.UniqueId,
-        message: `${part.Name} displays a value but is not bound to any tag`,
+        message: noTags
+          ? `${part.Name} is not bound yet; import tags to bind it`
+          : `${part.Name} displays a value but is not bound to any tag`,
       });
     }
   }

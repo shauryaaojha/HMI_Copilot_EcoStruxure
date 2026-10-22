@@ -12,15 +12,17 @@
  * The property is the one validation checks (VALUE_PROPERTY), so what this
  * writes and what the rules read cannot disagree. Parts with no live value -
  * a rectangle, a label, a scale - say so instead of offering a list. A trend
- * names its tags on its channels, so it points there.
+ * names its tags on its channels, so it points there. A bar (a Rectangle with
+ * a fill level) binds its fill. An unbound object can carry an intent for the
+ * binder to match once tags are imported (screens first, tags later).
  */
 
 import { Link2Off } from "lucide-react";
 import type { Part, Variable } from "@/lib/ote/schema";
-import { ACCEPTS, VALUE_PROPERTY } from "@/lib/validation/rules";
+import { acceptedTypes, valuePropertyOf } from "@/lib/tags/binder";
 import type { Binding } from "@/store/types";
 import { useProject } from "@/store/project";
-import { Badge, Select, cn } from "@/components/ui";
+import { Badge, Input, Select, cn } from "@/components/ui";
 
 const NONE = "";
 
@@ -36,7 +38,9 @@ export function BindingEditor({
   locked: boolean;
 }) {
   const setBinding = useProject((s) => s.setBinding);
-  const property = VALUE_PROPERTY[part.Type];
+  const setMeta = useProject((s) => s.setMeta);
+  const intent = useProject((s) => s.objectMeta[part.UniqueId]?.bindIntent ?? "");
+  const property = valuePropertyOf(part);
 
   if (part.Type === "TrendGraph" || part.Type === "BlockTrend") {
     return (
@@ -55,7 +59,7 @@ export function BindingEditor({
     );
   }
 
-  const accepts = ACCEPTS[part.Type] ?? [];
+  const accepts = acceptedTypes(part, property) ?? [];
   const current = bound.find((b) => b.property === property);
   const eligible = variables.filter((v) => accepts.includes(v.DataType));
   const others = variables.filter((v) => !accepts.includes(v.DataType));
@@ -117,7 +121,24 @@ export function BindingEditor({
         )}
       </p>
 
-      {!current && <Badge tone="warn" dot>Unbound</Badge>}
+      {!current && (
+        <>
+          <Input
+            // Remounted when another object is selected, so it shows that object's intent.
+            key={part.UniqueId}
+            aria-label="What this object should show"
+            placeholder="Intent, e.g. TNK_101_LEVEL or tank 1 level"
+            disabled={locked}
+            defaultValue={intent}
+            // Committed on blur, so typing is one undo step rather than one per key.
+            onBlur={(e) => {
+              const next = e.target.value.trim();
+              if (next !== intent) setMeta([part.UniqueId], { bindIntent: next || undefined });
+            }}
+          />
+          <Badge tone="warn" dot>Unbound</Badge>
+        </>
+      )}
     </div>
   );
 }

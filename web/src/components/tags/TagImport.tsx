@@ -18,6 +18,7 @@ import { useProject } from "@/store/project";
 import { useCanEdit } from "@/store/access";
 import { Badge, Button, Panel, cn } from "@/components/ui";
 import { ACCEPTED, SAMPLES, useTagImport } from "./useTagImport";
+import { BindingProposals } from "./BindingProposals";
 
 export function TagImport({
   compact = false,
@@ -178,6 +179,9 @@ export function TagImport({
           </ul>
         </Panel>
       )}
+
+      {/* Screens drawn before the tags: what each unbound object could take. */}
+      {tagImport && <BindingProposals />}
 
       {tagImport && tagImport.skipped.length > 0 && (
         <Panel

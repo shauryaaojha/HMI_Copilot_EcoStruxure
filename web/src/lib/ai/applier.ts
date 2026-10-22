@@ -68,6 +68,7 @@ import { boxOf, panelOf, resolveSlot, type Box, type Slot } from "@/lib/ote/regi
 import { CARD_SIZE, equipmentCard, type LayoutUnit } from "@/lib/ote/layout";
 import { inferEquipment } from "@/lib/ai/infer";
 import type { Op } from "@/lib/ai/ops";
+import { valuePropertyOf } from "@/lib/tags/binder";
 import { expandOps } from "@/lib/ai/expand";
 import { moveSetOf, planTidy } from "@/lib/ote/tidy";
 import { createProjectStore, sameCondition, useProject, type BatchPatch, type ProjectStore } from "@/store/project";
@@ -922,12 +923,8 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
           reject(op, noTag(op, "nothing was bound"));
           break;
         }
-        s.addBinding({
-          tag: tag.Name,
-          targetId: found.part.UniqueId,
-          targetName: found.part.Name,
-          property: op.property ?? "CurrentValue",
-        });
+        // A bar binds its fill, not CurrentValue; and a rebind replaces the old tag rather than adding a second.
+        s.setBinding(found.part.UniqueId, op.property ?? valuePropertyOf(found.part) ?? "CurrentValue", tag.Name);
         touch(s, found.part.UniqueId);
         ok(note || `Bound ${tag.Name} to ${handleOf(s, found.part.UniqueId)} ${found.part.Name}`);
         break;

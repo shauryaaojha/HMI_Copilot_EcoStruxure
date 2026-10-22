@@ -66,12 +66,18 @@ export interface ObjectMeta {
    * matches on, so the object keeps its UniqueId, its name and its bindings.
    */
   key?: string;
+  /**
+   * What the object should show once tags exist: a tag name, or words like
+   * "tank 1 level". Set on screens drawn before the tag import; the binder
+   * (lib/tags/binder.ts) reads it. Never written into the .eote.
+   */
+  bindIntent?: string;
 }
 
 export type ObjectOrigin = "generated" | "edited" | "manual" | "imported";
 
 /** A meta record that carries nothing, and can be dropped from the save. */
-export const isEmptyMeta = (m: ObjectMeta) => !m.locked && !m.hidden && !m.groupId && !m.origin && !m.key;
+export const isEmptyMeta = (m: ObjectMeta) => !m.locked && !m.hidden && !m.groupId && !m.origin && !m.key && !m.bindIntent;
 
 /** Canvas grid, snapping and the colour set every part resolves through. */
 export interface Standards {
