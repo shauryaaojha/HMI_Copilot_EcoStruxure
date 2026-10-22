@@ -74,6 +74,16 @@ export const ColorRef = z.object({
  * solid form and falls back sensibly on the rest.
  */
 export const Paint = z.union([
+  // A typed paint that also carries a Color: `{Type: 1, Color}` and a gradient
+  // `{Type: 5, Color, Color1, Color2, Speed}` both do. This branch comes first
+  // because ColorRef would match them and strip Type, Color1, Color2 and Speed,
+  // so a gradient came back as one flat colour. Its Color must still be valid.
+  z
+    .object({ Type: z.number().int() })
+    .passthrough()
+    .refine((paint) => !("Color" in paint) || ColorRef.shape.Color.safeParse(paint.Color).success, {
+      message: "a typed paint's Color must be a valid colour",
+    }),
   ColorRef,
   // Type is optional because it too is left out at its default: Demo 1's
   // gradients are `{Color1, Color2, Speed}` with no Type, and a TextColor
@@ -262,6 +272,9 @@ export const TextBox = z.object({
   TextColor: Paint.optional(),
   Font: FontRef.optional(),
   TextLayout: TextLayout.optional(),
+  // Demo 1 and Sample - Logging 1 write a Fill on text boxes; the fresh write
+  // dropped it until it was modelled here.
+  Fill: Paint.optional(),
 });
 
 /** A Lamp carries both states in the JSON; the bound tag chooses between them. */
@@ -298,6 +311,9 @@ export const NumericDisplay = z.object({
 export const AlarmSummary = z.object({
   Type: z.literal("AlarmSummary"),
   ...base,
+  // The product writes a Fill on an alarm summary (Sample - Alarm 1). Without
+  // it here the fresh write drops the colour and OTE shows the Fill as Unset.
+  Fill: Paint.optional(),
 });
 
 /** One of the 475 shipped graphic objects, placed as path geometry. */

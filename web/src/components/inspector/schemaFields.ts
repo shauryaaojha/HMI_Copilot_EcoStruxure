@@ -89,10 +89,11 @@ const keysOf = (schema: z.ZodTypeAny) => Object.keys((schema as z.AnyZodObject).
 
 /** Recognises the product's own composite shapes by their structure. */
 function shapeKind(object: z.ZodTypeAny): FieldKind {
-  // A Paint is a union whose first option is the solid colour; the inspector
-  // edits that option, and a typed paint (none, gradient) is shown as one.
+  // A Paint is a union with a solid-colour option; the inspector edits that
+  // option, and a typed paint (none, gradient) is shown as one. The solid
+  // option is found by its shape, not its position: the typed option comes first.
   const options = (object._def as { options?: z.ZodTypeAny[] }).options;
-  if (options && options.length > 0 && keysOf(options[0]).length === 1 && keysOf(options[0])[0] === "Color") {
+  if (options?.some((option) => keysOf(option).length === 1 && keysOf(option)[0] === "Color")) {
     return "color";
   }
   const keys = keysOf(object);
