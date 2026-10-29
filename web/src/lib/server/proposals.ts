@@ -9,7 +9,7 @@
  * decision is logged for the sign-off report.
  */
 import { z } from "zod";
-import { Op } from "@/lib/ai/ops";
+import { Op } from "@/core/ops";
 import { resolveProvider } from "@/lib/ai/provider";
 import { selectedOps } from "@/lib/ai/review";
 import { dryRunOnSnapshot } from "@/lib/collab/proposal";

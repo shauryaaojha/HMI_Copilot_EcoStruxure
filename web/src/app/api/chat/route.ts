@@ -14,7 +14,7 @@
 import { describeModelError } from "@/lib/ai/model-error";
 import { converse, type Catalog, type HistoryItem, type ProjectDigest } from "@/lib/ai/converse";
 import { providerName, resolveProvider } from "@/lib/ai/provider";
-import type { Turn } from "@/lib/ai/ops";
+import type { Turn } from "@/core/ops";
 import type { StructureHint } from "@/lib/ai/infer";
 import { backendFor } from "@/lib/backend";
 import { allKnowledge } from "@/lib/knowledge/store";

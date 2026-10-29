@@ -19,7 +19,7 @@
 
 import { buildFromTags } from "./build";
 import { converse, digestOf } from "@/lib/ai/converse";
-import { applyOps } from "@/lib/ai/applier";
+import { applyOps } from "@/core/ops";
 import { resolveProvider } from "@/lib/ai/provider";
 import { packageProject, type PackageInput } from "@/lib/ote/packager";
 import { preflight, selfCheck } from "@/lib/ote/preflight";

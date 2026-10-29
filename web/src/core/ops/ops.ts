@@ -1,0 +1,239 @@
+/**
+ * What a conversational turn is allowed to do to the project.
+ *
+ * The model does not write Screen.dat. It picks from this list, and every entry
+ * maps onto a store action that already existed for the toolbar - so an edit
+ * asked for in words and an edit made with the mouse take the same code path,
+ * land in the same undo history, and are constrained by the same schema. A part
+ * type the packager cannot emit cannot be named here, which is the one rule in
+ * docs/BUILD_PLAN.md reaching the chat.
+ *
+ * The shape is deliberately flat rather than a discriminated union: Gemini's
+ * response schema is an OpenAPI subset, and a flat object with an `op` enum and
+ * optional fields survives it intact. Validity is re-checked here afterwards,
+ * because no schema can express "an object with that name exists".
+ */
+
+import { z } from "zod";
+import { PART_TYPES } from "@/lib/ote/schema";
+import { COMPOSITE_KINDS } from "@/lib/composites";
+import { REGIONS, SIDES } from "@/lib/ote/regions";
+
+export const OP_NAMES = [
+  "addScreen",
+  "renameScreen",
+  "deleteScreen",
+  "addObject",
+  "addEquipment",
+  "moveObject",
+  "resizeObject",
+  "setText",
+  "setColor",
+  "deleteObject",
+  "duplicateObject",
+  "alignObjects",
+  "groupObjects",
+  "ungroupObjects",
+  "bindTag",
+  "addAlarm",
+  "applyPack",
+  "tidyLayout",
+] as const;
+
+export type OpName = (typeof OP_NAMES)[number];
+
+/** Palette names, because a model given "#2ecc71" would invent colours. */
+export const COLOR_NAMES = [
+  "ink",
+  "paper",
+  "green",
+  "amber",
+  "red",
+  "grey",
+  "white",
+  "darkgrey",
+  "black",
+  "darkgreen",
+  "blue",
+  "darkblue",
+  "navy",
+  "lightblue",
+  "teal",
+  "brown",
+  "darkbrown",
+  "tan",
+  "yellow",
+  "orange",
+  "purple",
+  "charcoal",
+] as const;
+
+export const ALIGN_MODES = [
+  "left",
+  "centre",
+  "right",
+  "top",
+  "middle",
+  "bottom",
+  "spreadHorizontal",
+  "spreadVertical",
+] as const;
+
+/**
+ * Where a new or moved object goes, in words rather than numbers.
+ *
+ * A region on its own means "the first free spot in that region". An anchor
+ * and a side means "next to that object". The layout engine turns either into
+ * a box, or refuses with a reason. docs/LLD.md F3.
+ */
+export const Place = z.object({
+  region: z.enum(REGIONS).optional(),
+  /** Handle (o12) or exact name of the object to place relative to. */
+  anchor: z.string().optional(),
+  side: z.enum(SIDES).optional(),
+});
+export type Place = z.infer<typeof Place>;
+
+export const Op = z.object({
+  op: z.enum(OP_NAMES),
+  /** Screen handle (s2) or exact name the op applies to. Absent means the active screen. */
+  screen: z.string().optional(),
+  /** Object handle (o12) or exact name the op acts on, or the new name for addScreen/renameScreen. */
+  target: z.string().optional(),
+  targets: z.array(z.string()).optional(),
+  name: z.string().optional(),
+  place: Place.optional(),
+  /**
+   * For addEquipment: which unit to place, by the id or label inference gave
+   * it - "PMP_101", "Boiler 4001". One op, one whole faceplate.
+   */
+  equipment: z.string().optional(),
+  type: z.enum([...PART_TYPES, ...COMPOSITE_KINDS]).optional(),
+  text: z.string().optional(),
+  offText: z.string().optional(),
+  onText: z.string().optional(),
+  tag: z.string().optional(),
+  property: z.string().optional(),
+  left: z.number().optional(),
+  top: z.number().optional(),
+  /** moveObject: by how much, when the engineer says "150 px to the right". */
+  dx: z.number().optional(),
+  dy: z.number().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  fontSize: z.number().optional(),
+  bold: z.boolean().optional(),
+  decimals: z.number().optional(),
+  colorRole: z.enum(["fill", "border", "text"]).optional(),
+  /**
+   * The scope of the change (lib/ai/expand.ts): ["all"] or screen handles and
+   * names. The object named by target is found again on each of them.
+   */
+  screens: z.array(z.string()).optional(),
+  /** In place of target: a role every screen has, or a part type. */
+  select: z.string().optional(),
+  /** Narrows select to objects whose name, text or bound tag contains this. */
+  selectText: z.string().optional(),
+  color: z.enum(COLOR_NAMES).optional(),
+  mode: z.enum(ALIGN_MODES).optional(),
+  message: z.string().optional(),
+  severity: z.number().optional(),
+  alarmType: z.number().optional(),
+  alarmKind: z.number().optional(),
+  value: z.string().optional(),
+  /** One line, in engineering language, for the build log on the turn. */
+  note: z.string().optional(),
+});
+
+export type Op = z.infer<typeof Op>;
+
+/**
+ * build     lay out a whole application from the tag list; only on an empty project
+ * extend    add screens or equipment to the application as it stands
+ * startOver the engineer wants to discard the screens and begin again; confirmed first
+ */
+export const TurnMode = z.enum(["clarify", "build", "extend", "startOver", "edit", "answer"]);
+export type TurnMode = z.infer<typeof TurnMode>;
+
+export const Turn = z.object({
+  mode: TurnMode,
+  /** What to say back. One or two sentences, engineering register. */
+  reply: z.string(),
+  /** Only when mode is "clarify" - the specific things still unknown. */
+  questions: z.array(z.string()).optional(),
+  /**
+   * What this project should be called, offered only while it is still
+   * "Untitled". A new project cannot be named before there is a request to
+   * name it after, so it is named on the first turn rather than demanded up
+   * front. Ignored once the project has any other name - renaming a project
+   * out from under someone on their fourth request is worse than a slightly
+   * wrong name on the first.
+   */
+  projectName: z.string().optional(),
+  /** Only when mode is "edit" - what to change, in order. */
+  ops: z.array(Op).optional(),
+  /**
+   * Only when mode is "build" - the request wants a whole screen generated from
+   * the tag list, which is the eight-step pipeline rather than a list of edits.
+   */
+  buildIntent: z.string().optional(),
+});
+
+export type Turn = z.infer<typeof Turn>;
+
+/**
+ * Anything that is not a turn is treated as no turn, so a provider that drifts
+ * degrades to "I did not understand that" rather than to a broken screen.
+ */
+export function coerceTurn(value: unknown): Turn | null {
+  const parsed = Turn.safeParse(value);
+  if (!parsed.success) return null;
+  // Ops that name no target for an op that needs one are dropped rather than
+  // applied against whatever happened to be selected.
+  const needsEquipment: OpName[] = ["addEquipment"];
+  const needsTarget: OpName[] = [
+    "moveObject",
+    "resizeObject",
+    "setText",
+    "setColor",
+    "deleteObject",
+    "duplicateObject",
+    "bindTag",
+  ];
+  const ops = (parsed.data.ops ?? [])
+    .filter((op) => {
+      if (needsTarget.includes(op.op) && !op.target && !(op.select && op.op !== "bindTag")) return false;
+      if (needsEquipment.includes(op.op) && !op.equipment && !op.target) return false;
+      return true;
+    })
+    // A model never places by coordinate. Numbers on an add op are dropped
+    // here so the slot resolver decides; only moveObject keeps them, for the
+    // case where the engineer typed a number.
+    .map((op) =>
+      op.op === "addObject" || op.op === "addEquipment"
+        ? { ...op, left: undefined, top: undefined }
+        : op,
+    );
+  return { ...parsed.data, ops };
+}
+
+/**
+ * Whether a turn should run the pipeline, whatever mode the model named.
+ *
+ * The mirror of the rule in useChat that turns a build on a drawn project
+ * into an extension. A small model sometimes answers the first request with
+ * "edit" and a list of addEquipment ops against screens that do not exist
+ * yet, which leaves an empty canvas and a proposal of rejections. Placing
+ * equipment on a project with tags and nothing drawn is a build, and the
+ * pipeline does it whole rather than op by op. So is binding tags there:
+ * "one screen with only the two leakage monitors" came back as bindTag ops on
+ * objects that did not exist, and a proposal of bindings with nothing drawn.
+ */
+export function buildsInstead(turn: Turn, project: { hasContent: boolean; hasTags: boolean }): boolean {
+  return (
+    turn.mode === "edit" &&
+    !project.hasContent &&
+    project.hasTags &&
+    (turn.ops ?? []).some((o) => o.op === "addEquipment" || o.op === "bindTag")
+  );
+}

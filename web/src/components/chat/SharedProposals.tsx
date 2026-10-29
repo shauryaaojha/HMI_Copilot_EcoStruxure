@@ -12,8 +12,8 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Check, Eye, MessageSquare, Sparkles } from "lucide-react";
-import { dryRun, previewOf } from "@/lib/ai/applier";
-import type { Op } from "@/lib/ai/ops";
+import { dryRun, previewOf } from "@/core/ops";
+import type { Op } from "@/core/ops";
 import { selectedOps } from "@/lib/ai/review";
 import { docOf } from "@/lib/collab/changes";
 import { previewOfChanges } from "@/lib/collab/proposal";
