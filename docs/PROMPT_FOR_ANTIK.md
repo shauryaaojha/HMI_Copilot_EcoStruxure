@@ -17,8 +17,9 @@ Read these first, in order:
 3. web/src/lib/refs/index.ts (the reference and cascade rules, already split out)
 4. web/src/lib/server/storage.ts (the Data and Storage interfaces you will implement against)
 
-Branch: start from the branch Shaurya names when he has landed the current work. If he
-has not, start from review/screens-first and say so in your report.
+Branch: start from main at 62f4f85 (every feature branch is merged into it; the
+baseline is 1184 passing). Create your branch from there, for example
+feat/split-and-supabase. Do not start from any older feature branch.
 
 PHASE 1: finish the split (no behaviour change)
 - Split web/src/store/project.ts into Zustand slices by domain: screens, objects,
