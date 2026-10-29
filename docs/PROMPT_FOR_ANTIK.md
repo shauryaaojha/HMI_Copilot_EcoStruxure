@@ -19,7 +19,7 @@ Read these first, in order:
 4. web/src/lib/refs/index.ts (reference and cascade rules, already split out)
 5. web/src/lib/server/storage.ts (the Data interface; Mongo stays its implementation)
 
-Base: main at 73e9f24 or later. Every feature branch is merged into it; the baseline is
+Base: main at cfbe5a1 or later (older commits carry an older plan). Every feature branch is merged into it; the baseline is
 1184 passing, 17 skipped, typecheck clean. Create your branch from main, for example
 feat/architecture. Do not start from any older branch.
 
@@ -34,8 +34,17 @@ PHASE 1: finish the module split (no behaviour change). Start now.
   fails, the refactor changed behaviour: fix the refactor.
 - Checkpoint: report the phase 1 results before starting phase 2.
 
-PHASE 2: Supabase Realtime for live sync
-- Replace the SSE stream (web/src/app/api/projects/[id]/stream) with Supabase Realtime:
+PHASE 2: sign-in without OAuth, then Supabase Realtime for live sync
+- First, sign-in. Today the app signs in only through GitHub and Google: web/src/auth.ts,
+  and providers()/cloudEnabled()/currentUser() in web/src/lib/server/session.ts. Replace
+  them with the mechanism from decision A. Keep the laptop's local identity, and keep the
+  rule that a deployment with no sign-in configured is anonymous, never the laptop user.
+  Passwords, if Credentials, are hashed with a slow hash and never logged. Add a test that
+  signs in with no AUTH_GITHUB_* or AUTH_GOOGLE_* set.
+- Production has no users and no project data, so remove GitHub and Google outright
+  (providers, AUTH_GITHUB_* and AUTH_GOOGLE_* handling, their sign-in buttons). Do not
+  write a migration or any mapping from old github:<id> or google:<id> ids.
+- Then, Realtime. Replace the SSE stream (web/src/app/api/projects/[id]/stream) with Supabase Realtime:
   Broadcast per project for revision notifications, and Presence for who is in a project.
 - Broadcast carries a small notification only: project id, new revision number, author.
   Supabase's Free plan caps a message at 256 KB, so never send ops through Broadcast.
@@ -78,18 +87,18 @@ PHASE 4: claude.ai connector (MCP server)
 
 DECISIONS
 Resolved (do not revisit): Supabase Free plan; auth is NextAuth only, no OAuth; data
-(including .eote bytes) stays in MongoDB.
+(including .eote bytes) stays in MongoDB; no user migration (production has no users or
+data).
 
 Open. Do not decide these yourself; ask Shaurya and stop at the step that needs them:
 - A. The NextAuth mechanism without OAuth. Recommendation: the Credentials provider with
   email and password, hashed. The alternative is email magic link, which needs an email
-  service. Phase 2's token step waits on this.
+  service. Phase 2's sign-in step, and the token step after it, wait on this.
 - B. How claude.ai's connector logs in. Recommendation: the server issues its own connector
   tokens after a NextAuth login. Fallback: a personal access token in the connector's
   header setting. Phase 4's login waits on this.
 - C. claude.ai account type for testing: Pro or Max, or Team or Enterprise. Phase 4's M1
   test waits on this.
-
 SUPABASE KEYS: Shaurya sends the project URL and the anon and service-role keys as
 environment variables, not in chat or git. Until they arrive, build phase 2 behind an
 environment flag, with tests that run without Supabase. Do not invent keys, and do not
@@ -116,6 +125,6 @@ REPORT after each phase, in this order:
 ## Notes for Shaurya
 
 - Phase 1 can start now. Nothing in it needs a decision or a key.
-- Decisions still open: A (credentials or magic link, before phase 2's token step), B (connector login, before phase 4), C (claude.ai account type, before phase 4's M1 test). Recommendations are in the plan's section 8.
+- Decisions still open: A (credentials or magic link, before phase 2's sign-in step), B (connector login, before phase 4), C (claude.ai account type, before phase 4's M1 test). F is resolved: no users or data in production, so no migration. Recommendations are in the plan's section 8.
 - Verify the Free-plan pause question: whether Realtime connections count as activity. Until it is verified, the keep-alive cron in phase 2 is required.
 - Send the Supabase project URL and keys as environment variables, not in chat.

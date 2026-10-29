@@ -5,15 +5,16 @@ Updated 2026-10-29 after decisions from Shaurya. Covers the module split (PLAN_S
 ## 0. Decisions in force
 
 1. **Supabase plan: Free.** Supabase is used for one thing: Realtime live sync. No Supabase Postgres, no Supabase Storage, no Supabase Auth.
-2. **Auth: NextAuth only, no OAuth.** No GitHub or Google sign-in. Which NextAuth mechanism remains open; see section 6.
+2. **Auth: NextAuth only, no OAuth.** No GitHub or Google sign-in. Which NextAuth mechanism remains open; see section 8, decision A. This is work, not a setting: today the app signs in only through GitHub and Google (`web/src/auth.ts`, and `providers()` in `web/src/lib/server/session.ts` enables sign-in only when `AUTH_GITHUB_*` or `AUTH_GOOGLE_*` are set). User ids are `github:<id>` and `google:<id>`, and projects store them as `ownerId` and in `members`. **Verified.**
 3. **Data stays in MongoDB.** `.eote` project data, the op log, revisions, members, proposals, and binaries (GridFS) all stay in Mongo. The Postgres migration in the earlier plan is cancelled.
 4. **Two databases in the app is allowed only where necessary.** Supabase is necessary only for Realtime. Everything else stays in Mongo.
+5. **No user migration.** Production has no users and no project data (Shaurya, 2026-10-29). GitHub and Google sign-in are removed outright; nothing maps old `github:` or `google:` ids.
 
-Phases 2 (Postgres behind `Data`) and 3 (Storage bucket) of the earlier plan are cancelled by decision 3. Phase 4 becomes "Realtime only".
+Phases 2 (Postgres behind `Data`) and 3 (Storage bucket) of the earlier plan are cancelled by decision 3. The earlier phase 4 becomes "Realtime only", now phase 2, and it starts with the sign-in change that decision 2 needs.
 
 ## 1. Where things stand
 
-- **main** is at `73e9f24` (after db32f06). Every feature branch is merged into it. Suite: 1184 passing, 17 skipped; typecheck clean. **Verified** on the last run.
+- **main** is at `cfbe5a1` or later (this plan's decisions landed there). Every feature branch is merged into it. Suite: 1184 passing, 17 skipped; typecheck clean. **Verified** on the last run.
 - **Storage today.** MongoDB for metadata, the op log, membership and revisions (`web/src/lib/server/repo.ts`, `storage.ts`). GridFS for binaries (`lib/ote/imports.ts`, `lib/ote/skeleton.ts`, `api/picture`, `api/export`). A filesystem fallback in `.imports/` for the laptop. **Verified.**
 - **Storage seam.** `lib/server/storage.ts` has two interfaces: `Data` and `Storage.bytes`. Mongo and the laptop filesystem are the two implementations. **Verified.**
 - **Live sync today.** Server-sent events from `api/projects/[id]/stream` with `maxDuration = 60`, so every stream is cut after 60 seconds and must reconnect. **Verified.** This is the one thing Supabase Realtime replaces.
@@ -154,7 +155,7 @@ Each phase is one branch and one reviewable change. The suite stays green at eve
 | Phase | Work | Done when | Blocked on |
 |---|---|---|---|
 | **1. Finish the split** | slice `store/project.ts` by domain (screens, objects, tags and bindings, alarms and composites, collab); move the write path to `core/ops`. No behaviour change. | `project.ts` under 400 lines; all tests unchanged | — |
-| **2. Realtime for live sync** | Supabase Realtime Broadcast per project (revision notifications, section 2.3) and Presence; reconnect and gap re-fetch; server-minted tokens; keep-alive cron | two browsers see each other's revisions within a second; a non-member receives nothing; no 60 s cut-off | decision A (auth mechanism) for token minting |
+| **2. Sign-in without OAuth, then Realtime** | First: replace the GitHub and Google providers with the mechanism from decision A (`auth.ts`, `session.ts` `providers()`/`cloudEnabled()`, the account UI, a password hash on the user record if Credentials), keeping the laptop's local identity and the fail-closed deployment rule. Then: Supabase Realtime Broadcast per project (revision notifications, section 2.3) and Presence; reconnect and gap re-fetch; server-minted tokens; keep-alive cron | a user signs in with no OAuth env set; two browsers see each other's revisions within a second; a non-member receives nothing; no 60 s cut-off | decision A (auth mechanism) |
 | **3. Tags-free generation** | the plant brief (section 5) | section 5.6 tests pass | Pranav reviews the brief design |
 | **4. claude.ai connector** | `/api/mcp` on this deployment, per RESEARCH_CLAUDE_AI_INTEGRATION.md: M1 read tools; M2 writes as proposals; M3 generation as a job; M4 MCP Apps preview | M1 connected from a test account on claude.ai | decision B (connector auth), decision C (account type) |
 
@@ -177,18 +178,18 @@ Cancelled by decision 3: the Postgres implementation of `Data`, the migration fr
 1. Supabase plan: Free.
 2. Auth: NextAuth only, no OAuth.
 3. Data in MongoDB, including `.eote` bytes in GridFS.
+4. No user migration: production has no users or data, so OAuth is removed without mapping old accounts.
 
 **Still open**
 
 - **A. NextAuth mechanism without OAuth.** Options:
   - **Credentials provider (email and password, passwords hashed).** Needs no third-party service. Recommended.
   - Email magic link. Needs an email sending service, which is a new vendor.
-  I will assume Credentials unless told otherwise.
+  Recommended, but no sign-in code is written until Shaurya confirms.
 - **B. Connector login.** claude.ai's custom connector authenticates through an OAuth flow that our server exposes. That is a server-side OAuth authorization server, which is not an OAuth *provider* login. Options: (1) our server issues its own connector tokens after the NextAuth login, or (2) a personal access token pasted into the connector's header setting. Recommendation: (1) for the team, with (2) as a fallback if claude.ai's flow cannot be made to work.
 - **C. claude.ai account type** for testing: Pro or Max for individuals; Team or Enterprise for the Schneider team.
 - **D. Brief design:** guided form plus free text (recommended), or free text only.
 - **E. Knowledge base in drafting:** check the Mongo collection count first.
-
 ## 9. Immediate next steps
 
 1. Shaurya confirms A (credentials, or magic link) and C.
