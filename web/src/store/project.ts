@@ -32,6 +32,7 @@ import { modelPlant, type PlantModel } from "@/lib/plant/model";
 import type { Range } from "@/lib/plant/units";
 import { refreshNavigation as refreshNavigationParts } from "@/lib/ote/layout";
 import { DEFAULT_PANEL } from "@/lib/backend/panels";
+import { retagEquipment, retagRefs, withoutObjects } from "@/lib/refs";
 import type {
   Binding,
   ChatMessage,
@@ -911,7 +912,12 @@ export function createProjectStore() {
         if (at === -1) return;
         remember(s, "Delete screen");
         const [gone] = s.screens.splice(at, 1);
-        for (const part of viewOf(gone).Children) delete s.objectMeta[part.UniqueId];
+        // Its objects go with it, and so do their bindings and composites.
+        const parts = new Set(viewOf(gone).Children.map((part) => part.UniqueId));
+        for (const id of parts) delete s.objectMeta[id];
+        const kept = withoutObjects(current(s.bindings), current(s.composites), parts);
+        s.bindings = kept.bindings;
+        s.composites = kept.composites;
         delete s.screenPlacement[gone.UniqueId];
         delete s.programs[gone.UniqueId];
         if (s.activeScreenId === id) {
@@ -1030,13 +1036,9 @@ export function createProjectStore() {
         }
         for (const id of wanted) delete s.objectMeta[id];
         s.selectedIds = s.selectedIds.filter((id) => !wanted.has(id));
-        // A binding whose target is gone would export as a dangling reference.
-        s.bindings = s.bindings.filter((b) => !wanted.has(b.targetId));
-        // A composite that lost any of its parts is no longer one: what is
-        // left is ordinary parts, still grouped, and no longer re-expandable.
-        for (const [cid, instance] of Object.entries(s.composites)) {
-          if (instance.partIds.some((pid) => wanted.has(pid))) delete s.composites[cid];
-        }
+        const kept = withoutObjects(current(s.bindings), current(s.composites), wanted);
+        s.bindings = kept.bindings;
+        s.composites = kept.composites;
       }),
 
     duplicateObjects: (ids) =>
@@ -1211,13 +1213,6 @@ export function createProjectStore() {
       set((s) => {
         const placeholders = new Map(s.variables.map((v) => [v.Name, v]));
         const dropped = new Set([...placeholders.keys()].filter((name) => !renames[name]));
-        // Every exact use of a placeholder name, wherever a tag is referenced.
-        const retag = <T,>(value: T): T => {
-          if (typeof value === "string") return (renames[value] ?? (dropped.has(value) ? "" : value)) as T;
-          if (Array.isArray(value)) return value.map(retag) as T;
-          if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, retag(v)])) as T;
-          return value;
-        };
         for (const b of current(s.bindings)) {
           if (!dropped.has(b.tag)) continue;
           const intent = placeholders.get(b.tag)?.Comments || b.tag;
@@ -1225,9 +1220,9 @@ export function createProjectStore() {
         }
         s.bindings = current(s.bindings).filter((b) => !dropped.has(b.tag)).map((b) => ({ ...b, tag: renames[b.tag] ?? b.tag }));
         s.alarms = current(s.alarms).filter((a) => !dropped.has(a.Trigger)).map((a) => ({ ...a, Trigger: renames[a.Trigger] ?? a.Trigger }));
-        s.composites = retag(current(s.composites));
-        s.programs = retag(current(s.programs));
-        s.equipment = retag(current(s.equipment));
+        s.composites = retagRefs(current(s.composites), renames, dropped);
+        s.programs = retagRefs(current(s.programs), renames, dropped);
+        s.equipment = retagEquipment(current(s.equipment), renames, dropped);
         s.variables = variables;
         s.tagImport = meta;
         if (s.plant) s.plant = modelPlant(variables, s.plant.answers, meta.structure);
