@@ -11,6 +11,7 @@
 import { PART_TYPES } from "@/lib/ote/schema";
 import { packageProject } from "@/lib/ote/packager";
 import { readProject } from "@/lib/ote/reader";
+import { harvest, nativise, partsOf } from "@/lib/ote/exemplars";
 import type { Backend, Capabilities } from "./types";
 
 /**
@@ -36,6 +37,11 @@ export const OTE: Backend = {
   name: "EcoStruxure Operator Terminal Expert 4.4",
   extension: ".eote",
   capabilities,
-  write: (input, preserved) => packageProject(input, undefined, preserved),
+  // Into an opened project, what we added is written as the project's own
+  // objects where it has them (lib/ote/exemplars.ts).
+  write: (input, preserved) =>
+    preserved
+      ? packageProject(nativise(input, harvest(preserved, input.variables), partsOf(preserved)).input, undefined, preserved)
+      : packageProject(input),
   read: (bytes) => readProject(bytes),
 };

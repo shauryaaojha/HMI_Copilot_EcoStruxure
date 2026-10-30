@@ -14,7 +14,9 @@
  * result is <from>'s screens on <into>'s version, PLC connection and tags. The
  * screens keep the screen numbers <from> gave them (1 is the start screen).
  * --only takes just the named screens of <from>. Either way the generated
- * navigation strips are rebuilt for the screens the result has.
+ * navigation strips are rebuilt for the screens the result has, and each part
+ * is written as the receiving project's own object where it has one (its
+ * push button, entry, display, toggle; lib/ote/exemplars.ts).
  */
 
 import fs from "node:fs/promises";
@@ -24,6 +26,7 @@ import { packageProject, type PackageInput } from "../src/lib/ote/packager.js";
 import { readProject } from "../src/lib/ote/reader.js";
 import { preflight } from "../src/lib/ote/preflight.js";
 import { refreshNavigation } from "../src/lib/ote/layout.js";
+import { harvest, nativise, partsOf } from "../src/lib/ote/exemplars.js";
 
 const root = path.join(process.cwd(), "..");
 const REPLACE = process.argv.includes("--replace");
@@ -80,7 +83,8 @@ if (REPLACE) {
   const used = new Set(rows.flatMap((b) => String(b.Sources).split(",").map(Number)));
   preserved = { ...preserved, extra: { targets, bindings: rows, sources: preserved.extra.sources.filter((x) => used.has(x.ReferenceId)) } };
 }
-let bytes = await packageProject(input, undefined, preserved);
+const native = nativise(input, harvest(into.preserved, into.variables), partsOf(into.preserved));
+let bytes = await packageProject(native.input, undefined, preserved);
 
 if (REPLACE) {
   // Everything under Screens\ and Contents\ that is not one of <from>'s screens
@@ -131,7 +135,10 @@ console.log(`${OUT}  ${bytes.length.toLocaleString()} bytes`);
 console.log(`  Project.dat VersionModified ${version.VersionModified ?? "?"}, created ${version.VersionCreated ?? "?"}`);
 for (const n of ["DriverConfig.db", "Variables.db", "Target.dat", "GlobalScripts.dat"]) console.log(`  ${n} unchanged: ${await same(n)}`);
 for (const s of added) console.log(`  + ${s.Name}: ${kept.filter((w) => w.screenId === s.UniqueId).length} bindings`);
-for (const w of kept.slice(0, 6)) console.log(`      ${w.part.Name}.${w.property} <- ${refs[w.tag]?.fullName ?? w.tag}`);
+for (const w of native.input.wires.filter((w) => addedIds.has(w.screenId ?? "")).slice(0, 8)) console.log(`      ${w.part.Name}.${w.property} <- ${refs[w.tag]?.fullName ?? w.tag}`);
 console.log(`  dropped ${dropped.length} bindings to tags the project lacks: ${[...new Set(dropped.map((w) => w.tag))].join(", ") || "none"}`);
 console.log(`  alarms: ${alarms.length} of ${from.alarms.length} kept`);
+console.log(`  written as the project's own objects: ${native.written.length}`);
+for (const w of native.written) console.log(`      ${w.part} -> ${w.as} (like ${w.like})`);
+if (native.dropped.length) console.log(`  wires the project's objects cannot take: ${native.dropped.map((d) => `${d.part}.${d.property}`).join(", ")}`);
 console.log(`  read back: ${back.screens.length} screens, ${back.wires.length} bindings, warnings: ${back.warnings.join(" | ") || "none"}`);

@@ -197,7 +197,7 @@ export function roleMatched(name: string): boolean {
   return ROLES.some(([pattern]) => pattern.test(name));
 }
 
-function roleOf(name: string): string {
+export function roleOf(name: string): string {
   for (const [pattern, role] of ROLES) {
     if (pattern.test(name)) return role;
   }

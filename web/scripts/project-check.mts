@@ -7,12 +7,15 @@
  * what is modelled and what is carried as it is, then writes the project back
  * edited in place and moved to another project and counts, by object type and
  * field path, every field the output lost (lib/ote/fidelity.ts). The exit code
- * is non-zero when anything is lost or a file cannot be read.
+ * is non-zero when anything is lost or a file cannot be read. Last, it lists
+ * the project's own objects a screen we add would be drawn with
+ * (lib/ote/exemplars.ts).
  */
 
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fidelity, total } from "../src/lib/ote/fidelity.js";
+import { harvest } from "../src/lib/ote/exemplars.js";
 
 async function files(args: string[]): Promise<string[]> {
   const out: string[] = [];
@@ -50,6 +53,9 @@ for (const file of await files(process.argv.slice(2))) {
     report("edited in place", f.inPlace);
     if (f.movedError) console.log(`    moved: not written: ${f.movedError}`);
     else report("moved to another project", f.moved);
+    const own = Object.values(harvest(f.read.preserved, f.read.variables));
+    console.log(`    its own objects: ${own.length ? "" : "none bound to a recognised tag; ours are used"}`);
+    for (const e of own) console.log(`      ${e!.kind.padEnd(10)} ${e!.raw.Type} (${e!.raw.Name}, ${e!.uses}x), bound ${e!.property} mode ${e!.mode}`);
     if (total(f.inPlace) || total(f.moved)) failed = true;
   } catch (e) {
     console.log(`    not read: ${(e as Error).message}`);
