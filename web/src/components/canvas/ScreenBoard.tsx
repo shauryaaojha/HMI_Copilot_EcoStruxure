@@ -26,6 +26,7 @@ import { rootBox } from "@/lib/ote/schema";
 import type { Screen } from "@/lib/ote/schema";
 import type { ForeignPart, ObjectMeta, ScreenPreview } from "@/store/types";
 import { cn } from "@/components/ui";
+import { useProject } from "@/store/project";
 import { ScreenRenderer, type Box, type CommentPin, type DrawTool } from "./ScreenRenderer";
 import type { AlarmRow } from "./parts";
 
@@ -221,8 +222,10 @@ export function ScreenBoard({
   onDraw,
   onContextMenu,
 }: ScreenBoardProps) {
+  // A Canvas root (an opened project's) has no size of its own: it is the panel's.
+  const target = useProject((s) => s.target);
   const first = screens[0]?.Children[0];
-  const size = { width: first?.Width ?? 1024, height: first?.Height ?? 600 };
+  const size = first ? rootBox(first, target) : target;
 
   const spots = useMemo(() => placements ?? {}, [placements]);
   const extent = useMemo(
@@ -263,8 +266,8 @@ export function ScreenBoard({
             style={{
               left: (at.x - extent.originX) * scale,
               top: (at.y - extent.originY) * scale,
-              width: rootBox(view).width * scale,
-              height: (rootBox(view).height + BOARD_LABEL) * scale,
+              width: rootBox(view, target).width * scale,
+              height: (rootBox(view, target).height + BOARD_LABEL) * scale,
             }}
           >
             {/* The frame's name, above it, the way a Figma frame carries one.
@@ -344,7 +347,7 @@ export function ScreenBoard({
                 "canvas-screen relative overflow-hidden ring-1 transition",
                 live ? "ring-brand-500/70" : "ring-line hover:ring-line-strong",
               )}
-              style={{ width: rootBox(view).width * scale, height: rootBox(view).height * scale }}
+              style={{ width: rootBox(view, target).width * scale, height: rootBox(view, target).height * scale }}
             >
               <ScreenRenderer
                 screen={screen}

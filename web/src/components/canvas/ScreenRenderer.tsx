@@ -280,7 +280,10 @@ export function ScreenRenderer({
   onContextMenu,
 }: ScreenRendererProps) {
   const view = screen.Children[0];
-  const box = rootBox(view, panel ?? FALLBACK_PANEL);
+  // A Canvas root has no size of its own; it is the open project's panel,
+  // the same size CanvasPane gives the frame, or the view is drawn zoomed in.
+  const projectTarget = useProject((s) => s.target);
+  const box = rootBox(view, panel ?? projectTarget ?? FALLBACK_PANEL);
   const svg = useRef<SVGSVGElement>(null);
   const projectScreens = useProject((s) => s.screens);
   const contentScreens = contentsById(contents ?? projectScreens);

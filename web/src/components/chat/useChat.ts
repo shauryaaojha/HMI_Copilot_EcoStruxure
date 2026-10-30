@@ -133,6 +133,7 @@ export function useChat() {
             name: s.name,
             target: s.target,
             screens: s.screens,
+            foreign: s.foreign,
             activeScreenId: s.activeScreenId,
             variables: s.variables,
             alarms: s.alarms,

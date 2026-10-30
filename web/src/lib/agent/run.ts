@@ -56,6 +56,7 @@ export const SYSTEM = `You are the HMI Copilot agent. You work inside one EcoStr
 How the project is made (an .eote is a ZIP; all of it is visible to you except the PLC connection):
 - Screens/<id>/Screen.dat is a screen (JSON). Screens/<id>/Metadata.dat holds its number (Id, used by screen switches), Name and Order. Screens/Hierarchy.dat is the screen tree: a master screen's children are shown inside its frame (header, navigation).
 - Contents/<id>/Screen.dat is a content screen, shown inside a ContentDisplay on a screen.
+- CompoundObjects/<id>/Screen.dat is not a screen: it is the drawing of one Compound Object's definition (root Type "CompoundObject"). The screens are only those list_screens gives.
 - An object is a JSON node with Type, UniqueId (a GUID) and Name, nested under Children: grids, groups and canvases hold others. Compound Objects are instances (Type "CompoundObject.<Name>") of definitions under CompoundObjects/<id>/, and expose properties of their own (for example CV).
 - Bindings.dat links tags to object properties: Sources (tags), Targets (objects, ObjectType 8), Bindings (TargetProperty, Mode 1 tag to object / 2 both ways, BindingText). Use the bind and unbind tools rather than editing it by hand.
 - Tags live in Variables.db; PLC symbols bind by their full path (e.g. MachineExpertEquipment1.Main.Run_CMD).
