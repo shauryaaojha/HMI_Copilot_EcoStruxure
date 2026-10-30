@@ -297,7 +297,76 @@ function mergeScreen(screen: Screen, kept: Preserved["screens"] extends Map<stri
   };
 }
 
+type Hung = Preserved["hierarchy"][number];
+
+/**
+ * The screen tree as read, with the modelled screens where they now are.
+ *
+ * A project's screens usually hang under a master screen (NavigationType 3:
+ * the rig's MasterScreen holds the header, its Home, Alarm and Settings
+ * icons, the title and the clock) or a folder, and every screen under it is
+ * shown inside that frame. So a deleted screen leaves the branch it was on,
+ * wherever that is; the modelled screens that stay keep their own nodes, in
+ * their new order among each other at the same depth; and a new screen joins
+ * the branch that holds most of the project's screens, last, which gives it
+ * the same frame. A screen the reader carried keeps its node and its place.
+ */
+export function rehang(tree: Hung[], before: string[], ids: string[]): Hung[] {
+  const was = new Set(before.map((id) => id.toLowerCase()));
+  const now = new Set(ids.map((id) => id.toLowerCase()));
+  const key = (n: Hung) => String(n.ObjectId).toLowerCase();
+
+  // The branch holding most of the modelled screens; the top level on a tie.
+  let home: Hung[] = tree;
+  let most = tree.filter((n) => was.has(key(n))).length;
+  const look = (nodes: Hung[]) => {
+    for (const n of nodes) {
+      const kids = (n.Children ?? []) as Hung[];
+      const held = kids.filter((k) => was.has(key(k))).length;
+      if (held > most) [home, most] = [kids, held];
+      look(kids);
+    }
+  };
+  look(tree);
+
+  const order = ids.filter((id) => was.has(id.toLowerCase()));
+  const rebuild = (nodes: Hung[]): Hung[] => {
+    const slots = nodes.filter((n) => was.has(key(n)) && now.has(key(n)));
+    const queue = order.filter((id) => slots.some((n) => key(n) === id.toLowerCase()));
+    const out: Hung[] = [];
+    for (const n of nodes) {
+      if (was.has(key(n)) && !now.has(key(n))) continue;
+      const next = was.has(key(n)) ? queue.shift()!.toLowerCase() : "";
+      const node = next ? slots.find((s) => key(s) === next)! : n;
+      const kids = (node.Children ?? []) as Hung[];
+      out.push({ ...node, Children: rebuild(kids) as Hung["Children"] });
+    }
+    if (nodes === home) for (const id of ids) if (!was.has(id.toLowerCase())) out.push({ ObjectId: id, Children: [] });
+    return out;
+  };
+  return rebuild(tree);
+}
+
 /** Appends the binding rows the reader could not model, re-indexed. */
+/**
+ * A touch that changes screen names its destination by name in our model
+ * (ClickTrigger.ScreenName), because the number the product switches by - the
+ * screen's Metadata Id - is only settled here, as the project is written. The
+ * product's own form is {OperationType: 4, Operation: 1, Screen: <Id>}, as on
+ * the rig's header icons. A name with no screen loses its destination rather
+ * than pointing at whichever screen has that number.
+ */
+export function linkScreens<T>(screen: T, numbers: Map<string, number>): T {
+  const raw = JSON.stringify(screen);
+  if (!raw.includes('"ScreenName"')) return screen;
+  return JSON.parse(raw, (key, value) => {
+    if (key !== "ClickTrigger" || !value || typeof value !== "object" || typeof value.ScreenName !== "string") return value;
+    const { ScreenName, ...rest } = value as { ScreenName: string; [k: string]: unknown };
+    const number = numbers.get(ScreenName);
+    return number === undefined ? rest : { ...rest, Screen: number };
+  }) as T;
+}
+
 function appendExtra(graph: BindingGraph, extra: Preserved["extra"]): BindingGraph {
   const sourceMap = new Map<number, number>();
   const targetMap = new Map<number, number>();
@@ -389,6 +458,34 @@ async function packagePreserved(input: PackageInput, kept: Preserved): Promise<U
     changed = true;
   }
   const localVariables = [...entries.entries()].find(([n]) => /LocalVariables\.db$/i.test(n))?.[1];
+  // A screen's Id is its number on the panel (switch buttons and a folder's
+  // InitialScreenID name it), so a new screen must not take one a kept screen,
+  // a folder or a screen the reader carried already has.
+  const usedIds = new Set<number>();
+  for (const [name, data] of entries) {
+    if (!/^Screens[\\/][^\\/]+[\\/]Metadata\.dat$/i.test(name)) continue;
+    try {
+      const id = JSON.parse(new TextDecoder().decode(data).replace(/^﻿/, "")).Id;
+      if (typeof id === "number") usedIds.add(id);
+    } catch {
+      // not ours to judge; it keeps whatever number it has
+    }
+  }
+  let nextId = Math.max(0, ...usedIds) + 1;
+  const numberOf = new Map<string, number>();
+  for (const screen of mains) {
+    const was = kept.screens.get(screen.UniqueId);
+    if (was && typeof was.metadata.Id === "number") {
+      numberOf.set(screen.UniqueId, was.metadata.Id);
+      continue;
+    }
+    const index = ids.indexOf(screen.UniqueId);
+    while (usedIds.has(nextId)) nextId++;
+    const number = usedIds.has(index + 1) ? nextId : index + 1;
+    usedIds.add(number);
+    numberOf.set(screen.UniqueId, number);
+  }
+  const numbers = new Map(mains.map((s) => [s.Name, numberOf.get(s.UniqueId)!]));
   input.screens.forEach((screen) => {
     const id = screen.UniqueId;
     const was = kept.screens.get(id);
@@ -402,7 +499,7 @@ async function packagePreserved(input: PackageInput, kept: Preserved): Promise<U
         return;
       }
       changed = true;
-      entries.set(nameOf(`Contents/${id}/Screen.dat`), jsonEntry(was ? mergeScreen(screen, was) : screen));
+      entries.set(nameOf(`Contents/${id}/Screen.dat`), jsonEntry(linkScreens(was ? mergeScreen(screen, was) : screen, numbers)));
       if (!was || was.metadata.Name !== screen.Name) {
         entries.set(nameOf(`Contents/${id}/Metadata.dat`), jsonEntry({ LayoutType: 8, ObjectType: 10, ...(was?.metadata ?? {}), Name: screen.Name }));
       }
@@ -429,13 +526,13 @@ async function packagePreserved(input: PackageInput, kept: Preserved): Promise<U
       return;
     }
     changed = true;
-    entries.set(nameOf(`Screens/${id}/Screen.dat`), jsonEntry(was ? mergeScreen(screen, was) : screen));
+    entries.set(nameOf(`Screens/${id}/Screen.dat`), jsonEntry(linkScreens(was ? mergeScreen(screen, was) : screen, numbers)));
     // Metadata only when it actually differs: a touched screen with the same
     // name and position keeps its Metadata.dat byte-identical.
     if (!was) {
       entries.set(
         nameOf(`Screens/${id}/Metadata.dat`),
-        jsonEntry({ LayoutType: 8, ObjectType: 9, Id: index + 1, Name: screen.Name, Order: index }),
+        jsonEntry({ LayoutType: 8, ObjectType: 9, Id: numberOf.get(id)!, Name: screen.Name, Order: index }),
       );
     } else if (was.metadata.Name !== screen.Name || moved) {
       entries.set(nameOf(`Screens/${id}/Metadata.dat`), jsonEntry(reordered()));
@@ -449,21 +546,7 @@ async function packagePreserved(input: PackageInput, kept: Preserved): Promise<U
     }
   });
   if (JSON.stringify(ids) !== JSON.stringify(kept.order)) {
-    // From the hierarchy as read, so a screen the reader carried rather than
-    // modelled keeps its entry and its place: the modelled screens fill their
-    // old slots in their new order, deleted ones leave, new ones go last.
-    const modelled = new Set(kept.order);
-    const queue = ids.filter((id) => modelled.has(id));
-    const rebuilt: Preserved["hierarchy"] = [];
-    for (const entry of kept.hierarchy) {
-      if (!modelled.has(entry.ObjectId)) rebuilt.push(entry);
-      else if (queue.length > 0) {
-        const id = queue.shift()!;
-        rebuilt.push(kept.hierarchy.find((e) => e.ObjectId === id) ?? { ObjectId: id, Children: [] });
-      }
-    }
-    for (const id of ids) if (!modelled.has(id)) rebuilt.push({ ObjectId: id, Children: [] });
-    entries.set(nameOf(SCREENS_HIERARCHY), jsonEntry(rebuilt));
+    entries.set(nameOf(SCREENS_HIERARCHY), jsonEntry(rehang(kept.hierarchy, kept.order, ids)));
     changed = true;
   }
   if (removedContents.length > 0 || contentIds.some((id) => !kept.contentOrder.includes(id))) {
@@ -499,7 +582,15 @@ async function packagePreserved(input: PackageInput, kept: Preserved): Promise<U
       if (written.result.inserted > 0 || !entries.has(name)) entries.set(name, written.bytes);
       converterIds = written.result.ids;
     }
-    const graph = appendExtra(buildGraph(first.UniqueId, input.wires, variableIds, alarmTargets, converterIds), kept.extra);
+    const modes = kept.wireModes ?? {};
+    const wires = input.wires.map((w) => {
+      const mode = w.mode ?? modes[`${w.part.UniqueId.toLowerCase()}|${w.property}`];
+      return mode === undefined ? w : { ...w, mode };
+    });
+    const graph = appendExtra(
+      buildGraph(first.UniqueId, wires, variableIds, alarmTargets, converterIds, kept.variableRefs),
+      kept.extra,
+    );
     entries.set(nameOf("Bindings.dat"), jsonEntry(graph));
     changed = true;
   }
@@ -573,6 +664,7 @@ export async function packageProject(
   // --- screens ------------------------------------------------------------
   const hierarchy: { ObjectId: string; Children: [] }[] = [];
   const contents: { ObjectId: string }[] = [];
+  const numbers = new Map(input.screens.filter((s) => s.Type !== "Content").map((s, index) => [s.Name, index + 1]));
 
   // A content screen goes under Contents\, listed in its own hierarchy and
   // never in the screens': it is embedded in a screen, not navigated to.
@@ -581,7 +673,7 @@ export async function packageProject(
     .forEach((screen, index) => {
       const id = screen.UniqueId;
       contents.push({ ObjectId: id });
-      entries.set(`Contents\\${id}\\Screen.dat`, jsonEntry(screen));
+      entries.set(`Contents\\${id}\\Screen.dat`, jsonEntry(linkScreens(screen, numbers)));
       entries.set(`Contents\\${id}\\Metadata.dat`, jsonEntry({ LayoutType: 8, Id: index + 1, ObjectType: 10, Name: screen.Name, Order: index }));
       entries.set(`Contents\\${id}\\LocalVariables.db`, base.localVariables);
     });
@@ -590,7 +682,7 @@ export async function packageProject(
   input.screens.filter((screen) => screen.Type !== "Content").forEach((screen, index) => {
     const id = screen.UniqueId;
     hierarchy.push({ ObjectId: id, Children: [] });
-    entries.set(screenEntry(id, "Screen.dat"), jsonEntry(screen));
+    entries.set(screenEntry(id, "Screen.dat"), jsonEntry(linkScreens(screen, numbers)));
     entries.set(
       screenEntry(id, "Metadata.dat"),
       jsonEntry({

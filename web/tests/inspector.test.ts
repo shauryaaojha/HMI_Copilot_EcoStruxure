@@ -83,7 +83,7 @@ describe("inspector fields come from the schema, not from a list", () => {
   });
 
   it("carries the schema's numeric constraints onto the editor", () => {
-    const digits = fieldsOf("NumericDisplay").find((f) => f.key === "DecimalDigits");
+    const digits = fieldsOf("NumericDisplay").find((f) => f.key === "FloatDigits");
     expect(digits?.kind).toBe("integer");
     expect(digits?.min).toBe(0);
     expect(digits?.max).toBe(6);

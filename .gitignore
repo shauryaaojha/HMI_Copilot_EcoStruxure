@@ -50,3 +50,10 @@ demo_project/renders/
 # Scanned project knowledge (lib/knowledge/store.ts). Holds customer tag
 # names, comments and alarm text: it stays on the machine that scanned it.
 web/.knowledge/
+
+# Engineers' real projects carry their PLC connection (DriverConfig.db): local only.
+samples/**/*.eote
+demo_project/*_4.1.eote
+demo_project/HMICopilot_Panel1.eote
+auto&manua.eote
+images of real hmi/

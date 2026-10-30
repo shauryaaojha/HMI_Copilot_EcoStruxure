@@ -235,7 +235,7 @@ export function NumericDisplayPart({
         strokeWidth={stroke}
       />
       <PlacedText
-        text={shown.toFixed(part.DecimalDigits ?? 0)}
+        text={shown.toFixed(part.FloatDigits ?? 0)}
         left={part.Location.Left}
         top={part.Location.Top}
         width={(part.Width ?? 0)}

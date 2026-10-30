@@ -113,12 +113,18 @@ gate("packager (Phase 1)", () => {
     // and the builder now draws on the Standard pack (lib/standard/pack.ts).
     // What the reference still proves is that every object, its type, its
     // name, its place and its size are what the product opened.
-    const PRESENTATION = new Set(["Fill", "Border", "TextColor", "Font", "Thickness"]);
+    // IsInputModeEnabled is newer than the reference: a display that leaves
+    // it out takes keypad input (the product omits it when it is on), so every
+    // reading now says false. tools/make_project.py writes it too; the
+    // reference file predates that. So does FloatDigits: the reference says
+    // DecimalDigits, a name the product does not have (NumericDisplay.propDef).
+    const PRESENTATION = new Set(["Fill", "Border", "TextColor", "Font", "Thickness", "IsInputModeEnabled"]);
     const strip = (node: Record<string, unknown>): unknown => {
       const { UniqueId, ...kept } = node;
       void UniqueId;
       const rest: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(kept)) {
+      for (const [key, v] of Object.entries(kept)) {
+        const k = key === "DecimalDigits" ? "FloatDigits" : key;
         if (PRESENTATION.has(k)) continue;
         rest[k] = v !== null && typeof v === "object" && !Array.isArray(v) && "Text" in (v as object) ? strip(v as Record<string, unknown>) : v;
       }

@@ -19,7 +19,7 @@
 import type { Part } from "./schema";
 import { boxOf, resolveSlot, type Box, type Side } from "./regions";
 
-const CHROME = /^(Ground|Hdr|HdrTitle|HdrLevel|Nav|NavChip|NavLbl|Foot|FootLbl|FootMark|AlarmBanner|AlarmsLbl)_/;
+const CHROME = /^(Ground|Hdr|HdrTitle|HdrLevel|Nav|NavChip|NavLbl|NavGo|Foot|FootLbl|FootMark|AlarmBanner|AlarmsLbl)_/;
 /** Less than this many pixels of shared width or height is a touch, not an overlap. */
 const TOLERANCE = 2;
 /** Where a moved unit is tried, in order: beside what it overlapped, then anywhere in the body. */

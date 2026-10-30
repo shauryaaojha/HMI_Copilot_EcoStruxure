@@ -15,7 +15,7 @@
 
 import type { Variable } from "@/lib/ote/schema";
 import type { Equipment } from "@/types/events";
-import { classify, machineClass, MACHINE_CLASSES, roleIn } from "@/lib/library/machines";
+import { classify, machineClass, MACHINE_CLASSES, roleIn, words } from "@/lib/library/machines";
 
 /**
  * A DDT instance as the tag import reported it (lib/tags/controlExpert.ts):
@@ -91,56 +91,82 @@ const machineFor = (prefix: string): { kind: string; symbol?: string } | undefin
 
 /** Role suffixes, longest first so _FAULT wins over _F. */
 const ROLES: [RegExp, string][] = [
-  [/_(RUN|RUNNING|ON)$/i, "running"],
-  [/_(FLT|FAULT|TRIP|ALM|ALARM)$/i, "fault"],
-  [/_(CMD|START|STOP)$/i, "command"],
-  [/_(SPD|SPEED)$/i, "speed"],
-  [/_(PV|VALUE|VAL)$/i, "value"],
+  // A whole name is read as its last word too: a Machine Expert program's
+  // Running, Fault, Ready and AUTOMAN are states with no prefix at all.
+  //
+  // The drive words come from a real M251 + ATV340 project (samples/hmi-panel-1)
+  // and go first, because each would otherwise be read by a shorter word below:
+  // Reference_Freq is the speed the drive is being asked for, read back from
+  // it - shown, never typed into, unlike Frequency_Set - and
+  // Drive_Thermal_State is a percentage, not a state.
+  [/(^|_)REF(ERENCE)?_?(FREQ|FREQUENCY|SPEED|SPD)$/i, "reference"],
+  [/(^|_)(THERMAL_STATE|THERMAL|THR)$/i, "thermal"],
+  [/(^|_)(SETVALUE|SET_VALUE|SET)$/i, "setpoint"],
+  [/(^|_)(REG|REGISTER|WORD)$/i, "word"],
+  [/(^|_)(RESET|RST|ACK)$/i, "reset"],
+  [/(^|_)(READY_TO_SWITCHON|SWITCHON|SWITCH_ON)$/i, "ready"],
+  [/(^|_)(AUTOMAN|AUTO_MAN|HOA)$/i, "mode"],
+  [/(^|_)(RUN|RUNNING|ON)$/i, "running"],
+  [/(^|_)(FLT|FAULT|TRIP|ALM|ALARM)$/i, "fault"],
+  [/(^|_)(CMD|START|STOP)$/i, "command"],
+  [/(^|_)(SPD|SPEED)$/i, "speed"],
+  [/(^|_)(PV|VALUE|VAL)$/i, "value"],
   // What a tag measures, when the name says so rather than an instrument
   // prefix: TNK_101_LEVEL is a level, PMP_102_HRS is running hours.
-  [/_(LEVEL|LVL)$/i, "level"],
-  [/_(FLOW|FLW)$/i, "flow"],
-  [/_(PRESSURE|PRESS|PRES|PRS)$/i, "pressure"],
-  [/_(TEMPERATURE|TEMP|TMP)$/i, "temperature"],
-  [/_(VOL|VOLUME)$/i, "volume"],
-  [/_(HRS|HOURS|RUNTIME)$/i, "hours"],
-  [/_(CUR|CURRENT|AMPS)$/i, "current"],
-  [/_(POS|POSITION)$/i, "position"],
-  [/_(SP|SETPOINT)$/i, "setpoint"],
-  [/_(HI|HIGH|HH)$/i, "high"],
-  [/_(LO|LOW|LL)$/i, "low"],
+  [/(^|_)(LEVEL|LVL)$/i, "level"],
+  [/(^|_)(FLOW|FLW)$/i, "flow"],
+  [/(^|_)(PRESSURE|PRESS|PRES|PRS)$/i, "pressure"],
+  [/(^|_)(TEMPERATURE|TEMP|TMP)$/i, "temperature"],
+  [/(^|_)(VOL|VOLUME)$/i, "volume"],
+  [/(^|_)(HRS|HOURS|RUNTIME)$/i, "hours"],
+  [/(^|_)(CUR|CURRENT|AMPS)$/i, "current"],
+  [/(^|_)(POS|POSITION)$/i, "position"],
+  [/(^|_)(SP|SETPOINT)$/i, "setpoint"],
+  [/(^|_)(HI|HIGH|HH)$/i, "high"],
+  [/(^|_)(LO|LOW|LL)$/i, "low"],
   // Everything below was found by lib/critic/coverage.ts, which reads every
   // sample's tag list and reports a trailing word the table does not know.
   // Each of these was silently being read as a plain value, which is how a
   // valve's open limit ends up on a screen as "Value" with a 0-100 range.
   // --- states a machine reports (BOOL) ---
-  [/_(OPENED|OPEN)$/i, "open"],
-  [/_(CLOSED|CLOSE|SHUT)$/i, "closed"],
-  [/_(AVAILABLE|AVAIL)$/i, "available"],
-  [/_(READY)$/i, "ready"],
-  [/_(HEALTHY|HEALTH)$/i, "healthy"],
-  [/_(OCCUPIED|OCC)$/i, "occupied"],
-  [/_(ACTIVE|ENABLED)$/i, "active"],
-  [/_(FLAME)$/i, "flame"],
+  [/(^|_)(OPENED|OPEN)$/i, "open"],
+  [/(^|_)(CLOSED|CLOSE|SHUT)$/i, "closed"],
+  [/(^|_)(AVAILABLE|AVAIL)$/i, "available"],
+  [/(^|_)(READY)$/i, "ready"],
+  [/(^|_)(HEALTHY|HEALTH)$/i, "healthy"],
+  [/(^|_)(OCCUPIED|OCC)$/i, "occupied"],
+  [/(^|_)(ACTIVE|ENABLED)$/i, "active"],
+  [/(^|_)(FLAME)$/i, "flame"],
   // --- abnormal conditions: a fault by any other name raises an alarm ---
-  [/_(ESTOP|EMERGENCYSTOP|EMSTOP)$/i, "estop"],
-  [/_(JAMMED|JAM)$/i, "fault"],
-  [/_(LOCKOUT|LOCKED)$/i, "fault"],
+  [/(^|_)(ESTOP|EMERGENCYSTOP|EMSTOP)$/i, "estop"],
+  [/(^|_)(JAMMED|JAM)$/i, "fault"],
+  [/(^|_)(LOCKOUT|LOCKED)$/i, "fault"],
   // --- what a sequence or a selector is on (INT) ---
-  [/_(MODE)$/i, "mode"],
-  [/_(STEP|PHASE)$/i, "step"],
-  [/_(ID|CIRCUIT|LEAD|SELECTED|SEL)$/i, "selection"],
+  [/(^|_)(MODE)$/i, "mode"],
+  [/(^|_)(STEP|PHASE)$/i, "step"],
+  [/(^|_)(ID|CIRCUIT|LEAD|SELECTED|SEL)$/i, "selection"],
   // --- counted and computed numbers ---
-  [/_(REJECTS|REJECT|COUNT|CNT)$/i, "count"],
-  [/_(TOTALISER|TOTALIZER|TOTAL)$/i, "total"],
-  [/_(RATE)$/i, "rate"],
-  [/_(EFFICIENCY|OEE|EFF)$/i, "efficiency"],
-  [/_(FREQUENCY|FREQ|HZ)$/i, "frequency"],
-  [/_(POWER|KW)$/i, "power"],
+  [/(^|_)(REJECTS|REJECT|COUNT|CNT)$/i, "count"],
+  [/(^|_)(TOTALISER|TOTALIZER|TOTAL)$/i, "total"],
+  [/(^|_)(RATE)$/i, "rate"],
+  [/(^|_)(EFFICIENCY|OEE|EFF)$/i, "efficiency"],
+  [/(^|_)(FREQUENCY|FREQ|HZ)$/i, "frequency"],
+  [/(^|_)(POWER|KW)$/i, "power"],
   // A magnetron's anode voltage is HTR_101_ANODE_KV in a real export.
-  [/_(VOLTAGE|VOLTS|VOLT|KV|VLL|VLN)$/i, "voltage"],
-  [/_(FACTOR|PF)$/i, "factor"],
-  [/_(MODULATION|MOD)$/i, "modulation"],
+  [/(^|_)(VOLTAGE|VOLTS|VOLT|KV|VLL|VLN)$/i, "voltage"],
+  [/(^|_)(FACTOR|PF)$/i, "factor"],
+  [/(^|_)(TORQUE|TRQ)$/i, "torque"],
+  [/(^|_)(VELOCITY|VEL|RPM)$/i, "speed"],
+  // A status the drive reports: a STRING the PLC writes ("Ready", "Fault") or
+  // a status word. Shown as it is, never on a bar.
+  [/(^|_)(STATUS|STS|STATE)$/i, "state"],
+  // Elapsed time with no unit in the name: an ATV's run time and power-on
+  // time. Not "hours", because nothing says the PLC counts in hours.
+  [/(^|_)(TIME|RUNTIME_S)$/i, "time"],
+  // Something is off: which thing only the rest of the name says.
+  [/(^|_)(OFF|STOPPED|IDLE)$/i, "off"],
+  [/(^|_)(DIRECTION|DIR|REVERSE|REV)$/i, "direction"],
+  [/(^|_)(MODULATION|MOD)$/i, "modulation"],
 ];
 
 export interface TaggedRole {
@@ -344,7 +370,50 @@ export function inferEquipment(variables: Variable[], structure: StructureHint[]
     }
   }
 
-  return [...units.values()];
+  return oneMachine([...units.values()]);
+}
+
+/**
+ * A small machine's program names its signals for what they are, not by an
+ * ISA-5.1 loop: Motor_Freq, Motor_Current, Run_CMD, Fault, Drive_Status
+ * (samples/hmi-panel-1, an M251 running one ATV340). Read by prefix, that is
+ * twenty one-tag "instruments" spread over four overflow screens, with the
+ * START and STOP bits on different pages from the drive they start.
+ *
+ * When no tag carries a loop or a declared type, at most one group is a
+ * machine (Motor_* reads as one by its prefix), and the names themselves say
+ * what the machine is (a word of the class in them: Drive_Status), the whole
+ * list is that one machine. Two machines (Pump_Speed, Fan_Speed) or names
+ * that name nothing leave the list as it was: a guess here would put every
+ * tag of a plant on one faceplate.
+ */
+function oneMachine(units: InferredEquipment[]): InferredEquipment[] {
+  if (units.length < 3 || units.some((u) => u.loop || u.ddt)) return units;
+  if (units.filter((u) => u.kind !== "instrument").length > 1) return units;
+  const roles = units.flatMap((u) => u.roles);
+  const said = ` ${roles.flatMap((r) => words(r.tag)).join(" ").toLowerCase()} `;
+  // Whole words only: "ph" is an analyser's word and inside every "phase".
+  const names = (id: string) => machineClass(id)?.commentWords.some((w) => said.includes(` ${w} `)) ?? false;
+  const named = classify({ name: "", members: roles.map((r) => r.tag), comments: [said] }).filter((c) => names(c.classId));
+  if (named.length === 0) return units;
+  // A motor with a frequency or a speed reference is on a variable speed
+  // drive - a contactor cannot give it either - and the drive is the device
+  // the panel talks to.
+  const onDrive = roles.some((r) => r.role === "frequency" || r.role === "reference" || (r.role === "setpoint" && /FREQ|SPEED|SPD/i.test(r.tag)));
+  const best = (onDrive && named.find((c) => c.classId === "drive")) || named[0];
+  const klass = machineClass(best.classId)!;
+  return [
+    {
+      id: klass.id.toUpperCase(),
+      kind: klass.id,
+      label: klass.name,
+      tags: roles.map((r) => r.tag),
+      symbol: klass.symbol,
+      roles: roles.map((r) => (r.role === "value" ? { ...r, role: roleFor(r.tag, klass.id) } : r)),
+      confidence: best.confidence,
+      evidence: [...best.evidence, ...(onDrive && best.classId === "drive" ? ["a frequency or speed reference means a drive, not a contactor"] : []), "no tag carries a loop number or a machine prefix: one machine"],
+    },
+  ];
 }
 
 /** Where a threshold alarm sits, as a share of the reading's range. */

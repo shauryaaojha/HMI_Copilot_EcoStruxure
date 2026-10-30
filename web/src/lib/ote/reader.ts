@@ -14,7 +14,7 @@
 
 import JSZip from "jszip";
 import { DATA_TYPES, Part, Screen, normalizePart, type Alarm, type Variable } from "./schema";
-import type { BindingGraph, BindingRow, Source, Target, Wire } from "./bindings";
+import type { BindingGraph, BindingRow, Source, Target, VariableRef, VariableRefs, Wire } from "./bindings";
 import { OBJECT_TYPE } from "./bindings";
 import type { AlarmTarget, VariableIds } from "./databases";
 import { openDatabase, readPanel, type Panel } from "./packager";
@@ -63,6 +63,14 @@ export interface Preserved {
    */
   hierarchy: { ObjectId: string; [key: string]: unknown }[];
   variableIds: VariableIds;
+  /** Full binding names of folder and member variables, by Name. */
+  variableRefs?: VariableRefs;
+  /**
+   * A binding's Mode where the file had the non-default one, by
+   * `<part id>|<property>`. Wires reach the writer from the client, which does
+   * not carry the mode, so the writer takes it from here.
+   */
+  wireModes?: Record<string, number>;
   alarms: {
     groupId: string | null;
     groupName: string;
@@ -372,7 +380,16 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
   const hierarchy = (Array.isArray(hierarchyRaw) ? hierarchyRaw : []).filter(
     (h): h is { ObjectId: string } => typeof (h as { ObjectId?: unknown })?.ObjectId === "string",
   );
-  const order = hierarchy.map((h) => h.ObjectId);
+  // Depth first: the screens under a master screen or folder are in its
+  // Children, in their order, after it.
+  const order: string[] = [];
+  const walkScreens = (nodes: unknown) => {
+    for (const node of Array.isArray(nodes) ? (nodes as { ObjectId?: unknown; Children?: unknown }[]) : []) {
+      if (typeof node?.ObjectId === "string" && !order.includes(node.ObjectId)) order.push(node.ObjectId);
+      walkScreens(node?.Children);
+    }
+  };
+  walkScreens(hierarchy);
   // Screens the hierarchy forgot still exist on disk; list them after.
   for (const name of entries.keys()) {
     const m = name.replace(/\\/g, "/").match(/^Screens\/([^/]+)\/Screen\.dat$/i);
@@ -438,14 +455,51 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
   // --- variables ----------------------------------------------------------
   const variables: Variable[] = [];
   const variableIds: VariableIds = {};
+  const variableRefs: VariableRefs = {};
   let variableRows = 0;
   const db0 = await database("Variables.db");
   if (db0) {
     const db = db0;
     try {
-      const rows = query(db, "Variables", 'SELECT "UniqueId", "Name", "DataType", "Comments", "DeviceAddress" FROM Variables ORDER BY "Order"');
+      const rows = query(db, "Variables", 'SELECT * FROM Variables ORDER BY "Order"');
+      const col = (name: string) => rows?.columns.indexOf(name) ?? -1;
+      const at = (row: unknown[], name: string) => {
+        const i = col(name);
+        return i >= 0 && row[i] != null ? String(row[i]) : "";
+      };
+      // A binding names a variable by its folder path and, for a structure
+      // member, its parent and root: `MachineExpertEquipment1.GVL.Motor_Current`
+      // with ParentIds `<member root>,<parent>,<folder>,...`. Checked against
+      // every variable source in the template corpus and a real panel project.
+      const hasFolders = db.exec("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'Folders'").length > 0;
+      const folders = new Map(
+        ((hasFolders && query(db, "Folders", 'SELECT "UniqueId", "Name", "ParentId" FROM Folders')?.values) || []).map(
+          ([id, name, parent]) => [String(id).toUpperCase(), { name: String(name), parent: parent == null ? "" : String(parent) }],
+        ),
+      );
+      const byUid = new Map((rows?.values ?? []).map((r) => [at(r, "UniqueId").toUpperCase(), r]));
+      const refOf = (row: unknown[]): VariableRef | undefined => {
+        const me = at(row, "UniqueId").toUpperCase();
+        const parent = at(row, "ParentId").toUpperCase();
+        const root = at(row, "RootParentId").toUpperCase();
+        const top = root && root !== me && byUid.has(root) ? byUid.get(root)! : row;
+        const chain: { id: string; name: string }[] = [];
+        for (let f = at(top, "FolderId").toUpperCase(); f && folders.has(f) && chain.length < 32; ) {
+          chain.unshift({ id: f, name: folders.get(f)!.name });
+          f = folders.get(f)!.parent.toUpperCase();
+        }
+        const ids = [
+          ...(root && root !== me ? [root] : []),
+          ...(parent && parent !== me && parent !== root ? [parent] : []),
+          ...chain.map((f) => f.id),
+        ];
+        if (ids.length === 0) return undefined;
+        return { fullName: [...chain.map((f) => f.name), at(row, "Name")].join("."), parentIds: ids.join(",") };
+      };
       for (const row of rows?.values ?? []) {
-        const [uid, name, dataType, comments, address] = row as [string, string, string, string | null, string | null];
+        const [uid, name, dataType, comments, address] = ["UniqueId", "Name", "DataType", "Comments", "DeviceAddress"].map((c) =>
+          col(c) >= 0 ? row[col(c)] : null,
+        ) as [string, string, string, string | null, string | null];
         if (!(DATA_TYPES as readonly string[]).includes(dataType)) {
           variableRows++;
           continue;
@@ -457,6 +511,8 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
           DeviceAddress: address ?? "",
         });
         variableIds[name] = uid;
+        const ref = refOf(row);
+        if (ref) variableRefs[name] = ref;
       }
     } finally {
       db.close();
@@ -520,7 +576,18 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
     if (target && target.ObjectType === OBJECT_TYPE.PART && tag && (!row.ConverterId || converter)) {
       const found = partsById.get(target.ObjectId.toLowerCase());
       if (found) {
-        wires.push({ part: found.part, tag, property: row.TargetProperty, screenId: found.screenId, ...(converter ? { converter } : {}) });
+        // The default mode is left implicit, so only a wire the engineer set
+        // the other way carries one.
+        const mode = Number(row.Mode);
+        const implicit = (row.ConverterId ? 1 : 2) === mode;
+        wires.push({
+          part: found.part,
+          tag,
+          property: row.TargetProperty,
+          screenId: found.screenId,
+          ...(converter ? { converter } : {}),
+          ...(implicit || !Number.isFinite(mode) ? {} : { mode }),
+        });
         usedSources.add(sourceRefs[0]);
         usedTargets.add(row.Target);
         continue;
@@ -626,6 +693,10 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
       contentOrder: screens.filter((s) => preservedScreens.get(s.UniqueId)?.area === "Contents").map((s) => s.UniqueId),
       hierarchy: (Array.isArray(hierarchy) ? hierarchy : []) as Preserved["hierarchy"],
       variableIds,
+      variableRefs,
+      wireModes: Object.fromEntries(
+        wires.flatMap((w) => (w.mode === undefined ? [] : [[`${w.part.UniqueId.toLowerCase()}|${w.property}`, w.mode]])),
+      ),
       alarms: alarmMeta,
       alarmTargets,
       extra,

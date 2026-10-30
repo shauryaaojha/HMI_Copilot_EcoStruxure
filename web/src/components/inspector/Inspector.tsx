@@ -30,7 +30,7 @@ import { groupsOf, valueAt, withIndex, type SchemaField } from "./schemaFields";
 
 type InspectorTab = "properties" | "layers" | "library" | "tags";
 
-/** "TextColor" -> "Text colour" is a step too far; "DecimalDigits" -> "Decimal digits". */
+/** "TextColor" -> "Text colour" is a step too far; "FloatDigits" -> "Decimal digits". */
 function label(key: string) {
   const spaced = key.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
   return spaced.charAt(0) + spaced.slice(1).toLowerCase();

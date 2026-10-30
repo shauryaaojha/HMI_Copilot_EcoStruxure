@@ -299,7 +299,18 @@ export const NumericDisplay = z.object({
   Type: z.literal("NumericDisplay"),
   ...base,
   CurrentValue: z.number().default(0),
-  DecimalDigits: z.number().int().min(0).max(6).optional(),
+  /** Absent means on: the panel opens a keypad on touch. A reading writes false. */
+  IsInputModeEnabled: z.boolean().optional(),
+  /**
+   * Digits after the point; absent is 0. The product's name for it (its
+   * NumericDisplay.propDef); we wrote DecimalDigits before, which the panel
+   * ignored, so every reading showed whole numbers.
+   */
+  FloatDigits: z.number().int().min(0).max(6).optional(),
+  /** Digits before the point; absent is 5. */
+  IntegerDigits: z.number().int().min(1).max(10).optional(),
+  /** Shown after the value, as the rig's " A" and " RPM". */
+  Suffix: z.string().optional(),
   TextColor: Paint.optional(),
   Font: FontRef.optional(),
   Fill: Paint.optional(),
@@ -498,6 +509,9 @@ export const ClickTrigger = z.object({
   Source: z.string().optional(),
   Screen: z.number().int().optional(),
   Content: z.number().int().optional(),
+  // Ours, never the product's: the screen a screen-change touch goes to, by
+  // name, turned into Screen (its number) by the packager (linkScreens).
+  ScreenName: z.string().optional(),
 });
 
 export const Switch = z.object({
@@ -667,7 +681,34 @@ export const BlockTrend = z
   })
   .passthrough();
 
-export const Part = z.discriminatedUnion("Type", [
+/**
+ * The same schema, keeping at every depth what it does not model.
+ *
+ * zod strips unknown keys, and the writer merges a part over its raw self at
+ * the top level only, so a nested field the product writes and we do not
+ * model - a Switch's ClickTrigger.Destination, a face's ImagePath, a
+ * display's Suffix, a font's Bold - was lost whenever a part was edited,
+ * copied, or carried into another project (scripts/project-check.mts counts
+ * them on the real corpus). Kept here, it travels with the part.
+ *
+ * Location stays strict: a part in the store sits on a canvas, and the grid
+ * cell it came from is resolved into its box (lib/ote/containers.ts).
+ */
+function lossless(schema: z.ZodTypeAny): z.ZodTypeAny {
+  if (schema === Location) return schema;
+  if (schema instanceof z.ZodObject) {
+    const shape = Object.fromEntries(Object.entries(schema.shape as z.ZodRawShape).map(([k, v]) => [k, lossless(v)]));
+    return z.object(shape).passthrough();
+  }
+  if (schema instanceof z.ZodOptional) return lossless(schema.unwrap()).optional();
+  if (schema instanceof z.ZodNullable) return lossless(schema.unwrap()).nullable();
+  if (schema instanceof z.ZodDefault) return lossless(schema.removeDefault()).default(schema._def.defaultValue());
+  if (schema instanceof z.ZodArray) return z.array(lossless(schema.element));
+  if (schema instanceof z.ZodUnion) return z.union(schema.options.map(lossless) as [z.ZodTypeAny, z.ZodTypeAny]);
+  return schema;
+}
+
+const PartStrict = z.discriminatedUnion("Type", [
   Rectangle,
   TextBox,
   Lamp,
@@ -696,6 +737,12 @@ export const Part = z.discriminatedUnion("Type", [
   ClipArt,
   Image,
 ]);
+
+/** Every part the store models, parsed losslessly. Typed as the strict schema. */
+export const Part = z.discriminatedUnion(
+  "Type",
+  PartStrict.options.map(lossless) as unknown as typeof PartStrict.options,
+) as unknown as typeof PartStrict;
 
 export const ViewBox = z.object({
   Type: z.literal("ViewBox"),

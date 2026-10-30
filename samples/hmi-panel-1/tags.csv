@@ -1,0 +1,36 @@
+Name,DataType,Comment,Address
+Drive_Status,String,HMI text set by script from Status_Reg,
+CMD_Reg,Word,ATV340 command word,Application.GVL.CMD_Reg
+Communication_Status,Word,"PLC symbol, GVL",Application.GVL.Communication_Status
+Drive_Thermal_State,Word,"PLC symbol, GVL",Application.GVL.Drive_Thermal_State
+Mains_Voltage,Word,"PLC symbol, GVL",Application.GVL.Mains_Voltage
+Motor_Current,Word,"PLC symbol, GVL",Application.GVL.Motor_Current
+Motor_Freq,Word,"PLC symbol, GVL",Application.GVL.Motor_Freq
+Motor_Power,Word,"PLC symbol, GVL",Application.GVL.Motor_Power
+Motor_Run_Time,Word,"PLC symbol, GVL",Application.GVL.Motor_Run_Time
+Motor_Thermal_State,Word,"PLC symbol, GVL",Application.GVL.Motor_Thermal_State
+Motor_Torque,Word,"PLC symbol, GVL",Application.GVL.Motor_Torque
+Motor_Voltage,Word,"PLC symbol, GVL",Application.GVL.Motor_Voltage
+Output_Velocity,Word,"PLC symbol, GVL",Application.GVL.Output_Velocity
+Power_On_Time,Word,"PLC symbol, GVL",Application.GVL.Power_On_Time
+Reference_Freq,Word,"PLC symbol, GVL",Application.GVL.Reference_Freq
+Reference_Frequency,Word,"PLC symbol, GVL",Application.GVL.Reference_Frequency
+Speed_Setvalue,Word,"PLC symbol, GVL",Application.GVL.Speed_Setvalue
+Status_Reg,Word,"ATV340 status word; project script maps 561 Ready, 568 Fault, 1591 Run, 592 Not Ready",Application.GVL.Status_Reg
+Direction,Bool,"PLC symbol, Main",Application.Main.Direction
+Fault,Bool,"PLC symbol, Main",Application.Main.Fault
+Flt_Reset,Bool,"PLC symbol, Main",Application.Main.Flt_Reset
+Frequency_Set,Word,"PLC symbol, Main",Application.Main.Frequency_Set
+Ready,Bool,"PLC symbol, Main",Application.Main.Ready
+Ready_To_SwitchOn,Bool,"PLC symbol, Main",Application.Main.Ready_To_SwitchOn
+Run_CMD,Bool,"PLC symbol, Main",Application.Main.Run_CMD
+Running,Bool,"PLC symbol, Main",Application.Main.Running
+Stop_CMD,Bool,"PLC symbol, Main",Application.Main.Stop_CMD
+Var1,Word,HMI copy of Motor_Voltage (100 ms global script),
+Var2,Word,HMI copy of Output_Velocity (100 ms global script),
+Var3,Word,HMI copy of Motor_Current (100 ms global script),
+Var4,Word,HMI copy of Motor_Thermal_State (100 ms global script),
+Var5,Word,HMI copy of Motor_Power (100 ms global script),
+AUTO_SEQ_OFF,Bool,"PLC symbol, Main",Application.Main.AUTO_SEQ_OFF
+AUTOMAN,Bool,"PLC symbol, Main",Application.Main.AUTOMAN
+AUTOSTART,Bool,"PLC symbol, Main",Application.Main.AUTOSTART

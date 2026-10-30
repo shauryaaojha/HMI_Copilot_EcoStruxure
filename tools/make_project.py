@@ -142,7 +142,9 @@ def alarm_lamp(name, off_text, on_text, left, top, width, height):
 def numeric(name, left, top, width, height, decimals=1):
     return {
         "Type": "NumericDisplay", "UniqueId": gid(), "Name": name,
-        "CurrentValue": 0, "DecimalDigits": decimals,
+        "CurrentValue": 0, "FloatDigits": decimals,
+        # Left out, input mode is on: an operator could type into a reading.
+        "IsInputModeEnabled": False,
         "TextColor": {"Color": {"Value": INK}}, "Font": dict(FONT, Size=20),
         "Fill": {"Color": {"Value": WHITE}},
         "Border": {"Color": {"Value": DARK_GREY}}, "Thickness": 1,

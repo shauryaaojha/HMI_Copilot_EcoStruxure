@@ -403,6 +403,23 @@ export function fallbackPlan(
       : "Unit";
 
   const screens: ScreenSpec[] = [];
+  // One machine is its own screen: a station of one tile says less than the
+  // machine's faceplate, and the faceplate is where its start, stop, reset,
+  // mode and setpoint are (samples/hmi-panel-1, one ATV340).
+  if (equipment.length === 1 && machines.length === 1) {
+    const [unit] = equipment;
+    return {
+      screens: [{
+        screenName: `${unit.kind.charAt(0).toUpperCase()}${unit.kind.slice(1).replace(/[^A-Za-z0-9]/g, "")}`,
+        title: unit.label,
+        level: 3,
+        include: [unit.id],
+        sections: ["status", "process", "alarms"],
+        readings,
+      }],
+      rationale: `One machine, ${unit.label}: one screen, its faceplate.`,
+    };
+  }
   if (equipment.length > OVERVIEW_THRESHOLD) {
     screens.push({
       screenName: "PlantOverview",

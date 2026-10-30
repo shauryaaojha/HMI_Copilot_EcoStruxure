@@ -122,7 +122,7 @@ describe("the canvas draws what render_screen.py drew", () => {
   it("shows a numeric display's design value at its own precision", () => {
     for (const part of byType("NumericDisplay")) {
       expect(findRect(markup, { ...expectedBox(part, part.Thickness ?? 1), fill: WHITE })).toBeDefined();
-      expect(markup).toContain(part.CurrentValue.toFixed(part.DecimalDigits ?? 0));
+      expect(markup).toContain(part.CurrentValue.toFixed(part.FloatDigits ?? 0));
     }
   });
 

@@ -35,7 +35,7 @@ const labels = (screen: Screen) =>
   screen.Children[0].Children.flatMap((p) => (p.Type === "TextBox" && p.Name.startsWith("NavLbl_") ? [p.Text] : []));
 
 const boxesExceptNav = (screen: Screen) =>
-  screen.Children[0].Children.filter((p) => !/^NavChip_|^NavLbl_/.test(p.Name)).map((p) => [p.Name, p.Location.Left, p.Location.Top, p.Width, p.Height]);
+  screen.Children[0].Children.filter((p) => !/^NavChip_|^NavLbl_|^NavGo_/.test(p.Name)).map((p) => [p.Name, p.Location.Left, p.Location.Top, p.Width, p.Height]);
 
 describe("refreshNavigation", () => {
   it("makes every generated strip list every screen, current one first-class", () => {
