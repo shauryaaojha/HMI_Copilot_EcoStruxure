@@ -11,10 +11,11 @@
  *
  * Phase 3 of docs/BUILD_PLAN.md.
  *
- * Screens first (lib/ai/draft.ts): `draft` gives a described plant placeholder
- * tags to be drawn against, and an upload into a project that has them matches
- * each placeholder to a real tag and rebinds the screens, reporting what it
- * could not match.
+ * Screens first: the placeholder tags a project is drawn against now come from
+ * a confirmed plant brief (lib/brief), not from this hook - a description alone
+ * was never reviewed by anybody. What stays here is the other half: an upload
+ * into a project that holds placeholders matches each one to a real tag and
+ * rebinds the screens, reporting what it could not match.
  */
 
 import { useCallback, useState } from "react";
@@ -299,45 +300,6 @@ export function useTagImport() {
   );
 
   /**
-   * Screens first: placeholder tags drafted from the description, recorded
-   * as assumed so the export leaves them out. Returns how many, or null.
-   */
-  const draft = useCallback(
-    async (intent: string) => {
-      setState({ status: "parsing", fileName: "the description" });
-      try {
-        const response = await fetch("/api/tags/draft", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ intent }),
-        });
-        const data = await jsonOrNull<{ variables: Variable[]; by: "model" | "rules"; error?: string }>(response);
-        if (!response.ok || !data || data.variables.length === 0) {
-          const message = data?.error ?? "no equipment recognised in the description";
-          setState({ status: "failed", fileName: "the description", message });
-          return null;
-        }
-        importTags(data.variables, {
-          fileName: "Assumed from the description",
-          at: Date.now(),
-          corrections: [],
-          skipped: [],
-          summary: { total: data.variables.length },
-          pending: true,
-        });
-        setState({ status: "done", fileName: "the description", count: data.variables.length });
-        log(`Assumed ${data.variables.length} placeholder tags from the description (${data.by === "model" ? "by the model" : "by rules"}); import the real export later to bind them`);
-        return data.variables.length;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "drafting failed";
-        setState({ status: "failed", fileName: "the description", message });
-        return null;
-      }
-    },
-    [importTags, log],
-  );
-
-  /**
    * Fetches a committed sample and puts it through the same path a dropped
    * file takes - same route, same corrections, same reporting. Anything else
    * would make the samples a demo mode rather than a test of the importer.
@@ -361,5 +323,5 @@ export function useTagImport() {
 
   const reset = useCallback(() => setState({ status: "idle" }), []);
 
-  return { state, upload, useSample, draft, reset };
+  return { state, upload, useSample, reset };
 }
