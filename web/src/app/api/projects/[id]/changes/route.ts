@@ -4,6 +4,7 @@
  * which were accepted and why any were not. The author is always the signed-in
  * editor: a client cannot write in someone else's name, or the Copilot's.
  */
+import { after } from "next/server";
 import { repo } from "@/lib/server/repo";
 import { requireAccess, requireReader } from "@/lib/server/access";
 import { currentUser } from "@/lib/server/session";
@@ -11,8 +12,32 @@ import { BATCH_LIMIT } from "@/lib/server/repo-live";
 import { errorResponse, json, type Context } from "@/lib/server/http";
 import { ServerError } from "@/lib/server/errors";
 import { publishRevision } from "@/lib/realtime/publish";
+import type { RevisionNotice } from "@/lib/realtime/config";
 import type { Change } from "@/lib/collab/types";
 export const runtime = "nodejs";
+
+/**
+ * Send the revision notice once the answer is on its way.
+ *
+ * Through `after` rather than a bare promise, for the reason the agent route
+ * uses it (api/projects/[id]/agent/route.ts): Vercel may freeze the function
+ * the instant the response is returned, and work nobody is waiting on is the
+ * first thing lost. `after` is the ask to stay alive for it.
+ *
+ * `after` needs a request scope. Where there is none - a route function called
+ * directly - there is nothing to schedule, and that is not worth failing a
+ * write for: a missed notice is closed by the next one, which is the whole
+ * reason the broadcast is a hint and not the truth (lib/realtime/publish.ts).
+ */
+function announce(notice: RevisionNotice) {
+  try {
+    after(async () => {
+      await publishRevision(notice);
+    });
+  } catch {
+    // No request scope: the edit is committed, which is what the answer says.
+  }
+}
 
 /** Body `{ base, changes: Change[] }`; answers `{ rev, accepted, rejected }`. */
 export async function POST(request: Request, context: Context) {
@@ -29,9 +54,7 @@ export async function POST(request: Request, context: Context) {
     const result = await repo().live.append(id, changes);
     // After the transaction, never before it: the broadcast says a revision
     // landed, and the revision it names is the one Mongo assigned.
-    if (result.accepted.length > 0) {
-      void publishRevision({ projectId: id, rev: result.rev, author: user.id });
-    }
+    if (result.accepted.length > 0) announce({ projectId: id, rev: result.rev, author: user.id });
     return Response.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (e) { return errorResponse(e); }
 }

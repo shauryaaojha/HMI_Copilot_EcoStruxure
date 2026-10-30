@@ -17,6 +17,7 @@
     "build:symbols": "tsx scripts/build-symbol-demo.mts",
     "build:bars": "tsx --tsconfig scripts/tsconfig.json scripts/build-bar-demo.mts",
     "skeleton:upload": "tsx --tsconfig scripts/tsconfig.json scripts/upload-skeleton.mts",
+    "realtime:check": "tsx --tsconfig scripts/tsconfig.json scripts/realtime-check.mts",
     "hmi": "tsx --tsconfig scripts/tsconfig.json bin/hmi.mts"
   },
   "dependencies": {

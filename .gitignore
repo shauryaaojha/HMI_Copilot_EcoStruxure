@@ -1,3 +1,6 @@
+# macOS writes one into every folder it has ever shown in Finder
+.DS_Store
+
 # dependencies / build output
 node_modules/
 .next/
