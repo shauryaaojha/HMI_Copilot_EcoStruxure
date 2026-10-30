@@ -51,7 +51,15 @@ export type Attempt = Row & { count: number; resetAt: number };
 export const newUserId = () => `user:${randomBytes(12).toString("hex")}`;
 export type Role = "owner" | "editor" | "commenter" | "viewer";
 export type Snapshot = Omit<PersistedProject, "activeScreenId">;
-export type Project = Row & { ownerId: string; name: string; target: PersistedProject["target"]; createdAt: number; updatedAt: number; rev: number; headRev?: number; sources?: string[]; sourceId?: string; layout?: "typed" | "struct" };
+/**
+ * What a connector - the MCP server, on claude.ai's behalf - may do to one
+ * project without a human in the loop. Absent is both the default and the
+ * safe answer: an AI change arrives as a proposal an editor accepts, which is
+ * what puts a named human decision in the sign-off log. One project at a time
+ * can be opted out of that, for the engineer working alone on a sample.
+ */
+export type ConnectorSettings = { directWrites: boolean };
+export type Project = Row & { ownerId: string; name: string; target: PersistedProject["target"]; createdAt: number; updatedAt: number; rev: number; headRev?: number; sources?: string[]; sourceId?: string; layout?: "typed" | "struct"; connector?: ConnectorSettings };
 /** A version without its snapshot: what listings and history trimming read. */
 export type VersionInfo = Row & { projectId: string; rev: number; authorId: string; label: string; createdAt: number };
 export type Version = VersionInfo & { snapshot: Snapshot };
@@ -97,6 +105,8 @@ export interface Repo {
     get(id: string): Promise<Project | null>;
     list(userId: string): Promise<Project[]>;
     save(id: string, rev: number, snapshot: Snapshot, authorId: string, label?: string): Promise<Version>;
+    /** Connector settings, which are project metadata and not part of the synced document. */
+    connector(id: string, settings: ConnectorSettings): Promise<Project>;
     delete(id: string): Promise<void>;
   };
   versions: { list(projectId: string): Promise<VersionInfo[]>; get(projectId: string, rev: number): Promise<Version | null>; current(projectId: string): Promise<Version | null>; restore(projectId: string, rev: number, authorId: string): Promise<Version> };
@@ -199,6 +209,15 @@ export class BaseRepo implements Repo {
     save: (id, rev, snapshot, authorId, label = "Saved") => this.tx(async d => {
       const p = await d.get<Project>("projects", id); if (!p) throw missing();
       return this.save(d, p, rev, snapshot, authorId, label);
+    }),
+    connector: (id, settings) => this.tx(async d => {
+      const p = await d.get<Project>("projects", id); if (!p) throw missing();
+      // Not a revision-bearing change: the setting says who may write, not
+      // what the project contains, so it does not belong in history and must
+      // not make a concurrent editor's save conflict.
+      const next: Project = { ...p, connector: { directWrites: !!settings.directWrites } };
+      await d.put("projects", next);
+      return next;
     }),
     delete: id => this.tx(async d => {
       await d.remove("projects", id);
