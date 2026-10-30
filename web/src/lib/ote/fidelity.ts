@@ -91,6 +91,23 @@ function compare(before: Map<string, Json>, after: Map<string, Json>, ids: Set<s
   return lost;
 }
 
+const modelledIds = (read: ReadProject) =>
+  new Set(read.screens.flatMap((s) => s.Children[0].Children.map((p) => p.UniqueId.toLowerCase())));
+
+/**
+ * What an edit of the opened project would lose, by type and field: the half
+ * of the check an import needs (the file is opened to be edited in place),
+ * reusing the read it already did. About a second on Demo 1's 105 screens.
+ */
+export async function editLoss(
+  bytes: Uint8Array,
+  read: ReadProject,
+  original?: Map<string, Json>,
+): Promise<Record<string, number>> {
+  const edited = await packageProject({ ...read, screens: read.screens.map(touch) }, undefined, read.preserved);
+  return compare(original ?? (await objects(bytes)), await objects(edited), modelledIds(read), false);
+}
+
 /** An edit that writes every part back without moving it: a moved part is re-pinned in its grid. */
 const touch = (s: Screen): Screen => ({
   ...s,
@@ -102,12 +119,11 @@ export const total = (lost: Record<string, number>) => Object.values(lost).reduc
 export async function fidelity(bytes: Uint8Array, fileName = "project.eote"): Promise<Fidelity> {
   const read = await readProject(bytes, fileName);
   const original = await objects(bytes);
-  const ids = new Set(read.screens.flatMap((s) => s.Children[0].Children.map((p) => p.UniqueId.toLowerCase())));
+  const ids = modelledIds(read);
   const carried: Record<string, number> = {};
   for (const [id, o] of original) if (!ids.has(id)) carried[String(o.Type)] = (carried[String(o.Type)] ?? 0) + 1;
 
-  const edited = await packageProject({ ...read, screens: read.screens.map(touch) }, undefined, read.preserved);
-  const inPlace = compare(original, await objects(edited), ids, false);
+  const inPlace = await editLoss(bytes, read, original);
 
   let moved: Record<string, number> = {};
   let movedError: string | undefined;

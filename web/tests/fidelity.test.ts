@@ -11,7 +11,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { fidelity } from "@/lib/ote/fidelity";
+import { editLoss, fidelity } from "@/lib/ote/fidelity";
+import { packageProject } from "@/lib/ote/packager";
+import { numericDisplay, screenOf } from "@/lib/ote/parts";
+import { readProject } from "@/lib/ote/reader";
 
 const SAMPLES = path.join(__dirname, "..", "..", "samples");
 const TEMPLATES = "C:/Program Files/Schneider Electric/EcoStruxure Operator Terminal Expert 4.4/Buildtime/BuildtimeData/ProjectTemplates";
@@ -36,4 +39,23 @@ describe.skipIf(projects.length === 0)("a real project survives us", () => {
       expect(f.moved).toEqual({});
     }, 60_000);
   }
+});
+
+describe("the import check", () => {
+  it("names what an edit would lose, by type and field", async () => {
+    const part = numericDisplay("Volts", { left: 20, top: 20, width: 90, height: 24 }, 1);
+    const target = { model: "HMIST6600", width: 1280, height: 800 };
+    const bytes = await packageProject({ name: "P", target, screens: [screenOf("S", [part], target)], variables: [], alarms: [], wires: [] });
+    const read = await readProject(bytes, "p.eote");
+    expect(await editLoss(bytes, read)).toEqual({});
+
+    // A reader that dropped a nested field (the writer restores top-level
+    // ones from the file): the check is what says so.
+    const [display] = read.screens[0].Children[0].Children as unknown as { Font: Record<string, unknown> }[];
+    const [key] = Object.keys(display.Font);
+    delete display.Font[key];
+    const lost = Object.keys(await editLoss(bytes, read));
+    expect(lost.length).toBeGreaterThan(0);
+    for (const k of lost) expect(k.startsWith(`NumericDisplay.Font.${key}`)).toBe(true);
+  });
 });

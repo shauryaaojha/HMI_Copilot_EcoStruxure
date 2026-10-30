@@ -94,8 +94,26 @@ symbols with the same names; any to tags the project lacks are dropped and
 listed. Without `--replace` our screens are added beside the engineer's.
 `--only Drive,Alarms` takes just the named screens of the export.
 
+Our parts are written as the project's own objects where it has an example
+(web/src/lib/ote/exemplars.ts). START, STOP and RESET become the engineer's
+`CompoundObject.Switch_PB04`, bound through its `CV` (Mode 2), as their own
+buttons are. Readings, the mode toggle and status text are written the same
+way. The engineer's font is shrunk to fit our row height. The script lists
+every part written as which object.
+
 `demo_project/HMICopilot_Drive_4.1.eote` is the app's screen for this rig's
-tags, made that way: one Drive faceplate (Id 1), 37 bindings.
+tags, made that way: one Drive faceplate (Id 1). It has 22 parts written as
+the project's objects, 3 of them Switch_PB04.
+
+Before building on any new project, check it:
+
+```
+npx tsx --tsconfig scripts/tsconfig.json scripts/project-check.mts <file.eote | folder>
+```
+
+It reports what is modelled and what is carried, the fields an edit or a
+move would lose (it exits non-zero if anything is), and the project's own
+objects.
 
 ## What the app now makes from these tags
 

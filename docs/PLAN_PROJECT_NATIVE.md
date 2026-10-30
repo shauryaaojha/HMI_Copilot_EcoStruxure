@@ -67,7 +67,7 @@ object, untouched.
   carries its PLC connection (`DriverConfig.db`). They live in `samples/`
   locally and are gitignored. Their tests skip when the files are absent.
 
-### Phase 2: project-native objects (exemplars)
+### Phase 2: project-native objects (exemplars). Done on this branch.
 
 `lib/ote/exemplars.ts`:
 
@@ -118,7 +118,7 @@ Tests:
 - A project with no examples is unchanged.
 - The fidelity check stays at zero.
 
-### Phase 3: the Copilot sees the project
+### Phase 3: the Copilot sees the project. Done, except the new ops.
 
 - A read tool, `project_style` (lib/ai/tools.ts), returns the exemplars by
   kind: type, size, colours and font, how each is bound, and the screen frame
@@ -126,20 +126,32 @@ Tests:
   "a button like your START" instead of guessing.
 - The single-machine rule (inferEquipment `oneMachine`) is enforced on the LLM
   plan as well as the fallback. A plan that splits one machine over several
-  screens is merged back. Today only the fallback planner follows the rule.
+  screens is merged back (`plan.ts` `oneFaceplate`, tests/drive.test.ts).
+- The chat request carries the opened project's `sourceId`. The chat route
+  reads that project and hands `describeOwn(harvest(...))` to the tools. If
+  the read fails, the chat goes on without it.
 - New ops (`cloneObject` from an exemplar or an object by name, `useStyleOf`)
   wait for `feat/architecture` to merge. That branch moves the op union to
   `core/ops/` (section 4), and adding ops before then is a guaranteed conflict.
 
-### Phase 4: the gates, so a new project fails loudly
+### Phase 4: the gates, so a new project fails loudly. Import check done.
 
-- Import runs the fidelity check. A non-zero count shows as a warning naming
-  the object types and fields, instead of breaking silently later.
+- Import runs the in-place half of the fidelity check (`fidelity.ts`
+  `editLoss`). It reuses the read the import already did, and costs about a
+  second on Demo 1 (105 screens, 3.7 MB; both halves take 2.6 s). A non-zero
+  count is added to the import's warnings with the five worst type.field
+  paths, instead of breaking silently later. The check never blocks an
+  import. **Measured.**
 - Every real project dropped into `samples/` is in `tests/fidelity.test.ts`
   from then on.
 - The OTE bench (UI automation against the licensed editor) opens each
   generated file and validates it. This needs the editor closed on the laptop,
-  so it is Shaurya's run. **To verify** on the lab's 4.1: whether it opens
+  so it is Shaurya's run:
+  1. Close OTE.
+  2. Run `scripts/into-project.mts` (samples/hmi-panel-1/README.md) to write
+     the file.
+  3. Run the bench script on it (memory: OTE bench on licensed editor).
+  4. Open the file in 4.4, then in the lab's 4.1. **To verify** on the lab's 4.1: whether it opens
   cloned CO instances. They are the editor's own shapes, so it should.
 
 ## 4. Working beside the team
@@ -159,8 +171,11 @@ To stay out of each other's way:
 - This plan's work stays in `lib/ote/`, `lib/ai/infer.ts`, `lib/ai/plan.ts`,
   `lib/ai/tools.ts` (read tools only), `scripts/` and `tests/`.
 - It does not touch `store/`, `core/ops/`, `lib/ai/ops.ts`,
-  `lib/ai/applier.ts`, `lib/realtime/`, `lib/collab/`, auth, or `app/api/`
-  outside the export route.
+  `lib/ai/applier.ts`, `lib/realtime/`, `lib/collab/` or auth.
+- Small, additive edits to `app/api/chat/route.ts` (the project's own
+  objects), `app/api/import/route.ts` (the warning), `lib/ai/converse.ts` and
+  `components/chat/useChat.ts` (one field each). If round 2 rewrites these
+  for the MCP connector or generate jobs, carry the few lines over.
 - Overlap risk: the S3 plant brief may touch `lib/ai/plan.ts` or
   `lib/ai/pipeline.ts`. Merge `feat/architecture` first, then this branch, and
   resolve there.

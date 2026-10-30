@@ -30,6 +30,7 @@ import { uploadedSource } from "@/lib/server/uploads";
 import { json, sameOrigin, errorResponse } from "@/lib/server/http";
 import { ServerError } from "@/lib/server/errors";
 import { readProject } from "@/lib/ote/reader";
+import { editLoss, total } from "@/lib/ote/fidelity";
 import { importStore, putImport } from "@/lib/ote/imports";
 import { readStructProject } from "@/lib/ote/struct";
 import { IngestError, fileNameFrom, ingestResponse } from "@/lib/ingest/errors";
@@ -122,6 +123,14 @@ export async function POST(request: Request) {
     }
 
     const read = await readProject(bytes, fileName);
+    // A project the app cannot write back whole says so now, by type and
+    // field, instead of an export breaking it later (lib/ote/fidelity.ts).
+    // The check never stops an import.
+    const lost = await editLoss(bytes, read).catch(() => ({}));
+    if (total(lost) > 0) {
+      const worst = Object.entries(lost).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, n]) => `${k} (${n})`);
+      read.warnings.push(`An export of this project would drop ${total(lost)} field${total(lost) === 1 ? "" : "s"} the app does not carry yet: ${worst.join(", ")}. Check those objects in the editor after exporting.`);
+    }
     const id = uploaded?.meta._id ?? (user ? await repo().sources.put(bytes, fileName, user.id) : await putImport(bytes, fileName));
     const learned = await learn();
 
