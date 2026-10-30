@@ -9,7 +9,8 @@ import path from "node:path";
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 import { readProject } from "@/lib/ote/reader";
-import { harvest, nativise, partsOf } from "@/lib/ote/exemplars";
+import { describeOwn, harvest, nativise, partsOf } from "@/lib/ote/exemplars";
+import { prepare, routeTools, runTool } from "@/lib/ai/tools";
 import { numericDisplay, screenOf, switchPart, toggleSwitch } from "@/lib/ote/parts";
 import { OTE } from "@/lib/backend/ote";
 import type { Wire } from "@/lib/ote/bindings";
@@ -72,6 +73,19 @@ describe.skipIf(!fs.existsSync(FILE))("the project's own objects", () => {
   });
 });
 
+describe.skipIf(!fs.existsSync(FILE))("the Copilot", () => {
+  it("is told how the project draws a push button, and routed to ask before adding one", async () => {
+    const read = await rig();
+    const own = describeOwn(harvest(read.preserved, read.variables));
+    const ctx = prepare({ tags: [], objects: [], own });
+    const text = runTool("project_style", { kind: "pushbutton" }, ctx).text;
+    expect(text).toContain("CompoundObject.Switch_PB04");
+    expect(text).toContain("bound CV, mode 2");
+    expect(text).toContain('"START"');
+    expect(routeTools("add a start and stop button for the drive", ctx).map((c) => c.name)).toContain("project_style");
+  });
+});
+
 describe("a project with no examples", () => {
   it("keeps our parts as they are", () => {
     const part = switchPart("Start", "START", { left: 0, top: 0, width: 100, height: 40 });
@@ -84,5 +98,11 @@ describe("a project with no examples", () => {
       wires: [{ part, tag: "Run_CMD", property: "CurrentValue" }],
     };
     expect(nativise(input, {}, new Set()).input).toBe(input);
+  });
+
+  it("and the Copilot is told so, not handed an empty list", () => {
+    const ctx = prepare({ tags: [], objects: [] });
+    expect(runTool("project_style", { kind: "" }, ctx).text).toContain("standard look");
+    expect(routeTools("add a start button", ctx).map((c) => c.name)).not.toContain("project_style");
   });
 });

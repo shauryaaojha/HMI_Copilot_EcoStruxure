@@ -277,3 +277,44 @@ export function nativise(input: PackageInput, exemplars: Exemplars, existing: Se
 export function partsOf(preserved: Preserved): Set<string> {
   return new Set(objectsOf(preserved).keys());
 }
+
+/** One of the project's own objects, as the Copilot is told about it. */
+export interface OwnObject {
+  kind: Kind;
+  type: string;
+  name: string;
+  uses: number;
+  /** How it is bound: the property and the mode. */
+  bound: string;
+  size?: string;
+  font?: number;
+  bold?: boolean;
+  /** Its labels, OFF and ON for a two-state object. */
+  text?: string[];
+}
+
+/** The exemplars, compact and free of anything but how they look and bind. */
+export function describeOwn(exemplars: Exemplars): OwnObject[] {
+  return Object.values(exemplars).map((e) => {
+    const font = isObject(e!.raw.Font) ? e!.raw.Font : undefined;
+    const texts: string[] = [];
+    const collect = (node: unknown, inText = false) => {
+      if (typeof node === "string" && inText) texts.push(node);
+      else if (Array.isArray(node)) node.forEach((v) => collect(v, inText));
+      else if (isObject(node)) for (const [k, v] of Object.entries(node)) collect(v, inText || k === "Text");
+    };
+    collect(e!.raw);
+    const size = typeof font?.Size === "number" ? font.Size : typeof font?.SizeOFF === "number" ? font.SizeOFF : undefined;
+    return {
+      kind: e!.kind,
+      type: String(e!.raw.Type),
+      name: String(e!.raw.Name ?? ""),
+      uses: e!.uses,
+      bound: `${e!.property}, mode ${e!.mode}`,
+      ...(e!.box ? { size: `${Math.round(e!.box.width)}x${Math.round(e!.box.height)}` } : {}),
+      ...(size !== undefined ? { font: size } : {}),
+      ...(isObject(font?.Attribute) && font.Attribute.Bold === true ? { bold: true } : {}),
+      ...(texts.length ? { text: [...new Set(texts)].slice(0, 4) } : {}),
+    };
+  });
+}

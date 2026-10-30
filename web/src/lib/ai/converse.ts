@@ -22,6 +22,7 @@
  * and an op places by slot. The layout engine does the geometry.
  */
 
+import type { OwnObject } from "@/lib/ote/exemplars";
 import type Anthropic from "@anthropic-ai/sdk";
 import { rootBox } from "@/lib/ote/schema";
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
@@ -602,6 +603,8 @@ export interface ConverseInput {
   knowledge?: ProjectKnowledge[];
   /** What the target format can write, for target_capabilities. */
   target?: { name: string; parts: readonly string[] };
+  /** How the opened project draws its objects, for project_style (lib/ote/exemplars.ts). */
+  own?: OwnObject[];
 }
 
 /** The tool context for a turn: the catalog when the client sent one, else the digest. */
@@ -614,6 +617,7 @@ function toolContext(input: ConverseInput): PreparedContext {
     knowledge: input.knowledge,
     targetParts: input.target?.parts,
     targetName: input.target?.name,
+    own: input.own,
   });
 }
 

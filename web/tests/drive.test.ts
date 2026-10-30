@@ -11,7 +11,7 @@ import path from "node:path";
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 import { inferEquipment } from "@/lib/ai/infer";
-import { fallbackPlan } from "@/lib/ai/plan";
+import { fallbackPlan, finishPlan } from "@/lib/ai/plan";
 import { buildGraph } from "@/lib/ote/bindings";
 import { numericDisplay, screenSwitch, switchPart, BIT_OPERATION } from "@/lib/ote/parts";
 import { linkScreens, packageProject } from "@/lib/ote/packager";
@@ -61,6 +61,22 @@ describe("a small machine's tags", () => {
     const plan = fallbackPlan("drive screens", units);
     expect(plan.screens).toHaveLength(1);
     expect(plan.screens[0]).toMatchObject({ level: 3, include: [units[0].id] });
+  });
+
+  it("and a model's plan that splits the drive over three screens is merged back", () => {
+    const unit = units[0];
+    const tags = unit.roles.map((r) => r.tag);
+    const plan = finishPlan({
+      scope: "whole",
+      rationale: "model",
+      screens: [
+        { screenName: "Overview", title: "Overview", level: 1, include: [unit.id], sections: ["status"] },
+        { screenName: "Controls", title: "Controls", level: 2, include: [unit.id], sections: ["status"], readings: [tags[0]] },
+        { screenName: "Trends", title: "Trends", level: 2, include: [unit.id], sections: ["process"], readings: [tags[1], "NOT_A_TAG"] },
+      ],
+    }, units);
+    expect(plan.screens).toHaveLength(1);
+    expect(plan.screens[0]).toMatchObject({ level: 3, include: [unit.id], readings: [tags[0], tags[1]] });
   });
 
   it("but two machines with no loop numbers stay two machines", () => {

@@ -543,9 +543,35 @@ export function finishPlan(plan: ScreenPlan, equipment: InferredEquipment[], lim
     if (screens.every((s) => s.include.length === 0)) {
       return { screens: [], scope: "unrelated", rationale: "None of the equipment the request names is in the tag list." };
     }
-    return { ...plan, screens };
+    return { ...plan, screens: oneFaceplate(screens, equipment) };
   }
-  return { ...plan, screens: placeEveryUnit(screens, equipment, seen, limits[2]) };
+  return { ...plan, screens: oneFaceplate(placeEveryUnit(screens, equipment, seen, limits[2]), equipment) };
+}
+
+/**
+ * One machine is one faceplate, whoever planned it. The fallback planner
+ * already does this; a model asked for "the drive's screens" will happily
+ * split one ATV340 into an overview, a controls screen and a trends screen,
+ * each showing a slice of the same unit (samples/hmi-panel-1). Those are
+ * merged back into one level-3 screen holding every reading any of them had.
+ */
+function oneFaceplate(screens: ScreenSpec[], equipment: InferredEquipment[]): ScreenSpec[] {
+  if (equipment.length !== 1 || equipment[0].kind === "instrument") return screens;
+  if (screens.length === 0 || (screens.length === 1 && screens[0].level === 3)) return screens;
+  const [unit] = equipment;
+  const own = screens.find((s) => s.level === 3) ?? screens[0];
+  const readings = [...new Set(screens.flatMap((s) => s.readings ?? []))];
+  return [{
+    ...own,
+    screenName: own.level === 3 && own.screenName
+      ? own.screenName
+      : `${unit.kind.charAt(0).toUpperCase()}${unit.kind.slice(1).replace(/[^A-Za-z0-9]/g, "")}`,
+    title: own.level === 3 && own.title ? own.title : unit.label,
+    level: 3,
+    include: [unit.id],
+    sections: ["status", "process", "alarms"],
+    readings,
+  }];
 }
 
 /** Words that ask for a unit's detail display rather than its overview. */
