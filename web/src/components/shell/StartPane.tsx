@@ -25,6 +25,12 @@
  * docs/PLAN_FULL_ARCHITECTURE.md §5.3). The same generator then builds from
  * those placeholders, and the real export, imported whenever it exists, is
  * matched to them and the screens rebound automatically.
+ *
+ * There are two ways to fill that brief in, and they meet immediately: a
+ * description, or the form - the brief table with nothing in it yet (decision
+ * D). An engineer who knows the plant should not have to write a paragraph
+ * about it for a model to turn back into the rows they already had in mind.
+ * Both end at the same table, the same confirm button, and the same tags.
  */
 
 import { importFile } from "@/lib/client/upload";
@@ -53,6 +59,7 @@ import { useProject } from "@/store/project";
 import { useChat } from "@/components/chat/useChat";
 import { SAMPLES, useTagImport } from "@/components/tags/useTagImport";
 import { BriefTable, useBrief } from "@/components/brief";
+import { requestFromBrief } from "@/lib/brief/brief";
 import { saveProject } from "@/store/persist";
 import { touchProject } from "@/store/projects";
 import { DEFAULT_STANDARDS } from "@/store/types";
@@ -119,7 +126,13 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
   function build(e: { currentTarget: HTMLElement }) {
     const text = draft.trim();
     if (!text) return;
-    if (path === "screens" && variables.length === 0) return void screensFirst(text, originOf(e));
+    if (path === "screens" && variables.length === 0) {
+      // A question is on screen, so what was just typed is its answer and not
+      // a new description - the same way the box behaves in the chat after a
+      // clarify turn.
+      if (brief.asking) return void answerBrief(text);
+      return void screensFirst(text, originOf(e));
+    }
     reveal(originOf(e));
     // The run starts behind the reveal, so the first objects land as the canvas
     // appears rather than after an empty pause.
@@ -147,12 +160,36 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
     }
   }
 
-  /** The confirmed brief becomes placeholder tags, and only then does the build start. */
+  /** The answer to a clarify question: the brief is drafted again from both. */
+  async function answerBrief(text: string) {
+    setBusy("your answer");
+    setError(null);
+    try {
+      const drafted = await brief.answer(text);
+      if (!drafted) {
+        setError(brief.error ?? "the brief could not be drafted from that answer");
+        return;
+      }
+      // The answer has been read into the brief, so the box is free for the
+      // next one - or for nothing, if the table is now right.
+      setDraft("");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  /**
+   * The confirmed brief becomes placeholder tags, and only then does the build
+   * start. A brief filled in on the form has no description to build from, so
+   * the request is the brief said out loud - the tags are already in the
+   * project by then and the generator reads the equipment from their names.
+   */
   function confirmBrief(from: Origin) {
+    const confirmed = brief.brief;
     const count = brief.accept();
-    if (count === null) return;
+    if (count === null || !confirmed) return;
     reveal(from);
-    void send(draft.trim());
+    void send(draft.trim() || requestFromBrief(confirmed));
   }
 
   async function withTags(file: File, from: Origin) {
@@ -286,6 +323,17 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
   // Under review: the description is settled, so the only question on screen
   // is whether the brief is right.
   const reviewing = brief.brief !== null;
+  /**
+   * The form, rather than a description, as the way in (decision D).
+   *
+   * It lives on the screens-first path because that is the path a brief is
+   * for, and it replaces the description box rather than sitting beside it:
+   * two inputs that both claim to say what the plant is would leave the
+   * engineer wondering which one the build reads. The brief table below is the
+   * form - see components/brief/BriefTable.tsx - so there is nothing here but
+   * the choice of how to start filling it in.
+   */
+  const forming = brief.by === "form";
 
   return (
     <div
@@ -320,9 +368,11 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
               : choosing
                 ? "Start from your PLC tag export, or design the screens first and bring the tags later."
                 : screens
-                  ? reviewing
-                    ? "Check the units, counts and signals. Nothing is built, and no tag exists, until you confirm this."
-                    : "Describe the plant. It becomes a brief for you to confirm; the placeholder tags come from the brief, and the real export binds to them whenever it arrives."
+                  ? forming
+                    ? "Fill in the brief. The placeholder tags come from these rows, and the real export binds to them whenever it arrives."
+                    : reviewing
+                      ? "Check the units, counts and signals. Nothing is built, and no tag exists, until you confirm this."
+                      : "Describe the plant. It becomes a brief for you to confirm; the placeholder tags come from the brief, and the real export binds to them whenever it arrives."
                   : "Bring a tag export or take a sample, then say which screens you need."}
           </p>
         </div>
@@ -368,8 +418,26 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
           </button>
         )}
 
+        {/* --- describe it, or fill it in ------------------------------- */}
+        {screens && !reviewing && (
+          <div className="reveal is-in mt-6 flex items-center gap-1.5 self-start rounded-lg border border-line-subtle bg-surface-raised/60 p-1">
+            <span className="rounded-md bg-brand-500/15 px-2.5 py-1 text-[11px] font-medium text-text-primary">
+              Describe the plant
+            </span>
+            <button
+              type="button"
+              onClick={brief.begin}
+              title="The same brief, typed in rather than read out of a description"
+              className="focus-ring rounded-md px-2.5 py-1 text-[11px] text-text-muted transition hover:text-text-primary"
+            >
+              Or fill the brief in yourself
+            </button>
+          </div>
+        )}
+
         {!choosing && (<>
         {/* --- the input ------------------------------------------------ */}
+        {!forming && (
         <div
           className="beam-border reveal is-in mt-7 rounded-2xl border border-line-subtle bg-surface-raised shadow-xl shadow-black/20"
           style={{ ["--reveal-delay" as string]: "120ms" }}
@@ -389,12 +457,14 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
             placeholder={
               hasTags
                 ? "A process overview, a faceplate per pump, and an alarm screen…"
-                : "A transfer pump station with two duty pumps, a break tank and a discharge flow meter…"
+                : brief.asking
+                  ? "Two duty pumps, one break tank and a discharge flow meter…"
+                  : "A transfer pump station with two duty pumps, a break tank and a discharge flow meter…"
             }
             className="w-full resize-none bg-transparent px-4 py-4 text-[14px] leading-relaxed text-text-primary outline-none placeholder:text-text-faint disabled:opacity-60"
           />
           <div className="flex items-center gap-1 border-t border-line-subtle px-2.5 py-2">
-            <span className="px-1.5 font-mono text-[10px] text-text-faint">⏎ to build</span>
+            <span className="px-1.5 font-mono text-[10px] text-text-faint">{brief.asking ? "⏎ to answer" : "⏎ to build"}</span>
             <button
               type="button"
               disabled={working || draft.trim().length === 0}
@@ -402,12 +472,13 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
               className="focus-ring ml-auto inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3.5 py-1.5 text-xs font-semibold text-text-onbrand transition hover:bg-brand-600 disabled:opacity-40"
             >
               {working ? <Loader2 size={13} className="animate-spin" aria-hidden /> : <Send size={13} aria-hidden />}
-              Build it
+              {brief.asking ? "Answer" : "Build it"}
             </button>
           </div>
         </div>
+        )}
 
-        {/* --- the brief, for review ------------------------------------ */}
+        {/* --- the brief: the review step, and the form ------------------ */}
         {reviewing && brief.brief && (
           <BriefTable
             brief={brief.brief}
@@ -419,6 +490,14 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
             onToggleSignal={brief.toggleSignal}
             onRemove={brief.removeUnit}
             onAdd={brief.addUnit}
+            onPlant={brief.setPlant}
+            onNamingStart={brief.setNamingStart}
+            onToggleAlarm={brief.toggleAlarm}
+            onToggleScreen={brief.toggleScreen}
+            onAnswer={(question) => {
+              setDraft(question);
+              box.current?.focus();
+            }}
             onConfirm={() => confirmBrief(centre())}
             onCancel={brief.clear}
           />

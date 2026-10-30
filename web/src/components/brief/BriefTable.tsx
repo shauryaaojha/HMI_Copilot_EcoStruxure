@@ -8,6 +8,14 @@
  * quietly defaulted count is the opposite.
  *
  * Nothing here draws or decides geometry. It edits rows.
+ *
+ * It is also the guided form (decision D). An engineer who starts from the
+ * form gets this component with no units in it rather than a second screen
+ * with its own fields: the rows, the counts and the signal buttons are the
+ * same editors either way, and a form built separately would be a second place
+ * to keep the catalogue, the count rule and the confirm gate correct. What the
+ * drafting path reads out of a description - the plant name, the numbering
+ * start, the alarms - the form path simply types in.
  */
 "use client";
 
@@ -26,6 +34,12 @@ export interface BriefTableProps {
   onToggleSignal: (unitId: string, signal: string) => void;
   onRemove: (unitId: string) => void;
   onAdd: (kindId: string) => void;
+  onPlant: (plant: Partial<Brief["plant"]>) => void;
+  onNamingStart: (start: number) => void;
+  onToggleAlarm: (signal: string) => void;
+  onToggleScreen: (which: keyof Brief["screens"]) => void;
+  /** A clarify question the engineer chose to answer. */
+  onAnswer: (question: string) => void;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -33,8 +47,15 @@ export interface BriefTableProps {
 const SOURCE: Record<DraftedBy, string> = {
   model: "Drafted by the model from your description. Nothing is built until you confirm it.",
   rules: "Read from your description by the naming rules. Nothing is built until you confirm it.",
-  clarify: "Nothing in the description matched the catalogue, so the brief is empty. Add the units.",
+  clarify: "Nothing in the description matched the catalogue. Answer the question, or fill the brief in here.",
+  form: "Yours to fill in. Add the equipment, say how many of each, and nothing is built until you confirm it.",
 };
+
+const SCREENS: [keyof Brief["screens"], string][] = [
+  ["overview", "Overview"],
+  ["perUnitGroup", "One per unit group"],
+  ["alarms", "Alarms"],
+];
 
 export function BriefTable({
   brief,
@@ -46,26 +67,60 @@ export function BriefTable({
   onToggleSignal,
   onRemove,
   onAdd,
+  onPlant,
+  onNamingStart,
+  onToggleAlarm,
+  onToggleScreen,
+  onAnswer,
   onConfirm,
   onCancel,
 }: BriefTableProps) {
   const problemsOf = (unitId: string) => problems.filter((p) => p.unitId === unitId);
   const general = problems.filter((p) => !p.unitId);
   const tags = brief.units.reduce((n, u) => n + (u.count ?? 0) * u.signals.length, 0);
+  // An alarm on a signal no unit carries raises nothing, so the only ones
+  // worth offering are the ones the rows actually have.
+  const alarmable = [...new Set(brief.units.flatMap((u) => u.signals))];
 
   return (
     <div className="reveal is-in mt-7 rounded-2xl border border-line-subtle bg-surface-raised shadow-xl shadow-black/20">
       <div className="border-b border-line-subtle px-4 py-3">
         <h2 className="text-sm font-semibold">The plant brief</h2>
         <p className="mt-1 text-xs leading-relaxed text-text-muted">{by ? SOURCE[by] : ""}</p>
+
+        <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
+          <input
+            value={brief.plant.name}
+            aria-label="What the plant is called"
+            placeholder="Transfer station"
+            onChange={(e) => onPlant({ name: e.target.value })}
+            className="focus-ring rounded-md border border-line-subtle bg-surface-base px-2 py-1.5 text-xs text-text-primary placeholder:text-text-faint"
+          />
+          <input
+            value={brief.plant.purpose}
+            aria-label="What the plant does"
+            placeholder="Moves water from the sump to the break tank"
+            onChange={(e) => onPlant({ purpose: e.target.value })}
+            className="focus-ring rounded-md border border-line-subtle bg-surface-base px-2 py-1.5 text-xs text-text-primary placeholder:text-text-faint"
+          />
+        </div>
       </div>
 
+      {/* The question is a button for the same reason it is one in the chat:
+          clicking it puts it in the box, where the answer is written over it
+          and sent as the next thing said (components/chat/ChatPanel.tsx). */}
       {questions && questions.length > 0 && (
-        <ul className="border-b border-line-subtle px-4 py-3 text-xs leading-relaxed text-text-muted">
+        <ul className="space-y-1.5 border-b border-line-subtle px-4 py-3">
           {questions.slice(0, 2).map((question) => (
-            <li key={question} className="flex gap-1.5">
-              <span aria-hidden className="text-brand-400">?</span>
-              {question}
+            <li key={question}>
+              <button
+                type="button"
+                onClick={() => onAnswer(question)}
+                title="Put this in the box to answer it"
+                className="focus-ring w-full rounded-lg border border-status-info/30 bg-status-info/[0.06] px-3 py-2 text-left text-xs leading-relaxed text-status-info transition hover:border-status-info/60 hover:bg-status-info/10"
+              >
+                {question}
+              </button>
             </li>
           ))}
         </ul>
@@ -160,6 +215,68 @@ export function BriefTable({
             {kind.label}
           </button>
         ))}
+      </div>
+
+      {/* --- alarms, screens and numbering ------------------------------ */}
+      <div className="grid gap-3 border-t border-line-subtle px-4 py-3 sm:grid-cols-3">
+        <div>
+          <p className="label-eyebrow pb-1.5">Alarms on</p>
+          <div className="flex flex-wrap gap-1.5">
+            {alarmable.length === 0 && <span className="text-[11px] text-text-faint">Add a unit first.</span>}
+            {alarmable.map((signal) => {
+              const on = brief.alarms.includes(signal);
+              return (
+                <button
+                  key={signal}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => onToggleAlarm(signal)}
+                  className={`focus-ring rounded-md border px-2 py-0.5 font-mono text-[10px] transition ${
+                    on ? "border-status-alarm/60 bg-status-alarm/15 text-text-primary" : "border-line-subtle text-text-faint hover:border-status-alarm/40"
+                  }`}
+                >
+                  {signal}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <p className="label-eyebrow pb-1.5">Screens</p>
+          <div className="flex flex-wrap gap-1.5">
+            {SCREENS.map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={brief.screens[key]}
+                onClick={() => onToggleScreen(key)}
+                className={`focus-ring rounded-md border px-2 py-0.5 text-[10px] transition ${
+                  brief.screens[key]
+                    ? "border-brand-500/60 bg-brand-500/15 text-text-primary"
+                    : "border-line-subtle text-text-faint hover:border-brand-500/40"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="label-eyebrow pb-1.5">Numbering</p>
+          <label className="flex items-center gap-1.5 text-xs text-text-muted">
+            <span className="font-mono text-[10px] text-text-faint">{brief.naming.pattern}</span>
+            <input
+              type="number"
+              min={1}
+              value={brief.naming.start}
+              aria-label="The number the first unit of each kind gets"
+              onChange={(e) => onNamingStart(Math.max(1, Number(e.target.value) || 1))}
+              className="focus-ring w-16 rounded-md border border-line-subtle bg-surface-base px-2 py-1 text-xs text-text-primary"
+            />
+          </label>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-t border-line-subtle px-4 py-3">

@@ -13,6 +13,12 @@
  * from, so "where did this tag come from?" has an answer, and validation can
  * refuse one that has no answer.
  *
+ * There are two ways to fill one in - a description the model reads, or the
+ * form the engineer types into (decision D) - and this file is deliberately
+ * ignorant of which was used. One type, one `problemsWith` gate, one
+ * `tagsFromBrief`: a brief filled in by hand is not a second kind of brief
+ * with a second set of rules, it is the same rows arrived at differently.
+ *
  * Two rules the structure enforces rather than asks for:
  *
  *   - a brief with no units, or a unit with a count of zero, cannot be
@@ -24,6 +30,9 @@
 
 import { z } from "zod";
 import type { Variable } from "@/lib/ote/schema";
+// Type-only, so this stays a module the server can import: the store's shape
+// is needed to record an import, the store itself is not.
+import type { TagImport } from "@/store/types";
 import { CATALOGUE, KIND_IDS, kindOf, type CatalogueSignal } from "./catalogue";
 
 /** A signal on a custom unit, which has no catalogue entry to be checked against. */
@@ -270,4 +279,68 @@ export function confirm(brief: Brief, by: ConfirmedBrief["by"], now = Date.now()
     confirmed: { brief, provenance: drafted.provenance, confirmedAt: now, by },
     variables: drafted.variables,
   };
+}
+
+/**
+ * A confirmed brief as the import record a project holds.
+ *
+ * The same three facts every caller of `confirm` needs next: the tags, the
+ * brief they came from, and the note that they are assumed rather than
+ * exported (`TagImport.pending`, which keeps them out of the written file).
+ * Building that record was in the browser hook, which left anything without a
+ * React tree - the MCP tool, a route, a test - to assemble it again and get
+ * `pending` wrong once. This is the whole path from brief to placeholder tags,
+ * and it runs anywhere.
+ *
+ * Throws on a brief that cannot be confirmed, the way `tagsFromBrief` does.
+ * Ask `problemsWith` first; the answer is a list of fields, which is what a
+ * caller can act on.
+ */
+export function placeholderImport(
+  brief: Brief,
+  by: ConfirmedBrief["by"],
+  now = Date.now(),
+): { confirmed: ConfirmedBrief; variables: Variable[]; tagImport: TagImport } {
+  const { confirmed, variables } = confirm(brief, by, now);
+  return {
+    confirmed,
+    variables,
+    tagImport: {
+      fileName: "Assumed from the confirmed brief",
+      at: confirmed.confirmedAt,
+      corrections: [],
+      skipped: [],
+      summary: { total: variables.length },
+      pending: true,
+      brief: confirmed,
+    },
+  };
+}
+
+/** "overview", "one screen per unit group" - in the order the pipeline builds them. */
+const SCREEN_WORDS: [keyof Brief["screens"], string][] = [
+  ["overview", "an overview"],
+  ["perUnitGroup", "one screen per unit group"],
+  ["alarms", "an alarm screen"],
+];
+
+/**
+ * The brief, said out loud, as the request a build turn is given.
+ *
+ * A brief filled in on the form has no description behind it, and the turn
+ * still needs words: the history reads as a build log, and "" is not a log
+ * entry. It does not have to carry the engineering - by the time this is sent
+ * the placeholder tags are already in the project and the generator reads the
+ * equipment from their names, exactly as it does for a real export. This only
+ * has to say what was asked for.
+ */
+export function requestFromBrief(brief: Brief): string {
+  const plant = [brief.plant.name, brief.plant.purpose].map((s) => s.trim()).filter(Boolean).join(": ");
+  const units = brief.units.map((u) => `${u.count ?? 1} ${u.label}`).join(", ");
+  const screens = SCREEN_WORDS.filter(([key]) => brief.screens[key]).map(([, word]) => word);
+  return [
+    plant || "A plant",
+    units ? `with ${units}.` : ".",
+    screens.length ? `Build ${screens.join(", ")}.` : "",
+  ].join(" ").replace(/\s+\./g, ".").trim();
 }
