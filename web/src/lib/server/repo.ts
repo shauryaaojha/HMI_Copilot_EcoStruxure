@@ -10,6 +10,7 @@
  * function, a background timer, or a server's local disk on Vercel.
  */
 import path from "node:path";
+import { randomBytes } from "node:crypto";
 import type { PersistedProject } from "@/store/persist";
 import { hasMongo } from "@/lib/db/mongo";
 import { DEFAULT_LIMITS } from "@/lib/ingest/zip";
@@ -25,6 +26,29 @@ export * from "./repo-agent";
 const PROJECT_TABLES = ["versions", "members", "shares", "comments", "changes", "heads", "presence", "proposals", "decisions", "agentLocks"];
 
 export interface User { id: string; email?: string | null; name: string; image?: string | null; createdAt?: number }
+/**
+ * What creating an account needs. `emailKey` is the address folded to one
+ * canonical form so that two spellings of the same mailbox cannot both sign
+ * up; `email` is kept as the engineer typed it, because that is how they will
+ * read it back. Callers hash the password - the repository stores hashes and
+ * never sees one in the clear.
+ */
+export interface NewUser { email: string; emailKey: string; passwordHash: string; name: string }
+/**
+ * A user together with the one secret the repository holds for them. Asking
+ * for this is deliberately separate from reading a profile, so that a route
+ * that wants a name cannot accidentally serve a password hash.
+ */
+export interface Credential { user: User; passwordHash: string }
+/** A fixed-window attempt counter; see lib/server/rate-limit.ts for the windows. */
+export type Attempt = Row & { count: number; resetAt: number };
+/**
+ * Account ids are `user:` and twelve random bytes - the shape and length of a
+ * Mongo ObjectId, but minted here so the laptop store and the test store issue
+ * the same ids as a deployment. Ids are opaque everywhere they are compared
+ * (`ownerId`, `members.userId`), and nothing parses them.
+ */
+export const newUserId = () => `user:${randomBytes(12).toString("hex")}`;
 export type Role = "owner" | "editor" | "commenter" | "viewer";
 export type Snapshot = Omit<PersistedProject, "activeScreenId">;
 export type Project = Row & { ownerId: string; name: string; target: PersistedProject["target"]; createdAt: number; updatedAt: number; rev: number; headRev?: number; sources?: string[]; sourceId?: string; layout?: "typed" | "struct" };
@@ -39,11 +63,35 @@ type Part = Row & { uploadId: string; part: number; size: number; data: string }
 export const PART_BYTES = 4 * 1024 * 1024;
 export const TTL_MS = 24 * 60 * 60 * 1000;
 const missing = () => new ServerError(404, "not-found", "Not found");
+/**
+ * One address, one account - and one refusal, which deliberately does not
+ * confirm that the address is registered here. See lib/server/credentials.ts
+ * for why that is the best this can do without a confirmation email.
+ */
+const taken = () => new ServerError(409, "unavailable", "That email cannot be used for a new account. If the account is yours, sign in instead.");
+/** The stored user row. The password hash lives here and nowhere else. */
+type UserRow = Row & User & { emailKey?: string; passwordHash?: string };
+/**
+ * What a user looks like outside the repository. The hash and the lookup key
+ * are dropped here, in the one place every read goes through, rather than left
+ * to each caller to remember - a route that forgets would serve the hash.
+ */
+function profile(row: UserRow): User {
+  const { _id, emailKey, passwordHash, ...user } = row;
+  void _id; void emailKey; void passwordHash;
+  return user;
+}
 export { validId };
 
 /** Domain contract shared by routes and isolated collaboration tests. */
 export interface Repo {
-  users: { upsert(user: User): Promise<User>; get(id: string): Promise<User | null> };
+  users: {
+    upsert(user: User): Promise<User>;
+    get(id: string): Promise<User | null>;
+    create(user: NewUser): Promise<User>;
+    credential(emailKey: string): Promise<Credential | null>;
+  };
+  attempts: { hit(key: string, windowMs: number): Promise<{ count: number; resetAt: number }>; clear(key: string): Promise<void> };
   projects: {
     create(ownerId: string, snapshot: Snapshot, layout?: "typed" | "struct"): Promise<Project>;
     get(id: string): Promise<Project | null>;
@@ -72,12 +120,49 @@ export class BaseRepo implements Repo {
   private tx<T>(fn: (data: Data) => Promise<T>) { return this.storage.transaction(fn); }
   users: Repo["users"] = {
     upsert: user => this.tx(async d => {
-      const old = await d.get<Row & User>("users", user.id);
+      const old = await d.get<UserRow>("users", user.id);
       const next = { ...user, createdAt: old?.createdAt ?? this.now() };
-      await d.put("users", { ...next, _id: user.id });
+      // An upsert carries a profile, never a credential, so whatever the row
+      // already holds about signing in survives a change of name or picture.
+      await d.put("users", { ...old, ...next, _id: user.id });
       return next;
     }),
-    get: id => this.tx(async d => { const row = await d.get<Row & User>("users", id); if (!row) return null; const { _id, ...user } = row; void _id; return user; }),
+    get: id => this.tx(async d => { const row = await d.get<UserRow>("users", id); return row ? profile(row) : null; }),
+    create: user => this.tx(async d => {
+      // Checked inside the transaction, and backed by a unique index on
+      // `emailKey` in MongoStorage: the check alone would let two concurrent
+      // sign-ups past, and the index alone would not work on the laptop store.
+      if ((await d.list<UserRow>("users", { emailKey: user.emailKey }, { projection: { _id: 1 }, limit: 1 })).length) throw taken();
+      const id = newUserId();
+      const row: UserRow = { ...user, _id: id, id, createdAt: this.now() };
+      try { await d.put("users", row); }
+      catch (error) {
+        // The loser of that race hears it from the index instead, and must be
+        // told the same thing - not a storage failure.
+        if ((error as { code?: number }).code === 11000) throw taken();
+        throw error;
+      }
+      return profile(row);
+    }),
+    credential: emailKey => this.tx(async d => {
+      const [row] = await d.list<UserRow>("users", { emailKey }, { limit: 1 });
+      return row?.passwordHash ? { user: profile(row), passwordHash: row.passwordHash } : null;
+    }),
+  };
+  /** Fixed-window attempt counters. The policy - which key, how many, how long - is lib/server/rate-limit.ts. */
+  attempts: Repo["attempts"] = {
+    hit: (key, windowMs) => this.tx(async d => {
+      const now = this.now();
+      const row = await d.get<Attempt>("signInAttempts", key);
+      const next: Attempt = !row || row.resetAt <= now ? { _id: key, count: 1, resetAt: now + windowMs } : { ...row, count: row.count + 1 };
+      await d.put("signInAttempts", next);
+      // A counter whose window has passed is never read again, so an attempt
+      // is also when the table is tidied. Bounded, so one sign-in stays cheap
+      // and a long-idle instance catches up over the next few attempts.
+      for (const stale of await d.list<Row>("signInAttempts", { resetAt: { $lte: now } }, { projection: { _id: 1 }, limit: 50 })) await d.remove("signInAttempts", stale._id);
+      return { count: next.count, resetAt: next.resetAt };
+    }),
+    clear: key => this.tx(d => d.remove("signInAttempts", key)),
   };
   private async history(d: Data, projectId: string) {
     return d.list<VersionInfo>("versions", { projectId }, { projection: { snapshot: 0 }, sort: { rev: -1 } });

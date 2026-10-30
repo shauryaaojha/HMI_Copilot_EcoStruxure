@@ -36,14 +36,19 @@ export interface Storage {
 type State = Record<string, Record<string, Row>>;
 
 /**
- * Equality, plus the one range operator the collaboration log needs: reading
- * the changes after a revision. Written in MongoDB's own shape (`{ $gt: n }`)
- * so the same query object works unchanged against the database.
+ * Equality, plus the two range operators this repository needs: the changes
+ * after a revision, and the rows whose window has passed (sign-in attempts).
+ * Written in MongoDB's own shape (`{ $gt: n }`) so the same query object works
+ * unchanged against the database.
  */
 function matches(actual: unknown, wanted: unknown): boolean {
   if (wanted && typeof wanted === "object" && "$gt" in wanted) {
     const bound = (wanted as { $gt: number }).$gt;
     return typeof actual === "number" && actual > bound;
+  }
+  if (wanted && typeof wanted === "object" && "$lte" in wanted) {
+    const bound = (wanted as { $lte: number }).$lte;
+    return typeof actual === "number" && actual <= bound;
   }
   return actual === wanted;
 }
@@ -128,6 +133,8 @@ export class FileStorage implements Storage {
         "users", "projects", "versions", "members", "sources", "uploads", "uploadParts",
         // Collaboration phases B, C and D.
         "shares", "comments", "changes", "heads", "presence", "proposals", "decisions", "agentLocks",
+        // Sign-in attempt counters (lib/server/rate-limit.ts).
+        "signInAttempts",
       ];
       const journal = path.join(this.root, "journal.json");
       const readJson = async (file: string) => {
@@ -181,6 +188,11 @@ export class MongoStorage implements Storage {
     return this.ready ??= (async () => {
       const db = await mongoDb();
       await db.collection("versions").createIndex({ projectId: 1, rev: -1 }, { unique: true });
+      // The database, not the application, is what finally makes an address one
+      // account: two sign-ups racing on the same email both pass an in-transaction
+      // lookup, and this index is what makes the loser fail.
+      await db.collection("users").createIndex({ emailKey: 1 }, { unique: true, sparse: true });
+      await db.collection("signInAttempts").createIndex({ resetAt: 1 });
       await db.collection("members").createIndex({ userId: 1, projectId: 1 });
       await db.collection("uploadParts").createIndex({ uploadId: 1, part: 1 }, { unique: true });
       await db.collection("sources.files").createIndex({ filename: 1 });
