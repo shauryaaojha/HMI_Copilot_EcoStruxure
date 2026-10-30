@@ -27,7 +27,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /** Whether this request is the cron's: a secret is set, and the request carries it. */
-export function fromCron(request: Request): boolean {
+function fromCron(request: Request): boolean {
   const secret = (process.env.CRON_SECRET ?? "").trim();
   if (!secret) return false;
   return request.headers.get("authorization") === `Bearer ${secret}`;
