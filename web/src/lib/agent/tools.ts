@@ -9,7 +9,8 @@
  *             own objects, copy an object, bind and unbind, duplicate a screen
  *   proof     check (does it read, are ids and bindings whole, does the export
  *             path write it), look at a screen as pixels, and run a script in
- *             a sandbox for work that is a loop rather than a call
+ *             a sandbox for work that is a loop rather than a call, and a
+ *             real shell in a Linux sandbox where one can be had (sandbox.ts)
  *
  * A tool is plain data plus a function, provider-neutral: the loop
  * (lib/agent/run.ts) turns the list into Claude or Gemini declarations, and an
@@ -26,6 +27,7 @@ import {
   bind, bindings, cloneObject, duplicateScreen, findObject, get, objects, screenByName, screens, set, unbind, walk,
 } from "./project";
 import { runScript } from "./script";
+import { Shell, shellAvailable, type Box } from "./sandbox";
 
 export interface ToolResult {
   text: string;
@@ -627,7 +629,41 @@ export const TOOLS: AgentTool[] = [
       return { text: ok(r.output + (r.error ? `\nerror: ${r.error}` : "")).text, isError: Boolean(r.error) };
     },
   },
+  {
+    name: "shell",
+    description:
+      "Run a bash command in a Linux sandbox (Ubuntu; Python 3, Node, sqlite3, unzip, zip, jq, grep, find; pip and npm installs work, no other network). The current directory holds the project's files as this workspace has them (without the PLC connection); ../work is scratch space for your own scripts and output. When the command ends, files it changed, added or deleted in the project come back into the workspace, with the same checks as write_file (.dat stays JSON, core files cannot be deleted). Use it for bulk work, Python, SQL over the databases, or analysis; for one edit the other tools are quicker. The first call starts the sandbox (a few seconds).",
+    writes: true,
+    params: {
+      command: { type: "string", description: "bash, run in the project directory" },
+      timeout_s: { type: "integer", description: "Seconds before it is stopped (default 120, at most 280)", optional: true },
+    },
+    async run({ ws }, i) {
+      if (!shellAvailable()) return { text: "No sandbox here (it needs Vercel, or VERCEL_OIDC_TOKEN locally). Use run_script or the file tools.", isError: true };
+      const r = await shellFor(ws).run(String(i.command), i.timeout_s === undefined ? undefined : Number(i.timeout_s));
+      return { text: ok(r.text).text, isError: r.isError };
+    },
+  },
 ];
+
+const shells = new WeakMap<Workspace, Shell>();
+
+/** The run's sandbox, started on first use. */
+export function shellFor(ws: Workspace, open?: () => Promise<Box>): Shell {
+  let s = shells.get(ws);
+  if (!s) shells.set(ws, (s = new Shell(ws, (p) => CORE.test(p), open)));
+  return s;
+}
+
+/** Stop the run's sandbox, if one was started. */
+export async function closeShell(ws: Workspace) {
+  const s = shells.get(ws);
+  shells.delete(ws);
+  await s?.stop();
+}
+
+/** The tools this deployment can offer: the shell only where a sandbox can be had. */
+export const availableTools = () => TOOLS.filter((t) => t.name !== "shell" || shellAvailable());
 
 export const TOOL_BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
 

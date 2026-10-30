@@ -24,7 +24,7 @@
 
 import type Anthropic from "@anthropic-ai/sdk";
 import { resolveProvider, type Provider } from "@/lib/ai/provider";
-import { TOOLS, contextFor, inputSchema, runAgentTool, type ToolResult } from "./tools";
+import { TOOLS, availableTools, closeShell, contextFor, inputSchema, runAgentTool, type ToolResult } from "./tools";
 import type { Change, Workspace } from "./workspace";
 
 export type AgentEvent =
@@ -51,7 +51,7 @@ export interface AgentOptions {
   claude?: Pick<Anthropic, "beta">;
 }
 
-export const SYSTEM = `You are the HMI Copilot agent. You work inside one EcoStruxure Operator Terminal Expert (OTE) project, opened as a working directory, for a controls engineer. You have tools to read, search and edit its files, to work with its screens, objects, bindings and tags, to check it, to look at a screen, and to run a script in a sandbox.
+export const SYSTEM = `You are the HMI Copilot agent. You work inside one EcoStruxure Operator Terminal Expert (OTE) project, opened as a working directory, for a controls engineer. You have tools to read, search and edit its files, to work with its screens, objects, bindings and tags, to check it, to look at a screen, and to run a script in a sandbox. Where the shell tool is offered, a Linux shell with Python holds a copy of the project, for bulk work and analysis.
 
 How the project is made (an .eote is a ZIP; all of it is visible to you except the PLC connection):
 - Screens/<id>/Screen.dat is a screen (JSON). Screens/<id>/Metadata.dat holds its number (Id, used by screen switches), Name and Order. Screens/Hierarchy.dat is the screen tree: a master screen's children are shown inside its frame (header, navigation).
@@ -91,7 +91,12 @@ export async function* runAgent(options: AgentOptions): AsyncGenerator<AgentEven
   const model = env("AGENT_MODEL") ?? (provider === "gemini" ? "gemini-flash-latest" : choice.model ?? "claude-opus-5-5");
   yield { type: "status", message: `${provider === "claude" ? "Claude" : "Gemini"} (${model}) working in ${options.ws.fileName}` };
   const steps = Number(env("AGENT_STEPS") ?? 40);
-  yield* provider === "claude" ? claudeLoop(options, model, steps) : geminiLoop(options, model, steps);
+  try {
+    yield* provider === "claude" ? claudeLoop(options, model, steps) : geminiLoop(options, model, steps);
+  } finally {
+    // A sandbox the run started is stopped with it, however the run ends.
+    await closeShell(options.ws);
+  }
 }
 
 /* ------------------------------------------------------------------ claude */
@@ -101,7 +106,7 @@ async function* claudeLoop(options: AgentOptions, model: string, maxSteps: numbe
   const ctx = contextFor(options.ws);
   // Sorted and fixed for the whole session: the tool list is the start of the
   // cached prefix, so it must not change between turns.
-  const tools: Anthropic.Beta.BetaToolUnion[] = TOOLS.map((t) => ({
+  const tools: Anthropic.Beta.BetaToolUnion[] = availableTools().map((t) => ({
     name: t.name,
     description: t.description,
     input_schema: inputSchema(t),
@@ -202,7 +207,7 @@ async function* geminiLoop(options: AgentOptions, model: string, maxSteps: numbe
     ...(options.history ?? []).map((h): Content => ({ role: h.role === "user" ? "user" : "model", parts: [{ text: h.text }] })),
     { role: "user", parts: [{ text: options.instruction }] },
   ];
-  const declarations = TOOLS.map((t) => ({ name: t.name, description: t.description, parametersJsonSchema: inputSchema(t) }));
+  const declarations = availableTools().map((t) => ({ name: t.name, description: t.description, parametersJsonSchema: inputSchema(t) }));
   let finalText = "";
 
   for (let step = 1; step <= maxSteps; step++) {
