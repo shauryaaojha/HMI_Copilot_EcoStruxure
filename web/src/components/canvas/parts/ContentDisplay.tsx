@@ -15,10 +15,19 @@ import { createContext, useContext } from "react";
 import { rootBox, type Screen } from "@/lib/ote/schema";
 import { fill, type PartOf } from "./geometry";
 import { PartNode, type AlarmRow } from "./index";
+import type { Look } from "@/lib/ote/co-look";
+
+/** A carried object with its box and, for a Compound Object, how it looks. */
+export interface Carried {
+  box: { left: number; top: number; width: number; height: number } | null;
+  look?: Look;
+}
 
 export interface ContentScreensValue {
   byId: Map<number, Screen>;
   depth: number;
+  /** Carried objects per screen id, so a content screen's Compound Objects show in its display. */
+  carried?: Record<string, Carried[]>;
 }
 
 export const ContentScreens = createContext<ContentScreensValue>({ byId: new Map(), depth: 0 });
@@ -33,7 +42,7 @@ export function contentsById(screens: Screen[]): Map<number, Screen> {
 const MAX_DEPTH = 3;
 
 export function ContentDisplayPart({ part, alarms }: { part: PartOf<"ContentDisplay">; alarms: AlarmRow[] }) {
-  const { byId, depth } = useContext(ContentScreens);
+  const { byId, depth, carried } = useContext(ContentScreens);
   const x = part.Location.Left;
   const y = part.Location.Top;
   const width = part.Width ?? 0;
@@ -76,11 +85,38 @@ export function ContentDisplayPart({ part, alarms }: { part: PartOf<"ContentDisp
     >
       {background !== "none" && <rect width={own.width} height={own.height} fill={background} />}
       {viewFill !== "none" && <rect width={own.width} height={own.height} fill={viewFill} />}
-      <ContentScreens.Provider value={{ byId, depth: depth + 1 }}>
+      <ContentScreens.Provider value={{ byId, depth: depth + 1, carried }}>
+        {(carried?.[content.UniqueId] ?? []).map((c, i) =>
+          c.box && c.look ? <LookNode key={`look${i}`} box={c.box} look={c.look} alarms={alarms} /> : null,
+        )}
         {view.Children.map((child) => (
           <PartNode key={child.UniqueId} part={child} alarms={alarms} />
         ))}
       </ContentScreens.Provider>
+    </svg>
+  );
+}
+
+/** A Compound Object drawn from its definition (lib/ote/co-look.ts): its own
+ *  parts in its own coordinates, scaled into the instance's box. */
+export function LookNode({ box, look, alarms }: { box: NonNullable<Carried["box"]>; look: Look; alarms: AlarmRow[] }) {
+  return (
+    <svg
+      x={box.left}
+      y={box.top}
+      width={box.width}
+      height={box.height}
+      viewBox={`${look.x ?? 0} ${look.y ?? 0} ${look.width} ${look.height}`}
+      preserveAspectRatio={look.uniform ? "xMidYMid meet" : "none"}
+      overflow={look.clip ? "hidden" : "visible"}
+    >
+      {look.items.map((item, i) =>
+        item.kind === "part" ? (
+          <PartNode key={i} part={item.part} alarms={alarms} />
+        ) : (
+          <LookNode key={i} box={item.box} look={item.look} alarms={alarms} />
+        ),
+      )}
     </svg>
   );
 }

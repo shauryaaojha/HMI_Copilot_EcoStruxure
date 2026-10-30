@@ -613,8 +613,7 @@ export const TOOLS: AgentTool[] = [
       const screen = read.screens.find((x) => x.UniqueId.toLowerCase() === s.id.toLowerCase());
       if (!screen) return { text: `${s.name} is carried whole (its layout is not modelled), so it cannot be drawn; use screen_objects`, isError: true };
       const { screenToPng } = await import("@/lib/critic/render");
-      const foreign = (read.foreign[screen.UniqueId] ?? []).map((f) => ({ type: f.type, name: f.name, box: f.box }));
-      const png = await screenToPng(screen, foreign, 1);
+      const png = await screenToPng(screen, read.foreign[screen.UniqueId] ?? [], 1, { contents: read.screens, contentForeign: read.foreign, panel: read.target });
       return { text: `${s.name}, ${read.target.width}x${read.target.height}`, image: png };
     },
   },

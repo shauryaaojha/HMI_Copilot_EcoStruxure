@@ -22,6 +22,7 @@ import { guardZip } from "@/lib/ingest/zip";
 import { IngestError } from "@/lib/ingest/errors";
 import { readScales, scaleName, type Scale } from "./converters";
 import { flatten, isFlatRoot, layoutTree, type Laid } from "./containers";
+import { coLooks, type Look } from "./co-look";
 
 /** A child of a screen the schema cannot model, kept where it was. */
 export interface OpaquePart {
@@ -97,6 +98,8 @@ export interface ForeignSummary {
   type: string;
   name: string;
   box: { left: number; top: number; width: number; height: number } | null;
+  /** For a Compound Object instance: how it looks, from its definition (co-look.ts). */
+  look?: Look;
 }
 
 /** What the canvas can say about an object it cannot model. */
@@ -420,6 +423,7 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
   const carriedRoots: Record<string, number> = {};
   /** ContentID -> the box of the first display that shows it. */
   const shown = new Map<number, { width: number; height: number }>();
+  const lookOf = coLooks(json, [...entries.keys()]);
   const read = (id: string, area: "Screens" | "Contents") => {
     const raw = json(`${area}/${id}/Screen.dat`) as Record<string, unknown> | undefined;
     if (!raw) {
@@ -436,7 +440,20 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
       return;
     }
     opaqueParts += opaque.length;
-    if (opaque.length > 0) foreign[screen.UniqueId] = resolved ?? opaque.map((o) => summariseOpaque(o.raw));
+    if (opaque.length > 0) {
+      const summaries = resolved ?? opaque.map((o) => summariseOpaque(o.raw));
+      // Same order as opaque: each summary is that object's.
+      summaries.forEach((summary, i) => {
+        try {
+          const raw = opaque[i]?.raw;
+          const look = raw ? lookOf(raw as Record<string, unknown>) : undefined;
+          if (look) summary.look = look;
+        } catch {
+          // A definition this cannot read is drawn as before, hatched.
+        }
+      });
+      foreign[screen.UniqueId] = summaries;
+    }
     screens.push(screen);
     preservedScreens.set(id, { raw, parts, opaque, metadata, fingerprint: fingerprintScreen(screen), area, ...(tree ? { tree } : {}) });
   };

@@ -12,7 +12,7 @@
  */
 
 import type { Part } from "@/lib/ote/schema";
-import { colorIndexOf, resolveColor, resolveColorNode } from "@/lib/ote/palette";
+import { colorIndexOf, packedHex, resolveColor, resolveColorNode } from "@/lib/ote/palette";
 
 /**
  * Resolve a {Fill|Border|TextColor} to "#rrggbb", or "none".
@@ -22,20 +22,45 @@ import { colorIndexOf, resolveColor, resolveColorNode } from "@/lib/ote/palette"
  * ({Type: 5, Color1, Color2}) is drawn as its first colour, which is what the
  * product's own thumbnail does. Anything else falls back.
  */
+type Colour = { Value?: number; ColorIndexEnabled?: boolean; Transparency?: number };
+
+/** One colour as [r, g, b, alpha]: packed when ColorIndexEnabled is false, else a palette index. */
+function rgbaOf(c: Colour | undefined): number[] | null {
+  if (typeof c?.Value !== "number") return null;
+  const hex = c.ColorIndexEnabled === false ? packedHex(c.Value) : resolveColor(c.Value, "");
+  if (!hex) return null;
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 1 - Math.max(0, Math.min(100, c.Transparency ?? 0)) / 100];
+}
+
+/** The mean of some colours, as #rrggbb, or #rrggbbaa when not opaque. */
+function meanHex(colours: number[][]): string {
+  const mean = [0, 1, 2, 3].map((k) => colours.reduce((sum, c) => sum + c[k], 0) / colours.length);
+  const hex = (v: number) => Math.round(v).toString(16).padStart(2, "0");
+  return `#${hex(mean[0])}${hex(mean[1])}${hex(mean[2])}${mean[3] < 1 ? hex(mean[3] * 255) : ""}`;
+}
+
 export function fill(node: unknown, key: string, fallback: string): string {
   const paint = (node as Record<string, unknown> | null)?.[key] as Record<string, unknown> | undefined;
   if (paint && !("Color" in paint) && typeof paint.Type === "number") {
     if (paint.Type === 0) return "none";
-    const first = paint.Color1 as { Value?: number } | undefined;
-    if (first && typeof first.Value === "number") return resolveColor(first.Value, fallback);
-    // A gradient written as stops (Type 3): the first stop is the colour.
-    const stops = paint.ColorStops as { Color?: { Value?: number } }[] | undefined;
-    const stop = Array.isArray(stops) ? stops[0]?.Color?.Value : undefined;
-    if (typeof stop === "number") return resolveColor(stop, fallback);
+    const first = rgbaOf(paint.Color1 as Colour | undefined);
+    if (first) return meanHex([first]);
+    // A gradient written as stops (Type 3 radial, 4 linear): drawn flat, as
+    // the mean of its stops, so a light-to-dark button reads as its middle.
+    const stops = (Array.isArray(paint.ColorStops) ? paint.ColorStops : []) as { Color?: Colour }[];
+    const rgba = stops.map(({ Color: c }) => rgbaOf(c)).filter((c): c is number[] => c !== null);
+    if (rgba.length) return meanHex(rgba);
   }
   // resolveColorNode rather than resolveColor, because a project without a
   // palette writes the colour packed and an index lookup would miss it.
-  return resolveColorNode(node, key, fallback);
+  const solid = resolveColorNode(node, key, fallback);
+  // Transparency is a percentage: 85 is a faint shadow, 100 is not there.
+  const clear = (paint?.Color as { Transparency?: unknown } | undefined)?.Transparency;
+  if (typeof clear === "number" && clear > 0 && /^#[0-9a-f]{6}$/i.test(solid)) {
+    return solid + Math.round((1 - Math.min(100, clear) / 100) * 255).toString(16).padStart(2, "0");
+  }
+  return solid;
 }
 
 export interface FontSpec {

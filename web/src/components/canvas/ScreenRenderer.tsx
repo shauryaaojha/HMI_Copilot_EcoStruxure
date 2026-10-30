@@ -33,6 +33,8 @@ import { resolveColor } from "@/lib/ote/palette";
 import type { ForeignPart, ObjectMeta, ScreenPreview } from "@/store/types";
 import { snapDelta, snapTargets, unionOf, type Box } from "@/store/edits";
 import { ContentScreens, contentsById, PartNode, PictureSource, type AlarmRow } from "./parts";
+import type { Look } from "@/lib/ote/co-look";
+import { LookNode } from "./parts/ContentDisplay";
 import { useProject } from "@/store/project";
 import type { Presence } from "@/lib/collab/types";
 import { PresenceOverlay } from "@/components/collab/PresenceOverlay";
@@ -111,6 +113,8 @@ export interface ScreenRendererProps {
    * needs to pass them.
    */
   contents?: Screen[];
+  /** Carried objects of every screen, for the content screens a display shows. Defaults to the open project's. */
+  contentForeign?: Record<string, ForeignPart[]>;
 
   /** Screen units per CSS pixel, so handles stay one size at every zoom. */
   scale?: number;
@@ -254,6 +258,7 @@ export function ScreenRenderer({
   preview,
   foreign,
   contents,
+  contentForeign,
   scale = 1,
   showGrid = false,
   gridSize = 8,
@@ -279,6 +284,8 @@ export function ScreenRenderer({
   const svg = useRef<SVGSVGElement>(null);
   const projectScreens = useProject((s) => s.screens);
   const contentScreens = contentsById(contents ?? projectScreens);
+  const projectForeign = useProject((s) => s.foreign);
+  const carried = contentForeign ?? (contents ? undefined : projectForeign);
   // Pictures that came in with an opened file are served from that file.
   const source = useProject((s) => s.source);
   const pictureUrl = useCallback((sha: string) => `/api/picture/${sha}${source ? `?source=${encodeURIComponent(source)}` : ""}`, [source]);
@@ -442,7 +449,7 @@ export function ScreenRenderer({
       : null;
 
   return (
-    <ContentScreens.Provider value={{ byId: contentScreens, depth: 0 }}>
+    <ContentScreens.Provider value={{ byId: contentScreens, depth: 0, carried }}>
     <PictureSource.Provider value={pictureUrl}>
     <svg
       ref={svg}
@@ -498,8 +505,11 @@ export function ScreenRenderer({
               <line x1={0} y1={0} x2={0} y2={px(8)} stroke="var(--color-text-faint)" strokeWidth={px(1)} />
             </pattern>
           </defs>
-          {foreign.map((f, i) =>
-            f.box ? (
+          {foreign.map((f, i) => {
+            const look = (f as ForeignPart & { look?: Look }).look;
+            return f.box && look ? (
+              <LookNode key={i} box={f.box} look={look} alarms={alarms} />
+            ) : f.box ? (
               <g key={i}>
                 <rect x={f.box.left} y={f.box.top} width={f.box.width} height={f.box.height} fill="url(#foreign-hatch)" fillOpacity={0.35} />
                 <rect x={f.box.left} y={f.box.top} width={f.box.width} height={f.box.height} fill="none" stroke="var(--color-text-faint)" strokeWidth={px(1)} strokeDasharray={`${px(3)} ${px(3)}`} />
@@ -515,8 +525,8 @@ export function ScreenRenderer({
                   {f.name ? ` ${f.name}` : ""}
                 </text>
               </g>
-            ) : null,
-          )}
+            ) : null;
+          })}
         </g>
       )}
 
