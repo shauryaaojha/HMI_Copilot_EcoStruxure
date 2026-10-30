@@ -26,7 +26,16 @@ import type { Snapshot } from "@/lib/server/repo";
 /** How the session talks to the server; the browser uses fetch and EventSource. */
 export interface Transport {
   post(projectId: string, body: { base: number; changes: Change[] }): Promise<ChangesResult>;
-  presence(projectId: string, body: { screenId?: string; selection: string[]; cursor?: { x: number; y: number } }): Promise<void>;
+  /**
+   * Send this person's heartbeat, and answer with who is here when the server
+   * says. Presence is the heartbeat route's for both transports, so the answer
+   * is also the read: a Realtime channel carries revision broadcasts only, and
+   * a transport that has nothing to report simply answers nothing.
+   */
+  presence(
+    projectId: string,
+    body: { screenId?: string; selection: string[]; cursor?: { x: number; y: number } },
+  ): Promise<{ users: Presence[] } | void>;
   /** Open the event stream from `since`; returns a function that closes it. */
   subscribe(projectId: string, since: number, handlers: StreamHandlers): () => void;
   /** The current snapshot and rev, for recovering after a refused change. */
@@ -182,6 +191,12 @@ export class CollabSession {
     const s = this.options.store.getState();
     void this.options.transport
       .presence(this.options.projectId, { screenId: s.activeScreenId, selection: s.selectedIds, ...(this.cursor ? { cursor: this.cursor } : {}) })
+      .then((answer) => {
+        // The heartbeat's answer is who is here. On the event stream a
+        // `presence` event says the same thing moments later and the later of
+        // the two wins; on a Realtime channel this is the only one that comes.
+        if (answer && !this.stopped) this.options.onPresence?.(answer.users);
+      })
       .catch(() => undefined);
   }
 

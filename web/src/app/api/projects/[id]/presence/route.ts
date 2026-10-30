@@ -3,6 +3,13 @@
  * where their pointer is. Sent every 5 s, counted for 15 s, broadcast on the
  * stream. A signed-out viewer has no name to show, so their heartbeat is
  * accepted and dropped.
+ *
+ * The answer carries everyone currently here, not only the entry just stored.
+ * This route is where presence lives for both transports, and a Realtime
+ * session has no other way to read it: its channel carries revision
+ * broadcasts and nothing else (lib/collab/realtime.ts). So the heartbeat it
+ * already sends every five seconds is also its read, with no second request
+ * and no second copy of who-is-where.
  */
 import { repo } from "@/lib/server/repo";
 import { requireReader } from "@/lib/server/access";
@@ -30,6 +37,9 @@ export async function POST(request: Request, context: Context) {
       ...(typeof body.screenId === "string" ? { screenId: body.screenId.slice(0, 160) } : {}),
       ...(point ? { cursor: point } : {}),
     });
-    return Response.json({ ok: true, presence });
+    // Read after the write, so this person is in the list they get back and
+    // the list is the same one the event stream sends to everyone else.
+    const users = await repo().live.presence.list(id);
+    return Response.json({ ok: true, presence, users }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) { return errorResponse(e); }
 }

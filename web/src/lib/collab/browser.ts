@@ -6,6 +6,7 @@
  * is tested with an in-memory transport and no network.
  */
 import type { StreamHandlers, Transport } from "./sync";
+import type { Presence } from "./types";
 
 /** Read a JSON answer, turning a refusal into an error that names it. */
 async function answer<T>(response: Response): Promise<T> {
@@ -26,11 +27,17 @@ export const browserTransport: Transport = {
   },
 
   async presence(projectId, body) {
-    await fetch(`/api/projects/${projectId}/presence`, {
+    const response = await fetch(`/api/projects/${projectId}/presence`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    // The answer is who is here. For a Realtime session that is the only read
+    // of presence there is, so it is read here rather than thrown away; a
+    // refusal tells the session nothing and the next beat tries again.
+    if (!response.ok) return;
+    const answer = (await response.json().catch(() => null)) as { users?: Presence[] } | null;
+    if (Array.isArray(answer?.users)) return { users: answer.users };
   },
 
   async snapshot(projectId) {
