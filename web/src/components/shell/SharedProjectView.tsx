@@ -19,7 +19,6 @@
  */
 
 import { useEffect, useState } from "react";
-import { signIn } from "next-auth/react";
 import { Eye, LogIn } from "lucide-react";
 import { useProject } from "@/store/project";
 import { useAccess, type ProjectAccess } from "@/store/access";
@@ -160,7 +159,7 @@ export function SharedProjectView({ token, projectId }: { token: string; project
             size="sm"
             className="ml-auto"
             icon={<LogIn size={13} />}
-            onClick={() => void signIn(undefined, { redirectTo: `/s/${token}` })}
+            onClick={() => window.location.assign(`/signin?next=${encodeURIComponent(`/s/${token}`)}`)}
           >
             Sign in
           </Button>
@@ -199,10 +198,11 @@ export function ShareSignInPrompt({ token, role, canSignIn }: { token: string; r
         <SchneiderMark className="text-brand-400" />
         <h1 className="text-base font-semibold text-text-primary">Sign in to open this project</h1>
         <p className="text-sm text-text-secondary">
-          This link makes you a {role} of a shared project, so it needs an account. Sign in and you will come straight back here.
+          This link makes you a {role} of a shared project, so it needs an account. Sign in - or make one, it takes a moment -
+          and you will come straight back here.
         </p>
         {canSignIn ? (
-          <Button variant="primary" block icon={<LogIn size={15} />} onClick={() => void signIn(undefined, { redirectTo: `/s/${token}` })}>
+          <Button variant="primary" block icon={<LogIn size={15} />} onClick={() => window.location.assign(`/signin?next=${encodeURIComponent(`/s/${token}`)}`)}>
             Sign in
           </Button>
         ) : (

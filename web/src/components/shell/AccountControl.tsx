@@ -4,9 +4,15 @@
  * Conflict choices are explicit: reload takes the remote snapshot, keep yours
  * retries against the revision shown in the conflict. A second concurrent edit
  * produces another conflict rather than a forced overwrite.
+ *
+ * Signing in happens here rather than on a page of its own, because this is
+ * where a visitor notices they are not signed in. The form itself is
+ * SignInForm, shared with /signin, which is where a share link sends someone
+ * who has to come back to the link afterwards.
  */
 import { useEffect, useState } from "react";
-import { signIn, signOut } from "next-auth/react";
+import { signOut } from "next-auth/react";
+import { SignInForm } from "./SignInForm";
 import { cloudError, cloudStatus, getAccount, resolveCloudConflict, type Account } from "@/store/persist";
 import { useProject } from "@/store/project";
 export function AccountControl({ projectId = "" }: { projectId?: string }) {
@@ -14,6 +20,7 @@ export function AccountControl({ projectId = "" }: { projectId?: string }) {
   const [account, setAccount] = useState<Account | null>(null);
   const [, update] = useState(0);
   const [error, setError] = useState<string>();
+  const [signingIn, setSigningIn] = useState(false);
   useEffect(() => {
     void getAccount().then(setAccount).catch(() => setError("Account service unavailable"));
     const changed = () => update(n => n + 1);
@@ -40,7 +47,12 @@ export function AccountControl({ projectId = "" }: { projectId?: string }) {
     {account?.user ? <>
       <span>{account.user.name}</span>
       {account.providers.length > 0 && <button className="focus-ring rounded-md px-2 py-1 hover:bg-surface-hover" onClick={() => void signOut()}>Sign out</button>}
-    </> : account?.providers.length ? <button className="focus-ring rounded-md px-2 py-1 hover:bg-surface-hover" onClick={() => void signIn()}>Sign in</button> : null}
+    </> : account?.providers.length ? <span className="relative">
+      <button className="focus-ring rounded-md px-2 py-1 hover:bg-surface-hover" aria-expanded={signingIn} onClick={() => setSigningIn(!signingIn)}>Sign in</button>
+      {signingIn && <div className="absolute right-0 top-full z-30 mt-1 w-72 rounded-xl border border-line bg-surface-float p-4 text-left" style={{ boxShadow: "var(--elev-2)" }}>
+        <SignInForm compact />
+      </div>}
+    </span> : null}
     {error && <span role="alert">{error}</span>}
   </div>;
 }
