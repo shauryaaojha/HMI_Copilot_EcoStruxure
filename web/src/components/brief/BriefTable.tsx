@@ -31,7 +31,9 @@ export interface BriefTableProps {
   questions?: string[];
   busy?: boolean;
   onCount: (unitId: string, count: number | undefined) => void;
+  onLabel: (unitId: string, label: string) => void;
   onToggleSignal: (unitId: string, signal: string) => void;
+  onFlow: (fromId: string, toId: string | undefined) => void;
   onRemove: (unitId: string) => void;
   onAdd: (kindId: string) => void;
   onPlant: (plant: Partial<Brief["plant"]>) => void;
@@ -64,7 +66,9 @@ export function BriefTable({
   questions,
   busy,
   onCount,
+  onLabel,
   onToggleSignal,
+  onFlow,
   onRemove,
   onAdd,
   onPlant,
@@ -133,10 +137,43 @@ export function BriefTable({
           return (
             <div key={unit.id} className="px-4 py-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-medium">{unit.label}</span>
+                {/* The label is what the tag comments read, so it is the
+                    engineer's word for this equipment - "Duty pump", not the
+                    catalogue's "Pump". The kind behind it does not change. */}
+                <input
+                  value={unit.label}
+                  aria-label={`What this ${kind?.label.toLowerCase() ?? unit.kind} is called`}
+                  onChange={(e) => onLabel(unit.id, e.target.value)}
+                  className="focus-ring w-40 rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-sm font-medium text-text-primary hover:border-line-subtle focus:border-line-subtle focus:bg-surface-base"
+                />
                 <span className="rounded-md border border-line-subtle px-1.5 py-0.5 font-mono text-[10px] text-text-faint">
                   {kind?.prefix ?? "UNT"}_nnn
                 </span>
+
+                {/* What feeds what: the generator reads it for ordering and
+                    connections, never for geometry (§5.3). One downstream unit
+                    per row covers the plants this is for; the brief itself
+                    holds a list of edges, so a branch is representable. */}
+                {brief.units.length > 1 && (
+                  <label className="flex items-center gap-1.5 text-xs text-text-muted">
+                    feeds
+                    <select
+                      value={brief.flow.find((f) => f.from === unit.id)?.to ?? ""}
+                      aria-label={`What ${unit.label} feeds`}
+                      onChange={(e) => onFlow(unit.id, e.target.value || undefined)}
+                      className="focus-ring rounded-md border border-line-subtle bg-surface-base px-1.5 py-1 text-xs text-text-primary"
+                    >
+                      <option value="">nothing yet</option>
+                      {brief.units
+                        .filter((other) => other.id !== unit.id)
+                        .map((other) => (
+                          <option key={other.id} value={other.id}>
+                            {other.label}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                )}
 
                 <label className="ml-auto flex items-center gap-1.5 text-xs text-text-muted">
                   How many

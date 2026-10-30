@@ -121,6 +121,28 @@ export function useBrief() {
     edit((brief) => ({ ...brief, units: brief.units.map((u) => (u.id === unitId ? { ...u, count } : u)) }));
   }, [edit]);
 
+  /**
+   * The row's own name. It reaches the tag comments rather than the tag names,
+   * so renaming a row says "Duty pump 1 running" on the screen without moving
+   * a tag: the prefix comes from the kind and the kind has not changed.
+   */
+  const setLabel = useCallback((unitId: string, label: string) => {
+    edit((brief) => ({ ...brief, units: brief.units.map((u) => (u.id === unitId ? { ...u, label } : u)) }));
+  }, [edit]);
+
+  /**
+   * What this unit feeds. One edge out of a row, replaced rather than added
+   * to: a row that fed two things at once through a single control would be
+   * ambiguous about which it meant, and the brief's `flow` is a list of edges,
+   * so nothing stops a second one being written by other means.
+   */
+  const setFlow = useCallback((fromId: string, toId: string | undefined) => {
+    edit((brief) => ({
+      ...brief,
+      flow: [...brief.flow.filter((f) => f.from !== fromId), ...(toId ? [{ from: fromId, to: toId }] : [])],
+    }));
+  }, [edit]);
+
   const toggleSignal = useCallback((unitId: string, signal: string) => {
     edit((brief) => ({
       ...brief,
@@ -226,6 +248,8 @@ export function useBrief() {
     begin,
     edit,
     setCount,
+    setLabel,
+    setFlow,
     toggleSignal,
     removeUnit,
     addUnit,

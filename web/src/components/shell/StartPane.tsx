@@ -487,7 +487,9 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
             questions={brief.questions}
             busy={brief.busy}
             onCount={brief.setCount}
+            onLabel={brief.setLabel}
             onToggleSignal={brief.toggleSignal}
+            onFlow={brief.setFlow}
             onRemove={brief.removeUnit}
             onAdd={brief.addUnit}
             onPlant={brief.setPlant}

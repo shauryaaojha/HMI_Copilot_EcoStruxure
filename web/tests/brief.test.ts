@@ -372,6 +372,32 @@ describe("the guided form", () => {
     expect(() => placeholderImport(typed, "form")).toThrow(/how many/i);
   });
 
+  it("takes the engineer's own word for a row, and refuses a row with none", () => {
+    // The label reaches the tag comments, not the tag names: the prefix comes
+    // from the kind, which renaming a row does not touch.
+    const named = Brief.parse({ units: [{ ...unitFromKind("pump", 1, 1), label: "Duty pump" }] });
+    const { variables } = tagsFromBrief(named);
+    expect(variables[0].Name).toBe("PMP_101_RUN");
+    expect(variables[0].Comments).toBe("Duty pump 1 running");
+
+    const unnamed = { ...named, units: [{ ...named.units[0], label: " " }] };
+    expect(problemsWith(unnamed).find((p) => p.field === "label")).toBeDefined();
+    expect(canConfirm(unnamed)).toBe(false);
+  });
+
+  it("keeps the flow the form drew, and loses it with the row", () => {
+    const typed = Brief.parse({
+      units: [unitFromKind("tank", 1, 1), unitFromKind("pump", 2, 2)],
+      flow: [{ from: "tank-1", to: "pump-2" }],
+    });
+    // Flow is ordering and connections, never geometry (§5.3), so it changes
+    // no tag: the same rows mint the same names with it and without it.
+    expect(tagsFromBrief(typed).variables).toEqual(tagsFromBrief({ ...typed, flow: [] }).variables);
+
+    const after = withoutUnit("pump-2", typed, tagsFromBrief(typed).variables, tagsFromBrief(typed).provenance);
+    expect(after.brief.flow).toEqual([]);
+  });
+
   it("says a typed brief out loud, because the turn still needs words", () => {
     const typed = Brief.parse({
       plant: { name: "Transfer station", purpose: "Moves water to the break tank" },

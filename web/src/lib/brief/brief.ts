@@ -114,6 +114,13 @@ export function problemsWith(brief: Brief): BriefProblem[] {
     if (seen.has(unit.id)) problems.push({ unitId: unit.id, field: "id", message: `Two units share the id ${unit.id}.` });
     seen.add(unit.id);
 
+    // A drafted row always arrives with a label; one typed on the form can be
+    // cleared, and the label is what the tag comments read, so an unnamed row
+    // would reach the screens as "1 running".
+    if (!unit.label.trim()) {
+      problems.push({ unitId: unit.id, field: "label", message: `${where} has no name. Say what this equipment is called.` });
+    }
+
     if (unit.count === undefined) {
       problems.push({ unitId: unit.id, field: "count", message: `${where} has no count. Say how many there are.` });
     } else if (unit.count < 1) {
