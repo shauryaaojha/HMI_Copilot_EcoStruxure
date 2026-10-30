@@ -32,6 +32,7 @@ import {
 } from "@/lib/brief/brief";
 import { CATALOGUE, kindOf } from "@/lib/brief/catalogue";
 import type { DraftedBy } from "@/lib/brief/draft";
+import { withSuggestions, type SignalSuggestion } from "@/lib/brief/suggest";
 
 export interface BriefState {
   brief: Brief;
@@ -41,6 +42,12 @@ export interface BriefState {
   intent?: string;
   /** What the engineer has replied to the clarify questions so far. */
   answers?: string[];
+  /**
+   * What finished projects suggest for these rows (lib/brief/suggest.ts).
+   * Advice only: nothing here reaches the brief until the engineer takes it,
+   * which is why it is held beside the brief rather than merged into it.
+   */
+  suggestions?: SignalSuggestion[];
 }
 
 export function useBrief() {
@@ -61,7 +68,7 @@ export function useBrief() {
         body: JSON.stringify({ intent, answers }),
       });
       const data = (await response.json().catch(() => null)) as
-        | { brief?: unknown; by?: DraftedBy; questions?: string[]; error?: string }
+        | { brief?: unknown; by?: DraftedBy; questions?: string[]; suggestions?: SignalSuggestion[]; error?: string }
         | null;
       if (!response.ok || !data?.brief) {
         setError(data?.error ?? "the brief could not be drafted");
@@ -73,7 +80,14 @@ export function useBrief() {
         setError("the brief that came back could not be read");
         return null;
       }
-      const next: BriefState = { brief: parsed.data, by: data.by ?? "rules", questions: data.questions, intent, answers };
+      const next: BriefState = {
+        brief: parsed.data,
+        by: data.by ?? "rules",
+        questions: data.questions,
+        intent,
+        answers,
+        suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
+      };
       setState(next);
       return next;
     } catch (caught) {
@@ -201,6 +215,27 @@ export function useBrief() {
     edit((brief) => ({ ...brief, screens: { ...brief.screens, [which]: !brief.screens[which] } }));
   }, [edit]);
 
+  /**
+   * Take one row's suggestion. `withSuggestions` is the only way a suggestion
+   * reaches a brief, and it drops anything outside the kind's catalogue, so a
+   * suggestion cannot widen the vocabulary even by this route. The suggestion
+   * is then forgotten: it has either been taken or it has been read and
+   * declined, and in both cases it has nothing left to say.
+   */
+  const takeSuggestion = useCallback((unitId: string) => {
+    setState((s) => {
+      if (!s) return s;
+      const taking = (s.suggestions ?? []).filter((x) => x.unitId === unitId);
+      if (taking.length === 0) return s;
+      return { ...s, brief: withSuggestions(s.brief, taking), suggestions: (s.suggestions ?? []).filter((x) => x.unitId !== unitId) };
+    });
+  }, []);
+
+  /** Read and declined. The row keeps the signals the engineer chose. */
+  const dismissSuggestion = useCallback((unitId: string) => {
+    setState((s) => (s ? { ...s, suggestions: (s.suggestions ?? []).filter((x) => x.unitId !== unitId) } : s));
+  }, []);
+
   const clear = useCallback(() => {
     setState(null);
     setError(null);
@@ -237,6 +272,7 @@ export function useBrief() {
     brief: state?.brief ?? null,
     by: state?.by ?? null,
     questions: state?.questions,
+    suggestions: state?.suggestions ?? [],
     /** A question is on screen, so the next thing typed is an answer to it. */
     asking: (state?.questions?.length ?? 0) > 0,
     problems,
@@ -257,6 +293,8 @@ export function useBrief() {
     setNamingStart,
     toggleAlarm,
     toggleScreen,
+    takeSuggestion,
+    dismissSuggestion,
     clear,
     accept,
   };

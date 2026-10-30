@@ -500,6 +500,9 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
               setDraft(question);
               box.current?.focus();
             }}
+            suggestions={brief.suggestions}
+            onTakeSuggestion={brief.takeSuggestion}
+            onDismissSuggestion={brief.dismissSuggestion}
             onConfirm={() => confirmBrief(centre())}
             onCancel={brief.clear}
           />

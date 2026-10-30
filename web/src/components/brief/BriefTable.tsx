@@ -19,9 +19,10 @@
  */
 "use client";
 
-import { AlertTriangle, Check, Loader2, Plus, X } from "lucide-react";
+import { AlertTriangle, Check, Lightbulb, Loader2, Plus, X } from "lucide-react";
 import { CATALOGUE, kindOf } from "@/lib/brief/catalogue";
 import type { Brief, BriefProblem } from "@/lib/brief/brief";
+import type { SignalSuggestion } from "@/lib/brief/suggest";
 import type { DraftedBy } from "@/lib/brief/draft";
 
 export interface BriefTableProps {
@@ -42,6 +43,10 @@ export interface BriefTableProps {
   onToggleScreen: (which: keyof Brief["screens"]) => void;
   /** A clarify question the engineer chose to answer. */
   onAnswer: (question: string) => void;
+  /** What finished projects suggest for a row, and the two ways to answer it. */
+  suggestions?: SignalSuggestion[];
+  onTakeSuggestion?: (unitId: string) => void;
+  onDismissSuggestion?: (unitId: string) => void;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -76,10 +81,14 @@ export function BriefTable({
   onToggleAlarm,
   onToggleScreen,
   onAnswer,
+  suggestions,
+  onTakeSuggestion,
+  onDismissSuggestion,
   onConfirm,
   onCancel,
 }: BriefTableProps) {
   const problemsOf = (unitId: string) => problems.filter((p) => p.unitId === unitId);
+  const suggestionOf = (unitId: string) => (suggestions ?? []).find((x) => x.unitId === unitId);
   const general = problems.filter((p) => !p.unitId);
   const tags = brief.units.reduce((n, u) => n + (u.count ?? 0) * u.signals.length, 0);
   // An alarm on a signal no unit carries raises nothing, so the only ones
@@ -226,6 +235,43 @@ export function BriefTable({
                   );
                 })}
               </div>
+
+              {/*
+                What other projects did, with the count behind it. An engineer
+                can weigh "in 3 of 4 projects" and cannot weigh a bare
+                recommendation, which is why the number is on screen and not
+                only in the data.
+              */}
+              {suggestionOf(unit.id) && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded-lg border border-line-subtle bg-surface-base/60 px-2 py-1.5 text-[11px] text-text-muted">
+                  <Lightbulb size={11} aria-hidden className="text-brand-400" />
+                  <span>
+                    {suggestionOf(unit.id)!.add.length > 0
+                      ? `Projects with a ${(kind?.label ?? unit.label).toLowerCase()} usually also had ${suggestionOf(unit.id)!.add.join(", ")}`
+                      : `Projects with a ${(kind?.label ?? unit.label).toLowerCase()} rarely had ${suggestionOf(unit.id)!.rarely.join(", ")}`}
+                    <span className="ml-1 opacity-70">
+                      (in {suggestionOf(unit.id)!.projects} project{suggestionOf(unit.id)!.projects === 1 ? "" : "s"} scanned here)
+                    </span>
+                  </span>
+                  {suggestionOf(unit.id)!.add.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => onTakeSuggestion?.(unit.id)}
+                      className="focus-ring ml-auto rounded-md border border-brand-500/50 px-2 py-0.5 text-[11px] text-text-primary hover:bg-brand-500/15"
+                    >
+                      Add them
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    aria-label="Dismiss this suggestion"
+                    onClick={() => onDismissSuggestion?.(unit.id)}
+                    className={`focus-ring rounded-md p-0.5 text-text-faint hover:text-text-primary ${suggestionOf(unit.id)!.add.length > 0 ? "" : "ml-auto"}`}
+                  >
+                    <X size={11} aria-hidden />
+                  </button>
+                </div>
+              )}
 
               {wrong.map((problem) => (
                 <p key={problem.field + problem.message} className="mt-2 flex items-center gap-1.5 text-[11px] text-status-warn">

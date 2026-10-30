@@ -8,6 +8,7 @@
  */
 import { askJson } from "@/lib/ai/draft";
 import { draftBrief } from "@/lib/brief/draft";
+import { suggestionsFor } from "@/lib/brief/evidence";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -16,7 +17,7 @@ export const maxDuration = 60;
 const ANSWERS = 2;
 const LONGEST = 2000;
 
-/** Body `{ intent, answers? }`; answers `{ brief, by, questions? }`. */
+/** Body `{ intent, answers? }`; answers `{ brief, by, questions?, suggestions }`. */
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as { intent?: unknown; answers?: unknown } | null;
   const intent = typeof body?.intent === "string" ? body.intent.trim().slice(0, 4000) : "";
@@ -27,5 +28,11 @@ export async function POST(request: Request) {
     .slice(0, ANSWERS)
     .map((a) => a.trim().slice(0, LONGEST));
   if (!intent && answers.length === 0) return Response.json({ error: "describe the plant first" }, { status: 400 });
-  return Response.json(await draftBrief(intent, { ask: askJson, answers }));
+
+  const drafted = await draftBrief(intent, { ask: askJson, answers });
+  // What other projects did with these kinds, for the engineer to weigh beside
+  // the draft. Advice, never applied here: a suggestion the engineer has not
+  // taken must not reach the brief they are about to confirm.
+  const suggestions = await suggestionsFor(drafted.brief);
+  return Response.json({ ...drafted, suggestions });
 }

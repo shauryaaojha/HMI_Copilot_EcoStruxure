@@ -18,7 +18,7 @@
  * form, and what happens after a clarify question is answered.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   Brief,
   canConfirm,
@@ -479,5 +479,64 @@ describe("answering the clarify questions", () => {
     expect(drafted.brief.units.map((u) => u.kind)).toEqual(["conveyor"]);
     expect(drafted.brief.units[0].count).toBe(3);
     expect(tagsFromBrief(drafted.brief).variables.map((v) => v.Name)).toContain("CNV_103_RUN");
+  });
+});
+
+describe("the knowledge base reaching a real brief", () => {
+  /** A scanned project with one pump carrying these signals. */
+  const pumpProject = (id: string, signals: string[]) =>
+    ({ id, scannedAt: id, equipment: [{ id: "p", kind: "pump", label: "Pump", tags: signals.map((s) => `PMP_101_${s}`) }] } as unknown as ProjectKnowledge);
+
+  const thin = briefOf(unit({ kind: "pump", count: 1, signals: ["RUN"] }));
+
+  it("costs a draft nothing when the store is off", async () => {
+    vi.resetModules();
+    vi.stubEnv("KNOWLEDGE_STORE", "off");
+    const reads = vi.fn(async () => [] as ProjectKnowledge[]);
+    vi.doMock("@/lib/knowledge/store", () => ({ allKnowledge: reads, knowledgeStore: () => "off" }));
+    const { suggestionsFor } = await import("@/lib/brief/evidence");
+    expect(await suggestionsFor(thin)).toEqual([]);
+    vi.unstubAllEnvs();
+    vi.doUnmock("@/lib/knowledge/store");
+  });
+
+  it("asks the store nothing at all for a brief with no units", async () => {
+    vi.resetModules();
+    const reads = vi.fn(async () => [pumpProject("a", ["RUN", "FLT"])]);
+    vi.doMock("@/lib/knowledge/store", () => ({ allKnowledge: reads, knowledgeStore: () => "filesystem" }));
+    const { suggestionsFor } = await import("@/lib/brief/evidence");
+    expect(await suggestionsFor(Brief.parse({}))).toEqual([]);
+    // An empty brief has nothing to suggest about, so the read is not made.
+    expect(reads).not.toHaveBeenCalled();
+    vi.doUnmock("@/lib/knowledge/store");
+  });
+
+  it("carries what the records say back for the rows the brief has", async () => {
+    vi.resetModules();
+    const records = [
+      pumpProject("a", ["RUN", "FLT", "START", "STOP"]),
+      pumpProject("b", ["RUN", "FLT", "START", "STOP"]),
+      pumpProject("c", ["RUN", "FLT"]),
+    ];
+    vi.doMock("@/lib/knowledge/store", () => ({ allKnowledge: async () => records, knowledgeStore: () => "filesystem" }));
+    const { suggestionsFor } = await import("@/lib/brief/evidence");
+    const found = await suggestionsFor(thin);
+    expect(found).toHaveLength(1);
+    expect(found[0].unitId).toBe("pump-1");
+    expect(found[0].add.sort()).toEqual(["FLT", "START", "STOP"]);
+    expect(found[0].projects).toBe(3);
+    vi.doUnmock("@/lib/knowledge/store");
+  });
+
+  it("treats an unreadable store as one with nothing to say", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/knowledge/store", () => ({
+      allKnowledge: async () => { throw new Error("the disk is gone"); },
+      knowledgeStore: () => "filesystem",
+    }));
+    const { suggestionsFor } = await import("@/lib/brief/evidence");
+    // A draft is the engineer's work and does not fail over missing advice.
+    expect(await suggestionsFor(thin)).toEqual([]);
+    vi.doUnmock("@/lib/knowledge/store");
   });
 });
