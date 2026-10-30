@@ -222,10 +222,13 @@ export const realtimeTransport: Transport = {
       if (closed) return;
       if (!minted) {
         // Not a hiccup to retry: a share-link visitor has no identity to scope
-        // a token to (401) and a deployment without a JWT secret never will
+        // a token to (401) and a deployment with no JWT secret never will
         // (503). Reporting it as a closed stream had the session re-mint every
-        // 500 ms for as long as the tab stayed open, so this session takes the
-        // event stream instead - once, and for its whole life.
+        // 500 ms for as long as the tab stayed open, so this connection takes
+        // the event stream instead, with no retry of its own. The stream's own
+        // reconnect asks again a minute later - too slow to be a loop, and the
+        // only way someone who has just signed in gets a channel without
+        // reloading the page.
         console.info("[realtime] no token for this session; using the event stream instead");
         fallback = browserTransport.subscribe(projectId, cursor, handlers);
         return;
