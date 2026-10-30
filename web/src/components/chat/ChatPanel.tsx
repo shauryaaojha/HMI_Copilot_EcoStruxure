@@ -48,6 +48,7 @@ import { cn } from "@/components/ui";
 import { anythingMissing, requirementsOf } from "./requirements";
 import { useChat } from "./useChat";
 import { SharedProposals } from "./SharedProposals";
+import { AgentPane } from "./AgentPane";
 
 const MAX_INTENT = 600;
 
@@ -67,6 +68,8 @@ const OPENERS = [
 
 export function ChatPanel() {
   const [draft, setDraft] = useState("");
+  /** The chat proposes ops for the canvas; the agent works on the opened file. */
+  const [mode, setMode] = useState<"chat" | "agent">("chat");
   const chat = useProject((s) => s.chat);
   const generating = useProject((s) => s.generating);
   const variables = useProject((s) => s.variables);
@@ -171,6 +174,26 @@ export function ChatPanel() {
             working
           </span>
         )}
+        {canEdit && (
+          <div role="tablist" aria-label="Copilot mode" className="ml-1 flex rounded-md border border-line-subtle p-0.5 text-[10.5px] font-medium">
+            {(["chat", "agent"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                role="tab"
+                aria-selected={mode === m}
+                onClick={() => setMode(m)}
+                title={m === "chat" ? "Propose changes on the canvas" : "Work on the opened project file, step by step"}
+                className={cn(
+                  "focus-ring rounded px-1.5 py-0.5 capitalize transition",
+                  mode === m ? "bg-surface-hover text-text-primary" : "text-text-faint hover:text-text-secondary",
+                )}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="ml-auto flex items-center gap-0.5">
           {chat.length > 0 && canEdit && (
@@ -199,6 +222,7 @@ export function ChatPanel() {
         </div>
       </header>
 
+      {mode === "agent" && canEdit ? <AgentPane /> : (<>
       {/* The thread. Takes whatever height is left and scrolls on its own. */}
       <div
         ref={thread}
@@ -560,6 +584,7 @@ export function ChatPanel() {
           </p>
         </div>
       )}
+      </>)}
     </aside>
   );
 }

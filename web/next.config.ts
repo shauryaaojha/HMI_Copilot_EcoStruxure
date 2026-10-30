@@ -28,7 +28,9 @@ const config: NextConfig = {
   // mongodb pulls optional native add-ons (kerberos, encryption, snappy) that
   // the bundler cannot resolve and does not need; leaving it external keeps the
   // driver on Node's own require.
-  serverExternalPackages: ["sql.js", "@resvg/resvg-js", "react-dom/server", "mongodb"],
+  // quickjs-emscripten (the agent's script sandbox, lib/agent/script.ts) loads
+  // its engine as WebAssembly the same way.
+  serverExternalPackages: ["sql.js", "@resvg/resvg-js", "react-dom/server", "mongodb", "quickjs-emscripten", "quickjs-emscripten-core", "@jitl/quickjs-wasmfile-release-sync"],
 
   /**
    * Files read from disk at request time, which the bundler therefore cannot
@@ -52,6 +54,9 @@ const config: NextConfig = {
     "/api/panel": ["./skeleton/**/*", WASM],
     "/api/validate": [WASM],
     "/api/critique": [WASM],
+    // The agent opens databases, writes bindings through the packager and runs
+    // scripts in QuickJS, whose engine is a .wasm beside its module.
+    "/api/agent": ["./skeleton/**/*", WASM, "./node_modules/@jitl/quickjs-wasmfile-release-sync/dist/*.wasm"],
   },
 };
 
