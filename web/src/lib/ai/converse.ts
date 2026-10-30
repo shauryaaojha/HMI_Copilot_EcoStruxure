@@ -53,6 +53,8 @@ export interface ObjectDigest {
   tag?: string;
   /** For a ContentDisplay: the content screen it shows. */
   shows?: string;
+  /** For a Compound Object: the words it shows (a push button's START). */
+  reads?: string;
 }
 
 export interface ScreenDigest {
@@ -199,10 +201,11 @@ export function digestOf(project: DigestSource, request = ""): ProjectDigest {
       digest.objects = parts.map((p) => ({
         handle: h(p.UniqueId),
         name: p.Name,
-        type: p.Type,
+        type: p.Type === "CompoundObject" ? `CompoundObject.${p.Definition}` : p.Type,
         region: regionOf(p, regions),
         tag: boundTo.get(p.UniqueId),
         shows: p.Type === "ContentDisplay" ? contentName.get((p as { ScreenId?: number }).ScreenId ?? -1) : undefined,
+        reads: p.Type === "CompoundObject" ? wordsOf(p.Look as { items: unknown[] } | undefined).join(" / ") || undefined : undefined,
       }));
       if (carried.length) {
         digest.carried = carried.map((c) => {
@@ -411,7 +414,9 @@ Scope - one op can reach many screens and many objects:
 - A content screen is not a screen an operator navigates to: it is drawn
   inside a ContentDisplay on a screen. A Compound Object (Type
   CompoundObject.<Name>, such as a Switch_PB04 push button) is one object the
-  engineer made, never a screen.
+  engineer made, never a screen. It has a handle and is moved, aligned,
+  resized, copied or deleted like any object; how it looks comes from its
+  definition, and "reads" says what it shows.
 - screens: ["all"] for every screen, or the screens by handle or name
   (["s3", "s5"], ["Boilers"]). Absent means the active screen.
 - select, in place of target: a role every screen has - background, header,
@@ -721,7 +726,7 @@ export function projectContext(digest: ProjectDigest): string {
 export function volatileContext(digest: ProjectDigest): string {
   const active = digest.screens.find((s) => s.active);
   const objects = active?.objects
-    ?.map((o) => `${o.handle} ${o.name} [${o.type}, ${o.region}${o.tag ? `, shows ${o.tag}` : ""}${o.shows ? `, shows content screen ${o.shows}` : ""}]`)
+    ?.map((o) => `${o.handle} ${o.name} [${o.type}, ${o.region}${o.tag ? `, shows ${o.tag}` : ""}${o.shows ? `, shows content screen ${o.shows}` : ""}${o.reads ? `, reads "${o.reads}"` : ""}]`)
     .join("\n");
   const tags = digest.variables
     .map((v) => `${v.name} (${v.dataType})${v.comment ? ` — ${v.comment}` : ""}`)
@@ -732,7 +737,7 @@ export function volatileContext(digest: ProjectDigest): string {
     active ? `Overlaps on it:${active.overlaps?.length ? `\n${active.overlaps.join("\n")}` : " none"}` : "",
     active ? `Objects on it:\n${objects || "- none"}` : "",
     active?.carried?.length
-      ? `The engineer's Compound Objects on it (objects, not screens; drawn from the project's own definitions, no handle, so ops cannot change them):\n${active.carried.join("\n")}`
+      ? `Carried as the file has them (objects the editor does not model; no handle, so ops cannot change them):\n${active.carried.join("\n")}`
       : "",
     "",
     `Tags relevant to this request (${digest.variables.length} of ${digest.variableCount}; ask for another by name if it is missing):`,

@@ -454,6 +454,17 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
       });
       foreign[screen.UniqueId] = summaries;
     }
+    // A Compound Object is a part now; it is drawn from its definition. Set
+    // before the fingerprint, so an untouched screen still reads as untouched.
+    for (const part of screen.Children[0].Children) {
+      if (part.Type !== "CompoundObject") continue;
+      try {
+        const look = lookOf(parts.get(part.UniqueId) ?? { Type: `CompoundObject.${part.Definition}` });
+        if (look) part.Look = look;
+      } catch {
+        // A definition this cannot read: the part is drawn as an outline.
+      }
+    }
     screens.push(screen);
     preservedScreens.set(id, { raw, parts, opaque, metadata, fingerprint: fingerprintScreen(screen), area, ...(tree ? { tree } : {}) });
   };

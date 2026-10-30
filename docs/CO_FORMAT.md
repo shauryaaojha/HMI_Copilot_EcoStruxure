@@ -132,8 +132,22 @@ An opened project draws each Compound Object instance from its definition
 
 On Panel-1 this draws START, RESET and STOP/READY as grey OFF-state buttons
 (Switch_PB04 shows its colour only when CV is true), the gauges from twelve
-o'clock in the engineer's colours, and the bar graphs at 75 %. It is for
-display only. The instance is still carried whole and written back untouched.
+o'clock in the engineer's colours, and the bar graphs at 75 %.
+
+### The instance is a part
+
+The editor has an instance as an ordinary part, so it can be selected,
+moved, aligned, resized, copied and deleted, and the chat Copilot gets it
+with a handle (`Switch_PB041 [CompoundObject.Switch_PB04, body, reads "START"]`).
+
+- **Reading.** `normalizePart` (schema.ts `asCompoundObject`) turns `Type "CompoundObject.Switch_PB04"` into `Type "CompoundObject"` with `Definition: "Switch_PB04"`, because a discriminated union needs one literal. The part schema is lossless, so `Text`, `CV`, `Colors` and the rest pass through. The reader sets `Look` from co-look.ts before it takes the fingerprint, so an untouched screen is still untouched.
+- **Writing.** The packager runs `productTree` over every screen it writes. It puts back `Type "CompoundObject.<Definition>"` and removes `Definition` and `Look`.
+- **Grids.** A moved instance in a Grid stays in its cell and moves by a Margin (`pinInGrid`), like any modelled leaf. An untouched one is written back exactly as read (tests/co-look.test.ts).
+- **No definition.** If the project lacks the definition, the part is drawn as a labelled outline, and can still be grabbed.
+
+Not yet: editing an instance's exposed values (its Text, its colour) from
+the inspector, and redrawing its look after such an edit. The look is
+resolved once, when the project is read.
 
 ## Building one from nothing
 

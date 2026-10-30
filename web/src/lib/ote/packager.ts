@@ -31,7 +31,7 @@ import {
 import { buildGraph, type BindingGraph, type Wire } from "./bindings";
 import { syncConverters } from "./converters";
 import { gid } from "./parts";
-import type { Alarm, Screen, Variable } from "./schema";
+import { productTree, type Alarm, type Screen, type Variable } from "./schema";
 import type { PlantModel } from "@/lib/plant/model";
 import { loadSkeleton, type Skeleton } from "./skeleton";
 import {
@@ -499,7 +499,7 @@ async function packagePreserved(input: PackageInput, kept: Preserved): Promise<U
         return;
       }
       changed = true;
-      entries.set(nameOf(`Contents/${id}/Screen.dat`), jsonEntry(linkScreens(was ? mergeScreen(screen, was) : screen, numbers)));
+      entries.set(nameOf(`Contents/${id}/Screen.dat`), jsonEntry(productTree(linkScreens(was ? mergeScreen(screen, was) : screen, numbers))));
       if (!was || was.metadata.Name !== screen.Name) {
         entries.set(nameOf(`Contents/${id}/Metadata.dat`), jsonEntry({ LayoutType: 8, ObjectType: 10, ...(was?.metadata ?? {}), Name: screen.Name }));
       }
@@ -526,7 +526,7 @@ async function packagePreserved(input: PackageInput, kept: Preserved): Promise<U
       return;
     }
     changed = true;
-    entries.set(nameOf(`Screens/${id}/Screen.dat`), jsonEntry(linkScreens(was ? mergeScreen(screen, was) : screen, numbers)));
+    entries.set(nameOf(`Screens/${id}/Screen.dat`), jsonEntry(productTree(linkScreens(was ? mergeScreen(screen, was) : screen, numbers))));
     // Metadata only when it actually differs: a touched screen with the same
     // name and position keeps its Metadata.dat byte-identical.
     if (!was) {

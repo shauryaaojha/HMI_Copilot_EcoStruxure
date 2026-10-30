@@ -120,3 +120,23 @@ export function LookNode({ box, look, alarms }: { box: NonNullable<Carried["box"
     </svg>
   );
 }
+
+/**
+ * A Compound Object instance as an ordinary part: selected, moved, aligned
+ * and resized like any other. It is drawn from the look its definition gave
+ * when the project was read; without one (its definition is not in the
+ * project), it is a labelled outline, so it still has a place to grab.
+ */
+export function CompoundObjectPart({ part, alarms }: { part: PartOf<"CompoundObject">; alarms: AlarmRow[] }) {
+  const box = { left: part.Location.Left, top: part.Location.Top, width: part.Width ?? 0, height: part.Height ?? 0 };
+  const look = part.Look as Look | undefined;
+  if (look && Array.isArray(look.items)) return <LookNode box={box} look={look} alarms={alarms} />;
+  return (
+    <g>
+      <rect x={box.left + 0.5} y={box.top + 0.5} width={Math.max(0, box.width - 1)} height={Math.max(0, box.height - 1)} fill="none" stroke="#8a8f98" strokeDasharray="4 3" />
+      <text x={box.left + 4} y={box.top + 14} fontSize={11} fill="#8a8f98">
+        {part.Definition}
+      </text>
+    </g>
+  );
+}

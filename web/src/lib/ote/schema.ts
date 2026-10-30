@@ -179,7 +179,36 @@ export function withDefaults(part: unknown): unknown {
 }
 
 /** Both fills, in order: what every reader path parses. */
-export const normalizePart = (part: unknown): unknown => withDefaults(withOrigin(part));
+export const normalizePart = (part: unknown): unknown => withDefaults(withOrigin(asCompoundObject(part)));
+
+/**
+ * A Compound Object instance is typed by its definition's name
+ * (`CompoundObject.Switch_PB04`), so no one literal matches it. The store
+ * holds it as `CompoundObject` with the name in `Definition`, and `Look`, how
+ * it is drawn (lib/ote/co-look.ts); `productTree` puts the file's type back.
+ */
+const CO_PREFIX = "CompoundObject.";
+
+export function asCompoundObject(part: unknown): unknown {
+  if (!part || typeof part !== "object") return part;
+  const type = (part as Record<string, unknown>).Type;
+  if (typeof type !== "string" || !type.startsWith(CO_PREFIX) || type.length === CO_PREFIX.length) return part;
+  return { ...(part as Record<string, unknown>), Type: "CompoundObject", Definition: type.slice(CO_PREFIX.length) };
+}
+
+/** A screen tree as the file wants it: each Compound Object typed by its definition again, with nothing of the editor's left on it. */
+export function productTree<T>(node: T): T {
+  if (Array.isArray(node)) return node.map(productTree) as T;
+  if (!node || typeof node !== "object") return node;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(node as Record<string, unknown>)) out[k] = k === "Children" ? productTree(v) : v;
+  if (out.Type === "CompoundObject" && typeof out.Definition === "string") {
+    out.Type = CO_PREFIX + out.Definition;
+    delete out.Definition;
+    delete out.Look;
+  }
+  return out as T;
+}
 
 export function withOrigin(part: unknown): unknown {
   if (!part || typeof part !== "object") return part;
@@ -475,6 +504,20 @@ export const Image = z.object({ Type: z.literal("Image"), ...base, ...picture })
  * product's templates are made of these; the reader lays a content screen out
  * at the size of the display that shows it.
  */
+/**
+ * An instance of a Compound Object the project defines (its CompoundObjects
+ * folder): one object to place, size and bind. Its exposed values (Text, CV,
+ * Colors) pass through as they are; see asCompoundObject.
+ */
+export const CompoundObject = z.object({
+  Type: z.literal("CompoundObject"),
+  ...base,
+  /** The definition's name: the file types the instance CompoundObject.<Definition>. */
+  Definition: z.string().min(1),
+  /** How it looks, resolved from its definition when the project was read. Never written. */
+  Look: z.unknown().optional(),
+});
+
 export const ContentDisplay = z.object({
   Type: z.literal("ContentDisplay"),
   ...base,
@@ -736,6 +779,7 @@ const PartStrict = z.discriminatedUnion("Type", [
   ContentDisplay,
   ClipArt,
   Image,
+  CompoundObject,
 ]);
 
 /** Every part the store models, parsed losslessly. Typed as the strict schema. */

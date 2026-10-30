@@ -97,6 +97,7 @@ const STEM: Record<PartType, string> = {
   ContentDisplay: "Content",
   ClipArt: "Clip",
   Image: "Image",
+  CompoundObject: "CO",
 };
 
 export function partFromTool(type: PartType, box: Box): Part {
@@ -155,6 +156,9 @@ export function partFromTool(type: PartType, box: Box): Part {
       return { ...rectangle(name, box), Type: type } as Part;
     case "ClipArt":
     case "Image":
+    // A Compound Object is copied from one the project has, never drawn from
+    // nothing: a bare click has no definition to give it.
+    case "CompoundObject":
       // Placed from the clipart library with its picture (symbolPart's twin);
       // a bare tool click has no picture to give it, so it starts as a panel.
       return rectangle(name, box);
