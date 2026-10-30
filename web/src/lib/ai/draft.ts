@@ -26,8 +26,14 @@ type Draft = Variable;
 
 const env = (name: string) => process.env[name]?.trim() || undefined;
 
-/** One JSON object from whichever model is configured, or null on any failure. */
-async function askJson(system: string, prompt: string, schema: Record<string, unknown>): Promise<unknown> {
+/**
+ * One JSON object from whichever model is configured, or null on any failure.
+ *
+ * Exported because the plant brief (lib/brief) asks the same way: one JSON
+ * answer, schema-constrained, with a rules fallback when there is no key. A
+ * second copy of the provider switch would be a second thing to keep current.
+ */
+export async function askJson(system: string, prompt: string, schema: Record<string, unknown>): Promise<unknown> {
   const provider = activeProvider();
   if (!provider) return null;
   try {
@@ -143,12 +149,15 @@ export function coerceDraft(value: unknown): Draft[] {
   return out.slice(0, 400);
 }
 
-/** Placeholder tags for a described plant: the model's when it answers sensibly, else the rules'. */
-export async function draftTags(intent: string): Promise<{ variables: Draft[]; by: "model" | "rules" }> {
-  const drafted = coerceDraft(await askJson(DRAFT_SYSTEM, intent, DRAFT_SCHEMA));
-  if (drafted.length > 0) return { variables: drafted, by: "model" };
-  return { variables: draftByRules(intent), by: "rules" };
-}
+/*
+ * `draftTags` stood here: one call that turned a description straight into a
+ * tag list, which the start pane then built on without anybody reading it.
+ * Phase 3 replaced it with the plant brief (lib/brief), which asks the model
+ * for the same judgement in a shape a person can confirm first. The prompt and
+ * the schema above are kept because `draftByRules` and `coerceDraft` are the
+ * rules path and the model-answer check the brief now does per row, and both
+ * are still what the screens-first tests pin.
+ */
 
 /* --- matching placeholders to the real export ----------------------------- */
 

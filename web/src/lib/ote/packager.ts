@@ -33,6 +33,7 @@ import { syncConverters } from "./converters";
 import { gid } from "./parts";
 import type { Alarm, Screen, Variable } from "./schema";
 import type { PlantModel } from "@/lib/plant/model";
+import type { ConfirmedBrief } from "@/lib/brief/brief";
 import { loadSkeleton, type Skeleton } from "./skeleton";
 import {
   fingerprintAlarms,
@@ -59,6 +60,12 @@ export interface PackageInput {
    * tags.
    */
   plant?: PlantModel;
+  /**
+   * The plant brief the engineer confirmed, when the tags are placeholders
+   * drafted from one (lib/brief). Validation checks every tag traces back to a
+   * row of it; the packager, as with `plant`, writes nothing from it.
+   */
+  brief?: ConfirmedBrief;
 }
 
 /** The product writes its .dat files as UTF-8 JSON indented by two spaces. */

@@ -19,9 +19,11 @@
  *
  * Two workflows start here, chosen first. Tags first: import the export (or
  * a sample), describe the screens, and the generator builds from the tags.
- * Screens first: describe the plant with no export at all; placeholder tags
- * are drafted from the description (lib/ai/draft.ts), the same generator
- * builds from them, and the real export, imported whenever it exists, is
+ * Screens first: describe the plant with no export at all. The description
+ * becomes a plant brief - units, counts, signals, alarms - which is shown as a
+ * table and confirmed before a single placeholder tag exists (lib/brief,
+ * docs/PLAN_FULL_ARCHITECTURE.md §5.3). The same generator then builds from
+ * those placeholders, and the real export, imported whenever it exists, is
  * matched to them and the screens rebound automatically.
  */
 
@@ -50,6 +52,7 @@ import {
 import { useProject } from "@/store/project";
 import { useChat } from "@/components/chat/useChat";
 import { SAMPLES, useTagImport } from "@/components/tags/useTagImport";
+import { BriefTable, useBrief } from "@/components/brief";
 import { saveProject } from "@/store/persist";
 import { touchProject } from "@/store/projects";
 import { DEFAULT_STANDARDS } from "@/store/types";
@@ -85,7 +88,8 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
   const { generate } = useGeneration();
   const importTags = useProject((s) => s.importTags);
   const rename = useProject((s) => s.rename);
-  const { upload, useSample, draft: draftTags } = useTagImport();
+  const { upload, useSample } = useTagImport();
+  const brief = useBrief();
   // Which workflow: chosen first, unless tags are already loaded.
   const [path, setPath] = useState<"tags" | "screens" | null>(null);
   const pane = useCursorLight<HTMLDivElement>();
@@ -122,20 +126,33 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
     void send(text);
   }
 
-  /** Screens first: placeholder tags from the description, then the ordinary build on them. */
+  /**
+   * Screens first: a brief from the description, for review. The build waits
+   * for `confirmBrief` - which is the point of the step, so the pane stays
+   * where it is and the table appears beneath the description.
+   */
   async function screensFirst(text: string, from: Origin) {
     setBusy("the description");
     setError(null);
     try {
-      if (!(await draftTags(text))) {
-        setError("No equipment was recognised in that description. Name the units: pumps, tanks, valves, meters.");
+      const drafted = await brief.draft(text);
+      if (!drafted) {
+        setError(brief.error ?? "the brief could not be drafted from that description");
         return;
       }
-      reveal(from);
-      void send(text);
+      // `from` is not used yet: nothing is revealed until the brief is confirmed.
+      void from;
     } finally {
       setBusy(null);
     }
+  }
+
+  /** The confirmed brief becomes placeholder tags, and only then does the build start. */
+  function confirmBrief(from: Origin) {
+    const count = brief.accept();
+    if (count === null) return;
+    reveal(from);
+    void send(draft.trim());
   }
 
   async function withTags(file: File, from: Origin) {
@@ -262,10 +279,13 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
   }
 
   if (gone) return null;
-  const working = busy !== null;
+  const working = busy !== null || brief.busy;
   const hasTags = variables.length > 0;
   const choosing = path === null && !hasTags;
   const screens = path === "screens" && !hasTags;
+  // Under review: the description is settled, so the only question on screen
+  // is whether the brief is right.
+  const reviewing = brief.brief !== null;
 
   return (
     <div
@@ -300,7 +320,9 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
               : choosing
                 ? "Start from your PLC tag export, or design the screens first and bring the tags later."
                 : screens
-                  ? "Describe the plant. Placeholder tags are assumed from it; import the real export whenever it exists and the screens are bound to it automatically."
+                  ? reviewing
+                    ? "Check the units, counts and signals. Nothing is built, and no tag exists, until you confirm this."
+                    : "Describe the plant. It becomes a brief for you to confirm; the placeholder tags come from the brief, and the real export binds to them whenever it arrives."
                   : "Bring a tag export or take a sample, then say which screens you need."}
           </p>
         </div>
@@ -385,6 +407,23 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
           </div>
         </div>
 
+        {/* --- the brief, for review ------------------------------------ */}
+        {reviewing && brief.brief && (
+          <BriefTable
+            brief={brief.brief}
+            by={brief.by}
+            problems={brief.problems}
+            questions={brief.questions}
+            busy={brief.busy}
+            onCount={brief.setCount}
+            onToggleSignal={brief.toggleSignal}
+            onRemove={brief.removeUnit}
+            onAdd={brief.addUnit}
+            onConfirm={() => confirmBrief(centre())}
+            onCancel={brief.clear}
+          />
+        )}
+
         {busy && <p className="pt-3 text-center text-xs text-text-muted">Reading {busy}…</p>}
         {error && (
           <p className="mt-3 rounded-lg border border-status-alarm/40 bg-status-alarm/10 p-2.5 text-center text-xs text-status-alarm">
@@ -393,7 +432,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
         )}
 
         {/* --- the other two ways in ------------------------------------ */}
-        {!screens && (
+        {!screens && !reviewing && (
         <div
           ref={cards}
           className="reveal is-in mt-4 grid gap-3 sm:grid-cols-2"
@@ -437,7 +476,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
         )}
 
         {/* --- samples -------------------------------------------------- */}
-        {!hasTags && !screens && (
+        {!hasTags && !screens && !reviewing && (
           <div className="reveal is-in pt-6" style={{ ["--reveal-delay" as string]: "280ms" }}>
             <p className="label-eyebrow pb-2 text-center">Or take a sample plant</p>
             <div className="flex flex-wrap justify-center gap-2">

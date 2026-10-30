@@ -79,6 +79,10 @@ export function useValidation() {
           variables: s.variables,
           alarms,
           wires,
+          // Placeholder tags drafted from a brief: the rules check each one
+          // traces to a row the engineer confirmed. The export sends no brief,
+          // because it leaves the placeholders out altogether.
+          brief: s.tagImport?.brief,
         }),
       });
 

@@ -17,6 +17,7 @@ import { lintPack } from "@/lib/standard/lint";
 import { critiqueGeometry } from "@/lib/critic/geometry";
 import { critiqueNavigation, critiqueRoleCoverage } from "@/lib/critic/coverage";
 import { validateSemantics } from "./semantic";
+import { checkBrief } from "@/lib/brief/validate";
 
 export type Severity = "error" | "warning" | "info";
 
@@ -69,6 +70,9 @@ export function validateProject(
 ): Finding[] {
   const findings: Finding[] = [];
   const parts = project.screens.flatMap((s) => s.Children[0].Children);
+
+  // Placeholder tags only: a project with a real export carries no brief.
+  findings.push(...checkBrief(project.variables, project.brief));
   const byName = new Map(project.variables.map((v) => [v.Name, v]));
 
   // --- naming conventions -------------------------------------------------
