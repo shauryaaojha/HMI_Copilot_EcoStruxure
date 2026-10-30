@@ -11,18 +11,34 @@
  * unit it asks rather than building nothing. "A plant with some tanks" used to
  * mean one tank by default; now it means a question, because a default count
  * is a guess wearing a number (docs/PLAN_FULL_ARCHITECTURE.md §5.2).
+ *
+ * The question is not the end of it. What the engineer answers comes back here
+ * as more of what they said, and the brief is drafted again from the two
+ * together - the same round trip the chat's clarify mode already makes, where
+ * the answer is just the next thing in the conversation (§5.3 step 3).
  */
 
 import { Brief, EMPTY_BRIEF, type Unit, unitFromKind } from "./brief";
 import { CATALOGUE, catalogueForPrompt, kindOf } from "./catalogue";
 
-/** How a brief was arrived at, so the UI can say so. */
-export type DraftedBy = "model" | "rules" | "clarify";
+/**
+ * How a brief was arrived at, so the UI can say so.
+ *
+ * "form" is the brief an engineer filled in with no description at all
+ * (decision D). It never passes through here - there is nothing to draft from -
+ * but it is the same `Brief`, confirmed down the same path, so it belongs in
+ * the same vocabulary rather than in a second one beside it.
+ */
+export type DraftedBy = "model" | "rules" | "clarify" | "form";
 
 export interface BriefDraft {
   brief: Brief;
   by: DraftedBy;
-  /** Set only when `by` is "clarify": the specific things still unknown. */
+  /**
+   * Set only when `by` is "clarify": the specific things still unknown. Absent
+   * once the engineer has answered, because a question asked twice is not a
+   * clarification - see `clarifyFor`.
+   */
   questions?: string[];
 }
 
@@ -162,8 +178,16 @@ export function coerceBrief(value: unknown): Brief | null {
  * At most two, and specific, which is the existing clarify contract
  * (`TurnMode` "clarify" in core/ops). An empty build with no explanation is
  * the behaviour this replaces.
+ *
+ * One round, not a conversation. Once the engineer has answered, this returns
+ * nothing even if the answer helped no more than the description did: the
+ * chat's clarify asks the specific thing missing and then acts on whatever it
+ * was told, and a brief that kept asking the same two questions would be a
+ * loop the engineer cannot leave. The way out of a description nothing can be
+ * read from is the guided form, where there is nothing left to guess.
  */
-export function clarifyFor(intent: string): string[] {
+export function clarifyFor(intent: string, answers: readonly string[] = []): string[] {
+  if (answers.length > 0) return [];
   const named = intent.trim().length > 0;
   return [
     named
@@ -173,9 +197,29 @@ export function clarifyFor(intent: string): string[] {
   ];
 }
 
+/**
+ * The description and the answers to the clarify questions, as one text.
+ *
+ * The answers arrive as free text, the way the chat's clarify receives one: the
+ * question goes into the box, the engineer writes over it, and the reply is a
+ * turn like any other (components/chat/ChatPanel.tsx and `answer` in
+ * useChat.ts). So there is nothing structured to merge - the second thing the
+ * engineer said is read exactly as the first was.
+ *
+ * The questions themselves are deliberately left out. The first one lists every
+ * kind in the catalogue by name, so handing it back to the rules would match
+ * all nine and produce a plant made of the question. Only what the engineer
+ * wrote is ever read.
+ */
+export function intentWithAnswers(intent: string, answers: readonly string[] = []): string {
+  return [intent, ...answers].map((part) => part.trim()).filter(Boolean).join("\n");
+}
+
 export interface BriefOptions {
   /** Injected so the tests run with no key and no network. */
   ask?: (system: string, prompt: string, schema: Record<string, unknown>) => Promise<unknown>;
+  /** What the engineer replied to the clarify questions, oldest first. */
+  answers?: readonly string[];
 }
 
 /**
@@ -184,12 +228,15 @@ export interface BriefOptions {
  */
 export async function draftBrief(intent: string, options: BriefOptions = {}): Promise<BriefDraft> {
   const ask = options.ask;
+  const answers = options.answers ?? [];
+  const said = intentWithAnswers(intent, answers);
   if (ask) {
-    const answer = await ask(BRIEF_SYSTEM, intent, BRIEF_SCHEMA as unknown as Record<string, unknown>);
+    const answer = await ask(BRIEF_SYSTEM, said, BRIEF_SCHEMA as unknown as Record<string, unknown>);
     const brief = coerceBrief(answer);
     if (brief) return { brief, by: "model" };
   }
-  const ruled = briefByRules(intent);
+  const ruled = briefByRules(said);
   if (ruled.units.length > 0) return { brief: ruled, by: "rules" };
-  return { brief: EMPTY_BRIEF, by: "clarify", questions: clarifyFor(intent) };
+  const questions = clarifyFor(intent, answers);
+  return { brief: EMPTY_BRIEF, by: "clarify", ...(questions.length ? { questions } : {}) };
 }
