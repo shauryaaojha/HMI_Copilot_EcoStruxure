@@ -299,6 +299,11 @@ export async function runGenerationJob(jobId: string, caller: Caller, brief: Bri
     const before = await storage.jobs.get(jobId);
     if (!before || before.state === "cancelled") return;
 
+    // `confirm` carries two agreements at once, and that is sound here rather
+    // than sloppy: a build is refused outright on a project that already has
+    // objects, so the only project that can reach `land`'s opened-file gate is
+    // an empty one from a customer's file - and agreeing to build it is
+    // agreeing to that.
     const landed = await land(caller, projectId, {
       ops,
       note: intent,
