@@ -3,3 +3,8 @@
 .vercel
 
 .data/
+
+# `node_modules/` in the root ignore file matches a directory, and a worktree
+# gets a symlink instead - which is not a directory, so it slipped past and was
+# committed as a link to one engineer's home directory.
+node_modules
