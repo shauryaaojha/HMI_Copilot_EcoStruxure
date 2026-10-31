@@ -23,9 +23,21 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { MemoryRepo, type Snapshot, type User } from "@/lib/server/repo";
 import { sample } from "./fixtures/collab";
 
-const state = vi.hoisted(() => ({ repo: null as unknown as MemoryRepo, user: null as User | null }));
+const state = vi.hoisted(() => ({ repo: null as unknown as MemoryRepo, user: null as User | null, now: () => Date.now() }));
 vi.mock("@/lib/server/repo", async original => ({ ...await original<typeof import("@/lib/server/repo")>(), repo: () => state.repo }));
 vi.mock("@/lib/server/session", () => ({ currentUser: async () => state.user }));
+
+/**
+ * The planner, stood in for. Off by default - every other test here runs with
+ * no provider, so the plan comes from the tag names - and turned on for the one
+ * test about what happens when a model names equipment the tag list does not
+ * have, which is the failure `core/ops` exists to catch.
+ */
+const planner = vi.hoisted(() => ({ key: false, answer: null as unknown }));
+vi.mock("@/lib/ai/plan", async original => {
+  const real = await original<typeof import("@/lib/ai/plan")>();
+  return { ...real, hasApiKey: () => planner.key, planScreen: async () => planner.answer };
+});
 import { POST as mcpPost } from "@/app/api/mcp/route";
 import { GENERATES_PER_USER } from "@/lib/server/rate-limit";
 
@@ -95,9 +107,12 @@ afterAll(() => vi.unstubAllEnvs());
 
 beforeEach(async () => {
   vi.stubEnv("MCP_DEV_USER_ID", "");
+  planner.key = false;
+  planner.answer = null;
+  state.now = () => Date.now();
   // An empty project: generate lays out an application, it does not edit one.
   const snapshot: Snapshot = { ...sample(ID), name: "Transfer Station" };
-  state.repo = new MemoryRepo();
+  state.repo = new MemoryRepo(() => state.now());
   await state.repo.projects.create("alice", snapshot);
   await state.repo.members.put(ID, "bob", "editor");
   await state.repo.members.put(ID, "val", "viewer");
@@ -239,6 +254,66 @@ describe("the brief gate", () => {
     expect((structured?.questions as string[]).length).toBeGreaterThan(0);
     expect(text).toContain("no tags were created");
     expect(await state.repo.jobs.list(ID)).toHaveLength(0);
+  });
+});
+
+describe("the write path", () => {
+  it("rejects equipment the tag list does not have, in core/ops' own words", async () => {
+    await state.repo.projects.connector(ID, { directWrites: true });
+    // A planner that names a pump nobody imported. Nothing between the model
+    // and the project validates an equipment id except the applier, which is
+    // the reason a job may not land anything except through it.
+    planner.key = true;
+    planner.answer = {
+      provider: "claude",
+      plan: {
+        rationale: "one screen for the transfer pumps",
+        screens: [{ screenName: "Pumps", title: "Pumps", level: 2, include: ["PMP_999"], sections: ["status"] }],
+      },
+    };
+    const { finished } = await build();
+
+    expect(finished.structured).toMatchObject({ state: "done", mode: "direct" });
+    // The same rejection the chat gets: named, and not a silent no-op
+    // (core/ops/apply.ts `addEquipment`).
+    expect(finished.text).toContain("No equipment called PMP_999 in the tag list");
+    expect(finished.structured?.rejected as number).toBeGreaterThan(0);
+    // The screen it was meant to go on still landed, so the report is of a
+    // partial build rather than of a failure nobody can see.
+    const after = await snapshotOf();
+    expect(after.snapshot.screens.map(s => s.Name)).toContain("Pumps");
+    expect(after.snapshot.screens.find(s => s.Name === "Pumps")!.Children[0].Children).toHaveLength(0);
+  });
+
+  it("refuses a project that already has screens drawn on it", async () => {
+    await state.repo.projects.connector(ID, { directWrites: true });
+    await build();
+    const { refused, text } = await call("generate", { projectId: ID, brief: CONFIRMED });
+    expect(refused).toBe(true);
+    expect(text).toContain("already has screens");
+    expect(text).toContain("apply_ops");
+  });
+});
+
+describe("a run that does not come back", () => {
+  it("is reported failed once its lease has passed, not left running for ever", async () => {
+    // Two jobs nothing ever claimed: the function was frozen before `after`
+    // ran, which is the one thing this design cannot prevent
+    // (lib/mcp/generate.ts). The second was written long enough ago that its
+    // lease has run out.
+    const started = { projectId: ID, requestedBy: "alice", requestedByName: "Alice", request: "two pumps" };
+    const fresh = await state.repo.jobs.create(started);
+    expect((await call("generation_status", { jobId: fresh._id })).structured).toMatchObject({ state: "queued" });
+
+    state.now = () => Date.now() - 10 * 60 * 1000;
+    const old = await state.repo.jobs.create(started);
+    state.now = () => Date.now();
+    const { text, structured } = await call("generation_status", { jobId: old._id });
+    expect(structured).toMatchObject({ state: "failed" });
+    expect(text).toContain("did not come back");
+    // And it says the one reassuring thing that is true: a build lands once.
+    expect(text).toContain("Nothing was written");
+    expect((await snapshotOf()).snapshot.variables).toHaveLength(0);
   });
 });
 
