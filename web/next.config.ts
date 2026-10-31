@@ -44,6 +44,30 @@ const config: NextConfig = {
    * The skeleton is the same shape of problem, for the routes that write or
    * read a project.
    */
+  /**
+   * The two discovery documents, at the paths the specifications fix.
+   *
+   * A rewrite rather than an `app/.well-known/` directory: a leading dot is
+   * not a path segment Next's router is willing to own, and this is one place
+   * where getting the URL slightly wrong is indistinguishable from the
+   * connector not working - Claude reads
+   * /.well-known/oauth-protected-resource and nothing else
+   * (docs/CONNECTOR_SPEC_NOTES.md §3).
+   *
+   * The `:path*` forms are there because RFC 9728 derives the metadata URL by
+   * inserting the resource's own path, so a client may ask for
+   * /.well-known/oauth-protected-resource/api/mcp. Both spellings answer the
+   * same document, which is correct: there is one resource here.
+   */
+  async rewrites() {
+    return [
+      { source: "/.well-known/oauth-protected-resource", destination: "/api/oauth/protected-resource" },
+      { source: "/.well-known/oauth-protected-resource/:path*", destination: "/api/oauth/protected-resource" },
+      { source: "/.well-known/oauth-authorization-server", destination: "/api/oauth/authorization-server" },
+      { source: "/.well-known/oauth-authorization-server/:path*", destination: "/api/oauth/authorization-server" },
+    ];
+  },
+
   outputFileTracingIncludes: {
     "/api/export": ["./skeleton/**/*", WASM],
     "/api/export/report": [WASM],

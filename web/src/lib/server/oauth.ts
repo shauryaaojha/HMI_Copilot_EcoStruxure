@@ -673,3 +673,80 @@ export async function verifyToken(
   }
   return { userId: found.userId, via: "token", scopes: found.scopes };
 }
+
+/* ------------------------------------------------------------ HTTP shapes */
+
+/**
+ * The headers on a document any client may read.
+ *
+ * `*` rather than an allow-list because these carry no credentials and are
+ * public by definition - the whole point of RFC 8414 and RFC 9728 metadata is
+ * that an unknown client can fetch it before it has any identity at all. The
+ * MCP Inspector runs its OAuth debugger in a browser on a loopback port, so
+ * without this the local test of the flow fails at discovery with a CORS error
+ * that says nothing about OAuth.
+ */
+export const PUBLIC_DOCUMENT_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "content-type, authorization, mcp-protocol-version",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Cache-Control": "no-store",
+} as const;
+
+/** A metadata document is small; a token request is smaller. Anything larger is not one. */
+const MAX_BODY_BYTES = 16 * 1024;
+
+async function boundedText(request: Request): Promise<string> {
+  const declared = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
+    throw new OauthError("invalid_request", "The request body is too large to be a token request");
+  }
+  const text = await request.text();
+  if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) {
+    throw new OauthError("invalid_request", "The request body is too large to be a token request");
+  }
+  return text;
+}
+
+/**
+ * The token endpoint's body.
+ *
+ * `application/x-www-form-urlencoded` is the one that matters: a JSON-only
+ * parser answers 415 and the whole flow fails
+ * (docs/CONNECTOR_SPEC_NOTES.md §3). JSON is accepted as well because some
+ * clients send it and refusing would cost them a flow for no gain - but
+ * form-encoded is the contract, and the form parse is the fallback for a
+ * request that declared no content type at all, which is also within the
+ * spec's reading.
+ */
+export async function parseTokenBody(request: Request): Promise<URLSearchParams> {
+  const type = (request.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+  const text = await boundedText(request);
+  if (type === "application/json") {
+    let parsed: unknown;
+    try { parsed = JSON.parse(text); } catch { throw new OauthError("invalid_request", "The JSON body could not be parsed"); }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new OauthError("invalid_request", "Expected an object");
+    const form = new URLSearchParams();
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof value === "string") form.set(key, value);
+    }
+    return form;
+  }
+  return new URLSearchParams(text);
+}
+
+/**
+ * Revoke a presented token (RFC 7009).
+ *
+ * A refresh token takes its whole grant with it, because revoking a refresh
+ * token while leaving its access token alive would make "revoked" mean "in
+ * about an hour". An unknown token answers success, as the RFC requires: the
+ * caller wanted it to stop working and it does not work, and saying otherwise
+ * would turn this into an oracle for guessing tokens.
+ */
+export async function revokeToken(presented: string, storage: Repo = repo()): Promise<void> {
+  const found = await storage.connector.byHash(tokenHash(presented));
+  if (!found) return;
+  if (found.grantId) await storage.connector.revokeGrant(found.userId, found.grantId);
+  else await storage.connector.revokeToken(found.userId, found._id);
+}
