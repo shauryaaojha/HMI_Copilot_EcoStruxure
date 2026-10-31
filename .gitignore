@@ -53,3 +53,6 @@ demo_project/renders/
 # Scanned project knowledge (lib/knowledge/store.ts). Holds customer tag
 # names, comments and alarm text: it stays on the machine that scanned it.
 web/.knowledge/
+
+# A worktree symlinks node_modules; the trailing slash above misses a symlink.
+node_modules
