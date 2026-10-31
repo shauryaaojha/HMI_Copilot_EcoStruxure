@@ -5,6 +5,15 @@
  *
  * The hash is checked where it would actually leak: through the route
  * handlers that return a user, not through the model that holds one.
+ *
+ * These cases are slow on purpose. Each sign-in and each refusal runs bcrypt
+ * at the cost the application uses, and a refusal deliberately spends the same
+ * time as a success, so a file that does a dozen of them takes a second or so
+ * even on an idle machine. Under load - a full suite beside a build, say - it
+ * can take several times that, and the default timeout turns the security
+ * property into a flake. A test that fails for being slow is one people learn
+ * to ignore, so the timeout is stated here rather than the cost being lowered
+ * to suit it.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRepo } from "@/lib/server/repo";
@@ -12,6 +21,9 @@ import { ATTEMPTS_PER_EMAIL, ATTEMPTS_PER_IP, clearAttempts, countAttempt } from
 import { normalizeEmail, signUp, verifyPassword } from "@/lib/server/credentials";
 import { providers } from "@/lib/server/session";
 import { sample } from "./fixtures/collab";
+
+/** Generous on purpose; see the note above on bcrypt's cost. */
+const SLOW = 30_000;
 
 const state = vi.hoisted(() => ({ repo: null as unknown as MemoryRepo, session: null as { id: string; name: string; email?: string } | null }));
 vi.mock("@/lib/server/repo", async original => ({ ...await original<typeof import("@/lib/server/repo")>(), repo: () => state.repo }));
@@ -34,7 +46,7 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllEnvs());
 
-describe("accounts", () => {
+describe("accounts", { timeout: SLOW }, () => {
   it("signs in with an email and a password, and nothing else configured", async () => {
     expect(providers()).toEqual(["credentials"]);
     const made = await signUp({ email: "Alice@Example.com", password: PASSWORD, name: "Alice" });
