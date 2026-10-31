@@ -156,7 +156,7 @@ describe("the transport", () => {
     const { body } = await rpc("tools/list");
     const tools = body.result.tools as { name: string; inputSchema: { properties?: Record<string, unknown> } }[];
     expect(tools.map(t => t.name).sort()).toEqual(
-      ["apply_ops", "find_tags", "get_screens", "list_projects", "propose", "render_screen", "validate"],
+      ["apply_ops", "find_tags", "generate", "generation_cancel", "generation_status", "get_screens", "list_projects", "propose", "render_screen", "validate"],
     );
     expect(tools.map(t => t.name).sort()).toEqual(TOOLS.map(t => t.name).sort());
     // apply_ops publishes the Op union itself: the op names come from

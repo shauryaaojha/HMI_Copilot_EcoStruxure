@@ -2,9 +2,9 @@
  * The tool table, and the one place a tool is registered.
  *
  * Adding a tool is adding an entry to `TOOLS`; nothing else in the server
- * knows the list. Stream S6's `generate` goes here, next to the others, and
- * gets the caller resolution, the role gate, the size cap and the refusal
- * handling below for free.
+ * knows the list. M3's `generate` went in exactly that way - one more table
+ * spread below - and got the caller resolution, the role gate, the size cap
+ * and the refusal handling for free.
  *
  * Refusals are results, not transport errors. `access.ts` throws a
  * `ServerError` when a caller has no role on a project, and the useful thing
@@ -14,12 +14,13 @@
  */
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ServerError } from "@/lib/server/errors";
+import { GENERATE_TOOLS } from "./generate";
 import { READ_TOOLS } from "./read";
 import { refusal, toolResult, type ToolOutput } from "./result";
 import type { McpTool, ToolContext } from "./spec";
 import { WRITE_TOOLS } from "./write";
 
-export const TOOLS: readonly McpTool[] = [...READ_TOOLS, ...WRITE_TOOLS];
+export const TOOLS: readonly McpTool[] = [...READ_TOOLS, ...WRITE_TOOLS, ...GENERATE_TOOLS];
 
 /** Runs one tool, turning a role or storage failure into something sayable. */
 export async function runTool(spec: McpTool, args: Record<string, never>, ctx: ToolContext): Promise<ToolOutput> {
