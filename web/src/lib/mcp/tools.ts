@@ -54,6 +54,7 @@ export function registerTools(server: McpServer, ctx: ToolContext, tools: readon
         description: spec.description,
         inputSchema: spec.input,
         ...(spec.annotations ? { annotations: spec.annotations } : {}),
+        ...(spec.ui ? { _meta: { ui: spec.ui } } : {}),
       },
       async (args) => toolResult(await runTool(spec, args, ctx)),
     );

@@ -31,6 +31,16 @@ export interface McpTool {
   title: string;
   description: string;
   annotations?: ToolAnnotations;
+  /**
+   * The MCP App that renders this tool's results, as `_meta.ui` on the tool
+   * definition. The host reads it from `tools/list`
+   * (claude.com/docs/connectors/building/mcp-apps/quickstart), which is the one
+   * thing a result's own `_meta.ui` cannot do: by the time a result exists the
+   * host has already decided whether to fetch a card. Both carry the same
+   * `resourceUri`, from the same constant in `cards.ts`, so this declares the
+   * card rather than being a second way to attach one.
+   */
+  ui?: Record<string, unknown>;
   input: ZodRawShape;
   run(args: Record<string, never>, ctx: ToolContext): Promise<ToolOutput>;
 }
@@ -46,6 +56,7 @@ export function tool<Shape extends ZodRawShape>(spec: {
   title: string;
   description: string;
   annotations?: ToolAnnotations;
+  ui?: Record<string, unknown>;
   input: Shape;
   run(args: { [K in keyof Shape]: z.infer<Shape[K]> }, ctx: ToolContext): Promise<ToolOutput>;
 }): McpTool {
@@ -54,6 +65,7 @@ export function tool<Shape extends ZodRawShape>(spec: {
     title: spec.title,
     description: spec.description,
     annotations: spec.annotations,
+    ui: spec.ui,
     input: spec.input,
     run: (args, ctx) => spec.run(args as unknown as { [K in keyof Shape]: z.infer<Shape[K]> }, ctx),
   };

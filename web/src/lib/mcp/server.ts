@@ -26,6 +26,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { Caller } from "./caller";
+import { registerCards } from "./cards";
 import { registerTools } from "./tools";
 
 /** What claude.ai shows as the connector's name. */
@@ -41,6 +42,10 @@ export function buildServer(caller: Caller): McpServer {
       "Changes are made only through apply_ops or propose, with ops you chose from what the engineer asked for.",
   });
   registerTools(server, { caller });
+  // The cards are resources, not tools, and they are the same two documents for
+  // every caller: what differs per result is the data the host pushes into the
+  // frame, not the frame (lib/mcp/cards.ts).
+  registerCards(server);
   return server;
 }
 

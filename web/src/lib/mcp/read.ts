@@ -18,12 +18,43 @@ import { screenToPng } from "@/lib/critic/render";
 import { rootBox, type Variable } from "@/lib/ote/schema";
 import { repo } from "@/lib/server/repo";
 import { validateInput } from "@/lib/server/validate";
+import type { Finding, Severity } from "@/lib/validation/rules";
+import { SCREEN_CARD_URI, screenCard, VALIDATION_CARD_URI, validationCard, type CardFinding } from "./cards";
 import { field, limited, projectData, RESULT_LIMIT } from "./data";
 import { directWrites, findScreen, handleOf, inputOf, openProject, roleOn, screenLines } from "./project";
 import { tool, type McpTool } from "./spec";
 
 /** How many projects one listing walks; each costs a snapshot read. */
 const PROJECT_LIMIT = 50;
+
+/**
+ * How much of a list a card shows. An inline card has no scroll of its own and
+ * the host clips what outgrows the height it allows, so the cut is made here,
+ * where the count that was dropped is still known and can be said.
+ */
+const CARD_OBJECTS = 6;
+const CARD_PER_SEVERITY = 3;
+
+/**
+ * The findings the validation card draws: a few of each severity rather than
+ * the first few overall, because `summarise` sorts errors first and a card
+ * taking the head of that list would never show a note at all.
+ */
+function cardFindings(findings: Finding[], where: (f: Finding) => string): CardFinding[] {
+  const severities: Severity[] = ["error", "warning", "info"];
+  return severities.flatMap((severity) =>
+    findings
+      .filter((f) => f.severity === severity)
+      .slice(0, CARD_PER_SEVERITY)
+      .map((f) => ({
+        severity,
+        rule: field(f.rule, 60),
+        message: field(f.message, 240),
+        where: where(f),
+        ...(f.suggestion ? { suggestion: field(f.suggestion, 180) } : {}),
+      })),
+  );
+}
 
 const listProjects = tool({
   name: "list_projects",
@@ -108,6 +139,7 @@ const findTagsTool = tool({
 const validate = tool({
   name: "validate",
   title: "Validate",
+  ui: { resourceUri: VALIDATION_CARD_URI },
   description:
     "Runs the project through the app's own design-time checks - naming, binding integrity, type mismatch, completeness, standards conformance - and returns the findings with the object each one is about. The same findings the engineer sees in the app's validation panel.",
   annotations: { readOnlyHint: true, openWorldHint: false },
@@ -116,10 +148,16 @@ const validate = tool({
     const { doc } = await openProject(caller, projectId, "read");
     const { findings, summary } = await validateInput(inputOf(doc));
     const names = new Map(doc.screens.flatMap((s) => s.Children[0].Children.map((p) => [p.UniqueId, p] as const)));
-    const lines = findings.map((f) => {
+    // One answer to "what is this finding about", so the card and the text
+    // cannot name the same object two different ways.
+    const where = (f: Finding) => {
       const part = f.objectId ? names.get(f.objectId) : undefined;
-      const where = part ? ` (${handleOf(doc, part.UniqueId)} ${field(part.Name, 80)})` : f.tag ? ` (tag ${field(f.tag, 120)})` : "";
-      return `[${f.severity}] ${field(f.rule, 60)}: ${field(f.message, 400)}${where}${f.suggestion ? ` -> ${field(f.suggestion, 300)}` : ""}`;
+      if (part) return `${handleOf(doc, part.UniqueId)} ${field(part.Name, 80)}`;
+      return f.tag ? `tag ${field(f.tag, 120)}` : "";
+    };
+    const lines = findings.map((f) => {
+      const at = where(f);
+      return `[${f.severity}] ${field(f.rule, 60)}: ${field(f.message, 400)}${at ? ` (${at})` : ""}${f.suggestion ? ` -> ${field(f.suggestion, 300)}` : ""}`;
     });
     return {
       text: [
@@ -127,6 +165,7 @@ const validate = tool({
         projectData("findings", limited(lines, RESULT_LIMIT - 2_000)),
       ].join("\n"),
       structured: { ...summary },
+      ui: validationCard({ projectId, ...summary, findings: cardFindings(findings, where) }),
     };
   },
 });
@@ -152,6 +191,7 @@ async function pngWithinCap(screen: Parameters<typeof screenToPng>[0], foreign: 
 const renderScreen = tool({
   name: "render_screen",
   title: "Render screen",
+  ui: { resourceUri: SCREEN_CARD_URI },
   description:
     "Draws one screen as a PNG, exactly as the app's canvas draws it, so you can look at the layout instead of inferring it from a list of objects. Name the screen by the handle get_screens gave it.",
   annotations: { readOnlyHint: true, openWorldHint: false },
@@ -164,10 +204,30 @@ const renderScreen = tool({
     const screen = findScreen(doc, screenId);
     const size = rootBox(screen.Children[0], { width: doc.target.width, height: doc.target.height });
     const { bytes, scale } = await pngWithinCap(screen, doc.foreign?.[screen.UniqueId], size);
+    const handle = handleOf(doc, screen.UniqueId);
+    // `screenLines` already decides which of an object's bindings is the one
+    // worth naming; asking it again here is cheaper than a second opinion.
+    const objects = screenLines(doc).find((s) => s.handle === handle)?.objects ?? [];
     return {
-      text: `Screen ${handleOf(doc, screen.UniqueId)} "${field(screen.Name, 120)}", ${size.width}x${size.height} px, drawn at ${Math.round(scale * 100)}%.`,
+      text: `Screen ${handle} "${field(screen.Name, 120)}", ${size.width}x${size.height} px, drawn at ${Math.round(scale * 100)}%.`,
       image: { bytes, mimeType: "image/png" },
-      structured: { handle: handleOf(doc, screen.UniqueId), width: size.width, height: size.height, scale },
+      structured: { handle, width: size.width, height: size.height, scale },
+      ui: screenCard({
+        handle,
+        name: field(screen.Name, 120),
+        width: size.width,
+        height: size.height,
+        scale,
+        objects: objects.length,
+        bound: objects.filter((o) => o.tag).length,
+        bindings: objects.slice(0, CARD_OBJECTS).map((o) => ({
+          handle: o.handle,
+          name: field(o.name, 80),
+          type: field(o.type, 40),
+          ...(o.tag ? { tag: field(o.tag, 120) } : {}),
+        })),
+        more: Math.max(0, objects.length - CARD_OBJECTS),
+      }),
     };
   },
 });

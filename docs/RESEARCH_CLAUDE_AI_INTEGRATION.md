@@ -46,7 +46,16 @@ Official doc: `claude.com/docs/connectors/building/mcp-apps/design-guidelines`.
 
 For us this suits a **screen preview card** (the rendered screen, with its objects and status) and a **validation card** (findings, with buttons to accept or reject a proposal). A full canvas editor does not suit an inline card. Use full screen for that, or keep editing in the web app.
 
-Third-party notes (not yet verified against the spec): `_meta.ui.resourceUri` points to a `ui://` resource, and tools can be marked app-only so they stay hidden from Claude's tool list.
+Checked against the official quickstart and design guidelines while building M4 (2026-10-31):
+
+- `_meta.ui.resourceUri` naming a `ui://` resource is real, and the place the host reads it is the **tool definition's** `_meta`, from `tools/list` - not only the result's. A result's `_meta.ui` carries the data the card draws. We set both, from one constant.
+- The resource's content must have the MIME type `text/html;profile=mcp-app`.
+- `_meta.ui.csp` has a third list, `baseUriDomains`, beside `connectDomains` and `resourceDomains`.
+- Also on the resource or result: `_meta.ui.prefersBorder` (unset means borderless on web, bordered on mobile) and `_meta.ui.domain`, which for Claude is the first 32 hex characters of the SHA-256 of the server URL followed by `.claudemcpcontent.com`.
+- Inline cards should hold at most 4-5 data points, design from 320px up with no breakpoints, and use 44pt tap targets. The host caps inline height and clips the overflow, and on mobile the conversation owns the vertical gesture.
+- The frame talks to the host over `postMessage` in the `ui/*` namespace: `ui/initialize` carries `appCapabilities.availableDisplayModes` (`inline`, `fullscreen`, `pip`), `ui/request-display-mode` asks to switch, and `hostContext.safeAreaInsets` gives the padding to respect.
+
+Still unverified: that tools can be marked app-only so they stay hidden from Claude's tool list, and the exact method names for calling a tool and sending a prompt from inside the frame - neither page named them. Pin both against the MCP Apps SDK before submission (M5).
 
 ## Tool surface (proposed)
 
