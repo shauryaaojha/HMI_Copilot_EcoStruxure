@@ -47,15 +47,27 @@ export async function POST(request: Request): Promise<Response> {
       const next = `/oauth/authorize?${form.toString()}`;
       return Response.redirect(`${publicOrigin(request)}/signin?next=${encodeURIComponent(next)}`, 303);
     }
-    const approved = await validateAuthorizeRequest(form, request);
+    let approved;
+    try {
+      approved = await validateAuthorizeRequest(form, request);
+    } catch (error) {
+      // `validateAuthorizeRequest` checks the client and its redirect URI
+      // first and raises `AuthorizeRefusal` when either fails, so reaching an
+      // `OauthError` means the URI has already been verified against the
+      // registration - which is what makes sending an error there safe, and
+      // is what a client needs in order to report anything useful. A refusal
+      // has nowhere safe to go and comes back here instead.
+      if (error instanceof OauthError) {
+        return Response.redirect(authorizeErrorRedirect(form.get("redirect_uri")!, error, form.get("state") ?? undefined), 303);
+      }
+      throw error;
+    }
     if (form.get("decision") !== "allow") {
       return Response.redirect(authorizeErrorRedirect(approved.redirectUri, "access_denied", approved.state), 303);
     }
     const { redirect } = await approveAuthorization(approved, user);
     return Response.redirect(redirect, 303);
   } catch (error) {
-    // A refusal that cannot name a verified redirect URI has nowhere safe to
-    // go, so it goes back to the page rather than to a URI we did not check.
     if (error instanceof AuthorizeRefusal) return oauthFailure(new OauthError("invalid_request", error.message));
     return oauthFailure(error);
   }

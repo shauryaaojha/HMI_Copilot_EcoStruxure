@@ -114,13 +114,17 @@ function devCaller(): Caller | null {
 /**
  * The request's caller, or `null` for "answer 401".
  *
- * Order matters: an explicit credential wins over an ambient browser session,
- * so a signed-in engineer testing someone else's token sees that token's
- * access and not their own.
+ * A credential, if one was sent at all, is the whole answer - it is never
+ * topped up from the browser session behind it. Two reasons, and the second
+ * is the one that matters: a signed-in engineer testing someone else's token
+ * should see that token's access rather than their own, and a *failed* token
+ * must stay a 401 rather than quietly becoming whoever happens to be signed
+ * in in that browser. Falling through would turn an expired or revoked
+ * connector into a connector that still works for exactly one person and
+ * nobody else, which is the hardest kind of revocation bug to notice.
  */
 export async function resolveCaller(request: Request): Promise<Caller | null> {
-  const credential = await callerFromCredential(request);
-  if (credential) return credential;
+  if (presentedToken(request)) return await callerFromCredential(request);
   const user = await currentUser();
   if (user) return { userId: user.id, name: user.name, email: user.email ?? null, via: "session" };
   return devCaller();
