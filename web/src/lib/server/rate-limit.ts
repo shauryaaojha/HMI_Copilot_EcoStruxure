@@ -29,6 +29,17 @@ import { createHash } from "node:crypto";
 import { repo, type Repo } from "./repo";
 import { ServerError } from "./errors";
 
+/**
+ * What is being counted, and therefore which bucket an attempt lands in.
+ * `connector` is separate from `ip` although both key on an address, because
+ * the two stop different things and must not spend each other's allowance:
+ * Anthropic calls the token endpoint from a handful of addresses on behalf of
+ * everybody, so a refresh storm sharing sign-in's bucket would lock a whole
+ * office out of signing in. Its own limit lives in lib/server/oauth.ts, with
+ * the reasoning for the number.
+ */
+export type Scope = "email" | "ip" | "connector";
+
 export const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
 export const ATTEMPTS_PER_EMAIL = 10;
 export const ATTEMPTS_PER_IP = 50;
@@ -50,7 +61,7 @@ export function clientIp(request?: Request | null): string {
  * have no account here - and a counter needs no more than to tell two callers
  * apart.
  */
-function attemptKey(scope: "email" | "ip", value: string): string {
+function attemptKey(scope: Scope, value: string): string {
   return `${scope}:${createHash("sha256").update(value, "utf8").digest("hex").slice(0, 32)}`;
 }
 
@@ -59,7 +70,7 @@ function attemptKey(scope: "email" | "ip", value: string): string {
  * with the seconds until the window resets, so a caller can say when to come
  * back without being told anything about the account it asked for.
  */
-export async function countAttempt(scope: "email" | "ip", value: string, max: number, storage: Repo = repo()): Promise<void> {
+export async function countAttempt(scope: Scope, value: string, max: number, storage: Repo = repo()): Promise<void> {
   const key = attemptKey(scope, value);
   const { count, resetAt } = await storage.attempts.hit(key, ATTEMPT_WINDOW_MS);
   if (count > max) {
@@ -69,6 +80,6 @@ export async function countAttempt(scope: "email" | "ip", value: string, max: nu
 }
 
 /** Forget an email's failures once it has been used successfully. */
-export async function clearAttempts(scope: "email" | "ip", value: string, storage: Repo = repo()): Promise<void> {
+export async function clearAttempts(scope: Scope, value: string, storage: Repo = repo()): Promise<void> {
   await storage.attempts.clear(attemptKey(scope, value));
 }
