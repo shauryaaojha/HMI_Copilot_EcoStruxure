@@ -98,7 +98,7 @@ import { browserTransport } from "@/lib/collab/browser";
 import { REFRESH_LEAD_SECONDS, realtimeTransport, refreshDelayMs } from "@/lib/collab/realtime";
 import { TOKEN_TTL_SECONDS } from "@/lib/realtime/token";
 import { createProjectStore } from "@/store/project";
-import { CHECK_ENV, envComplaint, exitCode, expiredToken, joinOutcome, line, missingEnv } from "@/lib/realtime/check";
+import { CHECK_ENV, envComplaint, exitCode, expiredToken, joinOutcome, line, missingEnv, readResults } from "@/lib/realtime/check";
 import { POST as postChanges } from "@/app/api/projects/[id]/changes/route";
 import { GET as keepalive } from "@/app/api/realtime/keepalive/route";
 
@@ -453,5 +453,33 @@ describe("the realtime:check script", () => {
     expect(claims.aud).toBe("authenticated");
     expect(claims.sub).toBe("u1");
     expect(claims.exp).toBeLessThan(Math.floor(Date.now() / 1000));
+  });
+});
+
+describe("reading the acceptance check's three results", () => {
+  const joined = { name: "a member's token joins and hears a revision", ok: true, detail: "heard rev 7" };
+  const refusedOther = { name: "a token for another project is refused here", ok: true, detail: "refused" };
+  const refusedExpired = { name: "an expired token is refused", ok: true, detail: "refused" };
+
+  it("reports all three plainly when the join worked", () => {
+    const read = readResults([joined, refusedOther, refusedExpired]);
+    expect(read.every((l) => l.startsWith("ok  "))).toBe(true);
+  });
+
+  it("will not call a refusal a pass when nothing joined at all", () => {
+    // Point the script at a URL with no project and every join is refused, so
+    // both refusal checks would otherwise read "ok" for the wrong reason.
+    const read = readResults([{ ...joined, ok: false, detail: "the join was refused" }, refusedOther, refusedExpired]);
+    expect(read[0]).toMatch(/^FAIL/);
+    expect(read[1]).toMatch(/^\?\?/);
+    expect(read[1]).toMatch(/unproven/);
+    expect(read[2]).toMatch(/^\?\?/);
+    // And it is still a failure overall, which it already was.
+    expect(exitCode([{ ...joined, ok: false, detail: "x" }, refusedOther, refusedExpired])).toBe(1);
+  });
+
+  it("leaves a genuine refusal failure reading as a failure", () => {
+    const read = readResults([joined, { ...refusedOther, ok: false, detail: "it was allowed in" }, refusedExpired]);
+    expect(read[1]).toMatch(/^FAIL/);
   });
 });

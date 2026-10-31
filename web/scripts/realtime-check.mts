@@ -32,8 +32,8 @@ import {
   exitCode,
   expiredToken,
   joinOutcome,
-  line,
   missingEnv,
+  readResults,
   type CheckResult,
 } from "../src/lib/realtime/check.js";
 import { REVISION_EVENT, topicFor } from "../src/lib/realtime/config.js";
@@ -149,9 +149,12 @@ async function main() {
       // Whatever went wrong, the reader gets a sentence rather than a trace.
       detail: error instanceof Error ? error.message : String(error),
     }));
-    console.log(line(result));
     results.push(result);
   }
+
+  // Printed together rather than as each finishes, because how a refusal
+  // should be read depends on whether anything joined at all (`readResults`).
+  for (const text of readResults(results)) console.log(text);
 
   resetRealtimeClient();
   const code = exitCode(results);

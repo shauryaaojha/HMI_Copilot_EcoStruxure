@@ -62,6 +62,28 @@ export function line(result: CheckResult): string {
   return `${result.ok ? "ok  " : "FAIL"}  ${result.name}: ${result.detail}`;
 }
 
+/**
+ * The two refusal checks only mean something once a join has been seen to
+ * work.
+ *
+ * Point the script at a URL with no project behind it and every join is
+ * refused, so "a token for another project is refused" and "an expired token
+ * is refused" both pass - for the wrong reason. The overall exit code is still
+ * 1, because the positive check failed, but a reader skimming three lines sees
+ * two `ok`s and takes the wrong lesson. So when the positive check has not
+ * passed, the refusals are reported as unproven rather than as passes.
+ *
+ * The first result is the positive check; `realtime-check.mts` runs them in
+ * the order they are documented.
+ */
+export function readResults(results: CheckResult[]): string[] {
+  const joined = results[0]?.ok === true;
+  return results.map((result, i) => {
+    if (i === 0 || !result.ok || joined) return line(result);
+    return `??    ${result.name}: unproven - nothing joined at all, so a refusal here shows nothing`;
+  });
+}
+
 /** 0 only when all three passed; a missing check is a failure, not a pass. */
 export function exitCode(results: CheckResult[], expected = 3): number {
   return results.length === expected && results.every((r) => r.ok) ? 0 : 1;
