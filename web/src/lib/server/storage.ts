@@ -135,6 +135,11 @@ export class FileStorage implements Storage {
         "shares", "comments", "changes", "heads", "presence", "proposals", "decisions", "agentLocks",
         // Sign-in attempt counters (lib/server/rate-limit.ts).
         "signInAttempts",
+        // The connector's authorization server (lib/server/repo-connector.ts).
+        // This list is an allow-list, not documentation: a table missing from
+        // it has its writes silently dropped on the laptop store, which is
+        // exactly where the MCP Inspector is tested.
+        "oauthClients", "oauthCodes", "connectorGrants", "connectorTokens",
       ];
       const journal = path.join(this.root, "journal.json");
       const readJson = async (file: string) => {
