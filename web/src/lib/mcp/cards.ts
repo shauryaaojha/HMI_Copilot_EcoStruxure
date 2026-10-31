@@ -165,7 +165,10 @@ const CARD_CSS = `
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  padding: 12px;
+  /* The composer can overlay the bottom of an inline card on web as well as on
+     mobile, and a button under it cannot be tapped. The CSS env() insets are the
+     part of the safe area a frame can read without asking the host for it. */
+  padding: 12px calc(12px + env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) calc(12px + env(safe-area-inset-left, 0px));
   background: var(--card-bg);
   color: var(--card-fg);
   font-family: var(--font-sans, system-ui, sans-serif);

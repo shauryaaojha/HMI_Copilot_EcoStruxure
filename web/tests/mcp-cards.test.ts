@@ -313,6 +313,8 @@ describe("both card documents", () => {
     }
     // 44 px is the tap target both mobile guidelines ask for.
     expect(CARD_RESOURCES[VALIDATION_CARD_URI].html).toContain("min-height: 44px");
+    // And the bottom inset, so the composer cannot sit on top of a button.
+    expect(CARD_RESOURCES[VALIDATION_CARD_URI].html).toContain("env(safe-area-inset-bottom, 0px)");
   });
 
   it("put a customer's string in the DOM as text and never as markup", () => {
