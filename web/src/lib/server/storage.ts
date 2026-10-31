@@ -135,6 +135,11 @@ export class FileStorage implements Storage {
         "shares", "comments", "changes", "heads", "presence", "proposals", "decisions", "agentLocks",
         // Sign-in attempt counters (lib/server/rate-limit.ts).
         "signInAttempts",
+        // The connector's authorization server (lib/server/repo-connector.ts).
+        // This list is an allow-list, not documentation: a table missing from
+        // it has its writes silently dropped on the laptop store, which is
+        // exactly where the MCP Inspector is tested.
+        "oauthClients", "oauthCodes", "connectorGrants", "connectorTokens",
       ];
       const journal = path.join(this.root, "journal.json");
       const readJson = async (file: string) => {
@@ -202,6 +207,15 @@ export class MongoStorage implements Storage {
       await db.collection("presence").createIndex({ projectId: 1 });
       await db.collection("proposals").createIndex({ projectId: 1, createdAt: -1 });
       await db.collection("decisions").createIndex({ projectId: 1, at: 1 });
+      // Every MCP call looks a token up by its hash, so that lookup is the one
+      // on the hot path; unique because two rows for one secret would mean one
+      // of them survived a revocation.
+      await db.collection("connectorTokens").createIndex({ hash: 1 }, { unique: true });
+      await db.collection("connectorTokens").createIndex({ userId: 1, kind: 1, createdAt: -1 });
+      await db.collection("connectorTokens").createIndex({ grantId: 1 });
+      await db.collection("connectorTokens").createIndex({ expiresAt: 1 });
+      await db.collection("connectorGrants").createIndex({ userId: 1, clientId: 1, createdAt: -1 });
+      await db.collection("oauthCodes").createIndex({ expiresAt: 1 });
     })().catch(error => { this.ready = undefined; throw error; });
   }
   async transaction<T>(fn: (data: Data) => Promise<T>): Promise<T> {

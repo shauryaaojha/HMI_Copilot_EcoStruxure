@@ -19,21 +19,13 @@
  * configured constant.
  */
 import { ServerError } from "@/lib/server/errors";
+import { publicOrigin } from "@/lib/server/origin";
 import { RESOURCE_METADATA_PATH } from "./caller";
 
-/**
- * The public origin of this request, through Vercel's proxy.
- *
- * `request.url` is rewritten to the function's own address behind a proxy, so
- * the forwarded headers are what the user actually typed; the URL is the
- * fallback for a direct call and for tests.
- */
-export function publicOrigin(request: Request): string {
-  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-  if (!host) return new URL(request.url).origin;
-  const proto = request.headers.get("x-forwarded-proto") ?? (host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
-  return `${proto}://${host}`;
-}
+// The origin moved to lib/server/origin.ts once the authorization server
+// needed the same answer for its `issuer`; re-exported because this is where
+// the transport's callers already look for it.
+export { publicOrigin };
 
 /** A browser origin on the loopback, which is where the MCP Inspector lives. */
 const loopback = (origin: string) => /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin);

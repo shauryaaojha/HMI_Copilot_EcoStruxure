@@ -46,6 +46,9 @@ export function AccountControl({ projectId = "" }: { projectId?: string }) {
     </span>}
     {account?.user ? <>
       <span>{account.user.name}</span>
+      {/* The only way an engineer finds out what the connector has been granted
+          is a link from where their name already is. */}
+      {account.providers.length > 0 && <a className="focus-ring rounded-md px-2 py-1 hover:bg-surface-hover" href="/account/connections">Connections</a>}
       {account.providers.length > 0 && <button className="focus-ring rounded-md px-2 py-1 hover:bg-surface-hover" onClick={() => void signOut()}>Sign out</button>}
     </> : account?.providers.length ? <span className="relative">
       <button className="focus-ring rounded-md px-2 py-1 hover:bg-surface-hover" aria-expanded={signingIn} onClick={() => setSigningIn(!signingIn)}>Sign in</button>

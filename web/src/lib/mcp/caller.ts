@@ -15,12 +15,14 @@
  * is exactly the failure the single write path was built to prevent
  * (docs/PLAN_FULL_ARCHITECTURE.md §2.1).
  *
- * Stream S5 owns the credential half: it replaces `callerFromCredential` with
- * a real bearer-token check and serves the two discovery documents
- * `unauthorized` already points at. Nothing else here should need to change.
+ * The credential half is `lib/server/oauth.ts`: our own authorization server,
+ * which issues the OAuth tokens claude.ai presents and the personal access
+ * tokens everything else uses. This file is the join, and nothing but this
+ * file had to change to add them.
  */
+import { presentedToken, verifyToken } from "@/lib/server/oauth";
+import { repo, type User } from "@/lib/server/repo";
 import { currentUser } from "@/lib/server/session";
-import type { User } from "@/lib/server/repo";
 
 /**
  * One identified caller of the MCP server.
@@ -57,19 +59,38 @@ export const callerUser = (caller: Caller): User => ({
 export const RESOURCE_METADATA_PATH = "/.well-known/oauth-protected-resource";
 
 /**
- * The bearer-credential seam, for stream S5.
+ * The bearer-credential seam.
  *
  * An OAuth access token or a personal access token arrives in `authorization`
  * or `x-api-key`; never in the query string, which the spec prohibits and
  * which would put a token in logs, proxies and browser history
- * (docs/CONNECTOR_SPEC_NOTES.md §4). Until S5 lands there is nothing to check
- * a token against, and inventing a user from an unverified header would be
- * worse than refusing, so an unknown credential resolves to nobody and the
- * route answers 401 with the pointer that starts the OAuth dance.
+ * (docs/CONNECTOR_SPEC_NOTES.md §4). What makes a token good is
+ * `verifyToken`: it must exist, not have expired, still have a live grant
+ * behind it, and have been issued for *this* server - token passthrough is
+ * forbidden, so a well-formed token minted somewhere else is no better than
+ * none.
+ *
+ * Anything that does not verify resolves to nobody, and the route answers 401
+ * with the pointer that starts the OAuth dance. Inventing a user from an
+ * unverified header would be the one failure mode worse than refusing a
+ * legitimate caller.
  */
-export async function callerFromCredential(_request: Request): Promise<Caller | null> {
-  void _request;
-  return null;
+export async function callerFromCredential(request: Request): Promise<Caller | null> {
+  const presented = presentedToken(request);
+  if (!presented) return null;
+  const verified = await verifyToken(presented, request);
+  if (!verified) return null;
+  // The profile is for the audit line beside a proposal, so a missing one is
+  // not a reason to refuse a verified token: the user id is what every access
+  // check is made against, and it came from the token, not from the lookup.
+  const user = await repo().users.get(verified.userId);
+  return {
+    userId: verified.userId,
+    name: user?.name ?? "Connector",
+    email: user?.email ?? null,
+    via: verified.via,
+    scopes: verified.scopes,
+  };
 }
 
 /**
@@ -93,13 +114,17 @@ function devCaller(): Caller | null {
 /**
  * The request's caller, or `null` for "answer 401".
  *
- * Order matters: an explicit credential wins over an ambient browser session,
- * so a signed-in engineer testing someone else's token sees that token's
- * access and not their own.
+ * A credential, if one was sent at all, is the whole answer - it is never
+ * topped up from the browser session behind it. Two reasons, and the second
+ * is the one that matters: a signed-in engineer testing someone else's token
+ * should see that token's access rather than their own, and a *failed* token
+ * must stay a 401 rather than quietly becoming whoever happens to be signed
+ * in in that browser. Falling through would turn an expired or revoked
+ * connector into a connector that still works for exactly one person and
+ * nobody else, which is the hardest kind of revocation bug to notice.
  */
 export async function resolveCaller(request: Request): Promise<Caller | null> {
-  const credential = await callerFromCredential(request);
-  if (credential) return credential;
+  if (presentedToken(request)) return await callerFromCredential(request);
   const user = await currentUser();
   if (user) return { userId: user.id, name: user.name, email: user.email ?? null, via: "session" };
   return devCaller();

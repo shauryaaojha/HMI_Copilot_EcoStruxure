@@ -44,6 +44,16 @@ import { createHash } from "node:crypto";
 import { repo, type Repo } from "./repo";
 import { ServerError } from "./errors";
 
+/**
+ * What is being counted, and therefore which bucket an attempt lands in.
+ * `connector` is separate from `ip` although both key on an address, because
+ * the two stop different things and must not spend each other's allowance:
+ * Anthropic calls the token endpoint from a handful of addresses on behalf of
+ * everybody, so a refresh storm sharing sign-in's bucket would lock a whole
+ * office out of signing in. Its own limit lives in lib/server/oauth.ts, with
+ * the reasoning for the number.
+ */
+
 export const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
 export const ATTEMPTS_PER_EMAIL = 10;
 export const ATTEMPTS_PER_IP = 50;
@@ -54,7 +64,10 @@ export const GENERATES_PER_PROJECT = 20;
  * What a counter counts. The scope is part of the key, so two policies cannot
  * collide on one value - a user id and a project id are both opaque strings.
  */
-export type LimitScope = "email" | "ip" | "generate-user" | "generate-project";
+export type LimitScope = "email" | "ip" | "connector" | "generate-user" | "generate-project";
+
+/** The name this union went by while the connector was its only other caller. */
+export type Scope = LimitScope;
 
 /**
  * The address a request came from. Vercel sets `x-forwarded-for`, and the
