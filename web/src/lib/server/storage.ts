@@ -202,6 +202,15 @@ export class MongoStorage implements Storage {
       await db.collection("presence").createIndex({ projectId: 1 });
       await db.collection("proposals").createIndex({ projectId: 1, createdAt: -1 });
       await db.collection("decisions").createIndex({ projectId: 1, at: 1 });
+      // Every MCP call looks a token up by its hash, so that lookup is the one
+      // on the hot path; unique because two rows for one secret would mean one
+      // of them survived a revocation.
+      await db.collection("connectorTokens").createIndex({ hash: 1 }, { unique: true });
+      await db.collection("connectorTokens").createIndex({ userId: 1, kind: 1, createdAt: -1 });
+      await db.collection("connectorTokens").createIndex({ grantId: 1 });
+      await db.collection("connectorTokens").createIndex({ expiresAt: 1 });
+      await db.collection("connectorGrants").createIndex({ userId: 1, clientId: 1, createdAt: -1 });
+      await db.collection("oauthCodes").createIndex({ expiresAt: 1 });
     })().catch(error => { this.ready = undefined; throw error; });
   }
   async transaction<T>(fn: (data: Data) => Promise<T>): Promise<T> {
