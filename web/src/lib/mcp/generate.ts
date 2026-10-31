@@ -184,7 +184,6 @@ function defer(work: () => Promise<void>): void {
 interface PlannedScreen {
   name: string;
   faceplates: string[];
-  rationale: string;
 }
 
 /** What one run of the pipeline came out with, and what it said on the way. */
@@ -250,11 +249,7 @@ async function runPipelineInto(jobId: string, input: Parameters<typeof runPipeli
     }
     if (event.type === "tags") outcome.tags = event.variables.length;
     if (event.type === "program") {
-      outcome.screens.push({
-        name: event.program.name,
-        faceplates: event.program.faceplates ?? [],
-        rationale: event.program.rationale,
-      });
+      outcome.screens.push({ name: event.program.name, faceplates: event.program.faceplates ?? [] });
     }
     if (event.type === "alarm") outcome.alarms.push(event.alarm);
     if (event.type === "error") outcome.error = event.message;
