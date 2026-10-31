@@ -212,6 +212,30 @@ describe("drafting a brief", () => {
     expect(tagsFromBrief(drafted.brief).variables.some((v) => v.Name === "PMP_101_RUN")).toBe(true);
   });
 
+  it("reads the units when the model answers with them alone, not in the envelope", async () => {
+    // Gemini's structured output returns the array rather than `{plant, units}`.
+    // Reading only the documented shape made the model path fall back to the
+    // rules every time, with nothing said - the silent drop §5.2 is about.
+    const bare = [
+      { kind: "pump", label: "Raw water pump", count: 3, signals: ["RUN", "FLT"] },
+      { kind: "temperature", label: "Final tank", signals: ["PV", "HI"] },
+    ];
+    const coerced = coerceBrief(bare);
+    expect(coerced).not.toBeNull();
+    expect(coerced!.units.map((u) => u.kind)).toEqual(["pump", "temperature"]);
+    expect(coerced!.units[0].count).toBe(3);
+    // And the whole way through, so a draft says "model" rather than "rules".
+    const drafted = await draftBrief("three raw water pumps", { ask: async () => bare });
+    expect(drafted.by).toBe("model");
+    expect(drafted.brief.units).toHaveLength(2);
+  });
+
+  it("still refuses an envelope that carries no units at all", () => {
+    expect(coerceBrief([])).toBeNull();
+    expect(coerceBrief({ units: [] })).toBeNull();
+    expect(coerceBrief("not json")).toBeNull();
+  });
+
   it("drops a kind or a signal the model invented, rather than repairing it", () => {
     const coerced = coerceBrief({
       plant: { name: "", purpose: "" },

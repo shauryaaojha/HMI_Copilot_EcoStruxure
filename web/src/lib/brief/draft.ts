@@ -135,7 +135,14 @@ export const BRIEF_SYSTEM = [
  * does not have would become a tag nobody can bind.
  */
 export function coerceBrief(value: unknown): Brief | null {
-  const raw = value as { plant?: { name?: unknown; purpose?: unknown }; units?: unknown[] } | null;
+  // A model that was asked for `{plant, units}` may answer with the units
+  // alone - Gemini's structured output does exactly that, and reading only the
+  // documented shape meant the model path returned null and fell back to the
+  // rules every single time, silently. Being liberal about the envelope costs
+  // nothing: every unit inside it is still checked against the catalogue
+  // below, which is where the actual trust boundary is.
+  const envelope = Array.isArray(value) ? { units: value } : value;
+  const raw = envelope as { plant?: { name?: unknown; purpose?: unknown }; units?: unknown[] } | null;
   if (!raw || !Array.isArray(raw.units)) return null;
 
   const units: Unit[] = [];
