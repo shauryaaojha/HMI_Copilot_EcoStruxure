@@ -78,6 +78,19 @@ function sameSecret(a: string, b: string): boolean {
 export const SCOPES = ["mcp:read", "mcp:write", "offline_access"] as const;
 export const DEFAULT_SCOPES = [...SCOPES];
 
+/**
+ * What each scope means, in the words the consent screen and account settings
+ * both use. One list, because a screen that said "read your projects" where
+ * settings said `mcp:read` would be asking the engineer to trust two
+ * descriptions of the same permission.
+ */
+export const SCOPE_LABEL: Record<string, string> = {
+  "mcp:read": "Read the projects you can open: screens, tags, alarms and validation results",
+  "mcp:write": "Propose changes to those projects, which an editor still has to accept",
+  offline_access: "Stay connected without asking you to sign in again",
+};
+export const scopeLabel = (scope: string) => SCOPE_LABEL[scope] ?? scope;
+
 /** The scopes asked for, narrowed to the ones that exist. */
 function askedScopes(requested: string | null | undefined): string[] {
   const asked = (requested ?? "").split(/\s+/).filter(Boolean);
