@@ -10,9 +10,9 @@
  * Thickness of 2 stays 2 pixels whatever the stretch.
  */
 
-import { createContext, useContext } from "react";
 import { toPathData } from "@/lib/ote/graphics";
 import { fill, insetStroke, type PartOf } from "./geometry";
+import { DEFAULT_ENV, type DrawEnv } from "./env";
 
 const UNITS = 3072;
 
@@ -166,14 +166,13 @@ export function AngleShapePart({ part }: { part: AngleShape }) {
 }
 
 /**
- * Where a picture's bytes are served from, by SHA-1. Context, like the content
- * screens: the opened project's id is needed to find pictures that came in
- * with the file, and a part does not know which project it is in.
+ * A picture, from where its bytes are served by SHA-1. The address comes in the
+ * draw environment, like the content screens: the opened project's id is
+ * needed to find pictures that came in with the file, and a part does not know
+ * which project it is in.
  */
-export const PictureSource = createContext<(sha: string) => string | null>((sha) => `/api/picture/${sha}`);
-
-export function PicturePart({ part }: { part: PartOf<"ClipArt"> | PartOf<"Image"> }) {
-  const url = useContext(PictureSource);
+export function PicturePart({ part, env = DEFAULT_ENV }: { part: PartOf<"ClipArt"> | PartOf<"Image">; env?: DrawEnv }) {
+  const url = env.pictureUrl;
   const sha = part.ImagePath?.Value;
   const href = sha && /^[0-9a-f]{40}$/i.test(sha) ? url(sha.toLowerCase()) : null;
   const { Left: x, Top: y } = part.Location;

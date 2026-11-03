@@ -29,22 +29,13 @@ import { useCallback, useRef, useState } from "react";
 import { rootBox, type Part, type Screen } from "@/lib/ote/schema";
 import { COMPOSITES, isCompositeKind } from "@/lib/composites";
 import type { ToolType } from "./newPart";
-import { resolveColor } from "@/lib/ote/palette";
 import type { ForeignPart, ObjectMeta, ScreenPreview } from "@/store/types";
 import { snapDelta, snapTargets, unionOf, type Box } from "@/store/edits";
-import { ContentScreens, contentsById, PartNode, PictureSource, type AlarmRow } from "./parts";
-import type { Look } from "@/lib/ote/co-look";
-import { LookNode } from "./parts/ContentDisplay";
+import { contentsById, PartNode, type AlarmRow, type DrawEnv } from "./parts";
+import { FALLBACK_PANEL, ForeignLayer, PAPER, ScreenFrame } from "./StaticScreen";
 import { useProject } from "@/store/project";
 import type { Presence } from "@/lib/collab/types";
 import { PresenceOverlay } from "@/components/collab/PresenceOverlay";
-
-/** Palette index 2 is the paper the product draws a screen on; 22 its frame. */
-/** When no panel is given: the most common ST6 size in the corpus. */
-const FALLBACK_PANEL = { width: 1024, height: 600 };
-
-const PAPER = resolveColor(2, "#f1f1f1");
-const FRAME = resolveColor(22, "#515151");
 
 /** How close an edge has to come, in screen units at 100%, before it snaps. */
 const GUIDE_TOLERANCE = 6;
@@ -292,6 +283,7 @@ export function ScreenRenderer({
   // Pictures that came in with an opened file are served from that file.
   const source = useProject((s) => s.source);
   const pictureUrl = useCallback((sha: string) => `/api/picture/${sha}${source ? `?source=${encodeURIComponent(source)}` : ""}`, [source]);
+  const env: DrawEnv = { contents: contentScreens, depth: 0, carried, pictureUrl };
   const [drag, setDrag] = useState<Drag | null>(null);
   /** The guide lines that actually caught, so the engineer sees what snapped. */
   const [shown, setShown] = useState<{ v?: number; h?: number }>({});
@@ -452,8 +444,6 @@ export function ScreenRenderer({
       : null;
 
   return (
-    <ContentScreens.Provider value={{ byId: contentScreens, depth: 0, carried }}>
-    <PictureSource.Provider value={pictureUrl}>
     <svg
       ref={svg}
       viewBox={`0 0 ${box.width} ${box.height}`}
@@ -498,40 +488,7 @@ export function ScreenRenderer({
         onContextMenu({ x: e.clientX, y: e.clientY }, id ?? undefined);
       }}
     >
-      {/* Carried objects, under everything the editor owns. The product will
-          paint them at their original index; the canvas cannot know what they
-          look like, so it shows where they are and what they are. */}
-      {foreign && foreign.length > 0 && (
-        <g pointerEvents="none" data-foreign>
-          <defs>
-            <pattern id="foreign-hatch" width={px(8)} height={px(8)} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-              <line x1={0} y1={0} x2={0} y2={px(8)} stroke="var(--color-text-faint)" strokeWidth={px(1)} />
-            </pattern>
-          </defs>
-          {foreign.map((f, i) => {
-            const look = (f as ForeignPart & { look?: Look }).look;
-            return f.box && look ? (
-              <LookNode key={i} box={f.box} look={look} alarms={alarms} />
-            ) : f.box ? (
-              <g key={i}>
-                <rect x={f.box.left} y={f.box.top} width={f.box.width} height={f.box.height} fill="url(#foreign-hatch)" fillOpacity={0.35} />
-                <rect x={f.box.left} y={f.box.top} width={f.box.width} height={f.box.height} fill="none" stroke="var(--color-text-faint)" strokeWidth={px(1)} strokeDasharray={`${px(3)} ${px(3)}`} />
-                <text
-                  x={f.box.left + px(4)}
-                  y={f.box.top + px(4)}
-                  fill="var(--color-text-muted)"
-                  fontSize={px(10)}
-                  fontFamily="var(--font-mono)"
-                  dominantBaseline="hanging"
-                >
-                  {f.type}
-                  {f.name ? ` ${f.name}` : ""}
-                </text>
-              </g>
-            ) : null;
-          })}
-        </g>
-      )}
+      <ForeignLayer foreign={foreign} alarms={alarms} env={env} px={px} />
 
       {visible.map((part) => {
         const isSelected = selected.has(part.UniqueId);
@@ -589,7 +546,7 @@ export function ScreenRenderer({
               });
             }}
           >
-            <PartNode part={part} values={values} alarms={alarms} />
+            <PartNode part={part} values={values} alarms={alarms} env={env} />
           </g>
         );
       })}
@@ -629,7 +586,7 @@ export function ScreenRenderer({
             const b = boxOf(part);
             return (
               <g key={`add-${part.UniqueId}`} opacity={0.55}>
-                <PartNode part={part} values={values} alarms={alarms} />
+                <PartNode part={part} values={values} alarms={alarms} env={env} />
                 <rect x={b.left} y={b.top} width={b.width} height={b.height} fill="none" stroke="var(--color-brand-400)" strokeWidth={px(1.5)} strokeDasharray={`${px(4)} ${px(3)}`} />
               </g>
             );
@@ -755,21 +712,8 @@ export function ScreenRenderer({
         </g>
       )}
 
-      {/* render_screen.py frames the whole screen; without this the browser
-          render is a pixel short of the picture in the deck. */}
-      <rect
-        x={0.5}
-        y={0.5}
-        width={box.width - 1}
-        height={box.height - 1}
-        fill="none"
-        stroke={FRAME}
-        strokeWidth={1}
-        pointerEvents="none"
-      />
+      <ScreenFrame width={box.width} height={box.height} />
     </svg>
-    </PictureSource.Provider>
-    </ContentScreens.Provider>
   );
 }
 

@@ -14,7 +14,10 @@
 import { createElement } from "react";
 import { rootBox, type Screen } from "@/lib/ote/schema";
 import type { ForeignPart } from "@/store/types";
-import { ScreenRenderer } from "@/components/canvas/ScreenRenderer";
+// StaticScreen, not ScreenRenderer: a route handler gets React's server build,
+// where ScreenRenderer (a client component with hooks) cannot be called.
+import { StaticScreen } from "@/components/canvas/StaticScreen";
+import { contentsById, DEFAULT_ENV } from "@/components/canvas/parts";
 
 /**
  * React's server renderer, resolved at run time. Next's App Router refuses
@@ -42,7 +45,8 @@ export interface Around {
 export async function screenToSvg(screen: Screen, foreign?: ForeignPart[], around: Around = {}): Promise<string> {
   const box = rootBox(screen.Children[0], around.panel ?? { width: 1024, height: 600 });
   const renderToStaticMarkup = await serverRenderer();
-  const markup = renderToStaticMarkup(createElement(ScreenRenderer, { screen, selectedIds: [], foreign, ...around }));
+  const env = { ...DEFAULT_ENV, contents: contentsById(around.contents ?? []), carried: around.contentForeign };
+  const markup = renderToStaticMarkup(createElement(StaticScreen, { screen, foreign, env, panel: around.panel }));
   // The canvas SVG sizes itself to its container and reads its colours from
   // the page. Standalone, it needs an absolute size, an xmlns, and the two
   // CSS variables the design uses spelled out.

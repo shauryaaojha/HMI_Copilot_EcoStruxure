@@ -5,6 +5,16 @@ against a running server. Pre-existing: it is not caused by phases 1-4, and it
 fails on code that predates them. Written down because the test suite
 structurally cannot catch it, so nothing else will remind anyone.*
 
+> **Fixed 2026-11-03.** The two contexts became a `DrawEnv` prop
+> (`components/canvas/parts/env.ts`), the alarm summary's `useId` became an id
+> from the part, and the rasteriser draws `components/canvas/StaticScreen.tsx`,
+> which holds no hook, instead of `ScreenRenderer`. The editor draws its paper,
+> carried objects and frame from the same file, so the pixels match. Checked on
+> `next start`: `POST /api/critique` with `renderOnly` answers 200 with a PNG.
+> `tests/server-render.test.ts` fails if a hook, a context, `"use client"` or a
+> store import comes back onto the drawing path. The rest of this note is the
+> diagnosis as it was written.
+
 ## What happens
 
 Any server route that rasterises a screen fails:

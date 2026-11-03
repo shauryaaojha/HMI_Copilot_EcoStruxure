@@ -12,7 +12,6 @@
  */
 
 import { sizeOf } from "@/lib/ote/schema";
-import { useId } from "react";
 import { resolveColor } from "@/lib/ote/palette";
 import { insetStroke, type PartOf } from "./geometry";
 import { PlacedText } from "./Text";
@@ -50,7 +49,8 @@ export function AlarmSummaryPart({
   part: PartOf<"AlarmSummary">;
   rows: AlarmRow[];
 }) {
-  const clipId = useId();
+  // From the part, not useId: hooks do not exist where the server draws a screen.
+  const clipId = `alarm-clip-${part.UniqueId}`;
   const { Left: x, Top: y } = part.Location;
   const { width: w, height: h } = sizeOf(part);
 

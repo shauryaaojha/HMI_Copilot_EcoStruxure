@@ -32,9 +32,10 @@ import { AlarmSummaryPart, type AlarmRow } from "./AlarmSummaryPart";
 import { PathPartNode } from "./GraphicObject";
 import { AngleShapePart, EllipsePart, LinePart, PicturePart, PolygonPart } from "./Shapes";
 import { CompoundObjectPart, ContentDisplayPart } from "./ContentDisplay";
+import { DEFAULT_ENV, type DrawEnv } from "./env";
 
-export { ContentScreens, contentsById } from "./ContentDisplay";
-export { PictureSource } from "./Shapes";
+export { contentsById } from "./ContentDisplay";
+export { DEFAULT_ENV, type Carried, type DrawEnv } from "./env";
 
 export { AlarmSummaryPart, type AlarmRow } from "./AlarmSummaryPart";
 export { GraphicObject } from "./GraphicObject";
@@ -45,9 +46,11 @@ export interface PartNodeProps {
   values?: Record<string, number | boolean | string>;
   /** The alarms the summary grid should list. */
   alarms: AlarmRow[];
+  /** The project around the part: content screens, carried objects, picture addresses. */
+  env?: DrawEnv;
 }
 
-export function PartNode({ part, values, alarms }: PartNodeProps) {
+export function PartNode({ part, values, alarms, env = DEFAULT_ENV }: PartNodeProps) {
   switch (part.Type) {
     case "Rectangle": {
       // Only a bar reads a value; a plain rectangle ignores it.
@@ -142,17 +145,17 @@ export function PartNode({ part, values, alarms }: PartNodeProps) {
       return <AngleShapePart part={part} />;
 
     case "ContentDisplay":
-      return <ContentDisplayPart part={part} alarms={alarms} />;
+      return <ContentDisplayPart part={part} alarms={alarms} env={env} />;
 
     case "ClipArt":
     case "Image":
-      return <PicturePart part={part} />;
+      return <PicturePart part={part} env={env} />;
 
     case "Polygon":
       return <PolygonPart part={part} />;
 
     case "CompoundObject":
-      return <CompoundObjectPart part={part} alarms={alarms} />;
+      return <CompoundObjectPart part={part} alarms={alarms} env={env} />;
 
     default: {
       const exhaustive: never = part;

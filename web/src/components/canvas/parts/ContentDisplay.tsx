@@ -6,31 +6,19 @@
  * frame showed nothing of the template at all. It draws the content screen's
  * own parts instead, scaled from the content's box into the display's.
  *
- * The content screens come from context rather than props because a display
- * can sit anywhere in the part tree, and a content screen can hold displays of
- * its own. The depth limit stops a content that shows itself from recursing.
+ * The content screens come in the draw environment (./env.ts) because a
+ * display can sit anywhere in the part tree, and a content screen can hold
+ * displays of its own. The depth limit stops a content that shows itself from
+ * recursing.
  */
 
-import { createContext, useContext } from "react";
 import { rootBox, type Screen } from "@/lib/ote/schema";
 import { fill, type PartOf } from "./geometry";
 import { PartNode, type AlarmRow } from "./index";
 import type { Look } from "@/lib/ote/co-look";
+import { DEFAULT_ENV, type Carried, type DrawEnv } from "./env";
 
-/** A carried object with its box and, for a Compound Object, how it looks. */
-export interface Carried {
-  box: { left: number; top: number; width: number; height: number } | null;
-  look?: Look;
-}
-
-export interface ContentScreensValue {
-  byId: Map<number, Screen>;
-  depth: number;
-  /** Carried objects per screen id, so a content screen's Compound Objects show in its display. */
-  carried?: Record<string, Carried[]>;
-}
-
-export const ContentScreens = createContext<ContentScreensValue>({ byId: new Map(), depth: 0 });
+export type { Carried } from "./env";
 
 /** The content screens of a project, keyed by the number a display names them by. */
 export function contentsById(screens: Screen[]): Map<number, Screen> {
@@ -41,8 +29,8 @@ export function contentsById(screens: Screen[]): Map<number, Screen> {
 
 const MAX_DEPTH = 3;
 
-export function ContentDisplayPart({ part, alarms }: { part: PartOf<"ContentDisplay">; alarms: AlarmRow[] }) {
-  const { byId, depth, carried } = useContext(ContentScreens);
+export function ContentDisplayPart({ part, alarms, env = DEFAULT_ENV }: { part: PartOf<"ContentDisplay">; alarms: AlarmRow[]; env?: DrawEnv }) {
+  const { contents: byId, depth, carried } = env;
   const x = part.Location.Left;
   const y = part.Location.Top;
   const width = part.Width ?? 0;
@@ -72,6 +60,7 @@ export function ContentDisplayPart({ part, alarms }: { part: PartOf<"ContentDisp
 
   const view = content.Children[0];
   const own = rootBox(view, { width, height });
+  const inner: DrawEnv = { ...env, depth: depth + 1 };
   const viewFill = "Fill" in view && view.Fill ? fill(view, "Fill", "none") : "none";
   return (
     <svg
@@ -85,21 +74,19 @@ export function ContentDisplayPart({ part, alarms }: { part: PartOf<"ContentDisp
     >
       {background !== "none" && <rect width={own.width} height={own.height} fill={background} />}
       {viewFill !== "none" && <rect width={own.width} height={own.height} fill={viewFill} />}
-      <ContentScreens.Provider value={{ byId, depth: depth + 1, carried }}>
-        {(carried?.[content.UniqueId] ?? []).map((c, i) =>
-          c.box && c.look ? <LookNode key={`look${i}`} box={c.box} look={c.look} alarms={alarms} /> : null,
-        )}
-        {view.Children.map((child) => (
-          <PartNode key={child.UniqueId} part={child} alarms={alarms} />
-        ))}
-      </ContentScreens.Provider>
+      {(carried?.[content.UniqueId] ?? []).map((c, i) =>
+        c.box && c.look ? <LookNode key={`look${i}`} box={c.box} look={c.look} alarms={alarms} env={inner} /> : null,
+      )}
+      {view.Children.map((child) => (
+        <PartNode key={child.UniqueId} part={child} alarms={alarms} env={inner} />
+      ))}
     </svg>
   );
 }
 
 /** A Compound Object drawn from its definition (lib/ote/co-look.ts): its own
  *  parts in its own coordinates, scaled into the instance's box. */
-export function LookNode({ box, look, alarms }: { box: NonNullable<Carried["box"]>; look: Look; alarms: AlarmRow[] }) {
+export function LookNode({ box, look, alarms, env = DEFAULT_ENV }: { box: NonNullable<Carried["box"]>; look: Look; alarms: AlarmRow[]; env?: DrawEnv }) {
   return (
     <svg
       x={box.left}
@@ -112,9 +99,9 @@ export function LookNode({ box, look, alarms }: { box: NonNullable<Carried["box"
     >
       {look.items.map((item, i) =>
         item.kind === "part" ? (
-          <PartNode key={i} part={item.part} alarms={alarms} />
+          <PartNode key={i} part={item.part} alarms={alarms} env={env} />
         ) : (
-          <LookNode key={i} box={item.box} look={item.look} alarms={alarms} />
+          <LookNode key={i} box={item.box} look={item.look} alarms={alarms} env={env} />
         ),
       )}
     </svg>
@@ -127,10 +114,10 @@ export function LookNode({ box, look, alarms }: { box: NonNullable<Carried["box"
  * when the project was read; without one (its definition is not in the
  * project), it is a labelled outline, so it still has a place to grab.
  */
-export function CompoundObjectPart({ part, alarms }: { part: PartOf<"CompoundObject">; alarms: AlarmRow[] }) {
+export function CompoundObjectPart({ part, alarms, env = DEFAULT_ENV }: { part: PartOf<"CompoundObject">; alarms: AlarmRow[]; env?: DrawEnv }) {
   const box = { left: part.Location.Left, top: part.Location.Top, width: part.Width ?? 0, height: part.Height ?? 0 };
   const look = part.Look as Look | undefined;
-  if (look && Array.isArray(look.items)) return <LookNode box={box} look={look} alarms={alarms} />;
+  if (look && Array.isArray(look.items)) return <LookNode box={box} look={look} alarms={alarms} env={env} />;
   return (
     <g>
       <rect x={box.left + 0.5} y={box.top + 0.5} width={Math.max(0, box.width - 1)} height={Math.max(0, box.height - 1)} fill="none" stroke="#8a8f98" strokeDasharray="4 3" />
