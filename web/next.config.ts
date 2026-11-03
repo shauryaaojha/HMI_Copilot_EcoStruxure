@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const WASM = "./node_modules/sql.js/dist/sql-wasm.wasm";
+// The rasteriser's font (lib/critic/render.ts): a function has no system fonts.
+const FONT = "./fonts/*.ttf";
 
 const config: NextConfig = {
   /**
@@ -77,13 +79,13 @@ const config: NextConfig = {
     "/api/import/screens": [WASM],
     "/api/panel": ["./skeleton/**/*", WASM],
     "/api/validate": [WASM],
-    "/api/critique": [WASM],
+    "/api/critique": [WASM, FONT],
     // The connector's validate and generate tools reach the packager and the
     // pipeline, which open databases the same way.
-    "/api/mcp": [WASM],
+    "/api/mcp": [WASM, FONT],
     // The agent opens databases, writes bindings through the packager and runs
     // scripts in QuickJS, whose engine is a .wasm beside its module.
-    "/api/agent": ["./skeleton/**/*", WASM, "./node_modules/@jitl/quickjs-wasmfile-release-sync/dist/*.wasm"],
+    "/api/agent": ["./skeleton/**/*", WASM, FONT, "./node_modules/@jitl/quickjs-wasmfile-release-sync/dist/*.wasm"],
   },
 };
 

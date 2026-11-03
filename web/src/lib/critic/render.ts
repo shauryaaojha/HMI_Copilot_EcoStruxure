@@ -11,6 +11,8 @@
  * browser bundle.
  */
 
+import fs from "node:fs";
+import path from "node:path";
 import { createElement } from "react";
 import { rootBox, type Screen } from "@/lib/ote/schema";
 import type { ForeignPart } from "@/store/types";
@@ -54,17 +56,30 @@ export async function screenToSvg(screen: Screen, foreign?: ForeignPart[], aroun
     .replace(/^<svg /, `<svg xmlns="http://www.w3.org/2000/svg" `)
     .replace(/width="100%"/, `width="${box.width}"`)
     .replace(/height="100%"/, `height="${box.height}"`)
-    .replace(/var\(--font-sans\)/g, "Segoe UI, Arial, sans-serif")
-    .replace(/var\(--font-mono\)/g, "Consolas, monospace")
+    .replace(/var\(--font-sans\)/g, "Segoe UI, Noto Sans, Arial, sans-serif")
+    .replace(/var\(--font-mono\)/g, "Consolas, Noto Sans, monospace")
     .replace(/var\(--color-[a-z-]+\)/g, "#7d8b99");
 }
+
+/**
+ * A font resvg can always find. A Vercel function has no system fonts, so
+ * with loadSystemFonts alone every label renders blank there (it worked on a
+ * laptop, which has Segoe UI). fonts/ is carried into the routes that render
+ * by outputFileTracingIncludes in next.config.ts.
+ */
+const BUNDLED_FONT = path.join(process.cwd(), "fonts", "NotoSans-Regular.ttf");
 
 export async function screenToPng(screen: Screen, foreign?: ForeignPart[], scale = 1, around: Around = {}): Promise<Uint8Array> {
   const { Resvg } = await import("@resvg/resvg-js");
   const svg = await screenToSvg(screen, foreign, around);
   const resvg = new Resvg(svg, {
     fitTo: { mode: "zoom", value: scale },
-    font: { loadSystemFonts: true, defaultFontFamily: "Segoe UI" },
+    font: {
+      loadSystemFonts: true,
+      fontFiles: fs.existsSync(BUNDLED_FONT) ? [BUNDLED_FONT] : [],
+      // Segoe UI where the machine has it; Noto Sans everywhere else.
+      defaultFontFamily: process.platform === "win32" ? "Segoe UI" : "Noto Sans",
+    },
   });
   return resvg.render().asPng();
 }
