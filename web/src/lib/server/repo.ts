@@ -68,7 +68,7 @@ export type Snapshot = Omit<PersistedProject, "activeScreenId">;
  * can be opted out of that, for the engineer working alone on a sample.
  */
 export type ConnectorSettings = { directWrites: boolean };
-export type Project = Row & { ownerId: string; name: string; target: PersistedProject["target"]; createdAt: number; updatedAt: number; rev: number; headRev?: number; sources?: string[]; sourceId?: string; layout?: "typed" | "struct"; connector?: ConnectorSettings };
+export type Project = Row & { ownerId: string; name: string; target: PersistedProject["target"]; createdAt: number; updatedAt: number; rev: number; headRev?: number; sources?: string[]; sourceId?: string; layout?: "typed" | "struct"; connector?: ConnectorSettings; checkpointAt?: number };
 /** A version without its snapshot: what listings and history trimming read. */
 export type VersionInfo = Row & { projectId: string; rev: number; authorId: string; label: string; createdAt: number };
 export type Version = VersionInfo & { snapshot: Snapshot };
@@ -120,6 +120,8 @@ export interface Repo {
     list(userId: string): Promise<Project[]>;
     /** The projects that refer to a stored source, whoever their members are. */
     referencing(sourceId: string): Promise<Project[]>;
+    /** A project and one user's membership of it, in one read: what every access check needs. */
+    access(projectId: string, userId: string | null): Promise<{ project: Project; member: Member | null } | null>;
     save(id: string, rev: number, snapshot: Snapshot, authorId: string, label?: string): Promise<Version>;
     /** Connector settings, which are project metadata and not part of the synced document. */
     connector(id: string, settings: ConnectorSettings): Promise<Project>;
@@ -147,6 +149,21 @@ export interface Repo {
 export class BaseRepo implements Repo {
   constructor(private storage: Storage, private now = () => Date.now()) {}
   private tx<T>(fn: (data: Data) => Promise<T>) { return this.storage.transaction(fn); }
+  /**
+   * A read with no transaction (Storage.read). The one thing a transaction
+   * gave a read for free is a consistent view across queries; the case where
+   * that matters is a snapshot whose pieces a concurrent sweep removed between
+   * reading the manifest and reading the pieces. That read is retried once in
+   * a transaction, which cannot see it torn.
+   */
+  private async read<T>(fn: (data: Data) => Promise<T>): Promise<T> {
+    if (!this.storage.read) return this.tx(fn);
+    try { return await this.storage.read(fn); }
+    catch (error) {
+      if (error instanceof ServerError && error.code === "corrupt") return this.tx(fn);
+      throw error;
+    }
+  }
   users: Repo["users"] = {
     upsert: user => this.tx(async d => {
       const old = await d.get<UserRow>("users", user.id);
@@ -156,7 +173,7 @@ export class BaseRepo implements Repo {
       await d.put("users", { ...old, ...next, _id: user.id });
       return next;
     }),
-    get: id => this.tx(async d => { const row = await d.get<UserRow>("users", id); return row ? profile(row) : null; }),
+    get: id => this.read(async d => { const row = await d.get<UserRow>("users", id); return row ? profile(row) : null; }),
     create: user => this.tx(async d => {
       // Checked inside the transaction, and backed by a unique index on
       // `emailKey` in MongoStorage: the check alone would let two concurrent
@@ -173,7 +190,7 @@ export class BaseRepo implements Repo {
       }
       return profile(row);
     }),
-    credential: emailKey => this.tx(async d => {
+    credential: emailKey => this.read(async d => {
       const [row] = await d.list<UserRow>("users", { emailKey }, { limit: 1 });
       return row?.passwordHash ? { user: profile(row), passwordHash: row.passwordHash } : null;
     }),
@@ -202,7 +219,7 @@ export class BaseRepo implements Repo {
       const current = await latestVersion(d, p);
       throw new ServerError(409, "conflict", "Changed elsewhere", { rev: p.rev, snapshot: current?.snapshot });
     }
-    const next = { ...p, rev: rev + 1, headRev: rev + 1, sources: [...new Set([...(p.sources ?? []), p.sourceId, snapshot.source, snapshot.sourceId].filter((id): id is string => !!id))], name: snapshot.name, target: snapshot.target, sourceId: snapshot.sourceId ?? snapshot.source, layout: snapshot.layout ?? p.layout, updatedAt: this.now() };
+    const next = { ...p, rev: rev + 1, headRev: rev + 1, sources: [...new Set([...(p.sources ?? []), p.sourceId, snapshot.source, snapshot.sourceId].filter((id): id is string => !!id))], name: snapshot.name, target: snapshot.target, sourceId: snapshot.sourceId ?? snapshot.source, layout: snapshot.layout ?? p.layout, updatedAt: this.now(), checkpointAt: this.now() };
     const stored = { ...snapshot, id: p._id };
     const info: VersionInfo = { _id: `${p._id}:${next.rev}`, projectId: p._id, rev: next.rev, authorId, label, createdAt: this.now() };
     const manifest = await writeSnapshot(d, p._id, stored, this.now());
@@ -230,17 +247,24 @@ export class BaseRepo implements Repo {
       await this.save(d, p, 0, snapshot, ownerId, "Created");
       return (await d.get<Project>("projects", p._id))!;
     }),
-    get: id => this.tx(d => d.get<Project>("projects", id)),
-    list: userId => this.tx(async d => {
+    get: id => this.read(d => d.get<Project>("projects", id)),
+    access: (projectId, userId) => this.read(async d => {
+      // Both lookups at once: outside a transaction Mongo runs them in parallel.
+      const [project, member] = await Promise.all([
+        d.get<Project>("projects", projectId),
+        userId ? d.get<Member>("members", `${projectId}:${userId}`) : Promise.resolve(null),
+      ]);
+      return project ? { project, member } : null;
+    }),
+    list: userId => this.read(async d => {
       const members = await d.list<Member>("members", { userId }, { projection: { projectId: 1 } });
       if (!members.length) return [];
       // One query for every project, not one per membership.
       const projects = await d.list<Project>("projects", { _id: { $in: members.map(m => m.projectId) } });
       return projects.sort((a, b) => b.updatedAt - a.updatedAt);
     }),
-    referencing: sourceId => this.tx(async d => {
-      const listed = await d.list<Project>("projects", { sources: sourceId });
-      const primary = await d.list<Project>("projects", { sourceId });
+    referencing: sourceId => this.read(async d => {
+      const [listed, primary] = await Promise.all([d.list<Project>("projects", { sources: sourceId }), d.list<Project>("projects", { sourceId })]);
       return [...new Map([...listed, ...primary].map(p => [p._id, p])).values()];
     }),
     save: (id, rev, snapshot, authorId, label = "Saved") => this.tx(async d => {
@@ -264,14 +288,14 @@ export class BaseRepo implements Repo {
     }),
   };
   versions: Repo["versions"] = {
-    list: id => this.tx(d => this.history(d, id)),
-    get: (id, rev) => this.tx(async d => {
+    list: id => this.read(d => this.history(d, id)),
+    get: (id, rev) => this.read(async d => {
       const row = await d.get<StoredVersion>("versions", `${id}:${rev}`);
       if (!row) return null;
       const { manifest, snapshot, ...info } = row;
       return { ...info, snapshot: await loadStored(d, id, { manifest, snapshot }) } as Version;
     }),
-    current: id => this.tx(async d => {
+    current: id => this.read(async d => {
       const p = await d.get<Project>("projects", id);
       // Live edits (Phase C) move a head ahead of the last saved version.
       return p ? latestVersion(d, p) : null;
@@ -284,12 +308,12 @@ export class BaseRepo implements Repo {
     }),
   };
   members: Repo["members"] = {
-    get: (projectId, userId) => this.tx(d => d.get<Member>("members", `${projectId}:${userId}`)),
+    get: (projectId, userId) => this.read(d => d.get<Member>("members", `${projectId}:${userId}`)),
     put: (projectId, userId, role, options = {}) => this.tx(async d => {
       const p = await d.get<Project>("projects", projectId); if (!p) throw missing();
       await putMember(d, p, userId, role, this.now(), options.exportDenied);
     }),
-    list: projectId => this.tx(async d => {
+    list: projectId => this.read(async d => {
       const members = await d.list<Member>("members", { projectId });
       return members.sort((a, b) => ROLE_RANK[b.role] - ROLE_RANK[a.role] || a.addedAt - b.addedAt);
     }),
@@ -300,13 +324,13 @@ export class BaseRepo implements Repo {
       await d.remove("members", `${projectId}:${userId}`);
     }),
   };
-  shares = sharesRepo(fn => this.tx(fn), () => this.now());
-  comments = commentsRepo(fn => this.tx(fn), () => this.now());
-  live = liveRepo(fn => this.tx(fn), () => this.now());
-  proposals = proposalsRepo(fn => this.tx(fn), () => this.now());
-  locks = locksRepo(fn => this.tx(fn), () => this.now());
-  jobs = jobsRepo(fn => this.tx(fn), () => this.now());
-  connector = connectorRepo(fn => this.tx(fn), () => this.now());
+  shares = sharesRepo(fn => this.tx(fn), () => this.now(), fn => this.read(fn));
+  comments = commentsRepo(fn => this.tx(fn), () => this.now(), fn => this.read(fn));
+  live = liveRepo(fn => this.tx(fn), () => this.now(), fn => this.read(fn));
+  proposals = proposalsRepo(fn => this.tx(fn), () => this.now(), fn => this.read(fn));
+  locks = locksRepo(fn => this.tx(fn), () => this.now(), fn => this.read(fn));
+  jobs = jobsRepo(fn => this.tx(fn), () => this.now(), fn => this.read(fn));
+  connector = connectorRepo(fn => this.tx(fn), () => this.now(), fn => this.read(fn));
   sources: Repo["sources"] = {
     put: async (bytes, fileName, ownerId, expiresAt) => {
       if (bytes.length > DEFAULT_LIMITS.maxBytes) throw new ServerError(413, "too-large", "File exceeds 100 MB");
@@ -318,7 +342,7 @@ export class BaseRepo implements Repo {
     },
     info: async id => {
       if (!validId(id)) return null;
-      const meta = await this.tx(d => d.get<Source>("sources", id));
+      const meta = await this.read(d => d.get<Source>("sources", id));
       return meta && (!meta.expiresAt || meta.expiresAt > this.now()) ? meta : null;
     },
     get: async id => {
@@ -342,7 +366,7 @@ export class BaseRepo implements Repo {
       const u: Upload = { _id: crypto.randomUUID(), fileName, size, ownerId, expiresAt: this.now() + TTL_MS };
       await this.tx(d => d.put("uploads", u)); return u;
     },
-    get: id => this.tx(async d => { const u = await d.get<Upload>("uploads", id); return u && u.expiresAt > this.now() ? u : null; }),
+    get: id => this.read(async d => { const u = await d.get<Upload>("uploads", id); return u && u.expiresAt > this.now() ? u : null; }),
     part: (id, part, bytes, ownerId) => this.tx(async d => {
       const u = await this.upload(d, id, ownerId);
       if (u.sourceId) throw new ServerError(409, "complete", "Upload already completed");

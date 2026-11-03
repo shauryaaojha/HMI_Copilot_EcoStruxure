@@ -1,14 +1,14 @@
 /** Private project index. Membership is the only route into shared projects. */
 import { repo } from "@/lib/server/repo";
-import { can } from "@/lib/server/access";
 import { userRequired, snapshot, errorResponse } from "@/lib/server/http";
 import { snapshotBody } from "@/lib/server/snapshot";
 export const runtime = "nodejs";
 export async function GET() {
   try {
     const user = await userRequired();
-    const projects = [];
-    for (const p of await repo().projects.list(user.id)) if (await can(user, p._id, "read")) projects.push(p);
+    // The list comes from the user's memberships and every role may read, so
+    // a per-project access check here was two more queries per project.
+    const projects = await repo().projects.list(user.id);
     return Response.json({ projects }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) { return errorResponse(e); }
 }

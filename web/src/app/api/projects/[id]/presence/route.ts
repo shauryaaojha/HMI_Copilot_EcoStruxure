@@ -30,7 +30,9 @@ export async function POST(request: Request, context: Context) {
     if (!user) return Response.json({ ok: true, anonymous: true });
     const cursor = body.cursor as { x?: unknown; y?: unknown } | undefined;
     const point = cursor && Number.isFinite(cursor.x) && Number.isFinite(cursor.y) ? { x: Number(cursor.x), y: Number(cursor.y) } : undefined;
-    const presence = await repo().live.presence.put(id, {
+    // One transaction for the heartbeat and its answer: this route runs every
+    // 5 s for every open project, so it is the busiest write the app has.
+    const { presence, users } = await repo().live.presence.beat(id, {
       userId: user.id,
       name: user.name,
       selection: ids(body.selection),
@@ -39,7 +41,6 @@ export async function POST(request: Request, context: Context) {
     });
     // Read after the write, so this person is in the list they get back and
     // the list is the same one the event stream sends to everyone else.
-    const users = await repo().live.presence.list(id);
     return Response.json({ ok: true, presence, users }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) { return errorResponse(e); }
 }

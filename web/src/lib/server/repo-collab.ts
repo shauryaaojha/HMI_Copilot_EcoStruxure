@@ -122,7 +122,8 @@ function unusable(state: "missing" | "revoked" | "expired"): ServerError {
 }
 
 /** Share links, bound to the repository's transaction and clock. */
-export function sharesRepo(tx: Tx, now: Clock): SharesRepo {
+/** `read` runs the pure reads outside a transaction (Storage.read); it defaults to `tx`. */
+export function sharesRepo(tx: Tx, now: Clock, read: Tx = tx): SharesRepo {
   return {
     create: share => tx(async d => {
       if (!validId(share._id)) throw new ServerError(400, "invalid", "Invalid share id");
@@ -133,15 +134,15 @@ export function sharesRepo(tx: Tx, now: Clock): SharesRepo {
       await d.put("shares", row);
       return row;
     }),
-    get: id => tx(async d => {
+    get: id => read(async d => {
       if (!validId(id)) return null;
       return d.get<Share>("shares", id);
     }),
-    check: id => tx(async d => {
+    check: id => read(async d => {
       const share = validId(id) ? await d.get<Share>("shares", id) : null;
       return { state: shareState(share, now()), share };
     }),
-    list: projectId => tx(async d => {
+    list: projectId => read(async d => {
       const shares = await d.list<Share>("shares", { projectId });
       return shares.sort((a, b) => b.createdAt - a.createdAt);
     }),
@@ -198,17 +199,17 @@ function pinInto(comment: Comment, draft: CommentDraft) {
 }
 
 /** Comments and their one level of replies, bound to the repository's transaction and clock. */
-export function commentsRepo(tx: Tx, now: Clock): CommentsRepo {
+export function commentsRepo(tx: Tx, now: Clock, read: Tx = tx): CommentsRepo {
   const find = async (d: Data, projectId: string, id: string) => {
     const comment = validId(id) ? await d.get<Comment>("comments", id) : null;
     return comment && comment.projectId === projectId ? comment : null;
   };
   return {
-    list: projectId => tx(async d => {
+    list: projectId => read(async d => {
       const comments = await d.list<Comment>("comments", { projectId });
       return comments.sort((a, b) => a.createdAt - b.createdAt);
     }),
-    get: (projectId, id) => tx(d => find(d, projectId, id)),
+    get: (projectId, id) => read(d => find(d, projectId, id)),
     create: (projectId, authorId, draft) => tx(async d => {
       if (!await d.get<Project>("projects", projectId)) throw missing();
       const comment: Comment = { _id: crypto.randomUUID(), projectId, authorId, body: commentBody(draft.body), createdAt: now() };

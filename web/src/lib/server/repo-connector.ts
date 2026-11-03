@@ -194,7 +194,7 @@ async function sweep(d: Data, table: string, now: number): Promise<void> {
  * The collection, built over whatever `BaseRepo` is storing into, so the
  * laptop store and the test store behave exactly as a deployment does.
  */
-export function connectorRepo(tx: <T>(fn: (data: Data) => Promise<T>) => Promise<T>, now: () => number): ConnectorRepo {
+export function connectorRepo(tx: <T>(fn: (data: Data) => Promise<T>) => Promise<T>, now: () => number, read: <T>(fn: (data: Data) => Promise<T>) => Promise<T> = tx): ConnectorRepo {
   return {
     registerClient: client => tx(async d => {
       const id = newClientId();
@@ -202,7 +202,7 @@ export function connectorRepo(tx: <T>(fn: (data: Data) => Promise<T>) => Promise
       await d.put("oauthClients", row);
       return row;
     }),
-    client: clientId => tx(d => d.get<OauthClient>("oauthClients", clientId)),
+    client: clientId => read(d => d.get<OauthClient>("oauthClients", clientId)),
     putCode: (hash, code) => tx(async d => {
       await sweep(d, "oauthCodes", now());
       await d.put("oauthCodes", { ...code, _id: hash });
@@ -232,15 +232,16 @@ export function connectorRepo(tx: <T>(fn: (data: Data) => Promise<T>) => Promise
       await d.put("connectorGrants", row);
       return row;
     }),
-    grant: id => tx(d => d.get<ConnectorGrant>("connectorGrants", id)),
-    grants: userId => tx(async d => d.list<ConnectorGrant>("connectorGrants", { userId }, { sort: { createdAt: -1 } })),
+    grant: id => read(d => d.get<ConnectorGrant>("connectorGrants", id)),
+    grants: userId => read(async d => d.list<ConnectorGrant>("connectorGrants", { userId }, { sort: { createdAt: -1 } })),
     issue: token => tx(async d => {
       await sweep(d, "connectorTokens", now());
       const row: ConnectorToken = { ...token, _id: newTokenId() };
       await d.put("connectorTokens", row);
       return info(row);
     }),
-    byHash: hash => tx(async d => (await d.list<ConnectorToken>("connectorTokens", { hash }, { limit: 1 }))[0] ?? null),
+    // The lookup every MCP call makes: one query, no transaction.
+    byHash: hash => read(async d => (await d.list<ConnectorToken>("connectorTokens", { hash }, { limit: 1 }))[0] ?? null),
     rotate: (oldHash, next) => tx(async d => {
       const [old] = await d.list<ConnectorToken>("connectorTokens", { hash: oldHash }, { limit: 1 });
       if (!old) return null;
@@ -251,7 +252,7 @@ export function connectorRepo(tx: <T>(fn: (data: Data) => Promise<T>) => Promise
       await d.put("connectorTokens", row);
       return info(row);
     }),
-    personal: userId => tx(async d =>
+    personal: userId => read(async d =>
       (await d.list<ConnectorToken>("connectorTokens", { userId, kind: "personal" }, { sort: { createdAt: -1 } })).map(info)),
     revokeToken: (userId, id) => tx(async d => {
       const row = await d.get<ConnectorToken>("connectorTokens", id);

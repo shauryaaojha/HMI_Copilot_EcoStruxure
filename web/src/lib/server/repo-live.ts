@@ -53,6 +53,8 @@ type PresenceRow = Row & Presence & { projectId: string };
  */
 export async function latest(d: Data, p: Project): Promise<{ rev: number; authorId: string; at: number; load(): Promise<Snapshot> } | null> {
   const head = await d.get<Head>("heads", p._id);
+  // A head past the last saved version is the answer; the version need not be read.
+  if (head && head.rev > (p.headRev ?? p.rev)) return { rev: head.rev, authorId: head.author, at: head.at, load: () => loadStored(d, p._id, head) };
   const version = await d.get<StoredVersion>("versions", `${p._id}:${p.headRev ?? p.rev}`);
   if (head && (!version || head.rev > version.rev)) return { rev: head.rev, authorId: head.author, at: head.at, load: () => loadStored(d, p._id, head) };
   return version ? { rev: version.rev, authorId: version.authorId, at: version.createdAt, load: () => loadStored(d, p._id, version) } : null;
@@ -75,6 +77,8 @@ export interface LiveRepo {
   presence: {
     put(projectId: string, entry: Omit<Presence, "expiresAt">): Promise<Presence>;
     list(projectId: string): Promise<Presence[]>;
+    /** A heartbeat and the answer to it - who is here - in one transaction. */
+    beat(projectId: string, entry: Omit<Presence, "expiresAt">): Promise<{ presence: Presence; users: Presence[] }>;
   };
 }
 
@@ -90,12 +94,28 @@ function invalid(change: unknown): string | null {
   return null;
 }
 
+/** Record one heartbeat. */
+async function putPresence(d: Data, projectId: string, entry: Omit<Presence, "expiresAt">, at = Date.now()): Promise<Presence> {
+  const row: PresenceRow = { _id: `${projectId}:${entry.userId}`, projectId, ...entry, expiresAt: at + PRESENCE_TTL_MS };
+  await d.put("presence", row);
+  return entry2presence(row);
+}
+
+/** Who is here now; stale heartbeats are dropped as they are found (Mongo's TTL index also takes them). */
+async function listPresence(d: Data, projectId: string, at = Date.now()): Promise<Presence[]> {
+  const rows = await d.list<PresenceRow>("presence", { projectId });
+  const stale = rows.filter(row => row.expiresAt <= at).map(row => row._id);
+  await d.removeMany("presence", stale);
+  return rows.filter(row => row.expiresAt > at).map(entry2presence);
+}
+
 /** The live log, head, versions checkpoint and presence, bound to the repository's transaction and clock. */
-export function liveRepo(tx: Tx, now: Clock): LiveRepo {
+export function liveRepo(tx: Tx, now: Clock, read: Tx = tx): LiveRepo {
   /** Leave a version behind a long live session, so history still has points to return to. */
   async function checkpoint(d: Data, p: Project, snapshot: Snapshot, author: string): Promise<Project> {
-    const last = p.headRev ? await d.get<VersionInfo>("versions", `${p._id}:${p.headRev}`) : null;
-    if (last && now() - last.createdAt < CHECKPOINT_MS) return p;
+    // The project row remembers when the last version was left (v2); older rows read the version.
+    const lastAt = p.checkpointAt ?? (p.headRev ? (await d.get<VersionInfo>("versions", `${p._id}:${p.headRev}`))?.createdAt : undefined);
+    if (lastAt !== undefined && now() - lastAt < CHECKPOINT_MS) return p;
     const manifest = await writeSnapshot(d, p._id, snapshot, now());
     await d.put("versions", { _id: `${p._id}:${p.rev}`, projectId: p._id, rev: p.rev, authorId: author, label: "Live edits", createdAt: now(), manifest });
     const history = await d.list<VersionInfo>("versions", { projectId: p._id }, { projection: { snapshot: 0, manifest: 0 }, sort: { rev: -1 } });
@@ -104,7 +124,7 @@ export function liveRepo(tx: Tx, now: Clock): LiveRepo {
     // more. The caller writes the project row in this same transaction, which
     // is what makes sweeping here safe (lib/server/snapshots.ts).
     await sweepObjects(d, p._id);
-    return { ...p, headRev: p.rev };
+    return { ...p, headRev: p.rev, checkpointAt: now() };
   }
 
   return {
@@ -118,15 +138,18 @@ export function liveRepo(tx: Tx, now: Clock): LiveRepo {
       let rev = Math.max(p.rev, start.rev);
       const result: ChangesResult = { rev, accepted: [], rejected: [] };
       let lastAuthor = "";
+      // A retried POST must not apply the same edit twice: every id in the
+      // batch is looked up in one query, not one query per change.
+      const ids = changes.map(c => c?.id).filter((id): id is string => typeof id === "string");
+      const seen = new Set(ids.length ? (await d.list<LogRow>("changes", { projectId, changeId: { $in: ids } }, { projection: { changeId: 1 } })).map(r => r.changeId) : []);
+      const logged: LogRow[] = [];
       for (const change of changes) {
         const problem = invalid(change);
         if (problem) {
           result.rejected.push({ id: typeof change?.id === "string" ? change.id : "", reason: problem });
           continue;
         }
-        // A retried POST must not apply the same edit twice.
-        const seen = await d.list<LogRow>("changes", { projectId, changeId: change.id }, { projection: { _id: 1 }, limit: 1 });
-        if (seen.length > 0) {
+        if (seen.has(change.id)) {
           result.accepted.push(change.id);
           continue;
         }
@@ -138,15 +161,16 @@ export function liveRepo(tx: Tx, now: Clock): LiveRepo {
           continue;
         }
         rev += 1;
-        const row: LogRow = { _id: `${projectId}:${rev}`, projectId, changeId: change.id, rev, change, author: change.author, at: now() };
-        await d.put("changes", row);
-        // Older than the retained window: already part of the head.
-        await d.remove("changes", `${projectId}:${rev - LOG_LIMIT}`);
+        logged.push({ _id: `${projectId}:${rev}`, projectId, changeId: change.id, rev, change, author: change.author, at: now() });
+        seen.add(change.id);
         result.accepted.push(change.id);
         lastAuthor = change.author;
       }
       result.rev = rev;
       if (rev === Math.max(p.rev, start.rev)) return result;
+      await d.putMany("changes", logged);
+      // Older than the retained window: already part of the head.
+      await d.removeMany("changes", logged.map(r => `${projectId}:${r.rev - LOG_LIMIT}`).filter(id => !logged.some(r => r._id === id)));
       snapshot = { ...snapshot, ...doc, id: projectId };
       const head: Head = { _id: projectId, projectId, rev, author: lastAuthor, at: now(), manifest: await writeSnapshot(d, projectId, snapshot, now()) };
       await d.put("heads", head);
@@ -156,7 +180,7 @@ export function liveRepo(tx: Tx, now: Clock): LiveRepo {
       return result;
     }),
 
-    since: (projectId, since) => tx(async d => {
+    since: (projectId, since) => read(async d => {
       const p = await d.get<Project>("projects", projectId);
       if (!p) throw new ServerError(404, "not-found", "Project not found");
       const start = await latest(d, p);
@@ -172,7 +196,7 @@ export function liveRepo(tx: Tx, now: Clock): LiveRepo {
       return { rev, changes: rows.map(r => ({ rev: r.rev, change: r.change, author: r.author, at: r.at })) };
     }),
 
-    at: (projectId, rev) => tx(async d => {
+    at: (projectId, rev) => read(async d => {
       const p = await d.get<Project>("projects", projectId);
       if (!p) return null;
       const head = await d.get<Head>("heads", projectId);
@@ -195,20 +219,11 @@ export function liveRepo(tx: Tx, now: Clock): LiveRepo {
     }),
 
     presence: {
-      put: (projectId, entry) => tx(async d => {
-        const row: PresenceRow = { _id: `${projectId}:${entry.userId}`, projectId, ...entry, expiresAt: now() + PRESENCE_TTL_MS };
-        await d.put("presence", row);
-        return entry2presence(row);
-      }),
-      list: projectId => tx(async d => {
-        const rows = await d.list<PresenceRow>("presence", { projectId });
-        const live: Presence[] = [];
-        for (const row of rows) {
-          if (row.expiresAt > now()) live.push(entry2presence(row));
-          // Stale heartbeats are dropped as they are found; no timer needed.
-          else await d.remove("presence", row._id);
-        }
-        return live;
+      put: (projectId, entry) => tx(d => putPresence(d, projectId, entry, now())),
+      list: projectId => tx(d => listPresence(d, projectId, now())),
+      beat: (projectId, entry) => tx(async d => {
+        const presence = await putPresence(d, projectId, entry, now());
+        return { presence, users: await listPresence(d, projectId, now()) };
       }),
     },
   };

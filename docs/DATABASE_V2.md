@@ -65,7 +65,30 @@ objects  = { _id: "<projectId>:<sha256>", projectId, z: <brotli bytes>, n, at }
 - `uploads.sweep` is index-backed and pages 50 rows at a time.
 - Upload parts are stored as bytes; base64 parts written before v2 still complete.
 
-### 2.4 Connection (`src/lib/db/mongo.ts`)
+### 2.4 API request paths
+
+In v1 every repository call was its own Mongo transaction, reads included. A read-only transaction still costs a commit round trip, and its queries run one at a time on the session. On top of that, every access check read the project twice in three separate transactions.
+
+- **`Storage.read`.** Pure reads run outside a transaction, so their queries can run in parallel. Writes inside `read` throw, in every store. This covers users, projects, versions, members, shares, comments, proposals, locks, jobs, the connector's token lookup, `live.since` and `live.at`. A snapshot read that loses a race with a sweep (`corrupt`) is retried once in a transaction.
+- **`projects.access(projectId, userId)`** reads the project and the membership in parallel. `requireAccess`, `requireReader` and `accessOf` each make one call. `requireReader` also returns the project, so `GET /api/projects/[id]` doesn't read it again.
+- **Heartbeat** (`POST /presence`, every 5 s per open project, the busiest write in the app): `live.presence.beat` does the put and the list in one transaction.
+- **`GET /api/projects`** no longer runs an access check per project. The list comes from memberships, and every role can read.
+- **Live edit:** a batch's retry check is one `$in` query, not one per change. Log rows go in with one `putMany`, and trimming is one `removeMany`. `latest()` skips the version read when the head is newer. The checkpoint clock lives on the project row (`checkpointAt`).
+
+Measured against Atlas from a laptop (Mumbai), on a scratch database with the same code paths. These are DB commands per request, median of 5:
+
+| Request | v1 (main) | v2 | v1 ms | v2 ms |
+|---|---|---|---|---|
+| Presence heartbeat | 10 | 5 | 336 | 127 |
+| Open project | 12 | 6 | 639 | 157 |
+| Changes poll | 10 | 5 | 330 | 128 |
+| Live edit (incl. access and current) | 20 | 16 | 935 | 560 |
+| List 10 projects | 52 | 2 | 2386 | 63 |
+| MCP token lookup | 2 | 1 | 65 | 32 |
+
+A Vercel function sits closer to the cluster than this laptop, so absolute times there are lower. The command counts are the same.
+
+### 2.5 Connection (`src/lib/db/mongo.ts`)
 
 There is one pool per process (`maxPoolSize: 5`, `maxIdleTimeMS: 60s`, `appName`). On Vercel it uses `attachDatabasePool` from `@vercel/functions`, so idle connections close before Fluid compute suspends an instance. A failed connect is no longer cached forever.
 

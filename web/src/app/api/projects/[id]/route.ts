@@ -11,9 +11,9 @@ export async function GET(request: Request, context: Context) {
     const { id } = await context.params;
     // Members and signed-out viewer links both read here; the access tells
     // the editor which affordances to offer.
-    const { access } = await requireReader(await currentUser(), id, request);
+    const { access, project } = await requireReader(await currentUser(), id, request);
     const version = await repo().versions.current(id);
-    return Response.json({ project: await repo().projects.get(id), rev: version?.rev, snapshot: version?.snapshot, access }, { headers: { "Cache-Control": "no-store" } });
+    return Response.json({ project, rev: version?.rev, snapshot: version?.snapshot, access }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) { return errorResponse(e); }
 }
 export async function PUT(request: Request, context: Context) {

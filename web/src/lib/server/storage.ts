@@ -50,6 +50,14 @@ export interface Data {
 /** Metadata transactions and binary storage have separate lifecycles. */
 export interface Storage {
   transaction<T>(fn: (data: Data) => Promise<T>): Promise<T>;
+  /**
+   * Reads that need no transaction. On Mongo a transaction costs a commit
+   * round trip even when it only read, and its operations run one at a time
+   * on the session; a plain read pays neither, and its queries may run in
+   * parallel. Writes inside `read` throw. Optional: a store without it reads
+   * in a transaction.
+   */
+  read?<T>(fn: (data: Data) => Promise<T>): Promise<T>;
   bytes: { put(id: string, bytes: Uint8Array): Promise<void>; get(id: string): Promise<Uint8Array | null>; remove(id: string): Promise<void> };
 }
 type State = Record<string, Record<string, Row>>;
@@ -125,6 +133,12 @@ function dataFor(state: State): Data {
   };
   return data;
 }
+/** A view that refuses writes, so a method mistakenly marked read-only fails loudly in every store. */
+export function readOnly(data: Data): Data {
+  const refuse = async () => { throw new ServerError(500, "storage", "Write attempted inside a read"); };
+  return { get: data.get, list: data.list, put: refuse, putMany: refuse, remove: refuse, removeMany: refuse };
+}
+
 /** Isolated transactional storage for deterministic repository tests. */
 export class MemoryStorage implements Storage {
   private state: State = {};
@@ -142,6 +156,12 @@ export class MemoryStorage implements Storage {
       this.state = next;
       return result;
     });
+    this.tail = result.catch(() => undefined);
+    return result;
+  }
+  read<T>(fn: (data: Data) => Promise<T>): Promise<T> {
+    // Queued behind writes so a test reads what it just wrote, but never commits.
+    const result = this.tail.then(() => fn(readOnly(dataFor(this.state))));
     this.tail = result.catch(() => undefined);
     return result;
   }
@@ -261,7 +281,7 @@ function fromMongo<T extends Row>(row: T | null): T | null {
   return row;
 }
 
-function mongoData(db: Db, session: ClientSession): Data {
+function mongoData(db: Db, session?: ClientSession): Data {
   return {
     async get<T extends Row>(table: string, id: string) { return fromMongo(await db.collection<Row>(table).findOne({ _id: id }, { session }) as T | null); },
     async list<T extends Row>(table: string, query: Record<string, unknown> = {}, options: ListOptions = {}) {
@@ -343,6 +363,10 @@ export class MongoStorage implements Storage {
     const session = (await mongoClient()).startSession();
     try { return await session.withTransaction(async () => fn(mongoData(await mongoDb(), session))); }
     finally { await session.endSession(); }
+  }
+  async read<T>(fn: (data: Data) => Promise<T>): Promise<T> {
+    await this.schema();
+    return fn(readOnly(mongoData(await mongoDb())));
   }
   bytes = {
     put: async (id: string, bytes: Uint8Array) => {

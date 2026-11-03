@@ -236,3 +236,26 @@ describe("the laptop store", () => {
     expect(objects.every(o => o.z instanceof Uint8Array)).toBe(true);
   });
 });
+
+describe("reads without a transaction", () => {
+  it("refuses a write inside a read, in the store tests use", async () => {
+    const storage = new MemoryStorage();
+    await expect(storage.read(d => d.put("projects", { _id: "x" }))).rejects.toThrow(/Write attempted inside a read/);
+  });
+
+  it("answers access, a heartbeat and a retried batch in one call each", async () => {
+    const { repo } = setup();
+    await repo.projects.create("alice", project());
+    expect((await repo.projects.access(ID, "alice"))?.member?.role).toBe("owner");
+    expect((await repo.projects.access(ID, "bob"))?.member).toBeNull();
+    expect(await repo.projects.access("missing", "alice")).toBeNull();
+    const { users } = await repo.live.presence.beat(ID, { userId: "alice", name: "Alice", selection: [] });
+    expect(users.map(u => u.userId)).toEqual(["alice"]);
+    const change = move(0, 42, 1);
+    // The same id twice in one batch, then the batch again: applied once.
+    const first = await repo.live.append(ID, [change, change]);
+    expect(first.rev).toBe(2);
+    const again = await repo.live.append(ID, [change]);
+    expect(again).toEqual({ rev: 2, accepted: [change.id], rejected: [] });
+  });
+});
