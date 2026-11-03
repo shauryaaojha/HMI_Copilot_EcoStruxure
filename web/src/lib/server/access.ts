@@ -87,10 +87,10 @@ export async function sourceInfo(id: string, user: User | null, action: "read" |
     throw new ServerError(401, "unauthorized", "Sign in to access this source");
   }
   if (source.ownerId === user.id) return source;
-  for (const p of await storage.projects.list(user.id)) {
-    if (await can(user, p._id, action, storage)) {
-      if (p.sourceId === id || p.sources?.includes(id)) return source;
-    }
+  // The projects that use this file, from an index - not every project the
+  // user is in, each checked in turn.
+  for (const p of await storage.projects.referencing(id)) {
+    if (await can(user, p._id, action, storage)) return source;
   }
   throw new ServerError(403, "forbidden", "You do not have access to this source");
 }

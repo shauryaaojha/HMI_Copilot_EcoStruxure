@@ -18,6 +18,7 @@
     "build:bars": "tsx --tsconfig scripts/tsconfig.json scripts/build-bar-demo.mts",
     "skeleton:upload": "tsx --tsconfig scripts/tsconfig.json scripts/upload-skeleton.mts",
     "realtime:check": "tsx --tsconfig scripts/tsconfig.json scripts/realtime-check.mts",
+    "db": "tsx --tsconfig scripts/tsconfig.json scripts/db.mts",
     "hmi": "tsx --tsconfig scripts/tsconfig.json bin/hmi.mts"
   },
   "dependencies": {
@@ -25,8 +26,9 @@
     "@google/genai": "^2.21.0",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@resvg/resvg-js": "^2.6.2",
-    "@vercel/sandbox": "^3.9.1",
     "@supabase/supabase-js": "^2.118.0",
+    "@vercel/functions": "^3.10.6",
+    "@vercel/sandbox": "^3.9.1",
     "bcryptjs": "^3.0.3",
     "exceljs": "^4.4.0",
     "immer": "^10.1.1",

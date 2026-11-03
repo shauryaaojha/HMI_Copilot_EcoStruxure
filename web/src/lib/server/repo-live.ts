@@ -24,7 +24,8 @@ import { apply, CollabApplyError, docOf, validStoreChange } from "@/lib/collab/c
 import type { Change, ChangesResult, LoggedChange, Presence } from "@/lib/collab/types";
 import { ServerError } from "./errors";
 import type { Data, Row } from "./storage";
-import type { Project, Snapshot, Version, VersionInfo } from "./repo";
+import type { Project, Snapshot, StoredVersion, Version, VersionInfo } from "./repo";
+import { loadStored, sweepObjects, writeSnapshot, type Stored } from "./snapshots";
 import type { Clock, Tx } from "./repo-collab";
 
 /** Changes kept per project before older ones are folded into the head. */
@@ -38,23 +39,30 @@ const CHECKPOINT_MS = 10 * 60 * 1000;
 /** A presence heartbeat counts for this long. */
 export const PRESENCE_TTL_MS = 15_000;
 
-type Head = Row & { projectId: string; rev: number; author: string; at: number; snapshot: Snapshot };
+/** The live head. Since v2 it holds a manifest, so a change batch rewrites a few KB, not the project. */
+type Head = Row & Stored & { projectId: string; rev: number; author: string; at: number };
+/** Versions a live session keeps; matches HISTORY_LIMIT in repo.ts. */
+const HISTORY_LIMIT = 50;
 type LogRow = Row & LoggedChange & { projectId: string; changeId: string };
 type PresenceRow = Row & Presence & { projectId: string };
 
-/** What a reader starts from: the newest of the live head and the last saved version. */
-export async function latest(d: Data, p: Project): Promise<{ rev: number; snapshot: Snapshot; authorId: string; at: number } | null> {
+/**
+ * What a reader starts from: the newest of the live head and the last saved
+ * version. The snapshot is loaded only when asked for: a poll that is already
+ * up to date needs the revision, not the project.
+ */
+export async function latest(d: Data, p: Project): Promise<{ rev: number; authorId: string; at: number; load(): Promise<Snapshot> } | null> {
   const head = await d.get<Head>("heads", p._id);
-  const version = await d.get<Version>("versions", `${p._id}:${p.headRev ?? p.rev}`);
-  if (head && (!version || head.rev > version.rev)) return { rev: head.rev, snapshot: head.snapshot, authorId: head.author, at: head.at };
-  return version ? { rev: version.rev, snapshot: version.snapshot, authorId: version.authorId, at: version.createdAt } : null;
+  const version = await d.get<StoredVersion>("versions", `${p._id}:${p.headRev ?? p.rev}`);
+  if (head && (!version || head.rev > version.rev)) return { rev: head.rev, authorId: head.author, at: head.at, load: () => loadStored(d, p._id, head) };
+  return version ? { rev: version.rev, authorId: version.authorId, at: version.createdAt, load: () => loadStored(d, p._id, version) } : null;
 }
 
 /** The newest state as a Version, so Phase A readers see live edits without change. */
 export async function latestVersion(d: Data, p: Project): Promise<Version | null> {
   const found = await latest(d, p);
   if (!found) return null;
-  return { _id: `${p._id}:${found.rev}`, projectId: p._id, rev: found.rev, authorId: found.authorId, label: "Current", createdAt: found.at, snapshot: found.snapshot };
+  return { _id: `${p._id}:${found.rev}`, projectId: p._id, rev: found.rev, authorId: found.authorId, label: "Current", createdAt: found.at, snapshot: await found.load() };
 }
 
 export interface LiveRepo {
@@ -88,10 +96,14 @@ export function liveRepo(tx: Tx, now: Clock): LiveRepo {
   async function checkpoint(d: Data, p: Project, snapshot: Snapshot, author: string): Promise<Project> {
     const last = p.headRev ? await d.get<VersionInfo>("versions", `${p._id}:${p.headRev}`) : null;
     if (last && now() - last.createdAt < CHECKPOINT_MS) return p;
-    const version: Version = { _id: `${p._id}:${p.rev}`, projectId: p._id, rev: p.rev, authorId: author, label: "Live edits", createdAt: now(), snapshot };
-    await d.put("versions", version);
-    const history = await d.list<VersionInfo>("versions", { projectId: p._id }, { projection: { snapshot: 0 }, sort: { rev: -1 } });
-    for (const old of history.slice(50)) await d.remove("versions", old._id);
+    const manifest = await writeSnapshot(d, p._id, snapshot, now());
+    await d.put("versions", { _id: `${p._id}:${p.rev}`, projectId: p._id, rev: p.rev, authorId: author, label: "Live edits", createdAt: now(), manifest });
+    const history = await d.list<VersionInfo>("versions", { projectId: p._id }, { projection: { snapshot: 0, manifest: 0 }, sort: { rev: -1 } });
+    await d.removeMany("versions", history.slice(HISTORY_LIMIT).map(old => old._id));
+    // The heads between two checkpoints left pieces nothing refers to any
+    // more. The caller writes the project row in this same transaction, which
+    // is what makes sweeping here safe (lib/server/snapshots.ts).
+    await sweepObjects(d, p._id);
     return { ...p, headRev: p.rev };
   }
 
@@ -101,7 +113,7 @@ export function liveRepo(tx: Tx, now: Clock): LiveRepo {
       if (!p) throw new ServerError(404, "not-found", "Project not found");
       const start = await latest(d, p);
       if (!start) throw new ServerError(409, "no-snapshot", "The project has no snapshot to edit");
-      let snapshot = start.snapshot;
+      let snapshot = await start.load();
       let doc = docOf(snapshot);
       let rev = Math.max(p.rev, start.rev);
       const result: ChangesResult = { rev, accepted: [], rejected: [] };
@@ -136,7 +148,7 @@ export function liveRepo(tx: Tx, now: Clock): LiveRepo {
       result.rev = rev;
       if (rev === Math.max(p.rev, start.rev)) return result;
       snapshot = { ...snapshot, ...doc, id: projectId };
-      const head: Head = { _id: projectId, projectId, rev, author: lastAuthor, at: now(), snapshot };
+      const head: Head = { _id: projectId, projectId, rev, author: lastAuthor, at: now(), manifest: await writeSnapshot(d, projectId, snapshot, now()) };
       await d.put("heads", head);
       p = { ...p, rev, name: snapshot.name, target: snapshot.target, layout: snapshot.layout ?? p.layout, updatedAt: now() };
       p = await checkpoint(d, p, snapshot, lastAuthor);
@@ -155,7 +167,7 @@ export function liveRepo(tx: Tx, now: Clock): LiveRepo {
       // was saved or restored whole: either way the client starts again.
       if (rows.length === 0 || rows[0].rev !== since + 1 || rows.some((r, i) => r.rev !== since + 1 + i)) {
         if (!start) throw new ServerError(409, "no-snapshot", "The project has no snapshot");
-        return { rev: start.rev, reset: start.snapshot };
+        return { rev: start.rev, reset: await start.load() };
       }
       return { rev, changes: rows.map(r => ({ rev: r.rev, change: r.change, author: r.author, at: r.at })) };
     }),
@@ -164,15 +176,16 @@ export function liveRepo(tx: Tx, now: Clock): LiveRepo {
       const p = await d.get<Project>("projects", projectId);
       if (!p) return null;
       const head = await d.get<Head>("heads", projectId);
-      if (head?.rev === rev) return head.snapshot;
-      const exact = await d.get<Version>("versions", `${projectId}:${rev}`);
-      if (exact) return exact.snapshot;
+      if (head?.rev === rev) return loadStored(d, projectId, head);
+      const exact = await d.get<StoredVersion>("versions", `${projectId}:${rev}`);
+      if (exact) return loadStored(d, projectId, exact);
       // The closest version before `rev`, replayed forward through the log.
-      const history = await d.list<VersionInfo>("versions", { projectId }, { projection: { snapshot: 0 }, sort: { rev: -1 } });
+      const history = await d.list<VersionInfo>("versions", { projectId }, { projection: { snapshot: 0, manifest: 0 }, sort: { rev: -1 } });
       const base = history.find(v => v.rev < rev);
       if (!base) return null;
-      const version = await d.get<Version>("versions", base._id);
-      if (!version) return null;
+      const stored = await d.get<StoredVersion>("versions", base._id);
+      if (!stored) return null;
+      const version = { snapshot: await loadStored(d, projectId, stored) };
       const rows = await d.list<LogRow>("changes", { projectId, rev: { $gt: base.rev } }, { sort: { rev: 1 } });
       const needed = rows.filter(r => r.rev <= rev);
       if (needed.length !== rev - base.rev || needed.some((r, i) => r.rev !== base.rev + 1 + i)) return null;

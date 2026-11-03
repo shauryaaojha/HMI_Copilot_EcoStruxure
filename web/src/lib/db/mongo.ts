@@ -1,14 +1,18 @@
 /**
  * One MongoDB connection for the process.
  *
- * Two things need a database on a deployed instance - the project a user
- * opened (lib/ote/imports.ts) and the skeleton a generated project starts
- * from (lib/ote/skeleton.ts) - and they must share a client. A MongoClient per
- * caller opens a pool per caller, and a free-tier cluster runs out of
- * connections long before it runs out of storage.
+ * Everything that needs a database on a deployed instance - the repository
+ * (lib/server/storage.ts), the opened-file store (lib/ote/imports.ts), the
+ * skeleton (lib/ote/skeleton.ts) and the knowledge store - shares this client.
+ * A MongoClient per caller opens a pool per caller, and a free-tier cluster
+ * (500 connections on Atlas M0) runs out of connections long before it runs
+ * out of storage.
  *
  * Held on `globalThis` so Next's dev-mode module reloading does not open a new
  * pool on every edit, and so a warm serverless invocation reuses the last one.
+ * On Vercel the pool is attached to the function (`attachDatabasePool`), so
+ * idle connections are closed before an instance is suspended instead of
+ * being left open on the cluster until it times them out.
  *
  * Node only. Nothing here is imported by the browser bundle.
  */
@@ -30,12 +34,24 @@ export async function mongoClient(): Promise<MongoClient> {
   if (!uri) throw new Error("MONGODB_URI is not set");
   if (!cache.__hmiMongo) {
     const { MongoClient } = await import("mongodb");
-    cache.__hmiMongo = new MongoClient(uri, {
+    const client = new MongoClient(uri, {
+      appName: "hmi-copilot",
       // A serverless invocation is short and single-threaded; a large pool
       // only holds connections a shared cluster cannot spare.
       maxPoolSize: 5,
+      // Let an idle instance give its connections back.
+      maxIdleTimeMS: 60_000,
       serverSelectionTimeoutMS: 8000,
-    }).connect();
+    });
+    if (process.env.VERCEL) {
+      try {
+        const { attachDatabasePool } = await import("@vercel/functions");
+        attachDatabasePool(client);
+      } catch {
+        // Outside a Vercel function (a build step, a script): nothing to attach to.
+      }
+    }
+    cache.__hmiMongo = client.connect().catch(error => { cache.__hmiMongo = undefined; throw error; });
   }
   return cache.__hmiMongo;
 }
