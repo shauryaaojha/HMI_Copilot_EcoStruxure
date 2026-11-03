@@ -179,7 +179,36 @@ export function withDefaults(part: unknown): unknown {
 }
 
 /** Both fills, in order: what every reader path parses. */
-export const normalizePart = (part: unknown): unknown => withDefaults(withOrigin(part));
+export const normalizePart = (part: unknown): unknown => withDefaults(withOrigin(asCompoundObject(part)));
+
+/**
+ * A Compound Object instance is typed by its definition's name
+ * (`CompoundObject.Switch_PB04`), so no one literal matches it. The store
+ * holds it as `CompoundObject` with the name in `Definition`, and `Look`, how
+ * it is drawn (lib/ote/co-look.ts); `productTree` puts the file's type back.
+ */
+const CO_PREFIX = "CompoundObject.";
+
+export function asCompoundObject(part: unknown): unknown {
+  if (!part || typeof part !== "object") return part;
+  const type = (part as Record<string, unknown>).Type;
+  if (typeof type !== "string" || !type.startsWith(CO_PREFIX) || type.length === CO_PREFIX.length) return part;
+  return { ...(part as Record<string, unknown>), Type: "CompoundObject", Definition: type.slice(CO_PREFIX.length) };
+}
+
+/** A screen tree as the file wants it: each Compound Object typed by its definition again, with nothing of the editor's left on it. */
+export function productTree<T>(node: T): T {
+  if (Array.isArray(node)) return node.map(productTree) as T;
+  if (!node || typeof node !== "object") return node;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(node as Record<string, unknown>)) out[k] = k === "Children" ? productTree(v) : v;
+  if (out.Type === "CompoundObject" && typeof out.Definition === "string") {
+    out.Type = CO_PREFIX + out.Definition;
+    delete out.Definition;
+    delete out.Look;
+  }
+  return out as T;
+}
 
 export function withOrigin(part: unknown): unknown {
   if (!part || typeof part !== "object") return part;
@@ -299,7 +328,18 @@ export const NumericDisplay = z.object({
   Type: z.literal("NumericDisplay"),
   ...base,
   CurrentValue: z.number().default(0),
-  DecimalDigits: z.number().int().min(0).max(6).optional(),
+  /** Absent means on: the panel opens a keypad on touch. A reading writes false. */
+  IsInputModeEnabled: z.boolean().optional(),
+  /**
+   * Digits after the point; absent is 0. The product's name for it (its
+   * NumericDisplay.propDef); we wrote DecimalDigits before, which the panel
+   * ignored, so every reading showed whole numbers.
+   */
+  FloatDigits: z.number().int().min(0).max(6).optional(),
+  /** Digits before the point; absent is 5. */
+  IntegerDigits: z.number().int().min(1).max(10).optional(),
+  /** Shown after the value, as the rig's " A" and " RPM". */
+  Suffix: z.string().optional(),
   TextColor: Paint.optional(),
   Font: FontRef.optional(),
   Fill: Paint.optional(),
@@ -464,6 +504,20 @@ export const Image = z.object({ Type: z.literal("Image"), ...base, ...picture })
  * product's templates are made of these; the reader lays a content screen out
  * at the size of the display that shows it.
  */
+/**
+ * An instance of a Compound Object the project defines (its CompoundObjects
+ * folder): one object to place, size and bind. Its exposed values (Text, CV,
+ * Colors) pass through as they are; see asCompoundObject.
+ */
+export const CompoundObject = z.object({
+  Type: z.literal("CompoundObject"),
+  ...base,
+  /** The definition's name: the file types the instance CompoundObject.<Definition>. */
+  Definition: z.string().min(1),
+  /** How it looks, resolved from its definition when the project was read. Never written. */
+  Look: z.unknown().optional(),
+});
+
 export const ContentDisplay = z.object({
   Type: z.literal("ContentDisplay"),
   ...base,
@@ -498,6 +552,9 @@ export const ClickTrigger = z.object({
   Source: z.string().optional(),
   Screen: z.number().int().optional(),
   Content: z.number().int().optional(),
+  // Ours, never the product's: the screen a screen-change touch goes to, by
+  // name, turned into Screen (its number) by the packager (linkScreens).
+  ScreenName: z.string().optional(),
 });
 
 export const Switch = z.object({
@@ -667,7 +724,34 @@ export const BlockTrend = z
   })
   .passthrough();
 
-export const Part = z.discriminatedUnion("Type", [
+/**
+ * The same schema, keeping at every depth what it does not model.
+ *
+ * zod strips unknown keys, and the writer merges a part over its raw self at
+ * the top level only, so a nested field the product writes and we do not
+ * model - a Switch's ClickTrigger.Destination, a face's ImagePath, a
+ * display's Suffix, a font's Bold - was lost whenever a part was edited,
+ * copied, or carried into another project (scripts/project-check.mts counts
+ * them on the real corpus). Kept here, it travels with the part.
+ *
+ * Location stays strict: a part in the store sits on a canvas, and the grid
+ * cell it came from is resolved into its box (lib/ote/containers.ts).
+ */
+function lossless(schema: z.ZodTypeAny): z.ZodTypeAny {
+  if (schema === Location) return schema;
+  if (schema instanceof z.ZodObject) {
+    const shape = Object.fromEntries(Object.entries(schema.shape as z.ZodRawShape).map(([k, v]) => [k, lossless(v)]));
+    return z.object(shape).passthrough();
+  }
+  if (schema instanceof z.ZodOptional) return lossless(schema.unwrap()).optional();
+  if (schema instanceof z.ZodNullable) return lossless(schema.unwrap()).nullable();
+  if (schema instanceof z.ZodDefault) return lossless(schema.removeDefault()).default(schema._def.defaultValue());
+  if (schema instanceof z.ZodArray) return z.array(lossless(schema.element));
+  if (schema instanceof z.ZodUnion) return z.union(schema.options.map(lossless) as [z.ZodTypeAny, z.ZodTypeAny]);
+  return schema;
+}
+
+const PartStrict = z.discriminatedUnion("Type", [
   Rectangle,
   TextBox,
   Lamp,
@@ -695,7 +779,14 @@ export const Part = z.discriminatedUnion("Type", [
   ContentDisplay,
   ClipArt,
   Image,
+  CompoundObject,
 ]);
+
+/** Every part the store models, parsed losslessly. Typed as the strict schema. */
+export const Part = z.discriminatedUnion(
+  "Type",
+  PartStrict.options.map(lossless) as unknown as typeof PartStrict.options,
+) as unknown as typeof PartStrict;
 
 export const ViewBox = z.object({
   Type: z.literal("ViewBox"),

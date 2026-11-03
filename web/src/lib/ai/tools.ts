@@ -37,6 +37,7 @@ import { aggregate, exampleScreens, precedentFor, type Conventions } from "@/lib
 import type { ProjectKnowledge } from "@/lib/knowledge/scan";
 import type { Alarm, Variable } from "@/lib/ote/schema";
 import { rationalise } from "@/lib/alarms/rationalise";
+import type { OwnObject } from "@/lib/ote/exemplars";
 
 export interface ToolContext {
   tags: { name: string; dataType: string; comment: string }[];
@@ -49,6 +50,12 @@ export interface ToolContext {
   targetName?: string;
   /** The project's alarms, for the rationalisation tool. */
   alarms?: Alarm[];
+  /**
+   * How the opened project draws each kind of object an operator uses, read
+   * from its file by the server (lib/ote/exemplars.ts). Absent for a project
+   * that was not opened from a file.
+   */
+  own?: OwnObject[];
 }
 
 /** A context with its derived values computed once. */
@@ -238,6 +245,22 @@ export const TOOLS: readonly ToolSpec[] = [
     },
   },
   {
+    name: "project_style",
+    does: "Says how this project draws each kind of object an operator uses - push button, mode toggle, setpoint entry, reading, status text: the object type (a Compound Object such as CompoundObject.Switch_PB04, or a plain part), its size, font and labels, and how it is bound (property and mode).",
+    when: "Before adding buttons, displays, entries or toggles to a project opened from a file, or when the engineer asks for something 'like the others' or 'in our style'. What is added is written as these objects on export, so plan sizes and labels that suit them.",
+    not: "For a project started here: it has no objects of its own and the standard look is used. Not for where objects are - find_objects says that.",
+    schema: { type: "object", properties: { kind: { type: "string", description: "pushbutton, toggle, entry, reading or status; empty for all" } }, required: ["kind"], additionalProperties: false },
+    run(input, ctx) {
+      if (!ctx.own?.length) return "this project has no objects of its own bound to a recognised tag; what is added uses the standard look";
+      const want = str(input.kind).trim().toLowerCase();
+      const rows = ctx.own.filter((o) => !want || o.kind === want);
+      if (!rows.length) return `this project has no ${want}; one is drawn in the standard look. It has: ${ctx.own.map((o) => o.kind).join(", ")}`;
+      return rows
+        .map((o) => `${o.kind}: ${o.type} like "${o.name}" (${o.uses} in the project)${o.size ? `, ${o.size}` : ""}${o.font ? `, font ${o.font}${o.bold ? " bold" : ""}` : ""}${o.text ? `, labels ${o.text.map((t) => JSON.stringify(t)).join("/")}` : ""}; bound ${o.bound}`)
+        .join("\n");
+    },
+  },
+  {
     name: "target_capabilities",
     does: "Says which part types the project's target format can write, and whether a given one is among them.",
     when: "Before adding a part type that is not Rectangle, TextBox, Lamp or NumericDisplay, or when the engineer asks whether something can be exported.",
@@ -284,6 +307,7 @@ export const TOOL_GUIDE = [
   "- which part should show an unusual tag -> binding_precedent",
   "- how finished projects lay out a screen like this -> example_screens",
   "- whether the target can write a part type -> target_capabilities",
+  "- how this project draws a button, display, entry or toggle -> project_style",
   "- alarm priorities, missing operator actions, floods -> alarm_rationalisation",
   "Call nothing when the context already has the answer. Never guess a tag, object or equipment name: look it up.",
 ].join("\n");
@@ -349,6 +373,11 @@ export function routeTools(request: string, ctx: PreparedContext): RoutedCall[] 
   // A question about the alarm set as a whole.
   if (ctx.alarms?.length && /\b(alarms?|priorit(y|ies)|flood|rationali[sz])/.test(text)) {
     add({ name: "alarm_rationalisation", input: { trigger: "" }, why: "the request is about the alarms" });
+  }
+
+  // Something added to a project that has its own way of drawing it.
+  if (ctx.own?.length && /\b(add|build|make|create|screen|faceplate|button|display|entry|toggle|setpoint|bana|banao)\b/.test(text)) {
+    add({ name: "project_style", input: { kind: "" }, why: "the project draws these with its own objects" });
   }
 
   // A part type the target may not write.

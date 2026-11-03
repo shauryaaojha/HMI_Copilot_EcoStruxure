@@ -112,6 +112,8 @@ export function useChat() {
         repair,
         // DDT instances, so the tools see the same equipment the generator does.
         structure: s.tagImport?.structure,
+        // The file it was opened from, so the tools can say how it draws things.
+        source: s.sourceId,
         // What the lookup tools can search. Compact, never in the prompt.
         catalog: {
           alarms: s.alarms,
@@ -131,6 +133,7 @@ export function useChat() {
             name: s.name,
             target: s.target,
             screens: s.screens,
+            foreign: s.foreign,
             activeScreenId: s.activeScreenId,
             variables: s.variables,
             alarms: s.alarms,

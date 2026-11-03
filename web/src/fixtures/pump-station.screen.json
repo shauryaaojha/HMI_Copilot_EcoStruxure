@@ -512,7 +512,7 @@
           "UniqueId": "f6b0bbb4-e1de-4d40-835f-e77dea66ac9b",
           "Name": "Num_Flow",
           "CurrentValue": 0,
-          "DecimalDigits": 1,
+          "FloatDigits": 1,
           "TextColor": {
             "Color": {
               "Value": 1
@@ -611,7 +611,7 @@
           "UniqueId": "43c19c9c-37e3-46b7-b6d8-c3b29a38643f",
           "Name": "Num_Level",
           "CurrentValue": 0,
-          "DecimalDigits": 1,
+          "FloatDigits": 1,
           "TextColor": {
             "Color": {
               "Value": 1

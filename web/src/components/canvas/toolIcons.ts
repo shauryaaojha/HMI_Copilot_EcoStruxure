@@ -27,6 +27,7 @@ import {
   Route,
   Ruler,
   Spline,
+  Component,
   Square,
   ToggleLeft,
   ToggleRight,
@@ -67,4 +68,5 @@ export const TOOL_ICON: Record<PartType | CompositeKind, LucideIcon> = {
   ContentDisplay: PanelsTopLeft,
   ClipArt: ImageIcon,
   Image: ImageIcon,
+  CompoundObject: Component,
 };

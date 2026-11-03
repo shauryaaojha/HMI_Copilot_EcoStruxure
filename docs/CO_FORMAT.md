@@ -113,6 +113,42 @@ Patterns, all from the samples:
 - **An expression**: a converter of SubType `Expression` whose BindingText is a formula, `([FromData]-$CO.Range.Min)*100/($CO.Range.Max-$CO.Range.Min)`.
 - **State logic** (Pro-face lamps and switches): properties feed `Script.dat` blocks (Trigger Condition / Touch / ValueChange), the scripts write local variables (`ColorVisibility[0..8]`), and those drive part visibility. A lamp's colour is a script, not a binding.
 
+## Drawing a placed instance: co-look.ts
+
+An opened project draws each Compound Object instance from its definition
+(`web/src/lib/ote/co-look.ts`), instead of a hatched box. The instance is
+`Type "CompoundObject.<Name>"` with only the values the engineer changed
+(`{"Text":{"OFF":"START"},"CV":false,...}`), and the definition lives in
+`CompoundObjects/<id>/` of the same project. To draw it:
+
+1. The values are the definition's root keys, then `Properties.propDef` defaults, then the instance's own.
+2. Bindings copy them into the parts. `@StructBindingValue` replaces the whole brush. A Scale converter's To range is read from its name (`Scale_to_0_360`), and its From range from what binds to `FromMin` / `FromMax`. Converters.db is SQLite, so it is not opened here.
+3. `Script.dat` Condition triggers run once over those values, then bind again. Touch triggers and `AddTo`/`SubTo` are runtime only and skipped.
+   - The block language: `{BlockInfo:[Trigger]}`, where a Trigger has Source, RightOperator, RightObject and Actions.
+   - Actions are `ChangeValue`, `ChangeArray` (`All`) and `If` with a `ComparisonCondition`.
+   - A `Value/Constant` with no Value is 0.
+   - `Value/ScreenObject` and `Value/LocalVariable` blocks hold null and are named by the ObjectType 100 binding that targets the block's id.
+4. Hidden parts (Visibility 1 or 2) are dropped, and the rest are laid out. A ViewBox root is scaled uniformly and centred. Switches are touch areas and draw nothing. A non-Rectangle with `Animation.FillLevel` (the bar graph's Path) is drawn in its back colour, then in its own colour through a window as tall as the level. `Angle` on an Arc, Pie or Arch turns its angles.
+
+On Panel-1 this draws START, RESET and STOP/READY as grey OFF-state buttons
+(Switch_PB04 shows its colour only when CV is true), the gauges from twelve
+o'clock in the engineer's colours, and the bar graphs at 75 %.
+
+### The instance is a part
+
+The editor has an instance as an ordinary part, so it can be selected,
+moved, aligned, resized, copied and deleted, and the chat Copilot gets it
+with a handle (`Switch_PB041 [CompoundObject.Switch_PB04, body, reads "START"]`).
+
+- **Reading.** `normalizePart` (schema.ts `asCompoundObject`) turns `Type "CompoundObject.Switch_PB04"` into `Type "CompoundObject"` with `Definition: "Switch_PB04"`, because a discriminated union needs one literal. The part schema is lossless, so `Text`, `CV`, `Colors` and the rest pass through. The reader sets `Look` from co-look.ts before it takes the fingerprint, so an untouched screen is still untouched.
+- **Writing.** The packager runs `productTree` over every screen it writes. It puts back `Type "CompoundObject.<Definition>"` and removes `Definition` and `Look`.
+- **Grids.** A moved instance in a Grid stays in its cell and moves by a Margin (`pinInGrid`), like any modelled leaf. An untouched one is written back exactly as read (tests/co-look.test.ts).
+- **No definition.** If the project lacks the definition, the part is drawn as a labelled outline, and can still be grabbed.
+
+Not yet: editing an instance's exposed values (its Text, its colour) from
+the inspector, and redrawing its look after such an edit. The look is
+resolved once, when the project is read.
+
 ## Building one from nothing
 
 `buildCo(spec)` (`hmi co build spec.json -o out.co`) writes every entry above
@@ -126,7 +162,7 @@ through `Scale_to_0_100`, and the reading.
 
 ## Still open
 
-- **A placed instance.** How a project's `Screen.dat` holds a compound object
+- ~~**A placed instance.**~~ Settled by Panel-1 (2026-10-30); see "Drawing a placed instance" above. Was: how a project's `Screen.dat` holds a compound object
   placed on a screen, and where the project keeps its definition, is in no file
   available. One project saved with a CO on a screen settles it.
 - **Licensed-editor proof for a built-from-nothing object.** `HMICopilot_LevelTile.co`

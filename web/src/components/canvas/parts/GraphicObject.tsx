@@ -76,7 +76,7 @@ export function GraphicObject({
           keeps the outline at its Thickness in screen pixels, which is what
           the product draws and what makes a grey symbol read on a grey
           ground. */}
-      <path d={d} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} vectorEffect="non-scaling-stroke" />
+      <path d={d} fill={fillColor} fillRule="evenodd" stroke={strokeColor} strokeWidth={strokeWidth} vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }

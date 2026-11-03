@@ -18,6 +18,13 @@ import type { Turn } from "@/lib/ai/ops";
 import type { StructureHint } from "@/lib/ai/infer";
 import { backendFor } from "@/lib/backend";
 import { allKnowledge } from "@/lib/knowledge/store";
+import { readProject } from "@/lib/ote/reader";
+import { describeOwn, harvest, type OwnObject } from "@/lib/ote/exemplars";
+import { getImport } from "@/lib/ote/imports";
+import { hasMongo } from "@/lib/db/mongo";
+import { readSource } from "@/lib/server/access";
+import { currentUser } from "@/lib/server/session";
+import { shareTokens } from "@/lib/server/shares";
 
 export const runtime = "nodejs";
 /** A model call with the whole project in context can outrun the default. */
@@ -29,6 +36,26 @@ interface Body {
   repair?: boolean;
   catalog?: Catalog;
   structure?: StructureHint[];
+  /** The id of the file the project was opened from, when it was. */
+  source?: string;
+}
+
+/**
+ * How the opened project draws its objects, read from its file with the same
+ * access check the export makes. A file that cannot be read costs the turn
+ * this lookup, never the turn.
+ */
+async function ownObjects(source: string | undefined, request: Request): Promise<OwnObject[] | undefined> {
+  if (!source || !/^[0-9a-f-]{36}$/i.test(source)) return undefined;
+  try {
+    const stored = hasMongo() || !process.env.VERCEL ? await readSource(source, await currentUser(), "read", undefined, shareTokens(request)) : null;
+    const bytes = stored?.bytes ?? (await getImport(source));
+    if (!bytes) return undefined;
+    const read = await readProject(bytes);
+    return describeOwn(harvest(read.preserved, read.variables));
+  } catch {
+    return undefined;
+  }
 }
 
 export async function POST(request: Request) {
@@ -76,6 +103,7 @@ export async function POST(request: Request) {
     // The knowledge base informs the tools; a store that cannot be read
     // costs the turn its precedents, never the turn itself.
     const knowledge = await allKnowledge().catch(() => []);
+    const own = await ownObjects(body.source, request);
     const target = backendFor();
     const result = await converse({
       history,
@@ -84,6 +112,7 @@ export async function POST(request: Request) {
       catalog,
       structure: Array.isArray(body.structure) ? body.structure : undefined,
       knowledge,
+      own,
       target: { name: target.name, parts: target.capabilities.parts },
     });
     if (!result) {

@@ -12,7 +12,7 @@
  */
 
 import { createElement } from "react";
-import type { Screen } from "@/lib/ote/schema";
+import { rootBox, type Screen } from "@/lib/ote/schema";
 import type { ForeignPart } from "@/store/types";
 import { ScreenRenderer } from "@/components/canvas/ScreenRenderer";
 
@@ -30,25 +30,34 @@ async function serverRenderer() {
 }
 
 /** The screen's SVG, standalone: namespace and size set so a rasteriser accepts it. */
-export async function screenToSvg(screen: Screen, foreign?: ForeignPart[]): Promise<string> {
-  const view = screen.Children[0];
+export interface Around {
+  /** The project's content screens, so a ContentDisplay draws what it shows. */
+  contents?: Screen[];
+  /** Carried objects of every screen, for those content screens. */
+  contentForeign?: Record<string, ForeignPart[]>;
+  /** The panel's size, for a screen whose root gives none (an opened project's Canvas). */
+  panel?: { width: number; height: number };
+}
+
+export async function screenToSvg(screen: Screen, foreign?: ForeignPart[], around: Around = {}): Promise<string> {
+  const box = rootBox(screen.Children[0], around.panel ?? { width: 1024, height: 600 });
   const renderToStaticMarkup = await serverRenderer();
-  const markup = renderToStaticMarkup(createElement(ScreenRenderer, { screen, selectedIds: [], foreign }));
+  const markup = renderToStaticMarkup(createElement(ScreenRenderer, { screen, selectedIds: [], foreign, ...around }));
   // The canvas SVG sizes itself to its container and reads its colours from
   // the page. Standalone, it needs an absolute size, an xmlns, and the two
   // CSS variables the design uses spelled out.
   return markup
     .replace(/^<svg /, `<svg xmlns="http://www.w3.org/2000/svg" `)
-    .replace(/width="100%"/, `width="${view.Width}"`)
-    .replace(/height="100%"/, `height="${view.Height}"`)
+    .replace(/width="100%"/, `width="${box.width}"`)
+    .replace(/height="100%"/, `height="${box.height}"`)
     .replace(/var\(--font-sans\)/g, "Segoe UI, Arial, sans-serif")
     .replace(/var\(--font-mono\)/g, "Consolas, monospace")
     .replace(/var\(--color-[a-z-]+\)/g, "#7d8b99");
 }
 
-export async function screenToPng(screen: Screen, foreign?: ForeignPart[], scale = 1): Promise<Uint8Array> {
+export async function screenToPng(screen: Screen, foreign?: ForeignPart[], scale = 1, around: Around = {}): Promise<Uint8Array> {
   const { Resvg } = await import("@resvg/resvg-js");
-  const svg = await screenToSvg(screen, foreign);
+  const svg = await screenToSvg(screen, foreign, around);
   const resvg = new Resvg(svg, {
     fitTo: { mode: "zoom", value: scale },
     font: { loadSystemFonts: true, defaultFontFamily: "Segoe UI" },

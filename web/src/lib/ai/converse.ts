@@ -22,6 +22,7 @@
  * and an op places by slot. The layout engine does the geometry.
  */
 
+import type { OwnObject } from "@/lib/ote/exemplars";
 import type Anthropic from "@anthropic-ai/sdk";
 import { rootBox } from "@/lib/ote/schema";
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
@@ -50,6 +51,10 @@ export interface ObjectDigest {
   region: string;
   /** The tag bound to it, when one is. */
   tag?: string;
+  /** For a ContentDisplay: the content screen it shows. */
+  shows?: string;
+  /** For a Compound Object: the words it shows (a push button's START). */
+  reads?: string;
 }
 
 export interface ScreenDigest {
@@ -65,6 +70,10 @@ export interface ScreenDigest {
   room?: string;
   /** Only for the active screen: objects that share pixels, by handle. */
   overlaps?: string[];
+  /** A content screen: not navigated to, drawn inside a ContentDisplay. Says which screens show it. */
+  content?: string;
+  /** Only for the active screen: the engineer's Compound Objects and other carried objects, with what they read. */
+  carried?: string[];
 }
 
 export interface EquipmentDigest {
@@ -110,10 +119,32 @@ function hash(text: string): string {
   return (h >>> 0).toString(16);
 }
 
+/** A carried object, as the store keeps it (store/types ForeignPart, with its look). */
+interface CarriedSource {
+  type: string;
+  name: string;
+  look?: { items: unknown[] };
+}
+
+/** The words a Compound Object shows (its TextBoxes, after its values and script), for "the START button". */
+function wordsOf(look: { items: unknown[] } | undefined): string[] {
+  const out: string[] = [];
+  const walk = (items: unknown[]) => {
+    for (const item of items as { kind: string; part?: { Type?: string; Text?: unknown }; look?: { items: unknown[] } }[]) {
+      if (item.kind === "part" && item.part?.Type === "TextBox" && typeof item.part.Text === "string" && item.part.Text.trim()) out.push(item.part.Text.trim());
+      else if (item.kind === "box" && item.look) walk(item.look.items);
+    }
+  };
+  if (look) walk(look.items);
+  return out;
+}
+
 export interface DigestSource {
   name: string;
   target: { model: string; width: number; height: number };
   screens: Screen[];
+  /** Objects carried whole from an opened file, per screen id: the engineer's Compound Objects. */
+  foreign?: Record<string, CarriedSource[]>;
   activeScreenId?: string;
   variables: Variable[];
   alarms: Alarm[];
@@ -133,8 +164,21 @@ export function digestOf(project: DigestSource, request = ""): ProjectDigest {
   const boundTo = new Map(project.bindings.map((b) => [b.targetId, b.tag]));
   const equipment = inferEquipment(project.variables, project.structure);
 
+  // Which screens show each content screen, through which ContentDisplay.
+  const shownIn = new Map<number, string[]>();
+  const contentName = new Map<number, string>();
+  for (const sc of project.screens) {
+    if (sc.Type === "Content" && typeof sc.ContentID === "number") contentName.set(sc.ContentID, sc.Name);
+    if (sc.Type === "Content") continue;
+    for (const p of sc.Children[0].Children) {
+      const id = (p as { ScreenId?: unknown }).ScreenId;
+      if (p.Type === "ContentDisplay" && typeof id === "number") shownIn.set(id, [...(shownIn.get(id) ?? []), `${sc.Name} (${p.Name})`]);
+    }
+  }
+
   const screens: ScreenDigest[] = project.screens.map((screen) => {
     const parts = screen.Children[0].Children;
+    const carried = project.foreign?.[screen.UniqueId] ?? [];
     const names = new Set(parts.map((p) => p.Name));
     const placed = equipment
       .filter((u) => names.has(`Card_${cardKey(u.id)}`) || names.has(`Tile_${cardKey(u.id)}`))
@@ -144,19 +188,31 @@ export function digestOf(project: DigestSource, request = ""): ProjectDigest {
       handle: h(screen.UniqueId),
       name: screen.Name,
       active: isActive,
-      objectCount: parts.length,
+      objectCount: parts.length + carried.length,
       equipment: placed,
     };
+    if (screen.Type === "Content") {
+      const where = typeof screen.ContentID === "number" ? shownIn.get(screen.ContentID) : undefined;
+      digest.content = `content screen #${screen.ContentID ?? "?"}, ${where?.length ? `shown inside ${where.join(", ")}` : "not shown by any ContentDisplay"}`;
+    }
     if (isActive) {
-      const panel = rootBox(screen.Children[0]);
+      const panel = rootBox(screen.Children[0], project.target);
       const regions = regionsOf(parts, panel);
       digest.objects = parts.map((p) => ({
         handle: h(p.UniqueId),
         name: p.Name,
-        type: p.Type,
+        type: p.Type === "CompoundObject" ? `CompoundObject.${p.Definition}` : p.Type,
         region: regionOf(p, regions),
         tag: boundTo.get(p.UniqueId),
+        shows: p.Type === "ContentDisplay" ? contentName.get((p as { ScreenId?: number }).ScreenId ?? -1) : undefined,
+        reads: p.Type === "CompoundObject" ? wordsOf(p.Look as { items: unknown[] } | undefined).join(" / ") || undefined : undefined,
       }));
+      if (carried.length) {
+        digest.carried = carried.map((c) => {
+          const words = wordsOf(c.look);
+          return `${c.name} [${c.type}]${words.length ? ` reads "${words.join(" / ")}"` : ""}`;
+        });
+      }
       digest.room = roomReport(parts, panel);
       const found = overlapsOn(parts, (id) => project.objectMeta?.[id]?.groupId, panel);
       if (found.length > 0) {
@@ -355,6 +411,12 @@ Screen design, when laying out:
 Scope - one op can reach many screens and many objects:
 - You see the active screen's objects and the list of screens. Never invent a
   handle for an object on another screen; say where and what instead.
+- A content screen is not a screen an operator navigates to: it is drawn
+  inside a ContentDisplay on a screen. A Compound Object (Type
+  CompoundObject.<Name>, such as a Switch_PB04 push button) is one object the
+  engineer made, never a screen. It has a handle and is moved, aligned,
+  resized, copied or deleted like any object; how it looks comes from its
+  definition, and "reads" says what it shows.
 - screens: ["all"] for every screen, or the screens by handle or name
   (["s3", "s5"], ["Boilers"]). Absent means the active screen.
 - select, in place of target: a role every screen has - background, header,
@@ -602,6 +664,8 @@ export interface ConverseInput {
   knowledge?: ProjectKnowledge[];
   /** What the target format can write, for target_capabilities. */
   target?: { name: string; parts: readonly string[] };
+  /** How the opened project draws its objects, for project_style (lib/ote/exemplars.ts). */
+  own?: OwnObject[];
 }
 
 /** The tool context for a turn: the catalog when the client sent one, else the digest. */
@@ -614,6 +678,7 @@ function toolContext(input: ConverseInput): PreparedContext {
     knowledge: input.knowledge,
     targetParts: input.target?.parts,
     targetName: input.target?.name,
+    own: input.own,
   });
 }
 
@@ -634,7 +699,7 @@ function routedLines(input: ConverseInput, ctx: PreparedContext): string[] {
  */
 export function projectContext(digest: ProjectDigest): string {
   const screens = digest.screens
-    .map((s) => `- ${s.handle} ${s.name}: ${s.objectCount} objects` + (s.equipment.length ? `, equipment ${s.equipment.join(", ")}` : ""))
+    .map((s) => `- ${s.handle} ${s.name}: ${s.objectCount} objects` + (s.content ? ` (${s.content})` : "") + (s.equipment.length ? `, equipment ${s.equipment.join(", ")}` : ""))
     .join("\n");
   const equipment = digest.equipment
     .map((u) => `- ${u.id}: ${u.kind} "${u.label}" [${u.roles.join(", ")}]${u.on ? ` on ${u.on}` : " (not placed)"}`)
@@ -661,7 +726,7 @@ export function projectContext(digest: ProjectDigest): string {
 export function volatileContext(digest: ProjectDigest): string {
   const active = digest.screens.find((s) => s.active);
   const objects = active?.objects
-    ?.map((o) => `${o.handle} ${o.name} [${o.type}, ${o.region}${o.tag ? `, shows ${o.tag}` : ""}]`)
+    ?.map((o) => `${o.handle} ${o.name} [${o.type}, ${o.region}${o.tag ? `, shows ${o.tag}` : ""}${o.shows ? `, shows content screen ${o.shows}` : ""}${o.reads ? `, reads "${o.reads}"` : ""}]`)
     .join("\n");
   const tags = digest.variables
     .map((v) => `${v.name} (${v.dataType})${v.comment ? ` — ${v.comment}` : ""}`)
@@ -671,6 +736,9 @@ export function volatileContext(digest: ProjectDigest): string {
     active ? `Room on it: ${active.room}` : "",
     active ? `Overlaps on it:${active.overlaps?.length ? `\n${active.overlaps.join("\n")}` : " none"}` : "",
     active ? `Objects on it:\n${objects || "- none"}` : "",
+    active?.carried?.length
+      ? `Carried as the file has them (objects the editor does not model; no handle, so ops cannot change them):\n${active.carried.join("\n")}`
+      : "",
     "",
     `Tags relevant to this request (${digest.variables.length} of ${digest.variableCount}; ask for another by name if it is missing):`,
     tags || "- none imported",

@@ -175,18 +175,26 @@ export function alarmLamp(name: string, off: string, on: string, box: Box): Part
   };
 }
 
-export function numericDisplay(name: string, box: Box, decimals = 1): Part {
+/**
+ * A number on the panel. Read-only unless `input` says otherwise: the product
+ * leaves IsInputModeEnabled out when it is on, so a display that does not say
+ * false is one an operator can touch and type a value into, written straight
+ * to the PLC (the rig's engineer sets false on every display that is not an
+ * entry). An entry is drawn white with a heavier border, so it looks touchable.
+ */
+export function numericDisplay(name: string, box: Box, decimals = 1, input = false): Part {
   return {
     Type: "NumericDisplay",
     UniqueId: gid(),
     Name: name,
     CurrentValue: 0,
-    DecimalDigits: decimals,
+    FloatDigits: decimals,
+    ...(input ? {} : { IsInputModeEnabled: false }),
     TextColor: color(INK),
     Font: { ...FONT, Size: 20 },
     Fill: color(WHITE),
     Border: color(DARK_GREY),
-    Thickness: 1,
+    Thickness: input ? 2 : 1,
     TextLayout: { HorizontalAlignment: 4, VerticalAlignment: 64 },
     Location: { Left: box.left, Top: box.top },
     Width: box.width,
@@ -195,18 +203,46 @@ export function numericDisplay(name: string, box: Box, decimals = 1): Part {
 }
 
 /**
- * A momentary switch: a grey face at rest, the brand green while pressed.
- * OperationType 1 with Operation 1 is the bit operation the shipped demo uses
- * on its own switch-lamps; which bit is decided by the binding.
+ * OTE's bit operations (OperationType 1), as the Pro-face push button CO
+ * names its four inner switches: Operation absent is Set, 1 Reset, 2 Toggle,
+ * 10 Momentary. Which bit is decided by the binding (ClickTrigger.Destination).
  */
-export function switchPart(name: string, label: string, box: Box): Part {
+export const BIT_OPERATION = { set: 0, reset: 1, toggle: 2, momentary: 10 } as const;
+
+/**
+ * A push button: a grey face at rest, the brand green while pressed. Momentary
+ * by default - the bit is 1 while the finger is on it, which is what a PLC's
+ * START, STOP and RESET inputs expect (the rig's own buttons are momentary).
+ */
+export function switchPart(name: string, label: string, box: Box, operation: number = BIT_OPERATION.momentary): Part {
   return {
     Type: "Switch",
     UniqueId: gid(),
     Name: name,
     Release: face(label, T.ink, T.white, T.line),
     Press: face(label, T.pressedInk, T.pressedFill, T.pressedFill),
-    ClickTrigger: { OperationType: 1, Operation: 1 },
+    ClickTrigger: operation === BIT_OPERATION.set ? { OperationType: 1 } : { OperationType: 1, Operation: operation },
+    Location: { Left: box.left, Top: box.top },
+    Width: box.width,
+    Height: box.height,
+  };
+}
+
+/**
+ * A touch area that changes screen: a Switch with no face of its own, laid
+ * over a navigation chip so the chip's look and label stay as drawn. Its
+ * destination is a screen name until the packager writes the screen's number
+ * (OperationType 4, Operation 1, as the rig's header icons switch screens).
+ */
+export function screenSwitch(name: string, screenName: string, box: Box): Part {
+  const clear = { Text: "", Fill: { Type: 0 }, Border: { Type: 0 }, Thickness: 0 };
+  return {
+    Type: "Switch",
+    UniqueId: gid(),
+    Name: name,
+    Release: clear,
+    Press: { ...clear, Fill: color(T.pressedFill) },
+    ClickTrigger: { OperationType: 4, Operation: 1, ScreenName: screenName },
     Location: { Left: box.left, Top: box.top },
     Width: box.width,
     Height: box.height,

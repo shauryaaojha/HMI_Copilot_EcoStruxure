@@ -26,6 +26,8 @@ import {
   pathPart,
   rectangle,
   screenOf,
+  screenSwitch,
+  stringDisplay,
   switchPart,
   textBox,
   toggleSwitch,
@@ -306,6 +308,8 @@ export function chrome(
       textBox(`NavLbl_${key}_${i}`, other.screenName, { left: left + 8, top: HEADER + 8, width: chipWidth - 16, height: 16 },
         { size: 12, colour: T.ink }),
     );
+    // The chip is drawn; the touch over it is what changes screen on the panel.
+    if (!here) place.add(screenSwitch(`NavGo_${key}_${i}`, other.screenName, { left, top: HEADER + 4, width: chipWidth, height: NAV - 8 }));
   });
 
   // Footer: what you are looking at, and where it came from.
@@ -335,7 +339,7 @@ export function refreshNavigation(
   screens: Screen[],
   panel: { width: number; height: number },
 ): { screens: Screen[]; changed: boolean } {
-  const isChip = (name: string) => /^NavChip_|^NavLbl_/.test(name);
+  const isChip = (name: string) => /^NavChip_|^NavLbl_|^NavGo_/.test(name);
   // A content screen is embedded, not navigated to: it is never a chip.
   const listed = screens.filter((s) => s.Type !== "Content");
   const chipWidth = Math.min(150, Math.floor((panel.width - MARGIN * 2) / Math.max(listed.length, 1)) - 6);
@@ -360,6 +364,7 @@ export function refreshNavigation(
         textBox(`NavLbl_${key}_${i}`, other.Name, { left: left + 8, top: HEADER + 8, width: chipWidth - 16, height: 16 },
           { size: 12, colour: T.ink }),
       );
+      if (!here) chips.push(screenSwitch(`NavGo_${key}_${i}`, other.Name, { left, top: HEADER + 4, width: chipWidth, height: NAV - 8 }));
     });
 
     const kept = view.Children.filter((p) => !isChip(p.Name));
@@ -536,9 +541,26 @@ function drawCard(place: Adds, unit: LayoutUnit, box: Box, show: Show = ALL, pre
 
 /** BOOL roles that are a state an operator reads, abnormal ones first. */
 const ABNORMAL = new Set(["fault", "estop", "high", "low"]);
-const STATE_ROLES = ["fault", "estop", "running", "high", "low", "open", "closed", "ready", "available", "healthy", "active", "flame", "occupied"];
-/** INT roles that say what a sequence or selector is on, read as a number. */
-const POSITION_ROLES = new Set(["mode", "step", "selection"]);
+const STATE_ROLES = ["fault", "estop", "running", "off", "high", "low", "open", "closed", "ready", "available", "healthy", "active", "flame", "occupied"];
+/**
+ * Number roles read as a plain number, never on a bar: what a sequence or
+ * selector is on, and a drive's status word, command word and elapsed times,
+ * none of which has a range a bar could mean anything against.
+ */
+const POSITION_ROLES = new Set(["mode", "step", "selection", "word", "state", "time"]);
+const SELECTOR_ROLES = new Set(["mode", "step", "selection"]);
+
+/** A tag as a person says it: Status_Reg is "Status reg", PMP_101_MODE is "Mode". */
+const spoken = (r: { tag: string; role: string }) =>
+  SELECTOR_ROLES.has(r.role) ? titleCase(r.role) : titleCase(r.tag.replace(/[_.]+/g, " ").trim().toLowerCase());
+
+/** Which push button a command bit is, by its name: Run_CMD and PMP_START are START. */
+const pushbutton = (r: { tag: string; role: string }) =>
+  r.role === "reset" ? "RESET"
+  : /(^|_)(START|RUN)(_?CMD)?$/i.test(r.tag) ? "START"
+  : /(^|_)STOP(_?CMD)?$/i.test(r.tag) ? "STOP"
+  : undefined;
+const BUTTON_ORDER = ["START", "STOP", "RESET"];
 
 /**
  * A level 3 unit detail: everything one piece of equipment has, in the order
@@ -546,17 +568,21 @@ const POSITION_ROLES = new Set(["mode", "step", "selection"]);
  * be told to do, every reading on its own analogue indicator, and a trend of
  * what it leads with.
  *
- * Commands are the two controls the packager writes with a known behaviour:
- * the momentary Switch for a start or stop bit, the ToggleSwitch for a single
- * run command. A
- * setpoint is shown, not entered - a numeric entry part is not modelled yet,
- * and the note says so rather than drawing a box that looks editable.
+ * Commands are the controls the packager writes with a known behaviour: a
+ * momentary Switch for a start, stop or reset bit (bound through its click
+ * action), a ToggleSwitch for a single maintained run command or an
+ * auto/manual bit. A setpoint is an entry box, the one numeric display on the
+ * panel an operator can type into.
  */
 function detail(place: Placer, unit: LayoutUnit, box: Box, preferred: string[] = []): string[] {
   const notes: string[] = [];
   const key = unit.id.replace(/[^A-Za-z0-9]/g, "");
   const { left: x, top: y, width: w, height: h } = box;
-  const inner = w - 24;
+  // A unit with the screen to itself gets two columns: what it is told on
+  // the left, what it reads on the right, as the rig's own screens put their
+  // buttons beside their gauges.
+  const wide = w >= 900;
+  const inner = wide ? 456 : w - 24;
   place.add(rectangle(`Detail_${key}`, box, { fill: T.panel, border: T.line }));
 
   const symbolSize = unit.graphic ? SYMBOL : 0;
@@ -565,7 +591,8 @@ function detail(place: Placer, unit: LayoutUnit, box: Box, preferred: string[] =
   }
   place.add(textBox(`DetailName_${key}`, unit.label, { left: x + 12, top: y + 8, width: w - (symbolSize || 0) - 36, height: 22 }, { size: 14, bold: true }));
   place.add(textBox(`DetailKind_${key}`, unit.kind.toUpperCase(), { left: x + 12, top: y + 32, width: 160, height: 18 }, { size: 12, colour: T.muted }));
-  let top = y + Math.max(56, symbolSize + 16);
+  const head = y + Math.max(56, symbolSize + 16);
+  let top = head;
   const bottom = y + h - 8;
 
   // --- state ---------------------------------------------------------------
@@ -574,77 +601,125 @@ function detail(place: Placer, unit: LayoutUnit, box: Box, preferred: string[] =
     const width = Math.floor((inner - (states.length - 1) * 8) / states.length);
     states.forEach((r, i) => {
       const at = { left: x + 12 + i * (width + 8), top, width, height: 36 };
-      const word = r.role.toUpperCase();
-      place.add(
-        ABNORMAL.has(r.role) ? alarmLamp(`DetailLamp_${key}_${i}`, `NO ${word}`, word, at) : lamp(`DetailLamp_${key}_${i}`, `NOT ${word}`, word, at),
-        r.tag,
-      );
+      // A lamp says its role (RUNNING, FAULT) unless the role cannot say which
+      // thing is off, or two lamps share it: then the tag's own words, on both
+      // faces as the rig's lamps do - AUTO_SEQ_OFF, Ready_To_SwitchOn beside Ready.
+      const own = r.role !== "off" && states.filter((o) => o.role === r.role).length === 1;
+      const word = own ? r.role.toUpperCase() : spoken(r).toUpperCase();
+      const [off, on] = own ? [ABNORMAL.has(r.role) ? `NO ${word}` : `NOT ${word}`, word] : [word, word];
+      place.add(ABNORMAL.has(r.role) ? alarmLamp(`DetailLamp_${key}_${i}`, off, on, at) : lamp(`DetailLamp_${key}_${i}`, off, on, at), r.tag);
     });
     top += 36 + 8;
+  }
+
+  // --- what the PLC says the machine is doing, in its own words --------------
+  const said = unit.roles.find((r) => r.role === "state" && r.dataType === "STRING");
+  if (said && top + 28 <= bottom) {
+    const tag = said.tag.replace(/[^A-Za-z0-9]/g, "");
+    place.add(textBox(`DetailLbl_${tag}`, spoken(said), { left: x + 12, top: top + 4, width: 120, height: 20 }, { size: 12 }));
+    place.add(stringDisplay(`DetailStr_${tag}`, { left: x + 136, top, width: inner - 124, height: 28 }), said.tag);
+    top += 28 + 8;
   }
 
   // --- commands --------------------------------------------------------------
-  // A separate _START and _STOP bit are pushbuttons - the momentary Switch,
-  // START first. A single _CMD bit is a maintained run command - a toggle.
-  const pushbutton = (tag: string) => (/_START$/i.test(tag) ? "START" : /_STOP$/i.test(tag) ? "STOP" : undefined);
+  // Separate start, stop and reset bits are push buttons - the momentary
+  // Switch, START first, as on the rig. A single _CMD bit with no start or
+  // stop in its name is a maintained run command - a toggle.
   const commands = unit.roles
-    .filter((r) => r.role === "command" && r.dataType === "BOOL")
-    .sort((a, b) => Number(pushbutton(a.tag) === "STOP") - Number(pushbutton(b.tag) === "STOP"))
-    .slice(0, 2);
-  if (commands.length > 0 && top + 36 <= bottom) {
+    .filter((r) => (r.role === "command" || r.role === "reset") && r.dataType === "BOOL")
+    .map((r) => ({ r, word: pushbutton(r) }))
+    .sort((a, b) => (a.word ? BUTTON_ORDER.indexOf(a.word) : 9) - (b.word ? BUTTON_ORDER.indexOf(b.word) : 9))
+    .slice(0, 3);
+  if (commands.length > 0 && top + 40 <= bottom) {
     const width = Math.floor((inner - (commands.length - 1) * 8) / commands.length);
-    commands.forEach((r, i) => {
-      const at = { left: x + 12 + i * (width + 8), top, width, height: 36 };
-      const word = pushbutton(r.tag);
+    commands.forEach(({ r, word }, i) => {
+      const at = { left: x + 12 + i * (width + 8), top, width, height: 40 };
       place.add(word ? switchPart(`DetailCmd_${key}_${i}`, word, at) : toggleSwitch(`DetailCmd_${key}_${i}`, "STOP", "START", at), r.tag);
     });
+    top += 40 + 8;
+  }
+
+  // An auto/manual bit is a selector the operator works: off is MANUAL, as the
+  // rig's AUTOMAN toggle has it.
+  const selector = unit.roles.find((r) => r.role === "mode" && r.dataType === "BOOL");
+  if (selector && top + 36 <= bottom) {
+    const tag = selector.tag.replace(/[^A-Za-z0-9]/g, "");
+    place.add(textBox(`DetailLbl_${tag}`, "Mode", { left: x + 12, top: top + 8, width: 72, height: 20 }, { size: 12 }));
+    place.add(toggleSwitch(`DetailMode_${tag}`, "MANUAL", "AUTO", { left: x + 88, top, width: Math.min(200, inner - 76), height: 36 }), selector.tag);
     top += 36 + 8;
   }
 
-  // --- what a sequence or selector is on --------------------------------------
-  const positions = unit.roles.filter((r) => POSITION_ROLES.has(r.role) && isReading(r.dataType)).slice(0, 2);
-  if (positions.length > 0 && top + 24 <= bottom) {
-    const width = Math.floor((inner - (positions.length - 1) * 8) / positions.length);
-    positions.forEach((r, i) => {
+  // --- what the machine is asked for: the one place an operator types ---------
+  const asked = unit.roles.filter((r) => r.role === "setpoint" && isReading(r.dataType)).slice(0, 2);
+  if (asked.length > 0 && top + 32 <= bottom) {
+    const width = Math.floor((inner - (asked.length - 1) * 8) / asked.length);
+    asked.forEach((r, i) => {
       const left = x + 12 + i * (width + 8);
       const tag = r.tag.replace(/[^A-Za-z0-9]/g, "");
-      place.add(textBox(`DetailLbl_${tag}`, titleCase(r.role), { left, top: top + 2, width: 72, height: 20 }, { size: 12 }));
-      place.add(numericDisplay(`DetailNum_${tag}`, { left: left + 76, top, width: Math.max(48, width - 76), height: 24 }, 0), r.tag);
+      const range = unit.ranges?.[r.tag] ?? rangeFor(r.comment, r.role);
+      const label = range.units ? `${spoken(r)} (${range.units})` : spoken(r);
+      const entry = Math.min(104, width - 76);
+      place.add(textBox(`DetailLbl_${tag}`, label, { left, top: top + 6, width: width - entry - 4, height: 20 }, { size: 12 }));
+      place.add(numericDisplay(`DetailSet_${tag}`, { left: left + width - entry, top, width: entry, height: 32 }, 0, true), r.tag);
+    });
+    top += 32 + 8;
+  }
+
+  // --- numbers read as they are, two to a row ---------------------------------
+  const positions = unit.roles.filter((r) => POSITION_ROLES.has(r.role) && isReading(r.dataType)).slice(0, 4);
+  for (let row = 0; row < positions.length && top + 24 <= bottom; row += 2) {
+    const width = Math.floor((inner - 8) / 2);
+    positions.slice(row, row + 2).forEach((r, i) => {
+      const left = x + 12 + i * (width + 8);
+      const tag = r.tag.replace(/[^A-Za-z0-9]/g, "");
+      const label = Math.max(72, width - 96);
+      place.add(textBox(`DetailLbl_${tag}`, spoken(r), { left, top: top + 2, width: label, height: 20 }, { size: 12 }));
+      place.add(numericDisplay(`DetailNum_${tag}`, { left: left + label + 4, top, width: Math.max(48, width - label - 4), height: 24 }, 0), r.tag);
     });
     top += 24 + 8;
   }
 
   // --- readings ----------------------------------------------------------------
+  const rx = wide ? x + 12 + inner + 16 : x + 12;
+  const rw = wide ? w - inner - 40 : inner;
+  if (wide) top = head;
   const readings = orderReadings(
-    unit.roles.filter((r) => isReading(r.dataType) && !POSITION_ROLES.has(r.role)),
+    unit.roles.filter((r) => isReading(r.dataType) && !POSITION_ROLES.has(r.role) && r.role !== "setpoint"),
     unit.kind,
     preferred,
   );
   const TREND = 96;
   const ROW = 56;
+  // A unit with the screen to itself is wide enough for two columns of
+  // indicators: a drive has a dozen readings, and one per full-width row
+  // showed two of them.
+  const cols = rw >= 600 ? 2 : 1;
+  const colWidth = Math.floor((rw - (cols - 1) * 12) / cols);
+  const rowsFor = (n: number) => Math.ceil(n / cols);
   // Room for the trend is kept only when every reading still fits beside it.
-  const withTrend = readings.length > 0 && top + readings.length * (ROW + 8) + TREND <= bottom;
-  const fits = Math.max(0, Math.floor((bottom - top - (withTrend ? TREND : 0) + 8) / (ROW + 8)));
+  const withTrend = readings.length > 0 && top + rowsFor(readings.length) * (ROW + 8) + TREND <= bottom;
+  const fits = cols * Math.max(0, Math.floor((bottom - top - (withTrend ? TREND : 0) + 8) / (ROW + 8)));
+  // Two readings of one role are told apart by their names: Motor voltage and
+  // Mains voltage, not Voltage twice.
+  const shared = (role: string) => readings.filter((r) => r.role === role).length > 1;
   readings.slice(0, fits).forEach((role, i) => {
     const range = unit.ranges?.[role.tag] ?? rangeFor(role.comment, role.role);
+    const label = shared(role.role) ? spoken(role) : titleCase(role.role);
     place.composite(
       "AnalogIndicator",
-      { label: titleCase(role.role), tag: role.tag, units: range.units, min: range.min, max: range.max, normalLow: range.normalLow, normalHigh: range.normalHigh, decimals: 1 },
-      { left: x + 12, top: top + i * (ROW + 8), width: inner, height: ROW },
+      { label, tag: role.tag, units: range.units, min: range.min, max: range.max, normalLow: range.normalLow, normalHigh: range.normalHigh, decimals: 1 },
+      { left: rx + (i % cols) * (colWidth + 12), top: top + Math.floor(i / cols) * (ROW + 8), width: colWidth, height: ROW },
       `DetailInd_${role.tag.replace(/[^A-Za-z0-9]/g, "")}`,
     );
   });
   if (readings.length > fits) {
     notes.push(`${unit.label}: ${readings.length - fits} of ${readings.length} readings do not fit its detail panel`);
   }
-  top += Math.min(fits, readings.length) * (ROW + 8);
+  top += rowsFor(Math.min(fits, readings.length)) * (ROW + 8);
 
   if (withTrend) {
     const tags = readings.slice(0, 2).map((r) => r.tag);
-    place.add(trendGraph(`DetailTrend_${key}`, tags, { left: x + 12, top, width: inner, height: Math.min(TREND, bottom - top) }));
-  }
-  if (unit.roles.some((r) => r.role === "setpoint")) {
-    notes.push(`${unit.label}: setpoint shown, not entered - a numeric entry part is not modelled yet`);
+    place.add(trendGraph(`DetailTrend_${key}`, tags, { left: rx, top, width: rw, height: Math.min(wide ? Math.max(TREND, bottom - top) : TREND, bottom - top) }));
   }
   return notes;
 }
@@ -737,10 +812,12 @@ export function faceplateBand(
   units.slice(0, grid.capacity).forEach((unit, i) => {
     const column = i % grid.columns;
     const row = Math.floor(i / grid.columns);
+    // One unit at level 3 has the whole width; its detail lays itself out wide.
+    const alone = spec.level === 3 && units.length === 1;
     const at: Box = {
       left: MARGIN + column * (grid.width + GAP),
       top: grid.top + row * (grid.height + GAP),
-      width: grid.width,
+      width: alone ? panel.width - MARGIN * 2 : grid.width,
       height: grid.height,
     };
     if (spec.level === 1) tile(place, unit, at);

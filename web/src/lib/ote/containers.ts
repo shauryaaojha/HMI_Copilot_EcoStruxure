@@ -295,10 +295,15 @@ export function layoutTree(root: Raw, rootBox: Box): Laid {
   return { leaves, rootGrid, rootBox };
 }
 
-/** The flat part the editor sees for a leaf: the same object, at its box. */
+/**
+ * The flat part the editor sees for a leaf: the same object, at its box. The
+ * keys that pinned it in its container (margin, alignment) are resolved into
+ * that box, so they go; the writer pins it again from the raw node.
+ */
 export function flatten(leaf: Leaf): Raw {
+  const { Margin: _margin, ObjectAlignment: _align, ...raw } = leaf.raw;
   return {
-    ...leaf.raw,
+    ...raw,
     Location: { Left: leaf.box.left, Top: leaf.box.top },
     Width: leaf.box.width,
     Height: leaf.box.height,

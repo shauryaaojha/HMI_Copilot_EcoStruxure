@@ -31,7 +31,7 @@ import {
 import { AlarmSummaryPart, type AlarmRow } from "./AlarmSummaryPart";
 import { PathPartNode } from "./GraphicObject";
 import { AngleShapePart, EllipsePart, LinePart, PicturePart, PolygonPart } from "./Shapes";
-import { ContentDisplayPart } from "./ContentDisplay";
+import { CompoundObjectPart, ContentDisplayPart } from "./ContentDisplay";
 
 export { ContentScreens, contentsById } from "./ContentDisplay";
 export { PictureSource } from "./Shapes";
@@ -150,6 +150,9 @@ export function PartNode({ part, values, alarms }: PartNodeProps) {
 
     case "Polygon":
       return <PolygonPart part={part} />;
+
+    case "CompoundObject":
+      return <CompoundObjectPart part={part} alarms={alarms} />;
 
     default: {
       const exhaustive: never = part;

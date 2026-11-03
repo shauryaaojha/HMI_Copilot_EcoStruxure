@@ -193,7 +193,7 @@ const GROUPS: { title: string; keys: string[] }[] = [
   { title: "General", keys: ["Type", "Name", "UniqueId", "Location", "Width", "Height"] },
   { title: "Text", keys: ["Text", "Font", "TextColor", "TextLayout"] },
   { title: "Appearance", keys: ["Fill", "Border", "Thickness", "Stroke"] },
-  { title: "Value", keys: ["CurrentValue", "DecimalDigits", "DisplayLength"] },
+  { title: "Value", keys: ["CurrentValue", "FloatDigits", "DisplayLength"] },
   {
     title: "States",
     keys: ["Off", "On", "Release", "Press", "NumberOfStates", "States", "Invalid", "InterlockState"],

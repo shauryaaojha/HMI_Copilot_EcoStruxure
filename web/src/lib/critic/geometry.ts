@@ -109,7 +109,7 @@ function familyOf(name: string): { family: string; suffix: string } {
 }
 
 /** The frame: drawn once, in the same place on every screen, and not the critic's business. */
-const CHROME = /^(Ground|Hdr|HdrTitle|HdrLevel|Nav|NavChip|NavLbl|Foot|FootLbl|FootMark|AlarmBanner|AlarmsLbl)_/;
+const CHROME = /^(Ground|Hdr|HdrTitle|HdrLevel|Nav|NavChip|NavLbl|NavGo|Foot|FootLbl|FootMark|AlarmBanner|AlarmsLbl)_/;
 const isChrome = (p: Part) => CHROME.test(p.Name);
 
 const TEXT_TYPES = new Set<Part["Type"]>(["TextBox", "NumericDisplay", "StringDisplay", "DateTimeDisplay"]);

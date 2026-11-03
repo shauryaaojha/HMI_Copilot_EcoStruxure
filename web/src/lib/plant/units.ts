@@ -42,6 +42,9 @@ export function unitOf(comment: string, role: string): string {
   // otherwise, and saying "" is better than guessing a unit onto a number.
   if (role === "efficiency" || role === "modulation") return "%";
   if (role === "frequency") return "Hz";
+  // A drive reports its thermal state and its torque as a share of nominal
+  // (the ATV340 rig's own displays show the thermal states in %).
+  if (role === "thermal" || role === "torque") return "%";
   if (role === "power") return "kW";
   if (/\bvolts?\b|\bvoltage\b/i.test(comment) || role === "voltage") return "V";
   return "";

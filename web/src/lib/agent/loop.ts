@@ -170,7 +170,7 @@ export async function* runAgent(options: AgentOptions): AsyncGenerator<AgentStep
     const onFocus = serious.filter((f) => f.objectId && screenOfObject.get(f.objectId) === focus);
     const request = repairRequest(onFocus.length > 0 ? onFocus : serious);
     const selectedIds = onFocus.map((f) => f.objectId!).filter((id, i, a) => a.indexOf(id) === i);
-    const digest = digestOf({ name: s.name, target: s.target, screens: s.screens, activeScreenId: focus, variables: s.variables, alarms: s.alarms, bindings: s.bindings, selectedIds, handles: s.handles }, request);
+    const digest = digestOf({ name: s.name, target: s.target, screens: s.screens, foreign: s.foreign, activeScreenId: focus, variables: s.variables, alarms: s.alarms, bindings: s.bindings, selectedIds, handles: s.handles }, request);
     const answer = await converse({ history: [{ role: "user", text: request }], digest }).catch((e: unknown) => {
       return { error: e instanceof Error ? e.message : String(e) } as const;
     });

@@ -26,8 +26,21 @@ export interface Source {
   ObjectType: number;
   ReferenceId: number;
   ObjectId: string;
+  ParentIds?: string;
   ObjectFullName: string;
 }
+
+/**
+ * How the product names a variable that is not a bare top-level tag: one in a
+ * folder (a PLC symbol import puts every tag under `<Equipment>.<POU>`) or a
+ * member of a structure. Bindings must use this full name and ParentIds, or
+ * the product resolves the binding to nothing. Keyed by the variable's Name.
+ */
+export interface VariableRef {
+  fullName: string;
+  parentIds?: string;
+}
+export type VariableRefs = Record<string, VariableRef>;
 
 export interface Target {
   ObjectType: number;
@@ -73,6 +86,11 @@ export interface Wire {
   screenId?: string;
   /** The converter the value passes through, written into Converters.db. */
   converter?: Scale;
+  /**
+   * The binding's Mode as an opened file had it (1 one way to the object, 2
+   * both ways). Absent on a new wire, which takes the default below.
+   */
+  mode?: number;
 }
 
 export function buildGraph(
@@ -83,7 +101,10 @@ export function buildGraph(
   alarms: AlarmTarget[] = [],
   /** Converter name -> UniqueId, as syncConverters wrote them. */
   converterIds: Record<string, string> = {},
+  /** Full names of folder and member variables, as an opened file has them. */
+  refs: VariableRefs = {},
 ): BindingGraph {
+  const fullName = (tag: string) => refs[tag]?.fullName ?? tag;
   const Sources: Source[] = [];
   const Targets: Target[] = [];
   const Bindings: BindingRow[] = [];
@@ -102,22 +123,28 @@ export function buildGraph(
     }
     const referenceId = Sources.length;
     sourceIndex.set(tag, referenceId);
+    const parentIds = refs[tag]?.parentIds;
     Sources.push({
       ObjectType: OBJECT_TYPE.VARIABLE,
       ReferenceId: referenceId,
       ObjectId: objectId,
-      ObjectFullName: tag,
+      ...(parentIds ? { ParentIds: parentIds } : {}),
+      ObjectFullName: fullName(tag),
     });
     return referenceId;
   };
 
-  for (const { part, tag, property, screenId: on, converter } of wires) {
+  for (const { part, tag, property, screenId: on, converter, mode } of wires) {
     const source = sourceFor(tag);
     const converterName = converter ? scaleName(converter) : null;
     const converterId = converterName ? (converterIds[converterName] ?? converter?.id ?? null) : null;
     if (converterName && !converterId) {
       throw new Error(`binding of ${part.Name} needs converter ${converterName}, which was not written`);
     }
+    // A switch writes its bit through its click action, not through a value:
+    // the product binds ClickTrigger.Destination, one way (Demo 1's switches,
+    // the Pro-face push button CO). Bound to CurrentValue it writes nothing.
+    const action = part.Type === "Switch" && property === "CurrentValue";
     const target = Targets.length;
     const owner = on ?? screenId;
     Targets.push({
@@ -133,12 +160,12 @@ export function buildGraph(
       Type: 2,
       // Through a converter the value only flows to the object, as in every
       // converted binding the template corpus carries.
-      Mode: converterId ? 1 : 2,
-      BindingText: `${tag}.Value`,
+      Mode: mode ?? (converterId || action ? 1 : 2),
+      BindingText: `${fullName(tag)}.Value`,
       ConverterId: converterId,
       ConverterName: converterName,
       Target: target,
-      TargetProperty: property,
+      TargetProperty: action ? "ClickTrigger.Destination" : property,
       Sources: String(source),
     });
   }
@@ -156,7 +183,7 @@ export function buildGraph(
     Bindings.push({
       Type: 2,
       Mode: 1,
-      BindingText: alarm.trigger,
+      BindingText: fullName(alarm.trigger),
       ConverterId: null,
       ConverterName: null,
       Target: target,
