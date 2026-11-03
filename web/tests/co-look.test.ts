@@ -34,6 +34,8 @@ async function contentFile(bytes: Uint8Array, id: string): Promise<Raw> {
 }
 
 describe.skipIf(!fs.existsSync(RIG))("Compound Objects on the Panel-1 rig", async () => {
+  // skipIf still runs this body to collect the tests, so nothing is read without the file.
+  if (!fs.existsSync(RIG)) return;
   const bytes = new Uint8Array(fs.readFileSync(RIG));
   const read = await readProject(bytes, "auto-manual.eote");
   const all = Object.values(read.foreign).flat();

@@ -225,7 +225,7 @@ export function authorizationServerMetadata(request: Request) {
     code_challenge_methods_supported: ["S256"],
     token_endpoint_auth_methods_supported: ["none"],
     scopes_supported: [...SCOPES],
-    service_documentation: "https://github.com/schneider/hmi-copilot",
+    service_documentation: "https://github.com/shauryaaojha/HMI_Copilot_EcoStruxure",
   };
 }
 

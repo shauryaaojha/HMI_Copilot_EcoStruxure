@@ -43,9 +43,7 @@ nobody has an identity, so nothing mints and Realtime never runs at all.
 
 | Variable | Read by | Reaches the browser? | What it is for |
 |---|---|---|---|
-| `AUTH_SECRET` | `web/src/lib/server/session.ts` | no | signing Auth.js sessions; required as soon as any provider below is configured |
-| `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET` | `web/src/lib/server/session.ts` | no | GitHub sign-in; both or neither |
-| `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | `web/src/lib/server/session.ts` | no | Google sign-in; both or neither |
+| `AUTH_SECRET` | `web/src/lib/server/session.ts` | no | signing Auth.js sessions. It is also the switch for accounts: set, people sign up and sign in with an email and a password; unset on a deployment, nobody can sign in |
 | `AUTH_URL` | Auth.js | no | optional: a canonical URL behind a reverse proxy |
 | `AUTH_TRUST_HOST` | Auth.js | no | optional: only behind a trusted proxy; Vercel is inferred |
 | `MONGODB_URI` | `web/src/lib/db/mongo.ts` | no | every project, membership and the operation log |

@@ -78,6 +78,9 @@ const config: NextConfig = {
     "/api/panel": ["./skeleton/**/*", WASM],
     "/api/validate": [WASM],
     "/api/critique": [WASM],
+    // The connector's validate and generate tools reach the packager and the
+    // pipeline, which open databases the same way.
+    "/api/mcp": [WASM],
     // The agent opens databases, writes bindings through the packager and runs
     // scripts in QuickJS, whose engine is a .wasm beside its module.
     "/api/agent": ["./skeleton/**/*", WASM, "./node_modules/@jitl/quickjs-wasmfile-release-sync/dist/*.wasm"],

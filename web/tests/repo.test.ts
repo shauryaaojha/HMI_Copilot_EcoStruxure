@@ -33,7 +33,9 @@ for (const kind of ["memory", "file"]) describe(`${kind} repository`, () => {
     expect(restored.rev).toBe(56); expect(restored.snapshot.name).toBe("Revision 10");
     await r.projects.delete("project-test");
     expect(await r.versions.list("project-test")).toEqual([]); expect(await r.members.get("project-test", "alice")).toBeNull();
-  }, 15000);
+  // 55 saves through the file store: about 2 s alone, but over 15 s on Windows
+  // while the rest of the suite (bcrypt sign-in cases included) runs beside it.
+  }, 60000);
   it("persists permanent source bytes and user creation time", async () => {
     const r = await storage(); const first = await r.users.upsert({ id: "alice", name: "A" });
     expect((await r.users.upsert({ id: "alice", name: "Alice" })).createdAt).toBe(first.createdAt);
