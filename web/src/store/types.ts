@@ -152,6 +152,13 @@ export interface TagImport {
    */
   pending?: boolean;
   /**
+   * The plant brief the engineer confirmed, when these placeholders came from
+   * one (lib/brief). Kept with the import rather than beside it because it is
+   * the same fact: where these tags came from. Validation reads it to refuse a
+   * tag that traces to no row of it.
+   */
+  brief?: import("@/lib/brief/brief").ConfirmedBrief;
+  /**
    * When this import replaced placeholders: which became which real tag, and
    * which matched nothing and were unbound. Reported, like the corrections.
    */

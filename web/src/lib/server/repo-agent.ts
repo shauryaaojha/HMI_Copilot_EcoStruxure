@@ -8,7 +8,7 @@
  * it also carries the steps of a server-side agent run, which the project
  * stream forwards to whoever asked.
  */
-import type { Op } from "@/lib/ai/ops";
+import type { Op } from "@/core/ops";
 import type { StoreChange } from "@/lib/collab/types";
 import { ServerError } from "./errors";
 import { validId, type Data, type Row } from "./storage";

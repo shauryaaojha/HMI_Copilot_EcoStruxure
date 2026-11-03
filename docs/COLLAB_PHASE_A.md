@@ -7,15 +7,17 @@ reader, writer, schema and canvas are unchanged.
 
 ## Running it
 
-- Without OAuth providers, a laptop uses the implicit `local` engineer. Without
+- Without `AUTH_SECRET`, a laptop uses the implicit `local` engineer. Without
   MongoDB it writes under `web/.data/`, which is gitignored. Nothing requires an
   external service for this mode.
-- With providers configured, Auth.js v5 uses JWT sessions. GitHub and Google
-  account ids identify users; matching email addresses do not automatically
-  link accounts. Sign in and sign out are available in the shell and Projects.
-- On Vercel, no providers means browser-only projects and no implicit user.
+- With `AUTH_SECRET` set, Auth.js v5 uses JWT sessions and the only way in is an
+  email and a password held by this installation (decision A in
+  PLAN_FULL_ARCHITECTURE.md; GitHub and Google were removed). Account ids are
+  `user:<24 hex>`. Sign up, sign in and sign out are in the shell and Projects,
+  and on `/signin` for share links that need to return to themselves.
+- On Vercel, no `AUTH_SECRET` means browser-only projects and no implicit user.
   Server storage requires MongoDB; it never falls back to ephemeral disk.
-  OAuth users who are signed out retain the existing anonymous import path.
+  Visitors who are signed out retain the existing anonymous import path.
 
 Environment variables (also documented in `web/.env.example`):
 
@@ -23,16 +25,14 @@ Environment variables (also documented in `web/.env.example`):
 | --- | --- |
 | `MONGODB_URI` | Existing MongoDB connection; required for server storage on Vercel |
 | `MONGODB_DB` | Optional database name; defaults to `hmi_copilot` |
-| `AUTH_SECRET` | Required JWT secret when any OAuth provider is enabled |
-| `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET` | Enable GitHub when both are present |
-| `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | Enable Google when both are present |
+| `AUTH_SECRET` | JWT secret, and the switch that turns accounts on at all |
 | `AUTH_URL` | Optional canonical URL for custom proxy deployments |
 | `AUTH_TRUST_HOST` | Optional trusted-proxy setting; Vercel is inferred |
 | `VERCEL` | Host-provided deployment flag; do not set for laptop local mode |
 
-Register OAuth callbacks as `/api/auth/callback/github` and
-`/api/auth/callback/google` on the application's origin. No credentials belong
-in browser variables. See the [Auth.js setup reference](https://authjs.dev/reference/nextjs).
+No credentials belong in browser variables, and `AUTH_SECRET` is an environment
+variable on every environment, never a committed value. See the
+[Auth.js setup reference](https://authjs.dev/reference/nextjs).
 MongoDB must support transactions (a replica set, including Atlas, or a sharded
 cluster). All callers reuse the existing cached MongoClient.
 

@@ -1,20 +1,28 @@
 /**
- * The single identity boundary for API code. No OAuth configuration on a
- * laptop means one local engineer; on a public deployment it means anonymous
+ * The single identity boundary for API code. No sign-in configured on a laptop
+ * means one local engineer; on a public deployment it means anonymous
  * browser-only use. In particular, deployment must never inherit the laptop's
- * implicit identity. Auth.js is loaded only when providers are configured.
+ * implicit identity. Auth.js is loaded only when sign-in is configured.
  */
 import type { User } from "./repo";
 import { ServerError } from "./errors";
-/** Only complete provider configurations enable account sign-in. */
+/**
+ * Email and password is the only way into an account (decision A in
+ * docs/PLAN_FULL_ARCHITECTURE.md), so there is no client id or redirect URI to
+ * configure - what remains is the secret the session cookie is signed with.
+ * `AUTH_SECRET` is therefore the switch: with it, this installation can hold
+ * accounts; without it, Auth.js could not verify a cookie it had just written.
+ * The list shape stays because the browser asks /api/me which ways in exist
+ * before offering any of them.
+ */
 export function providers(): string[] {
-  return ["github", "google"].filter(p => process.env[`AUTH_${p.toUpperCase()}_ID`]?.trim() && process.env[`AUTH_${p.toUpperCase()}_SECRET`]?.trim());
+  return process.env.AUTH_SECRET?.trim() ? ["credentials"] : [];
 }
 /** A laptop can persist locally; deployments require configured identities. */
 export function cloudEnabled(): boolean { return providers().length > 0 || !process.env.VERCEL; }
-/** Fail closed when provider sessions cannot be signed. */
+/** Fail closed when sessions cannot be signed, rather than making an account nothing can use. */
 export function checkAuthConfig() {
-  if (providers().length && !process.env.AUTH_SECRET?.trim()) throw new ServerError(503, "configuration", "AUTH_SECRET is required when an authentication provider is enabled");
+  if (!process.env.AUTH_SECRET?.trim()) throw new ServerError(503, "configuration", "AUTH_SECRET is required before accounts can be used");
 }
 /** Keep the implicit laptop identity out of public deployments. */
 export async function currentUser(): Promise<User | null> {

@@ -10,7 +10,7 @@
  */
 import { useEffect } from "react";
 import { CollabSession } from "@/lib/collab/sync";
-import { browserTransport } from "@/lib/collab/browser";
+import { liveTransport } from "@/lib/collab/transport";
 import { useAccess } from "@/store/access";
 import { usePresence } from "@/store/presence";
 import { useProject } from "@/store/project";
@@ -49,7 +49,7 @@ export function useCollab(projectId: string, rev?: number) {
         author,
         rev: start,
         store: useProject as never,
-        transport: browserTransport,
+        transport: liveTransport(),
         onStatus: (status) => {
           if (author) void liveSaved(projectId, status.rev, status.pending, status.error);
         },

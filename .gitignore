@@ -1,3 +1,6 @@
+# macOS writes one into every folder it has ever shown in Finder
+.DS_Store
+
 # dependencies / build output
 node_modules/
 .next/
@@ -57,3 +60,5 @@ demo_project/*_4.1.eote
 demo_project/HMICopilot_Panel1.eote
 auto&manua.eote
 images of real hmi/
+# A worktree symlinks node_modules; the trailing slash above misses a symlink.
+node_modules

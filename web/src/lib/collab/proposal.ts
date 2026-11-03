@@ -11,8 +11,8 @@
  * as it is at that moment, so an op that needed a left-out one is rejected and
  * shown rather than half-applied.
  */
-import { applyOps, type OpOutcome } from "@/lib/ai/applier";
-import type { Op } from "@/lib/ai/ops";
+import { applyOps, type OpOutcome } from "@/core/ops";
+import type { Op } from "@/core/ops";
 import { labelOp } from "@/lib/ai/review";
 import type { PackageInput } from "@/lib/ote/packager";
 import { createProjectStore } from "@/store/project";

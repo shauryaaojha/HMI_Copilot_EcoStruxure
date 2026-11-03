@@ -9,7 +9,7 @@
  * decision is logged for the sign-off report.
  */
 import { z } from "zod";
-import { Op } from "@/lib/ai/ops";
+import { Op } from "@/core/ops";
 import { resolveProvider } from "@/lib/ai/provider";
 import { selectedOps } from "@/lib/ai/review";
 import { dryRunOnSnapshot } from "@/lib/collab/proposal";
@@ -90,16 +90,23 @@ export async function proposeEdit(user: User | null, projectId: string, body: Re
   }
 }
 
-/** A finished agent run, as a proposal with fixed groups of changes. */
+/**
+ * A finished agent run, as a proposal with fixed groups of changes. Fixed
+ * because the run's result is a document, not a list of edits to replay: there
+ * is nothing to run again on accept, and re-deriving it would give a different
+ * answer from the one the engineer looked at.
+ */
 export async function proposeAgentRun(
   actor: User,
   projectId: string,
-  run: { screenId: string; request: string; label: string; changes: StoreChange[]; rejected: string[] },
+  run: { screenId?: string; request: string; label: string; changes: StoreChange[]; rejected: string[] },
   storage: Repo = repo(),
 ) {
   return storage.proposals.create({
     projectId,
-    screenId: run.screenId,
+    // A whole-application build belongs to no one screen, which is the one
+    // case this has to leave unset rather than invent an id for.
+    ...(run.screenId ? { screenId: run.screenId } : {}),
     requestedBy: actor.id,
     requestedByName: actor.name,
     request: run.request,

@@ -9,7 +9,7 @@
  * build runs on the server against the shared snapshot and ends the same
  * way. One turn per screen at a time, so the turn takes the screen first.
  */
-import type { Op } from "@/lib/ai/ops";
+import type { Op } from "@/core/ops";
 import { useAccess } from "@/store/access";
 import { useProject } from "@/store/project";
 

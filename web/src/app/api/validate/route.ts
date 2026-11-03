@@ -4,10 +4,13 @@
  * Naming conventions, binding integrity, type mismatch, completeness and
  * standards conformance. Each finding carries the id of the object that caused
  * it, so the UI can put the engineer in front of it.
+ *
+ * The checks themselves live in `lib/server/validate.ts`, because the MCP
+ * server asks for the same findings and neither caller may hold its own copy.
  */
 
-import { panelOf, type PackageInput } from "@/lib/ote/packager";
-import { summarise, validateProject } from "@/lib/validation/rules";
+import type { PackageInput } from "@/lib/ote/packager";
+import { validateInput } from "@/lib/server/validate";
 
 export const runtime = "nodejs";
 
@@ -23,10 +26,5 @@ export async function POST(request: Request) {
     return Response.json({ error: "project has no screens array" }, { status: 400 });
   }
 
-  // Without a skeleton there is no Target.dat to compare against, and a
-  // missing installation is not a project error - so the check just does
-  // not run rather than reporting a mismatch it cannot substantiate.
-  const panel = await panelOf().catch(() => null);
-  const findings = validateProject(project, panel);
-  return Response.json({ findings, summary: summarise(findings) });
+  return Response.json(await validateInput(project));
 }
