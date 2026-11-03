@@ -1,7 +1,7 @@
 /**
  * Short-lived Realtime tokens, minted on the server for one project.
  *
- * The browser never sees the JWT secret or the service-role key. It asks for a
+ * The browser never sees the signing key or the secret API key. It asks for a
  * token, the server decides whether this person may read this project - in
  * MongoDB, through the same `requireReader` every other route uses - and signs
  * a token that says so. The token expires in minutes, so revoking access is a
@@ -42,8 +42,8 @@
  * be chosen later without touching this file.
  */
 
-import { SignJWT } from "jose";
-import { serverConfig, topicFor } from "./config";
+import { importJWK, SignJWT, type JWTPayload } from "jose";
+import { serverConfig, topicFor, type RealtimeSigning } from "./config";
 
 /** Long enough to join a channel and reconnect once; short enough to expire. */
 export const TOKEN_TTL_SECONDS = 15 * 60;
@@ -58,6 +58,36 @@ export interface MintedToken {
 }
 
 /**
+ * Sign a Realtime token: the one place that knows how.
+ *
+ * ES256 carries the imported key's `kid` in its header, which is how Supabase
+ * finds the public half to verify against. HS256 is the legacy shared secret.
+ * `iat` and `exp` are seconds since the epoch, so a caller can sign a token
+ * that has already lapsed (the expiry check in `check.ts`).
+ */
+export async function signRealtimeJwt(
+  signing: RealtimeSigning,
+  claims: JWTPayload & { project_topic: string },
+  subject: string,
+  times: { iat: number; exp: number },
+): Promise<string> {
+  const jwt = new SignJWT({
+    // Realtime needs these two to assume a role before the policy runs.
+    role: "authenticated",
+    ...claims,
+  })
+    .setSubject(subject)
+    .setAudience("authenticated")
+    .setIssuedAt(times.iat)
+    .setExpirationTime(times.exp);
+  if (signing.alg === "ES256") {
+    const key = await importJWK({ ...signing.jwk, alg: "ES256" }, "ES256");
+    return jwt.setProtectedHeader({ alg: "ES256", kid: signing.jwk.kid, typ: "JWT" }).sign(key);
+  }
+  return jwt.setProtectedHeader({ alg: "HS256", typ: "JWT" }).sign(new TextEncoder().encode(signing.secret));
+}
+
+/**
  * Sign a token for one person on one project.
  *
  * The caller has already decided that this person may read this project;
@@ -69,19 +99,9 @@ export async function mintRealtimeToken(userId: string, projectId: string): Prom
   if (!config) return null;
 
   const topic = topicFor(projectId);
-  const secret = new TextEncoder().encode(config.jwtSecret);
-  const token = await new SignJWT({
-    // Realtime needs these two to assume a role before the policy runs.
-    role: "authenticated",
-    // The one topic this token may join, read back by the policy above.
-    project_topic: topic,
-  })
-    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
-    .setSubject(userId)
-    .setAudience("authenticated")
-    .setIssuedAt()
-    .setExpirationTime(`${TOKEN_TTL_SECONDS}s`)
-    .sign(secret);
+  const now = Math.floor(Date.now() / 1000);
+  // The one topic this token may join, read back by the policy above.
+  const token = await signRealtimeJwt(config.signing, { project_topic: topic }, userId, { iat: now, exp: now + TOKEN_TTL_SECONDS });
 
   return { token, topic, expiresIn: TOKEN_TTL_SECONDS, url: config.url, anonKey: config.anonKey };
 }

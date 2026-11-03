@@ -14,54 +14,43 @@
  * would turn a cosmetic outage into a data one.
  */
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { REVISION_EVENT, serverConfig, topicFor, type RevisionNotice } from "./config";
+import { publicConfig, REVISION_EVENT, secretApiKey, topicFor, type RevisionNotice } from "./config";
+
+/** How long a publish may take before it is given up as lost. */
+const PUBLISH_TIMEOUT_MS = 5_000;
 
 /**
- * One client for the process, made on first use.
+ * Announce a committed revision. Resolves to whether Realtime accepted it, so
+ * a caller that wants to log the miss can; no caller should fail because of it.
  *
- * Signed with the service-role key, which is why this module must never be
- * imported from anything that runs in a browser. The key authorizes the
- * publish; it is never handed out.
- */
-let client: SupabaseClient | null = null;
-let clientKey = "";
-
-function serverClient(): SupabaseClient | null {
-  const config = serverConfig();
-  if (!config) return null;
-  const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
-  if (!serviceKey) return null;
-  const key = `${config.url}:${serviceKey.length}`;
-  if (!client || clientKey !== key) {
-    client = createClient(config.url, serviceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-    clientKey = key;
-  }
-  return client;
-}
-
-/**
- * Announce a committed revision. Resolves to whether it was sent, so a caller
- * that wants to log the miss can; no caller should fail because of it.
+ * Realtime's REST broadcast endpoint, called directly rather than through a
+ * supabase-js channel. A channel that has not joined falls back to REST by
+ * itself, but answers a failure with the string "error" instead of rejecting
+ * (so a lost notice used to read as sent), and it sends the API key as a
+ * Bearer token too, which a secret key (`sb_secret_...`) is not meant to be.
+ * Here the key goes in `apikey` alone - the gateway turns it into the
+ * service role, which RLS does not apply to - and only a 202 counts.
+ *
+ * The secret key authorizes the publish and is never handed out, which is why
+ * this module must never be imported from anything that runs in a browser.
  */
 export async function publishRevision(notice: RevisionNotice): Promise<boolean> {
-  const supabase = serverClient();
-  if (!supabase) return false;
+  const config = publicConfig();
+  const key = secretApiKey();
+  if (!config || !key) return false;
   try {
-    const channel = supabase.channel(topicFor(notice.projectId), { config: { private: true } });
-    await channel.send({ type: "broadcast", event: REVISION_EVENT, payload: notice });
-    await supabase.removeChannel(channel);
-    return true;
+    const response = await fetch(`${config.url.replace(/\/+$/, "")}/realtime/v1/api/broadcast`, {
+      method: "POST",
+      headers: { apikey: key, "content-type": "application/json" },
+      body: JSON.stringify({
+        messages: [{ topic: topicFor(notice.projectId), event: REVISION_EVENT, payload: notice, private: true }],
+      }),
+      signal: AbortSignal.timeout(PUBLISH_TIMEOUT_MS),
+    });
+    await response.body?.cancel().catch(() => undefined);
+    return response.status === 202;
   } catch {
     // See the header: a lost notification is closed by the next one.
     return false;
   }
-}
-
-/** Exported for tests, which need each case to start from nothing. */
-export function resetRealtimeClient() {
-  client = null;
-  clientKey = "";
 }

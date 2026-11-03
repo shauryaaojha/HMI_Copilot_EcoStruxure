@@ -9,10 +9,11 @@
  * on the keys (docs/PLAN_FULL_ARCHITECTURE.md §6, phase 2).
  */
 
-import { afterEach, describe, expect, it } from "vitest";
-import { decodeJwt, jwtVerify } from "jose";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { decodeJwt, decodeProtectedHeader, exportJWK, generateKeyPair, jwtVerify, type JWK } from "jose";
 import {
   REVISION_EVENT,
+  privateJwk,
   publicConfig,
   realtimeEnabled,
   serverConfig,
@@ -20,18 +21,31 @@ import {
   type RevisionNotice,
 } from "@/lib/realtime/config";
 import { TOKEN_TTL_SECONDS, mintRealtimeToken } from "@/lib/realtime/token";
-import { publishRevision, resetRealtimeClient } from "@/lib/realtime/publish";
+import { publishRevision } from "@/lib/realtime/publish";
 import { catchUpFrom } from "@/lib/collab/realtime";
 
 const KEYS = [
   "NEXT_PUBLIC_SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  "SUPABASE_JWT_PRIVATE_KEY",
   "SUPABASE_JWT_SECRET",
+  "SUPABASE_SECRET_KEY",
   "SUPABASE_SERVICE_ROLE_KEY",
 ] as const;
 
 /** A secret for signing in the test only; nothing here reaches a real project. */
 const TEST_SECRET = "test-jwt-secret-not-a-real-one-0123456789";
+
+/** An ES256 key made for this run, the shape of the one imported into Supabase. */
+let privateKeyJson = "";
+let publicKey: CryptoKey;
+const KID = "3f2504e0-4f89-41d3-9a0c-0305e82c3301";
+beforeAll(async () => {
+  const pair = await generateKeyPair("ES256", { extractable: true });
+  publicKey = pair.publicKey as CryptoKey;
+  privateKeyJson = JSON.stringify({ ...(await exportJWK(pair.privateKey)), kid: KID, alg: "ES256" } satisfies JWK);
+});
 
 function withKeys(values: Partial<Record<(typeof KEYS)[number], string>>) {
   for (const key of KEYS) delete process.env[key];
@@ -40,7 +54,7 @@ function withKeys(values: Partial<Record<(typeof KEYS)[number], string>>) {
 
 afterEach(() => {
   withKeys({});
-  resetRealtimeClient();
+  vi.unstubAllGlobals();
 });
 
 describe("the flag", () => {
@@ -65,10 +79,72 @@ describe("the flag", () => {
     expect(realtimeEnabled()).toBe(false);
   });
 
-  it("needs the JWT secret before the server will mint anything", () => {
+  it("needs a signing key before the server will mint anything", () => {
     withKeys({ NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co", NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon" });
     expect(publicConfig()).not.toBeNull();
     expect(serverConfig()).toBeNull();
+  });
+
+  it("takes the publishable key, and the legacy anon key only when there is none", () => {
+    withKeys({ NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co", NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_x" });
+    expect(publicConfig()?.anonKey).toBe("sb_publishable_x");
+    withKeys({
+      NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_x",
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon",
+    });
+    expect(publicConfig()?.anonKey).toBe("sb_publishable_x");
+  });
+
+  it("prefers the imported private key to the legacy secret", () => {
+    withKeys({
+      NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_x",
+      SUPABASE_JWT_PRIVATE_KEY: privateKeyJson,
+      SUPABASE_JWT_SECRET: TEST_SECRET,
+    });
+    expect(serverConfig()?.signing.alg).toBe("ES256");
+  });
+
+  it("treats a private key that is not an ES256 private JWK with a kid as absent", () => {
+    const jwk = JSON.parse(privateKeyJson);
+    expect(privateJwk(privateKeyJson)?.kid).toBe(KID);
+    expect(privateJwk("not json")).toBeNull();
+    expect(privateJwk(JSON.stringify({ ...jwk, kid: undefined }))).toBeNull();
+    expect(privateJwk(JSON.stringify({ ...jwk, d: undefined }))).toBeNull();
+    expect(privateJwk(JSON.stringify({ ...jwk, crv: "P-384" }))).toBeNull();
+    withKeys({ NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co", NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon", SUPABASE_JWT_PRIVATE_KEY: "{" });
+    expect(serverConfig()).toBeNull();
+  });
+});
+
+describe("a token signed with the imported key", () => {
+  const configured = () =>
+    withKeys({
+      NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_x",
+      SUPABASE_JWT_PRIVATE_KEY: privateKeyJson,
+    });
+
+  it("is ES256 and names the key's kid, which is how Supabase finds the public half", async () => {
+    configured();
+    const minted = await mintRealtimeToken("u1", "p1");
+    expect(decodeProtectedHeader(minted!.token)).toMatchObject({ alg: "ES256", kid: KID, typ: "JWT" });
+  });
+
+  it("verifies against the public key, with the claims the policy reads", async () => {
+    configured();
+    const minted = await mintRealtimeToken("u1", "p1");
+    const { payload } = await jwtVerify(minted!.token, publicKey, { audience: "authenticated", algorithms: ["ES256"] });
+    expect(payload).toMatchObject({ role: "authenticated", project_topic: "project:p1", sub: "u1" });
+    expect((payload.exp ?? 0) - (payload.iat ?? 0)).toBe(TOKEN_TTL_SECONDS);
+  });
+
+  it("never carries the private key, and hands the browser the publishable key", async () => {
+    configured();
+    const minted = await mintRealtimeToken("u1", "p1");
+    expect(JSON.stringify(minted)).not.toContain(JSON.parse(privateKeyJson).d);
+    expect(minted!.anonKey).toBe("sb_publishable_x");
   });
 });
 
@@ -142,12 +218,51 @@ describe("a revision broadcast", () => {
     await expect(publishRevision({ projectId: "p1", rev: 3, author: "u1" })).resolves.toBe(false);
   });
 
-  it("needs the service-role key, not just the public ones", async () => {
+  it("needs the secret key, not just the public ones", async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
     withKeys({
       NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
       NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon",
       SUPABASE_JWT_SECRET: TEST_SECRET,
     });
+    await expect(publishRevision({ projectId: "p1", rev: 3, author: "u1" })).resolves.toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  const publishing = (status: number | Error) => {
+    const fetch = vi.fn(async () => {
+      if (status instanceof Error) throw status;
+      return new Response(null, { status });
+    });
+    vi.stubGlobal("fetch", fetch);
+    withKeys({
+      NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co/",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_x",
+      SUPABASE_SECRET_KEY: "sb_secret_x",
+      SUPABASE_SERVICE_ROLE_KEY: "legacy-service-role",
+    });
+    return fetch as unknown as { mock: { calls: [string, RequestInit][] } };
+  };
+
+  it("goes to the REST broadcast endpoint with the secret key in apikey and nowhere else", async () => {
+    const fetch = publishing(202);
+    await expect(publishRevision({ projectId: "p1", rev: 3, author: "u1" })).resolves.toBe(true);
+    const [url, init] = fetch.mock.calls[0];
+    expect(url).toBe("https://example.supabase.co/realtime/v1/api/broadcast");
+    const headers = init.headers as Record<string, string>;
+    // The secret key, not the legacy one, and never as a Bearer token.
+    expect(headers.apikey).toBe("sb_secret_x");
+    expect(Object.keys(headers).map((h) => h.toLowerCase())).not.toContain("authorization");
+    expect(JSON.parse(String(init.body))).toEqual({
+      messages: [{ topic: "project:p1", event: REVISION_EVENT, payload: { projectId: "p1", rev: 3, author: "u1" }, private: true }],
+    });
+  });
+
+  it("counts only a 202 as sent, so a refused publish is not reported as delivered", async () => {
+    publishing(401);
+    await expect(publishRevision({ projectId: "p1", rev: 3, author: "u1" })).resolves.toBe(false);
+    publishing(new TypeError("fetch failed"));
     await expect(publishRevision({ projectId: "p1", rev: 3, author: "u1" })).resolves.toBe(false);
   });
 

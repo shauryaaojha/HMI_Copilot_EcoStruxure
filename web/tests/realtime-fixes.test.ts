@@ -30,7 +30,6 @@ vi.mock("@/lib/realtime/publish", () => ({
     broadcasts.notices.push(notice);
     return broadcasts.sent;
   },
-  resetRealtimeClient: () => undefined,
 }));
 
 const log = vi.hoisted(() => ({ rev: 7, accepted: ["c1"] as string[] }));
@@ -170,7 +169,7 @@ beforeEach(() => {
   Object.assign(supabase, { clients: [], tokens: [], channels: [], tracked: 0, presenceRead: 0, removed: 0, status: "SUBSCRIBED" });
   net = network();
   delete process.env.CRON_SECRET;
-  for (const key of CHECK_ENV) delete process.env[key];
+  for (const key of CHECK_ENV.flat()) delete process.env[key];
 });
 
 afterEach(() => {
@@ -178,7 +177,7 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
   delete process.env.CRON_SECRET;
-  for (const key of CHECK_ENV) delete process.env[key];
+  for (const key of CHECK_ENV.flat()) delete process.env[key];
 });
 
 /* --- 1. presence has one home --------------------------------------- */
@@ -407,17 +406,24 @@ describe("the keep-alive route", () => {
 
 describe("the realtime:check script", () => {
   it("names the variables it is missing instead of throwing", () => {
-    expect(missingEnv({})).toEqual([...CHECK_ENV]);
+    expect(missingEnv({})).toHaveLength(CHECK_ENV.length);
     const complaint = envComplaint(missingEnv({ NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co" }));
-    expect(complaint).toContain("SUPABASE_JWT_SECRET");
+    expect(complaint).toContain("SUPABASE_JWT_PRIVATE_KEY (or the legacy SUPABASE_JWT_SECRET)");
+    expect(complaint).toContain("SUPABASE_SECRET_KEY (or the legacy SUPABASE_SERVICE_ROLE_KEY)");
     expect(complaint).not.toContain("NEXT_PUBLIC_SUPABASE_URL");
     expect(complaint).toContain("docs/REALTIME_SETUP.md");
   });
 
+  it("is satisfied by either the current name or the legacy one", () => {
+    const current = Object.fromEntries(CHECK_ENV.map(([name]) => [name, "set"]));
+    const legacy = Object.fromEntries(CHECK_ENV.map((names) => [names[names.length - 1], "set"]));
+    expect(missingEnv(current)).toEqual([]);
+    expect(missingEnv(legacy)).toEqual([]);
+  });
+
   it("counts a blank variable as missing, the way the app does", () => {
-    expect(missingEnv({ ...Object.fromEntries(CHECK_ENV.map((k) => [k, "set"])), SUPABASE_JWT_SECRET: "   " })).toEqual([
-      "SUPABASE_JWT_SECRET",
-    ]);
+    const current = Object.fromEntries(CHECK_ENV.map(([name]) => [name, "set"]));
+    expect(missingEnv({ ...current, SUPABASE_JWT_PRIVATE_KEY: "   " })).toEqual(["SUPABASE_JWT_PRIVATE_KEY (or the legacy SUPABASE_JWT_SECRET)"]);
   });
 
   it("exits non-zero unless all three checks passed", () => {
@@ -446,7 +452,7 @@ describe("the realtime:check script", () => {
   });
 
   it("builds an expired token that differs from a minted one only in its expiry", async () => {
-    const token = await expiredToken("a-test-secret-long-enough-to-sign-with", "u1", "p1");
+    const token = await expiredToken({ alg: "HS256", secret: "a-test-secret-long-enough-to-sign-with" }, "u1", "p1");
     const claims = decodeJwt(token);
     expect(claims.project_topic).toBe("project:p1");
     expect(claims.role).toBe("authenticated");

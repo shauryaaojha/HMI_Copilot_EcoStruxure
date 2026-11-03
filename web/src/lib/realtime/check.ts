@@ -15,20 +15,28 @@
  * rather than discovered at 2 a.m. on the one machine that has the keys.
  */
 
-import { SignJWT } from "jose";
-import { topicFor } from "./config";
+import { topicFor, type RealtimeSigning } from "./config";
+import { signRealtimeJwt } from "./token";
 
-/** Every variable `scripts/realtime-check.mts` needs before it can start. */
+/**
+ * Every value `scripts/realtime-check.mts` needs before it can start. Each
+ * row is one value: its current name first, then the legacy name the app
+ * still accepts for it (Supabase retires the legacy keys at the end of 2026).
+ */
 export const CHECK_ENV = [
-  "NEXT_PUBLIC_SUPABASE_URL",
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-  "SUPABASE_JWT_SECRET",
-  "SUPABASE_SERVICE_ROLE_KEY",
+  ["NEXT_PUBLIC_SUPABASE_URL"],
+  ["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "NEXT_PUBLIC_SUPABASE_ANON_KEY"],
+  ["SUPABASE_JWT_PRIVATE_KEY", "SUPABASE_JWT_SECRET"],
+  ["SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY"],
 ] as const;
 
-/** The names that are absent or blank, in the order they are documented. */
+/**
+ * The values with no name set (absent or blank), in the order they are
+ * documented, each named by its current name and its legacy one.
+ */
 export function missingEnv(env: Record<string, string | undefined> = process.env): string[] {
-  return CHECK_ENV.filter((name) => ((env[name] ?? "").trim().length === 0));
+  const set = (name: string) => (env[name] ?? "").trim().length > 0;
+  return CHECK_ENV.filter((names) => !names.some(set)).map(([current, legacy]) => (legacy ? `${current} (or the legacy ${legacy})` : current));
 }
 
 /**
@@ -129,16 +137,10 @@ export function joinOutcome(channel: Joinable, timeoutMs: number, timers = globa
  *
  * The third check needs one, and `mintRealtimeToken` cannot make it: it always
  * signs a live token, which is the only thing the app should ever be able to
- * do. Everything else matches a minted token claim for claim, so a refusal can
- * only be about the expiry.
+ * do. Everything else matches a minted token claim for claim, and it is signed
+ * by the same key, so a refusal can only be about the expiry.
  */
-export async function expiredToken(secret: string, userId: string, projectId: string): Promise<string> {
+export async function expiredToken(signing: RealtimeSigning, userId: string, projectId: string): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
-  return new SignJWT({ role: "authenticated", project_topic: topicFor(projectId) })
-    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
-    .setSubject(userId)
-    .setAudience("authenticated")
-    .setIssuedAt(now - 7200)
-    .setExpirationTime(now - 3600)
-    .sign(new TextEncoder().encode(secret));
+  return signRealtimeJwt(signing, { project_topic: topicFor(projectId) }, userId, { iat: now - 7200, exp: now - 3600 });
 }

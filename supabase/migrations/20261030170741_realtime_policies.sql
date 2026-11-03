@@ -24,14 +24,17 @@
 --
 -- SELECT is receiving a broadcast; INSERT is sending one. Both are needed: a
 -- client that may only receive cannot broadcast its own notices, and the
--- server publishes with the service-role key, which is not subject to RLS.
+-- server publishes with the secret key (the service role), which is not
+-- subject to RLS.
 --
 -- Safe to run twice: each policy is dropped if it is there before it is
 -- created, so re-running this file leaves exactly the two policies below.
-
--- Realtime ships with RLS on realtime.messages, but a project that has been
--- through a restore may not; without it the policies below are never consulted.
-alter table if exists realtime.messages enable row level security;
+--
+-- No `alter table ... enable row level security`: realtime.messages belongs
+-- to Supabase's realtime admin role, so on a hosted project that statement
+-- fails with "must be owner of table messages" and takes the whole migration
+-- with it (seen applying this on 2026-11-03). RLS is on there by default;
+-- docs/REALTIME_SETUP.md has the query that confirms it.
 
 drop policy if exists "a token may only join the topic it names" on realtime.messages;
 create policy "a token may only join the topic it names"

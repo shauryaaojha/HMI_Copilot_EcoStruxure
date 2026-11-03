@@ -25,9 +25,9 @@ read in a route handler, or in a library that only route handlers import.
 | Variable | Read by | Reaches the browser? | What it is for |
 |---|---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | `web/src/lib/realtime/config.ts` | **yes, by design** | the flag: Realtime stays off until this and the next are both set |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `web/src/lib/realtime/config.ts` | **yes, by design** | opening the WebSocket |
-| `SUPABASE_JWT_SECRET` | `web/src/lib/realtime/token.ts` | no | signing each short-lived, one-project token. **Read §5 if the project has no legacy JWT secret** |
-| `SUPABASE_SERVICE_ROLE_KEY` | `web/src/lib/realtime/publish.ts` | no | the server's revision broadcast |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `web/src/lib/realtime/config.ts` | **yes, by design** | opening the WebSocket. The `sb_publishable_...` key. The legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY` is still read when this is unset |
+| `SUPABASE_JWT_PRIVATE_KEY` | `web/src/lib/realtime/token.ts` | no | signing each short-lived, one-project token: an ES256 private JWK, one line of JSON, imported into Supabase as a signing key (§5). The legacy `SUPABASE_JWT_SECRET` (HS256) is still read when this is unset |
+| `SUPABASE_SECRET_KEY` | `web/src/lib/realtime/publish.ts` | no | the server's revision broadcast. The `sb_secret_...` key. The legacy `SUPABASE_SERVICE_ROLE_KEY` is still read when this is unset |
 | `CRON_SECRET` | `web/src/app/api/realtime/keepalive/route.ts` | no | the keep-alive cron. **Unset means the keep-alive refuses everything, the cron included**: it fails closed, because an open route that spends the project's message quota is a route a stranger can spend |
 
 With only the public pair set, browsers try Realtime while the server can
@@ -76,19 +76,21 @@ the connector names them, and this table takes one row per name when it lands.
 
 1. **Create the Supabase project.** Any region. Nothing needs to be created
    inside it: no tables, no buckets, no auth providers.
-2. **Copy the two public values** from *Project Settings → Data API*: the
-   project URL and the `anon` (publishable) key. They become
-   `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-3. **Copy the two secrets.** The `service_role` key is on the same page. The
-   JWT secret is under *Project Settings → JWT Keys*
-   (`https://supabase.com/dashboard/project/_/settings/jwt`). **Read §5 first
-   if that page shows signing keys and no legacy secret** — the common case for
-   a project created after mid-2025, and it changes what goes into
-   `SUPABASE_JWT_SECRET`.
+2. **Copy the API keys** from *Project Settings → API Keys*, the *Publishable
+   and secret API keys* tab: the publishable key becomes
+   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, a secret key becomes
+   `SUPABASE_SECRET_KEY`, and the project URL `NEXT_PUBLIC_SUPABASE_URL`. Use
+   these rather than the legacy `anon` and `service_role` keys, which Supabase
+   retires at the end of 2026.
+3. **Make and import a signing key** (§5). It becomes
+   `SUPABASE_JWT_PRIVATE_KEY`.
 4. **Apply the policies.** Run
    `supabase/migrations/20261030170741_realtime_policies.sql` from this
-   repository in the SQL editor (or `supabase db push` with the CLI linked).
-   It is idempotent: running it twice leaves the same two policies.
+   repository in the SQL editor (or `supabase db push` with the CLI linked, or
+   the Supabase MCP's `apply_migration`). It is idempotent: running it twice
+   leaves the same two policies. It does not switch RLS on, because on a hosted
+   project the table is not ours to alter; confirm it is on with
+   `select relrowsecurity from pg_class where oid = 'realtime.messages'::regclass;`.
 5. **Invent a `CRON_SECRET`** — a random string of at least 16 characters — and
    set it in Vercel. Vercel then sends it as `Authorization: Bearer <value>` on
    every cron invocation, and the keep-alive accepts nothing else.
@@ -108,7 +110,10 @@ the connector names them, and this table takes one row per name when it lands.
      broadcast;
    - a token minted for a *different* project is refused on this project's
      topic — the case the mint route cannot refuse, so only the policy can;
-   - an expired token is refused.
+   - an expired token is refused;
+   - a broadcast sent with the publishable key alone does not reach a member.
+     The REST endpoint answers 202 to it whether or not it is delivered, so
+     only a listener can tell.
 
    With the variables unset it names the ones it is missing and stops.
 8. **Then two browsers.** Two signed-in members on one project: an edit in one
@@ -171,71 +176,52 @@ Two things to know:
 
 ---
 
-## 5. If the project has JWT signing keys and no legacy JWT secret
+## 5. The signing key: ours, imported into Supabase
 
-**Read this before step 3 if *Project Settings → JWT Keys* does not show a
-legacy JWT secret.**
+The server mints its own Realtime tokens, because the authorization is a claim
+we put there (§3). Supabase's *JWT signing keys* cannot be read back out of the
+dashboard - its own docs: "Once you've moved to using the JWT signing keys
+feature extracting of the private key or shared secret from Supabase is not
+possible" - so the server signs with a key of its own, and Supabase is told to
+trust it.
 
-`web/src/lib/realtime/token.ts` signs HS256 with a shared secret
-(`SUPABASE_JWT_SECRET`). That works where the project verifies against a shared
-secret — the legacy system, and what every Supabase project used until 2025.
-Supabase has since moved to *JWT signing keys*: the project signs with an
-asymmetric key (ES256 on P-256, or RS256) and publishes only the public half as
-a JWKS at `https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json`.
-New projects have been asymmetric by default since mid-2025, and older ones are
-being migrated.
+1. **Make the key.** An ES256 (P-256) private JWK with a `kid`:
 
-The part that matters here: **with a managed asymmetric key, Supabase keeps the
-private half and will not hand it over.** Anyone can verify its tokens; nobody
-else can mint one. Our design mints its own, because the authorization is a
-claim we put there (§3). So something has to give, and these are the cases.
+   ```
+   node --input-type=module -e 'import{generateKeyPair,exportJWK}from"jose";import{randomUUID}from"node:crypto";const{privateKey}=await generateKeyPair("ES256",{extractable:true});console.log(JSON.stringify({...await exportJWK(privateKey),kid:randomUUID(),alg:"ES256"}))'
+   ```
 
-**At `.../settings/jwt`, which of these is it?**
+   (run in `web/`, where `jose` is installed; `supabase gen signing-key
+   --algorithm ES256` does the same). The output is the private key: it goes
+   to Supabase and to the deployment's environment, and nowhere else.
+2. **Import it.** *Project Settings → JWT Keys*
+   (`https://supabase.com/dashboard/project/_/settings/jwt`) → *Create standby
+   key* → import an existing private key → paste the JSON.
+3. **Rotate to it.** *Rotate keys*. A standby key is not yet trusted: only the
+   current key, and previously used keys until they are revoked, verify. The
+   rotation also makes it the key Supabase Auth signs with, which changes
+   nothing here, because this app does not use Supabase Auth. Key changes are
+   throttled for about five minutes.
+4. **Set `SUPABASE_JWT_PRIVATE_KEY`** to the same one line of JSON.
 
-1. **A legacy JWT secret is still shown.** Copy it into `SUPABASE_JWT_SECRET`
-   and nothing else changes. Supabase recommends migrating away from it, so
-   treat it as borrowed time rather than a decision.
-2. **A *Migrate JWT secret* button, and no secret in sight.** Migrating imports
-   the legacy secret into the new system and creates an asymmetric key in
-   *standby*; it is safe to stop there, because until *Rotate keys* is pressed
-   the legacy secret is still the key in use. After a rotation, unexpired old
-   tokens keep being accepted and new ones are signed with the new key — ours
-   would still be signed with the old secret, and would stop being accepted the
-   moment the old key is **revoked**. So: do not revoke the legacy key while
-   `token.ts` signs HS256.
-3. **Asymmetric keys only, no shared secret anywhere.** Two ways out, both
-   small:
+`token.ts` signs ES256 with the key's `kid` in the header, which is how
+Supabase finds the public half. A `kid` that does not match the imported key
+is refused at the join, which is exactly what `npm run realtime:check` reports
+before step 3 is done.
 
-   - **Stay on HS256.** That page can create or import a signing key that *is*
-     a shared secret — Supabase's own wording: "If you wish to make your own
-     JWTs or have access to the private key or shared secret used by Supabase,
-     you can create a new JWT signing key by importing a private key or setting
-     a shared secret yourself." Set one, rotate to it, put it in
-     `SUPABASE_JWT_SECRET`, and `token.ts` is untouched. Supabase advises
-     against shared secrets in general; weigh that against what this one signs
-     — a 15-minute token naming one channel, for an app with no Supabase users
-     to impersonate.
-   - **Sign asymmetrically.** Generate an EC P-256 (or RSA-2048) key pair
-     yourself, import the private half on that page under a `kid` you choose,
-     and change `token.ts` to use it: `importPKCS8` from `jose` in place of
-     `TextEncoder`, `alg: "ES256"` (or `"RS256"`) and the same `kid` in
-     `setProtectedHeader`, and the PEM in a new server-only variable —
-     `SUPABASE_JWT_PRIVATE_KEY`, with `SUPABASE_JWT_SECRET` retired. The `kid`
-     in the header must match the one it was imported under, or verification
-     never finds the key. The claims do not change, so §3 does not change.
+**Legacy projects.** With no `SUPABASE_JWT_PRIVATE_KEY` set, `token.ts` signs
+HS256 with `SUPABASE_JWT_SECRET`, which works for as long as the project still
+trusts its legacy JWT secret. Supabase is retiring that system, so a new setup
+should not start there.
 
-   Nothing else in the app is affected: a browser only ever receives the minted
-   token, and `/api/projects/[id]/realtime-token` answers the same shape.
+**Rotating ours.** Make a new key, import it as standby, rotate, set the new
+JSON and redeploy, then revoke the old key once 15 minutes (a token's life)
+have passed.
 
-Either way `npm run realtime:check` is the arbiter: it mints with whatever
-`token.ts` does and asks Supabase to accept it. A join refused while the claims
-look right is almost always the signing key.
-
-Sources, checked 2026-10-30:
+Sources, checked 2026-11-03:
 <https://supabase.com/docs/guides/auth/signing-keys>,
-<https://supabase.com/docs/guides/auth/jwts>,
-<https://supabase.com/docs/guides/realtime/authorization>,
-<https://github.com/orgs/supabase/discussions/29289>.
+<https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys>,
+<https://supabase.com/docs/guides/realtime/authorization>.
 
 ---
 

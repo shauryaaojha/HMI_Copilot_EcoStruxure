@@ -12,19 +12,49 @@
  * suite pass on a machine that has never seen a Supabase project.
  */
 
-/** The browser needs these two; both are public by design. */
+/**
+ * The browser needs these two; both are public by design.
+ *
+ * `anonKey` is the project's publishable key (`sb_publishable_...`), or the
+ * legacy JWT `anon` key on a project that still uses it. Supabase retires the
+ * legacy keys at the end of 2026, so the publishable key is read first.
+ */
 export interface PublicRealtimeConfig {
   url: string;
   anonKey: string;
 }
 
 /**
- * The service-role key and the JWT secret are read here and never leave the
+ * How the server signs a Realtime token.
+ *
+ * Supabase's JWT signing keys cannot be read back out of the dashboard, so a
+ * server that mints its own tokens imports a private key of its own as a
+ * signing key (docs/REALTIME_SETUP.md §3): `SUPABASE_JWT_PRIVATE_KEY`, an
+ * ES256 private JWK whose `kid` Supabase verifies against. The legacy shared
+ * `SUPABASE_JWT_SECRET` (HS256) still works on projects that have it, and is
+ * only read when no private key is set.
+ */
+export type RealtimeSigning =
+  | { alg: "ES256"; jwk: EcPrivateJwk }
+  | { alg: "HS256"; secret: string };
+
+/** The fields of an ES256 private JWK that signing needs. */
+export interface EcPrivateJwk {
+  kty: "EC";
+  crv: "P-256";
+  kid: string;
+  x: string;
+  y: string;
+  d: string;
+}
+
+/**
+ * The secret key and the signing key are read here and never leave the
  * server. A browser gets a short-lived token minted from them, scoped to one
- * project, and never the secret itself.
+ * project, and never the key itself.
  */
 export interface ServerRealtimeConfig extends PublicRealtimeConfig {
-  jwtSecret: string;
+  signing: RealtimeSigning;
 }
 
 const trim = (value: string | undefined) => {
@@ -33,9 +63,45 @@ const trim = (value: string | undefined) => {
 };
 
 export function publicConfig(): PublicRealtimeConfig | null {
+  // Both names spelled out in full: Next inlines a NEXT_PUBLIC_ variable into
+  // the browser bundle only where it is read literally.
   const url = trim(process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const anonKey = trim(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const anonKey = trim(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) ?? trim(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   return url && anonKey ? { url, anonKey } : null;
+}
+
+/**
+ * The private JWK from `SUPABASE_JWT_PRIVATE_KEY`, or null when it is absent
+ * or is not an ES256 private key with a `kid`. A malformed value is treated as
+ * absent rather than thrown, so a bad deployment variable turns Realtime off
+ * (the session falls back to the event stream) instead of failing requests.
+ */
+export function privateJwk(raw = process.env.SUPABASE_JWT_PRIVATE_KEY): EcPrivateJwk | null {
+  const text = trim(raw);
+  if (!text) return null;
+  try {
+    const jwk = JSON.parse(text) as Partial<EcPrivateJwk>;
+    const ok = jwk.kty === "EC" && jwk.crv === "P-256" && [jwk.kid, jwk.x, jwk.y, jwk.d].every((v) => typeof v === "string" && v.length > 0);
+    return ok ? (jwk as EcPrivateJwk) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The configured way to sign, preferring the imported private key. */
+export function signingConfig(): RealtimeSigning | null {
+  const jwk = privateJwk();
+  if (jwk) return { alg: "ES256", jwk };
+  const secret = trim(process.env.SUPABASE_JWT_SECRET);
+  return secret ? { alg: "HS256", secret } : null;
+}
+
+/**
+ * The server's API key for publishing: the secret key (`sb_secret_...`), or
+ * the legacy `service_role` key on a project that still uses it.
+ */
+export function secretApiKey(): string | null {
+  return trim(process.env.SUPABASE_SECRET_KEY) ?? trim(process.env.SUPABASE_SERVICE_ROLE_KEY) ?? null;
 }
 
 /**
@@ -46,8 +112,8 @@ export function publicConfig(): PublicRealtimeConfig | null {
  */
 export function serverConfig(): ServerRealtimeConfig | null {
   const base = publicConfig();
-  const jwtSecret = trim(process.env.SUPABASE_JWT_SECRET);
-  return base && jwtSecret ? { ...base, jwtSecret } : null;
+  const signing = signingConfig();
+  return base && signing ? { ...base, signing } : null;
 }
 
 /** True when a browser should try Realtime instead of the event stream. */
