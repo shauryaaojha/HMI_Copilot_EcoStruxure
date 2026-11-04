@@ -1,4 +1,5 @@
 /**
+ * S4-08 (docs/audit/BUGS.md), moved from web/scripts/audit/ with the fix.
  * S4: restoring a version (History > Restore, or "revert to here" in the chat) brings
  * objects back without their provenance, lock, group or bind intent.
  *

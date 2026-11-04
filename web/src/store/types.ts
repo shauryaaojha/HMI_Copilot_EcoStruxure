@@ -6,6 +6,7 @@
 
 import type { Alarm, Part, Screen, Variable } from "@/lib/ote/schema";
 import type { Scale } from "@/lib/ote/converters";
+import type { ScreenProgram } from "@/lib/program/program";
 
 export interface Binding {
   tag: string;
@@ -122,6 +123,10 @@ export interface Version {
   variables: Variable[];
   alarms: Alarm[];
   bindings: Binding[];
+  /** Locks, groups, regeneration keys and bind intents, composites and programs (S4-08). Absent in older versions. */
+  objectMeta?: Record<string, ObjectMeta>;
+  composites?: Record<string, CompositeInstance>;
+  programs?: Record<string, ScreenProgram>;
 }
 
 export interface Finding {

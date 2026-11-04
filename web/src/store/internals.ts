@@ -48,6 +48,23 @@ export function restoreSlice(s: Draft, from: EditSnapshot) {
   if (from.programs) s.programs = from.programs;
 }
 
+/** Keep the present as a named version, newest first; twenty are kept. */
+export function keepVersion(s: Draft, at: number, description: string) {
+  s.versions.unshift({
+    at,
+    description,
+    author: "You",
+    screens: current(s.screens),
+    variables: current(s.variables),
+    alarms: current(s.alarms),
+    bindings: current(s.bindings),
+    objectMeta: s.objectMeta && current(s.objectMeta),
+    composites: s.composites && current(s.composites),
+    programs: s.programs && current(s.programs),
+  });
+  if (s.versions.length > 20) s.versions.length = 20;
+}
+
 /** Record the pre-edit state so undo has somewhere to go. Clears redo. */
 export function remember(s: Draft, label: string) {
   s.past.push(editable_slice(s, label));

@@ -11,6 +11,7 @@ import type { PipelineStep, StepState } from "@/types/events";
 import type { ProjectState, SliceOf } from "../state";
 import {
   ensureHandles,
+  keepVersion,
   remember,
 } from "../internals";
 
@@ -37,16 +38,7 @@ export const createCollabSlice: SliceOf<CollabSlice> = (set, get) => ({
         // it throws from inside whatever applied the event, which is a long way
         // from where it reads. current() returns a detached plain snapshot, so
         // the version cannot follow later edits either.
-        s.versions.unshift({
-          at,
-          description,
-          author: "You",
-          screens: current(s.screens),
-          variables: current(s.variables),
-          alarms: current(s.alarms),
-          bindings: current(s.bindings),
-        });
-        if (s.versions.length > 20) s.versions.length = 20;
+        keepVersion(s, at, description);
       });
       return at;
     },
@@ -60,15 +52,15 @@ export const createCollabSlice: SliceOf<CollabSlice> = (set, get) => ({
         // and before the checkpoint below can push the oldest version out of
         // the twenty kept (S4-02).
         const version = current(found);
-        if (checkpoint) {
-          s.versions.unshift({ at: Date.now(), description: checkpoint, author: "You", screens: current(s.screens), variables: current(s.variables), alarms: current(s.alarms), bindings: current(s.bindings) });
-          if (s.versions.length > 20) s.versions.length = 20;
-        }
+        if (checkpoint) keepVersion(s, Date.now(), checkpoint);
         remember(s, "Restore version");
         s.screens = version.screens;
         s.variables = version.variables;
         s.alarms = version.alarms;
         s.bindings = version.bindings;
+        if (version.objectMeta) s.objectMeta = version.objectMeta;
+        if (version.composites) s.composites = version.composites;
+        if (version.programs) s.programs = version.programs;
         s.activeScreenId = s.screens[0]?.UniqueId;
         s.selectedIds = [];
         s.findings = [];
