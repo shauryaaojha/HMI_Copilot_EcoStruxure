@@ -39,6 +39,11 @@ export function packageInput(state: ReturnType<typeof useProject.getState>) {
   return packageInputOf(state);
 }
 
+/** The Variables.csv beside the .eote: the variables the .eote gets, so none while the tags are still placeholders (S4-06). */
+export function exportedVariablesCsv(state: ReturnType<typeof useProject.getState>) {
+  return variablesCsv(packageInput(state).variables);
+}
+
 const NEWLINE = String.fromCharCode(10);
 
 const safe = (name: string) => name.replace(/[^A-Za-z0-9._-]+/g, "_") || "project";
@@ -127,8 +132,7 @@ export function useExport() {
       const made: Artifact[] = [];
 
       if (options.csv) {
-        // The variables the .eote gets: none while the tags are still placeholders (S4-06).
-        const csv = new Blob([variablesCsv(packageInput(s).variables)], {
+        const csv = new Blob([exportedVariablesCsv(s)], {
           type: "text/csv;charset=utf-8",
         });
         made.push({

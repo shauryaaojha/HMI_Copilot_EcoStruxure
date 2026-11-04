@@ -3,11 +3,10 @@
  * screens-first project's Variables.csv listed every placeholder tag, while
  * the .eote beside it carries none until the real tags arrive. The export
  * now writes the CSV from packageInput(), the same input the .eote is built
- * from (useExport.ts).
+ * from (exportedVariablesCsv in useExport.ts).
  */
 import { describe, expect, it } from "vitest";
-import { variablesCsv } from "@/components/export/variablesCsv";
-import { packageInput } from "@/components/export/useExport";
+import { exportedVariablesCsv } from "@/components/export/useExport";
 
 const doc = (pending: boolean) => ({
   name: "Brief",
@@ -22,9 +21,9 @@ const rows = (csv: string) => csv.trim().split(/\r\n/).length - 1;
 
 describe("a screens-first project's export", () => {
   it("writes no placeholder tags into the CSV, as into the .eote", () => {
-    expect(rows(variablesCsv(packageInput(doc(true) as never).variables))).toBe(0);
+    expect(rows(exportedVariablesCsv(doc(true) as never))).toBe(0);
   });
   it("writes the real tags once they arrive", () => {
-    expect(rows(variablesCsv(packageInput(doc(false) as never).variables))).toBe(1);
+    expect(rows(exportedVariablesCsv(doc(false) as never))).toBe(1);
   });
 });
