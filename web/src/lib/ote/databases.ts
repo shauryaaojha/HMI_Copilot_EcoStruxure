@@ -137,9 +137,12 @@ export function syncVariables(
     const existing = known[variable.Name];
     if (existing) {
       ids[variable.Name] = existing;
+      // The model carries no initial value, so the row's own is kept. Only a change of
+      // data type resets it, since the old value may not parse as the new type.
+      // SQLite evaluates every SET expression against the row as it was.
       db.run(
-        'UPDATE Variables SET "DataType" = ?, "Comments" = ?, "DeviceAddress" = ?, "InitialValue" = ? WHERE "UniqueId" = ?',
-        [variable.DataType, variable.Comments, variable.DeviceAddress, INITIAL[variable.DataType] ?? "0", existing],
+        'UPDATE Variables SET "DataType" = ?, "Comments" = ?, "DeviceAddress" = ?, "InitialValue" = CASE WHEN "DataType" = ? THEN "InitialValue" ELSE ? END WHERE "UniqueId" = ?',
+        [variable.DataType, variable.Comments, variable.DeviceAddress, variable.DataType, INITIAL[variable.DataType] ?? "0", existing],
       );
       continue;
     }

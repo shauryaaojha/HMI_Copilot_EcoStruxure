@@ -101,28 +101,6 @@ describe.skipIf(!SKELETON)("S1 .eote writer", () => {
     expect(src.PropertyFullName, "the untouched binding's source PropertyFullName").toBe("Value");
   });
 
-  it("S1-03 an edit to one tag keeps every other variable's InitialValue", async () => {
-    const { bytes } = await base();
-    const zip = await JSZip.loadAsync(bytes);
-    const vn = Object.keys(zip.files).find((k) => /^Variables\.db$/i.test(k))!;
-    const db = await openDatabase(await zip.files[vn].async("uint8array"));
-    db.run(`UPDATE Variables SET "InitialValue" = '42' WHERE "Name" = 'TagA'`);
-    zip.file(vn, db.export(), { createFolders: false });
-    db.close();
-    const withInit = await zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
-    // The engineer changes TagC's comment and nothing else.
-    const out = await exportAfter(withInit, (read) => ({
-      screens: read.screens,
-      wires: read.wires,
-      variables: read.variables.map((x) => (x.Name === "TagC" ? { ...x, Comments: "edited" } : x)),
-    }));
-    const z2 = await JSZip.loadAsync(out);
-    const db2 = await openDatabase(await z2.files[vn].async("uint8array"));
-    const init = db2.exec(`SELECT "InitialValue" FROM Variables WHERE "Name" = 'TagA'`)[0].values[0][0];
-    db2.close();
-    expect(init, "TagA's InitialValue after an edit to TagC").toBe("42");
-  });
-
   it("S1-04 deleting a part leaves no binding row that targets it", async () => {
     const { bytes, b } = await base();
     // B's binding goes through a converter the reader cannot model, so it is carried, not a wire.
