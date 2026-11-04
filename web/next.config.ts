@@ -87,6 +87,23 @@ const config: NextConfig = {
     // scripts in QuickJS, whose engine is a .wasm beside its module.
     "/api/agent": ["./skeleton/**/*", WASM, FONT, "./node_modules/@jitl/quickjs-wasmfile-release-sync/dist/*.wasm"],
   },
+
+  // No framework banner, and no page of this app inside another site's frame
+  // or sniffed into another type (docs/audit/BUGS.md S2-08).
+  // shortcut: frame-ancestors only, not a full CSP; a script-src policy needs
+  // nonces for Next's inline scripts and a pass over every page first.
+  poweredByHeader: false,
+  async headers() {
+    return [{
+      source: "/:path*",
+      headers: [
+        { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+        { key: "X-Frame-Options", value: "DENY" },
+        { key: "X-Content-Type-Options", value: "nosniff" },
+        { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      ],
+    }];
+  },
 };
 
 export default config;
