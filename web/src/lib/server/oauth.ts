@@ -568,6 +568,9 @@ async function refreshGrant(form: URLSearchParams, request: Request, storage: Re
   }
   const grant = await storage.connector.grant(found.grantId);
   if (!grant) throw new OauthError("invalid_grant", "That authorization has been revoked");
+  // As for a code: a client that names itself must be the one the token was issued to (S3-05).
+  const clientId = form.get("client_id") ?? "";
+  if (clientId && clientId !== grant.clientId) throw new OauthError("invalid_grant", "That refresh token is not valid");
 
   const asked = form.get("resource");
   if (!resourceIsOurs(request, asked)) throw new OauthError("invalid_target", "This server can only issue tokens for its own MCP endpoint");

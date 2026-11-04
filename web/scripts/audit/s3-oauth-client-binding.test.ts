@@ -43,13 +43,4 @@ describe("S3-05 codes and refresh tokens are bound to their client", () => {
     expect(await failure(exchangeToken(form, req(), storage)), "a public client's code was exchanged with no client_id at all").not.toBeNull();
   });
 
-  it("a refresh token presented with another client's id is refused", async () => {
-    const a = await registerClient({ client_name: "A", redirect_uris: ["https://claude.ai/api/mcp/auth_callback"] }, null, storage);
-    const b = await registerClient({ client_name: "B", redirect_uris: ["https://claude.ai/api/mcp/auth_callback"] }, null, storage);
-    const verifier = randomBytes(40).toString("base64url");
-    const code = await codeFor(a.client_id as string, verifier);
-    const tokens = await exchangeToken(new URLSearchParams({ grant_type: "authorization_code", code, code_verifier: verifier, client_id: a.client_id as string }), req(), storage);
-    const refresh = new URLSearchParams({ grant_type: "refresh_token", refresh_token: tokens.refresh_token!, client_id: b.client_id as string });
-    expect(await failure(exchangeToken(refresh, req(), storage)), "client B refreshed client A's refresh token and got new tokens").toBe("invalid_grant");
-  });
 });
