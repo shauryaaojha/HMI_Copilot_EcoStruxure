@@ -44,8 +44,29 @@ export interface Around {
   panel?: { width: number; height: number };
 }
 
+/**
+ * The screen without the top-level parts that lie wholly outside its canvas.
+ * They draw nothing, and resvg panics on some of them (a clip-path group far
+ * off the canvas, as an AlarmSummary draws), which aborts the whole Node
+ * process (docs/audit/BUGS.md S3-10). Parts placed by a container (a Grid
+ * cell) have no Location of their own and are kept.
+ */
+function onCanvas(screen: Screen, box: { width: number; height: number }): Screen {
+  const root = screen.Children[0] as Screen["Children"][number] & { Children?: unknown[] };
+  if (!Array.isArray(root.Children)) return screen;
+  const inside = (p: unknown) => {
+    const { Location, Width, Height } = p as { Location?: { Left?: number; Top?: number }; Width?: number; Height?: number };
+    const left = Location?.Left, top = Location?.Top;
+    if (typeof left !== "number" || typeof top !== "number" || typeof Width !== "number" || typeof Height !== "number") return true;
+    return left < box.width && top < box.height && left + Width > 0 && top + Height > 0;
+  };
+  const kept = root.Children.filter(inside);
+  return kept.length === root.Children.length ? screen : ({ ...screen, Children: [{ ...root, Children: kept }, ...screen.Children.slice(1)] } as Screen);
+}
+
 export async function screenToSvg(screen: Screen, foreign?: ForeignPart[], around: Around = {}): Promise<string> {
   const box = rootBox(screen.Children[0], around.panel ?? { width: 1024, height: 600 });
+  screen = onCanvas(screen, box);
   const renderToStaticMarkup = await serverRenderer();
   const env = { ...DEFAULT_ENV, contents: contentsById(around.contents ?? []), carried: around.contentForeign };
   const markup = renderToStaticMarkup(createElement(StaticScreen, { screen, foreign, env, panel: around.panel }));

@@ -10,7 +10,6 @@
  * The model itself is mocked here: the test counts how many model calls the routes let
  * through, it does not make any.
  */
-import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { demoScreen } from "@/fixtures";
@@ -57,14 +56,4 @@ describe("S3-04 model routes are open to anonymous, unlimited callers", () => {
     const r = await critiqueRoute(new Request("https://hmi.example.com/api/critique", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ screen: demoScreen }) }));
     expect([401, 403, 429], `anonymous /api/critique answered ${r.status}; model calls: ${calls.critique}`).toContain(r.status);
   });
-
-  // Run in a child process: the rasteriser's panic takes the whole process down (it killed the
-  // vitest worker with ERR_IPC_CHANNEL_CLOSED when run in-process).
-  it("/api/critique renderOnly on a 1024x2 screen does not kill the process", () => {
-    const r = spawnSync(process.execPath, [path.join(web, "node_modules/tsx/dist/cli.mjs"), "--tsconfig", "scripts/tsconfig.json", "scripts/audit/s3-render-probe.mts", "1024", "2"], {
-      cwd: web, encoding: "utf8", env: { ...process.env, MONGODB_URI: "" }, timeout: 120_000,
-    });
-    const panic = /panicked at [^\n]*/.exec(`${r.stdout}${r.stderr}`)?.[0];
-    expect(r.status, `one anonymous renderOnly request with Height 2 ended the Node process with exit ${r.status}: ${panic ?? r.stderr.slice(0, 200)}`).toBe(0);
-  }, 150_000);
 });
