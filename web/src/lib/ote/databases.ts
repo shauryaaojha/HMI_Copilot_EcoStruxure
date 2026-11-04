@@ -31,6 +31,13 @@ const INITIAL: Record<string, string> = {
   STRING: "",
 };
 
+/**
+ * A variable row's Type and Size. A STRING with Size 0 is one OTE refuses to
+ * simulate; the product writes these two values on its own STRING rows
+ * (benched in licensed OTE, 2026-11-05).
+ */
+const shapeOf = (dataType: string) => (dataType === "STRING" ? { Type: 2048, Size: 32 } : { Type: 1, Size: 0 });
+
 /** The product writes uppercase GUIDs into its databases. */
 export const upperGuid = () => crypto.randomUUID().toUpperCase();
 
@@ -79,11 +86,10 @@ export function writeVariables(
       UniqueId: unique,
       Name: variable.Name,
       DataType: variable.DataType,
-      Type: 1,
+      ...shapeOf(variable.DataType),
       IsArray: 0,
       Dimension: null,
       EnableVariableLength: 0,
-      Size: 0,
       InitialValue: INITIAL[variable.DataType] ?? "0",
       InputRange: 0,
       Min: "",
@@ -141,8 +147,8 @@ export function syncVariables(
       // data type resets it, since the old value may not parse as the new type.
       // SQLite evaluates every SET expression against the row as it was.
       db.run(
-        'UPDATE Variables SET "DataType" = ?, "Comments" = ?, "DeviceAddress" = ?, "InitialValue" = CASE WHEN "DataType" = ? THEN "InitialValue" ELSE ? END WHERE "UniqueId" = ?',
-        [variable.DataType, variable.Comments, variable.DeviceAddress, variable.DataType, INITIAL[variable.DataType] ?? "0", existing],
+        'UPDATE Variables SET "Type" = CASE WHEN "DataType" = ? THEN "Type" ELSE ? END, "Size" = CASE WHEN "DataType" = ? THEN "Size" ELSE ? END, "DataType" = ?, "Comments" = ?, "DeviceAddress" = ?, "InitialValue" = CASE WHEN "DataType" = ? THEN "InitialValue" ELSE ? END WHERE "UniqueId" = ?',
+        [variable.DataType, shapeOf(variable.DataType).Type, variable.DataType, shapeOf(variable.DataType).Size, variable.DataType, variable.Comments, variable.DeviceAddress, variable.DataType, INITIAL[variable.DataType] ?? "0", existing],
       );
       continue;
     }
@@ -161,11 +167,10 @@ export function syncVariables(
       UniqueId: unique,
       Name: variable.Name,
       DataType: variable.DataType,
-      Type: 1,
+      ...shapeOf(variable.DataType),
       IsArray: 0,
       Dimension: null,
       EnableVariableLength: 0,
-      Size: 0,
       InitialValue: INITIAL[variable.DataType] ?? "0",
       InputRange: 0,
       Min: "",

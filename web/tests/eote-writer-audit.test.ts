@@ -114,6 +114,51 @@ describe.skipIf(!SKELETON)("the .eote writer keeps what the file holds", () => {
     expect(init, "42 is not a BOOL, so the type's default replaces it").not.toBe("42");
   });
 
+  describe("a STRING tag gets the Type and Size the product writes", () => {
+    const row = async (bytes: Uint8Array, name: string) => {
+      const zip = await JSZip.loadAsync(bytes);
+      const key = Object.keys(zip.files).find((k) => /(^|[\/])Variables.db$/i.test(k))!;
+      const db = await openDatabase(new Uint8Array(await zip.files[key].async("uint8array")));
+      const r = db.exec('SELECT "Type", "Size" FROM Variables WHERE "Name" = ?', [name])[0];
+      return r?.values[0];
+    };
+    const string = (Name: string): Variable => ({ Name, DataType: "STRING", Comments: "", DeviceAddress: "" });
+
+    it("on a new project", async () => {
+      const a = rectangle("PartA", { left: 10, top: 10, width: 50, height: 50 });
+      const screen = { Type: "Screen", UniqueId: "4a1b2c3d-0000-4000-8000-000000000003", Name: "Main", Children: [{ Type: "Canvas", UniqueId: "4a1b2c3d-0000-4000-8000-000000000004", Name: "Root", Children: [a] }] } as Screen;
+      const out = await packageProject({ name: "Audit", target: { model: "HMIST6500AWADI", width: 1024, height: 600 }, screens: [screen], variables: [string("Text"), v("Number")], alarms: [], wires: [] });
+      expect(await row(out, "Text")).toEqual([2048, 32]);
+      expect(await row(out, "Number")).toEqual([1, 0]);
+    });
+
+    it("when added to an opened project", async () => {
+      const { bytes } = await base();
+      const out = await exportAfter(bytes, (read) => ({ screens: read.screens, wires: read.wires, variables: [...read.variables, string("Text")] }));
+      expect(await row(out, "Text")).toEqual([2048, 32]);
+    });
+
+    it("when an existing tag becomes one, and back", async () => {
+      const { bytes } = await base();
+      const out = await exportAfter(bytes, (read) => ({ screens: read.screens, wires: read.wires, variables: read.variables.map((x) => (x.Name === "TagA" ? { ...x, DataType: "STRING" } : x)) }));
+      expect(await row(out, "TagA")).toEqual([2048, 32]);
+      const back = await exportAfter(out, (read) => ({ screens: read.screens, wires: read.wires, variables: read.variables.map((x) => (x.Name === "TagA" ? { ...x, DataType: "INT" } : x)) }));
+      expect(await row(back, "TagA")).toEqual([1, 0]);
+    });
+
+    it("leaves a row of an unchanged type as it was", async () => {
+      const { bytes } = await base();
+      const edited = await patch(bytes, async (zip) => {
+        const key = Object.keys(zip.files).find((k) => /(^|[\/])Variables.db$/i.test(k))!;
+        const db = await openDatabase(new Uint8Array(await zip.files[key].async("uint8array")));
+        db.run('UPDATE Variables SET "Type" = 16 WHERE "Name" = ?', ["TagA"]);
+        zip.file(key, db.export());
+      });
+      const out = await exportAfter(edited, (read) => ({ screens: read.screens, wires: read.wires, variables: read.variables.map((x) => (x.Name === "TagA" ? { ...x, Comments: "edited" } : x)) }));
+      expect(await row(out, "TagA")).toEqual([16, 0]);
+    });
+  });
+
   it("S1-05 a carried binding on a part that also has a modelled wire keeps pointing at that part after a rebuild", async () => {
     const { bytes, a, b, c } = await base();
     // B gets a second binding, through an unmodelled converter, on the same Target row as its wire.
