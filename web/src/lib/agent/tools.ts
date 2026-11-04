@@ -97,11 +97,41 @@ function lines(text: string, offset = 1, limit = 400): string {
  */
 function pattern(source: unknown): RegExp {
   const s = String(source).replace(/^\(\?[a-z]+\)/i, "");
+  const literal = () => new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+  // A model-written (a+)+$ blocked the event loop for seconds (S3-07): such a pattern is matched as text.
+  if (backtracks(s)) return literal();
   try {
     return new RegExp(s, "i");
   } catch {
-    return new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    return literal();
   }
+}
+
+/**
+ * Whether a pattern can backtrack exponentially: a quantified group holding a
+ * quantifier, a backreference or an alternation, as in (a+)+ or (a|aa)*.
+ * shortcut: a syntax check, not a full safe-regex analysis; run the match in a
+ * worker with a deadline if a real pattern slips through.
+ */
+export function backtracks(s: string): boolean {
+  const open: boolean[] = [];
+  const mark = () => { if (open.length) open[open.length - 1] = true; };
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === "\\") {
+      if (/[1-9k]/.test(s[i + 1] ?? "")) mark();
+      i++;
+    } else if (c === "[") {
+      for (i++; i < s.length && s[i] !== "]"; i++) if (s[i] === "\\") i++;
+    } else if (c === "(") open.push(false);
+    else if (c === ")") {
+      const risky = open.pop() ?? false;
+      const quantified = /^(?:[*+]|\{\d+,)/.test(s.slice(i + 1));
+      if (risky && quantified) return true;
+      if (risky || quantified) mark();
+    } else if (c === "*" || c === "+" || c === "|" || (c === "{" && /^\{\d+,/.test(s.slice(i)))) mark();
+  }
+  return false;
 }
 
 /** A glob over workspace paths: * within a folder, ** across folders. */
