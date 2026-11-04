@@ -103,6 +103,13 @@ export interface BriefProblem {
  * Every problem names the field, because "the brief is invalid" sends an
  * engineer looking and "unit 2 has no count" does not.
  */
+/**
+ * The most units one row may count. Every unit becomes tags and screen space
+ * in one synchronous build, so an unbounded count (10,000,000 over MCP) froze
+ * the server (docs/audit/BUGS.md S3-06). A hundred is more than a panel shows.
+ */
+export const MAX_UNIT_COUNT = 100;
+
 export function problemsWith(brief: Brief): BriefProblem[] {
   const problems: BriefProblem[] = [];
   if (brief.units.length === 0) {
@@ -125,6 +132,8 @@ export function problemsWith(brief: Brief): BriefProblem[] {
       problems.push({ unitId: unit.id, field: "count", message: `${where} has no count. Say how many there are.` });
     } else if (unit.count < 1) {
       problems.push({ unitId: unit.id, field: "count", message: `${where} has a count of ${unit.count}. A unit needs at least one.` });
+    } else if (unit.count > MAX_UNIT_COUNT) {
+      problems.push({ unitId: unit.id, field: "count", message: `${where} has a count of ${unit.count}. One row can hold at most ${MAX_UNIT_COUNT}; split it into rows.` });
     }
 
     if (unit.kind === "custom") {
