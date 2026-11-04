@@ -17,7 +17,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRepo } from "@/lib/server/repo";
-import { ATTEMPTS_PER_EMAIL, ATTEMPTS_PER_IP, clearAttempts, countAttempt } from "@/lib/server/rate-limit";
+import { ATTEMPTS_PER_EMAIL, ATTEMPTS_PER_EMAIL_ALL_IPS, ATTEMPTS_PER_IP, clearAttempts, countAttempt } from "@/lib/server/rate-limit";
 import { normalizeEmail, signUp, verifyPassword } from "@/lib/server/credentials";
 import { providers } from "@/lib/server/session";
 import { sample } from "./fixtures/collab";
@@ -111,9 +111,12 @@ describe("accounts", { timeout: SLOW }, () => {
 
   it("stops sign-in on a full email window, and on a full IP window for any email", async () => {
     await signUp({ email: "alice@example.com", password: PASSWORD, name: "Alice" });
-    for (let i = 0; i < ATTEMPTS_PER_EMAIL; i++) await countAttempt("email", "alice@example.com", ATTEMPTS_PER_EMAIL, state.repo);
-    // The right password, from an address that has never tried: the email's
-    // own window is what refuses, before any hashing happens.
+    // Ten guesses at the email from one IP fill that pair's window, not the owner's (S2-05).
+    for (let i = 0; i < ATTEMPTS_PER_EMAIL; i++) await countAttempt("email-ip", "alice@example.com|10.0.0.6", ATTEMPTS_PER_EMAIL, state.repo);
+    await expect(verifyPassword("alice@example.com", PASSWORD, from("10.0.0.6"))).rejects.toMatchObject({ status: 429, code: "too-many-attempts" });
+    // The email's all-IPs ceiling refuses even an address that has never tried,
+    // before any hashing happens.
+    for (let i = 0; i < ATTEMPTS_PER_EMAIL_ALL_IPS; i++) await countAttempt("email", "alice@example.com", ATTEMPTS_PER_EMAIL_ALL_IPS, state.repo);
     await expect(verifyPassword("alice@example.com", PASSWORD, from("10.0.0.9"))).rejects.toMatchObject({ status: 429, code: "too-many-attempts" });
     for (let i = 0; i < ATTEMPTS_PER_IP; i++) await countAttempt("ip", "10.0.0.7", ATTEMPTS_PER_IP, state.repo);
     // A different address, unused so far, still refused: the IP is full.

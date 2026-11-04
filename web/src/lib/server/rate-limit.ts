@@ -57,6 +57,13 @@ import { ServerError } from "./errors";
 export const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
 export const ATTEMPTS_PER_EMAIL = 10;
 export const ATTEMPTS_PER_IP = 50;
+/**
+ * Sign-in guesses at one address from everywhere. The tight per-email limit is
+ * per (address, IP), so a stranger's ten guesses no longer lock the owner out
+ * (docs/audit/BUGS.md S2-05); this ceiling still stops a guesser spread over
+ * many IPs.
+ */
+export const ATTEMPTS_PER_EMAIL_ALL_IPS = 100;
 export const GENERATES_PER_USER = 10;
 export const GENERATES_PER_PROJECT = 20;
 
@@ -64,7 +71,7 @@ export const GENERATES_PER_PROJECT = 20;
  * What a counter counts. The scope is part of the key, so two policies cannot
  * collide on one value - a user id and a project id are both opaque strings.
  */
-export type LimitScope = "email" | "ip" | "connector" | "generate-user" | "generate-project" | "model-user";
+export type LimitScope = "email" | "email-ip" | "ip" | "connector" | "generate-user" | "generate-project" | "model-user";
 
 /** The name this union went by while the connector was its only other caller. */
 export type Scope = LimitScope;

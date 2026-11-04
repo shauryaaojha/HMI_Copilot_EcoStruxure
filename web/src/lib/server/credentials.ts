@@ -24,7 +24,7 @@ import { randomBytes } from "node:crypto";
 import { repo, type Repo, type User } from "./repo";
 import { ServerError } from "./errors";
 import { checkAuthConfig } from "./session";
-import { ATTEMPTS_PER_EMAIL, ATTEMPTS_PER_IP, clearAttempts, clientIp, countAttempt } from "./rate-limit";
+import { ATTEMPTS_PER_EMAIL, ATTEMPTS_PER_EMAIL_ALL_IPS, ATTEMPTS_PER_IP, clearAttempts, clientIp, countAttempt } from "./rate-limit";
 
 /**
  * bcrypt's cost, as a power of two. Twelve is around a quarter of a second on
@@ -116,13 +116,16 @@ export async function verifyPassword(
   let emailKey: string;
   try { emailKey = normalizeEmail(email).emailKey; }
   catch { emailKey = typeof email === "string" ? email.trim().toLowerCase().slice(0, 254) : ""; }
-  await countAttempt("ip", clientIp(request), ATTEMPTS_PER_IP, storage);
-  await countAttempt("email", emailKey, ATTEMPTS_PER_EMAIL, storage);
+  const ip = clientIp(request);
+  await countAttempt("ip", ip, ATTEMPTS_PER_IP, storage);
+  await countAttempt("email-ip", `${emailKey}|${ip}`, ATTEMPTS_PER_EMAIL, storage);
+  await countAttempt("email", emailKey, ATTEMPTS_PER_EMAIL_ALL_IPS, storage);
   const found = emailKey ? await storage.users.credential(emailKey) : null;
   if (!found) { await spendTheSameTime(typeof password === "string" ? password : ""); return null; }
   if (!(typeof password === "string" && await compare(password, found.passwordHash))) return null;
   // A password that worked is proof the address belongs to whoever typed it,
   // so their earlier mistakes should not count against the next sign-in.
+  await clearAttempts("email-ip", `${emailKey}|${ip}`, storage);
   await clearAttempts("email", emailKey, storage);
   return found.user;
 }

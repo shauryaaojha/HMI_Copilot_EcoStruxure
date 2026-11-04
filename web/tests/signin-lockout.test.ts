@@ -1,4 +1,5 @@
 /**
+ * S2-05 (docs/audit/BUGS.md), moved from web/scripts/audit/ with the fix.
  * S2-05: the per-email sign-in counter (src/lib/server/credentials.ts:119-120,
  * lib/server/rate-limit.ts:98-105) counts every attempt on an address from
  * anybody, and is checked before the password. Ten wrong guesses from a
