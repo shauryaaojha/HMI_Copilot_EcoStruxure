@@ -8,7 +8,7 @@
  * arrives as a `proposal` for every member.
  */
 import { after } from "next/server";
-import { currentUser } from "@/lib/server/session";
+import { modelCaller } from "@/lib/server/model-gate";
 import { runAgentOnSnapshot, startAgent } from "@/lib/server/agent-run";
 import { errorResponse, json, type Context } from "@/lib/server/http";
 export const runtime = "nodejs";
@@ -18,11 +18,11 @@ export const maxDuration = 120;
 export async function POST(request: Request, context: Context) {
   try {
     const { id } = await context.params;
-    const user = await currentUser();
+    const user = await modelCaller();
     const run = await startAgent(user, id, await json(request));
     after(async () => {
       // Failures are reported on the stream as an `error` step.
-      await runAgentOnSnapshot(user!, id, run).catch(() => undefined);
+      await runAgentOnSnapshot(user, id, run).catch(() => undefined);
     });
     return Response.json({ started: true, screenId: run.screenId }, { status: 202 });
   } catch (e) { return errorResponse(e); }
