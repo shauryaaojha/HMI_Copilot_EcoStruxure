@@ -127,7 +127,8 @@ export function useExport() {
       const made: Artifact[] = [];
 
       if (options.csv) {
-        const csv = new Blob([variablesCsv(s.variables)], {
+        // The variables the .eote gets: none while the tags are still placeholders (S4-06).
+        const csv = new Blob([variablesCsv(packageInput(s).variables)], {
           type: "text/csv;charset=utf-8",
         });
         made.push({
