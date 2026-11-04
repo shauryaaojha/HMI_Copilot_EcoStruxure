@@ -1,4 +1,5 @@
 /**
+ * S4-07 (docs/audit/BUGS.md), moved from web/scripts/audit/ with the fix.
  * S4: undoing the delete of a composite (an indicator, a KPI tile) brings its parts
  * back as loose parts; the composite record is gone for good.
  *

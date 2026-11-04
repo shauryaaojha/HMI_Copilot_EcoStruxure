@@ -73,6 +73,13 @@ export interface EditSnapshot {
   bindings: Binding[];
   alarms: Alarm[];
   handles: Record<string, string>;
+  /**
+   * Composite instances and screen programs, which an edit removes with its
+   * parts; without them undo brought back loose parts (S4-07). Optional so a
+   * patch drawn without them leaves them alone.
+   */
+  composites?: Record<string, CompositeInstance>;
+  programs?: Record<string, ScreenProgram>;
 }
 
 /**

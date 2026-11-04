@@ -30,6 +30,8 @@ export function editable_slice(s: Draft, label: string): EditSnapshot {
     bindings: current(s.bindings),
     alarms: current(s.alarms),
     handles: current(s.handles),
+    composites: s.composites && current(s.composites),
+    programs: s.programs && current(s.programs),
   };
 }
 
@@ -42,6 +44,8 @@ export function restoreSlice(s: Draft, from: EditSnapshot) {
   s.bindings = from.bindings;
   s.alarms = from.alarms;
   s.handles = from.handles;
+  if (from.composites) s.composites = from.composites;
+  if (from.programs) s.programs = from.programs;
 }
 
 /** Record the pre-edit state so undo has somewhere to go. Clears redo. */
