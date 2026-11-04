@@ -217,7 +217,8 @@ describe("presence", () => {
     // No presence key in the channel's configuration, so Supabase keeps no
     // presence state for it; nothing tracks and nothing reads one.
     expect(supabase.channels[0].config).toEqual({ config: { private: true } });
-    expect(supabase.channels[0].listeners).toEqual(["broadcast"]);
+    // Broadcasts only (revision, proposal, agent): no presence listener.
+    expect(new Set(supabase.channels[0].listeners)).toEqual(new Set(["broadcast"]));
     expect(supabase.tracked).toBe(0);
     expect(supabase.presenceRead).toBe(0);
     close();

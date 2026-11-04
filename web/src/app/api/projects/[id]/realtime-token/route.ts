@@ -29,6 +29,6 @@ export async function GET(request: Request, context: Context) {
     if (!user) throw new ServerError(401, "unauthorized", "Sign in to use live sync");
     const minted = await mintRealtimeToken(user.id, id);
     if (!minted) throw new ServerError(503, "unconfigured", "Realtime is not configured on this deployment");
-    return Response.json(minted, { headers: { "Cache-Control": "no-store" } });
+    return Response.json({ ...minted, userId: user.id }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) { return errorResponse(e); }
 }

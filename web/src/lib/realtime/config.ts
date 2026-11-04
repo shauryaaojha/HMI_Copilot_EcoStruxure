@@ -147,3 +147,19 @@ export interface RevisionNotice {
 }
 
 export const REVISION_EVENT = "revision";
+
+/**
+ * A proposal was made or decided: a hint to fetch the list, for the same size
+ * reason as a revision. An agent step goes whole: it is one line of text, and
+ * only the run's own requester shows it (docs/audit/BUGS.md S4-22).
+ */
+export const PROPOSAL_EVENT = "proposal";
+export const AGENT_EVENT = "agent";
+export interface AgentNotice {
+  holder: string;
+  screenId: string;
+  at: number;
+  kind: string;
+  message: string;
+  released: boolean;
+}

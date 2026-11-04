@@ -18,7 +18,9 @@ import type { StoreChange } from "@/lib/collab/types";
 import { can } from "./access";
 import { ServerError } from "./errors";
 import { repo, type Proposal, type Repo, type User } from "./repo";
-import { announceRevision } from "@/lib/realtime/announce";
+import { announceProposals, announceRevision } from "@/lib/realtime/announce";
+import { PROPOSAL_EVENT } from "@/lib/realtime/config";
+import { publishProjectEvent } from "@/lib/realtime/publish";
 import type { StreamEvent } from "./stream";
 
 /** The name every member sees beside the Copilot's work. */
@@ -74,7 +76,7 @@ export async function proposeEdit(user: User | null, projectId: string, body: Re
   try {
     const { doc } = await latestDoc(projectId, storage);
     const run = dryRunOnSnapshot(doc, parsed.data, screenId);
-    return await storage.proposals.create({
+    const proposal = await storage.proposals.create({
       projectId,
       ...(screenId ? { screenId } : {}),
       requestedBy: actor.id,
@@ -86,6 +88,8 @@ export async function proposeEdit(user: User | null, projectId: string, body: Re
       changes: run.changes,
       rejected: run.outcome.problems,
     });
+    announceProposals(projectId);
+    return proposal;
   } finally {
     if (screenId) await storage.locks.release(projectId, screenId, actor.id);
   }
@@ -103,7 +107,7 @@ export async function proposeAgentRun(
   run: { screenId?: string; request: string; label: string; changes: StoreChange[]; rejected: string[] },
   storage: Repo = repo(),
 ) {
-  return storage.proposals.create({
+  const proposal = await storage.proposals.create({
     projectId,
     // A whole-application build belongs to no one screen, which is the one
     // case this has to leave unset rather than invent an id for.
@@ -118,6 +122,9 @@ export async function proposeAgentRun(
     groups: [run.changes],
     rejected: run.rejected,
   });
+  // Awaited, not `after`: a run already lives inside the agent route's `after`.
+  await publishProjectEvent(projectId, PROPOSAL_EVENT, { projectId });
+  return proposal;
 }
 
 /**
@@ -131,7 +138,11 @@ export async function decideProposal(user: User | null, projectId: string, id: s
   if (!proposal) throw new ServerError(404, "not-found", "Proposal not found");
   if (proposal.status !== "open") throw new ServerError(409, "decided", `This proposal was already ${proposal.status}`);
   const who = { decidedBy: actor.id, decidedByName: actor.name };
-  if (body.action === "discard") return storage.proposals.decide(projectId, id, { status: "discarded", ...who });
+  if (body.action === "discard") {
+    const discarded = await storage.proposals.decide(projectId, id, { status: "discarded", ...who });
+    announceProposals(projectId);
+    return discarded;
+  }
   if (body.action !== "accept") throw new ServerError(400, "invalid", "action is accept or discard");
 
   const all = proposal.labels.map((_, i) => i);
@@ -152,7 +163,9 @@ export async function decideProposal(user: User | null, projectId: string, id: s
     announceRevision({ projectId, rev: landed, author: actor.id });
   }
   const status = keep.length < all.length ? "partially-accepted" : "accepted";
-  return storage.proposals.decide(projectId, id, { status, ...who, acceptedOpIndexes: keep, rev: landed });
+  const decided = await storage.proposals.decide(projectId, id, { status, ...who, acceptedOpIndexes: keep, rev: landed });
+  announceProposals(projectId);
+  return decided;
 }
 
 /**

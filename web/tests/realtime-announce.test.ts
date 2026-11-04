@@ -38,7 +38,7 @@ beforeEach(async () => {
   vi.stubEnv("SUPABASE_SECRET_KEY", "sb_secret_test");
   broadcasts.length = 0;
   vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
-    if (String(url).includes("/realtime/v1/api/broadcast")) broadcasts.push(JSON.parse(String(init.body)));
+    if (String(url).includes("/realtime/v1/api/broadcast")) { const body = JSON.parse(String(init.body)); if (body.messages[0].event === "revision") broadcasts.push(body); }
     return new Response(null, { status: 202 });
   }));
   state.repo = new MemoryRepo();
@@ -68,6 +68,7 @@ it("announces an accepted Copilot proposal", async () => {
   const after = (await state.repo.versions.current(ID))!.rev;
   await flush();
   expect({ revMoved: after > before, broadcasts: broadcasts.length }, "accepting a proposal moved the revision without a broadcast").toEqual({ revMoved: true, broadcasts: 1 });
+  // (only revision notices are counted; proposal hints are S4-22, tests/realtime-proposals.test.ts)
 });
 
 it("announces a whole-snapshot save", async () => {

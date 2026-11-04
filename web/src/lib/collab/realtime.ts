@@ -34,7 +34,7 @@
  */
 
 import { createClient, type RealtimeChannel, type SupabaseClient } from "@supabase/supabase-js";
-import { REVISION_EVENT, type RevisionNotice } from "@/lib/realtime/config";
+import { AGENT_EVENT, PROPOSAL_EVENT, REVISION_EVENT, type AgentNotice, type RevisionNotice } from "@/lib/realtime/config";
 import type { LoggedChange } from "./types";
 import type { Snapshot } from "@/lib/server/repo";
 import { browserTransport } from "./browser";
@@ -46,6 +46,8 @@ interface MintedToken {
   expiresIn: number;
   url: string;
   anonKey: string;
+  /** Who the token is for: an agent step is shown only to the run's requester. */
+  userId?: string;
 }
 
 /** What `GET /changes?since=` answers: more changes, or a snapshot to reset to. */
@@ -247,6 +249,21 @@ export const realtimeTransport: Transport = {
         const notice = message.payload as RevisionNotice;
         if (!Number.isSafeInteger(notice?.rev) || notice.rev <= cursor) return;
         catchUp();
+      });
+
+      // Proposals and agent steps: the event stream polls them, a channel is told (S4-22).
+      channel.on("broadcast", { event: PROPOSAL_EVENT }, () => {
+        void (async () => {
+          const response = await fetch(`/api/projects/${projectId}/proposals`, { cache: "no-store" }).catch(() => null);
+          if (!response?.ok || closed) return;
+          const body = (await response.json().catch(() => null)) as { proposals?: unknown[] } | null;
+          for (const proposal of body?.proposals ?? []) handlers.proposal?.(proposal);
+        })();
+      });
+      channel.on("broadcast", { event: AGENT_EVENT }, (message) => {
+        const { holder, ...step } = (message.payload ?? {}) as AgentNotice;
+        if (!holder || holder !== minted.userId) return;
+        handlers.agent?.(step);
       });
 
       scheduleRefresh(minted.expiresIn);

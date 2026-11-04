@@ -3,8 +3,8 @@
  * test that stubs the network publish still exercises this scheduling.
  */
 import { after } from "next/server";
-import type { RevisionNotice } from "./config";
-import { publishRevision } from "./publish";
+import { PROPOSAL_EVENT, type RevisionNotice } from "./config";
+import { publishProjectEvent, publishRevision } from "./publish";
 
 /**
  * Announce a committed revision after the response, without failing the write.
@@ -32,5 +32,16 @@ export function announceRevision(notice: RevisionNotice): void {
     });
   } catch {
     // No request scope: the edit is committed, which is what the answer says.
+  }
+}
+
+/** Tell the project's open tabs that a proposal was made or decided (S4-22). */
+export function announceProposals(projectId: string): void {
+  try {
+    after(async () => {
+      await publishProjectEvent(projectId, PROPOSAL_EVENT, { projectId });
+    });
+  } catch {
+    // No request scope: the next GET of the list shows it.
   }
 }

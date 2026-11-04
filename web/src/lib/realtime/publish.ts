@@ -35,6 +35,11 @@ const PUBLISH_TIMEOUT_MS = 5_000;
  * this module must never be imported from anything that runs in a browser.
  */
 export async function publishRevision(notice: RevisionNotice): Promise<boolean> {
+  return publishProjectEvent(notice.projectId, REVISION_EVENT, notice);
+}
+
+/** Broadcast one event on a project's channel; the same rules as a revision. */
+export async function publishProjectEvent(projectId: string, event: string, payload: object): Promise<boolean> {
   const config = publicConfig();
   const key = secretApiKey();
   if (!config || !key) return false;
@@ -43,7 +48,7 @@ export async function publishRevision(notice: RevisionNotice): Promise<boolean> 
       method: "POST",
       headers: { apikey: key, "content-type": "application/json" },
       body: JSON.stringify({
-        messages: [{ topic: topicFor(notice.projectId), event: REVISION_EVENT, payload: notice, private: true }],
+        messages: [{ topic: topicFor(projectId), event, payload, private: true }],
       }),
       signal: AbortSignal.timeout(PUBLISH_TIMEOUT_MS),
     });

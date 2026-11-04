@@ -15,6 +15,8 @@ import { docOf } from "@/lib/collab/changes";
 import { packageInputOf } from "@/lib/collab/package";
 import { agentChanges } from "@/lib/collab/proposal";
 import { ServerError } from "./errors";
+import { AGENT_EVENT, type AgentNotice } from "@/lib/realtime/config";
+import { publishProjectEvent } from "@/lib/realtime/publish";
 import { lockScreen, proposeAgentRun } from "./proposals";
 import { repo, type Proposal, type Repo, type User } from "./repo";
 
@@ -41,7 +43,12 @@ export async function startAgent(user: User | null, projectId: string, body: Rec
  * or failed.
  */
 export async function runAgentOnSnapshot(user: User, projectId: string, request: AgentRequest, storage: Repo = repo()): Promise<Proposal | null> {
-  const note = (kind: string, message: string) => storage.locks.step(projectId, request.screenId, user.id, { kind, message });
+  const note = async (kind: string, message: string) => {
+    await storage.locks.step(projectId, request.screenId, user.id, { kind, message });
+    // The event stream reads steps off the lock; a Realtime tab hears them here (S4-22).
+    const notice: AgentNotice = { holder: user.id, screenId: request.screenId, at: Date.now(), kind, message: message.slice(0, 2000), released: false };
+    await publishProjectEvent(projectId, AGENT_EVENT, notice);
+  };
   try {
     const current = await storage.versions.current(projectId);
     if (!current) throw new ServerError(409, "no-snapshot", "The project has no snapshot yet");
