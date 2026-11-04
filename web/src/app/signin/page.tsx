@@ -39,5 +39,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
  * cannot turn our sign-in page into a step on the way to someone else's.
  */
 function safeNext(value: string | undefined): string {
-  return value && value.startsWith("/") && !value.startsWith("//") ? value : "/";
+  // A browser reads "\" as "/" and drops tabs and newlines, so "/\evil" and
+  // "/<tab>/evil" are "//evil" by the time it navigates.
+  return value && value.startsWith("/") && !value.startsWith("//") && !/[\\\u0000-\u001f\u007f]/.test(value) ? value : "/";
 }

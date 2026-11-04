@@ -1,5 +1,5 @@
 /**
- * S2-01: /signin?next= is meant to allow only a path on this site
+ * S2-01 (docs/audit/BUGS.md), moved from web/scripts/audit/ with the fix: /signin?next= is meant to allow only a path on this site
  * (src/app/signin/page.tsx safeNext). A backslash or a tab after the first
  * slash passes the check, and a browser resolves both to another host.
  * Proved on production read-only: GET /signin?next=/%5Cevil.example renders
@@ -35,5 +35,11 @@ for (const next of ["/\\evil.example", "/\t/evil.example"]) {
     const target = await redirectTarget(next);
     const resolved = new URL(target, SITE);
     expect(resolved.origin, `next=${JSON.stringify(next)} redirected to ${resolved.href}`).toBe(SITE);
+  });
+}
+
+for (const next of ["/project/abc?tab=tags", "/account/connections"]) {
+  it(`still allows the on-site path ${next}`, async () => {
+    expect(await redirectTarget(next)).toBe(next);
   });
 }
