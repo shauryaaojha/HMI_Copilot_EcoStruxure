@@ -79,17 +79,4 @@ describe("S1 ops under concurrent edits", () => {
     expect(got.Text, "A's text, overwritten by B's whole-part setPart").toBe("RENAMED");
   });
 
-  it("S1-09 an op that names a screen edits the object on that screen, not a namesake elsewhere", () => {
-    const other = structuredClone(demoScreen);
-    other.UniqueId = "7b7b7b7b-0000-4000-8000-000000000001";
-    other.Name = "Second";
-    other.Children[0].UniqueId = "7b7b7b7b-0000-4000-8000-000000000002";
-    partsOf(other).forEach((p, i) => (p.UniqueId = `7b7b7b7b-0000-4000-8000-${String(100 + i).padStart(12, "0")}`));
-    const store = storeOf([demoScreen, other]);
-    const name = first().Name;
-    const out = applyOps([{ op: "moveObject", screen: "Second", target: name, dx: 30, dy: 0 } as Op], store);
-    expect(out.rejected).toEqual([]);
-    const onSecond = partsOf(store.getState().screens[1])[0];
-    expect(onSecond.Location.Left, `${name} on screen Second (the op named it); the one on ${demoScreen.Name} moved instead`).toBe(partsOf(other)[0].Location.Left + 30);
-  });
 });

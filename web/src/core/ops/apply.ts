@@ -150,9 +150,11 @@ function findPartById(s: State, id: string): { part: Part; screen: Screen } | un
   return undefined;
 }
 
-function findPartByName(s: State, name: string): { part: Part; screen: Screen } | undefined {
+/** By name; on the screen the op named first, so a namesake elsewhere is not edited instead (S1-09). */
+function findPartByName(s: State, name: string, screenRef?: string): { part: Part; screen: Screen } | undefined {
   const wanted = name.trim().toLowerCase();
-  for (const screen of s.screens) {
+  const named = screenRef ? findScreen(s, screenRef) : undefined;
+  for (const screen of named ? [named, ...s.screens] : s.screens) {
     const part = viewOf(screen).Children.find((p) => p.Name.toLowerCase() === wanted);
     if (part) return { part, screen };
   }
@@ -326,6 +328,8 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
    * thirteen copies of "set the title to 20 pt".
    */
   let currentNote: string | undefined;
+  /** The screen the current op names, if any: where its object names are looked up first. */
+  let currentScreen: string | undefined;
   /** Screens a tidyLayout looked at, and how many had anything to move. */
   const tidied = { screens: 0, found: 0 };
   const firstLine = new Map<string, { at: number; line: string; count: number }>();
@@ -379,7 +383,7 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
       const id = Object.entries(s.handles).find(([, h]) => h.toLowerCase() === wanted)?.[0];
       if (id) return findPartById(s, id);
     }
-    const direct = findPartByName(s, ref);
+    const direct = findPartByName(s, ref, currentScreen);
     if (direct) return direct;
 
     const asked = created.find((c) => c.asked?.toLowerCase() === wanted);
@@ -442,6 +446,7 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
     const note = op.note?.trim();
     // A tidy reports per screen what it moved; those lines are not repeats.
     currentNote = note && op.op !== "tidyLayout" ? `${op.op} | ${note}` : undefined;
+    currentScreen = op.screen;
 
     switch (op.op) {
       case "addScreen": {
