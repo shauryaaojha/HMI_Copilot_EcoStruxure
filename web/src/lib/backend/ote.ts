@@ -21,7 +21,11 @@ import type { Backend, Capabilities } from "./types";
  * is false and an opened project's indicators come back as grouped parts.
  */
 const capabilities: Capabilities = {
-  parts: PART_TYPES,
+  // A Compound Object instance is written back as it was read (reader.ts
+  // carries it whole), so a project holding one can be exported. It is not in
+  // PART_TYPES because nothing may add a bare instance: that list feeds the
+  // model's and the ops' choice of part (docs/audit/BUGS.md S1-01).
+  parts: [...PART_TYPES, "CompoundObject"],
   colour: "palette",
   nativeComposites: false,
   masterScreens: false,

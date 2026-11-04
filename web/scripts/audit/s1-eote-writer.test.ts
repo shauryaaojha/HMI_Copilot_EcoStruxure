@@ -71,14 +71,6 @@ const without = (screens: Screen[], id: string) =>
   screens.map((s) => ({ ...s, Children: [{ ...s.Children[0], Children: s.Children[0].Children.filter((p) => p.UniqueId !== id) }] }) as Screen);
 
 describe.skipIf(!SKELETON)("S1 .eote writer", () => {
-  it("S1-01 the export gate accepts a project holding a Compound Object instance", () => {
-    // The export route (app/api/export/route.ts:99) refuses with 409 whatever this returns.
-    const co = { Type: "CompoundObject", Definition: "Switch_PB04", UniqueId: "4a1b2c3d-0000-4000-8000-0000000000c0", Name: "Btn", Location: { Left: 0, Top: 0 }, Width: 80, Height: 40 } as unknown as Part;
-    const screen = { Type: "Screen", UniqueId: "4a1b2c3d-0000-4000-8000-0000000000c1", Name: "S", Children: [{ Type: "Canvas", UniqueId: "4a1b2c3d-0000-4000-8000-0000000000c2", Name: "R", Children: [co] }] } as Screen;
-    const refused = unsupportedParts([screen], OTE).map((m) => m.type);
-    expect(refused, "export route would answer 409 'cannot write CompoundObject'").toEqual([]);
-  });
-
   it("S1-02 a binding rebuild keeps a Compound Object target's SubType and the source's PropertyFullName", async () => {
     const { bytes, a, b } = await base();
     // B is a Compound Object instance, bound as the product writes it.

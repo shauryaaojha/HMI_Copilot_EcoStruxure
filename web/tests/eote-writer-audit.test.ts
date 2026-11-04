@@ -129,4 +129,12 @@ describe.skipIf(!SKELETON)("the .eote writer keeps what the file holds", () => {
     const vis = g.Bindings.find((r: J) => r.TargetProperty === "Visibility");
     expect(targetOf(g, vis)?.ObjectId, `the Visibility binding now targets ${targetOf(g, vis)?.ObjectId === c.UniqueId ? "PartC" : String(targetOf(g, vis)?.ObjectId)}`).toBe(b.UniqueId);
   });
+
+  it("S1-01 the export gate accepts a project holding a Compound Object instance", () => {
+    // The export route (app/api/export/route.ts:99) refuses with 409 whatever this returns.
+    const co = { Type: "CompoundObject", Definition: "Switch_PB04", UniqueId: "4a1b2c3d-0000-4000-8000-0000000000c0", Name: "Btn", Location: { Left: 0, Top: 0 }, Width: 80, Height: 40 } as unknown as Part;
+    const screen = { Type: "Screen", UniqueId: "4a1b2c3d-0000-4000-8000-0000000000c1", Name: "S", Children: [{ Type: "Canvas", UniqueId: "4a1b2c3d-0000-4000-8000-0000000000c2", Name: "R", Children: [co] }] } as Screen;
+    const refused = unsupportedParts([screen], OTE).map((m) => m.type);
+    expect(refused, "export route would answer 409 'cannot write CompoundObject'").toEqual([]);
+  });
 });
