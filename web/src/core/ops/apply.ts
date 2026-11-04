@@ -1007,6 +1007,9 @@ export interface DryRun {
   patch: BatchPatch;
   /** The scratch store, for anything that wants to inspect the result. */
   scratch: ProjectStore;
+  /** The project state the run was drawn on, and its ops, so `commit` can tell the project has moved. */
+  base: State;
+  ops: Op[];
 }
 
 /**
@@ -1015,12 +1018,15 @@ export interface DryRun {
  */
 export function dryRun(ops: Op[], live: ProjectStore = useProject): DryRun {
   const scratch = createProjectStore();
-  scratch.setState(seedFrom(live.getState()));
+  const base = live.getState();
+  scratch.setState(seedFrom(base));
   const outcome = applyOps(ops, scratch);
   const s = scratch.getState();
   return {
     outcome,
     scratch,
+    base,
+    ops,
     patch: {
       screens: s.screens,
       objectMeta: s.objectMeta,
@@ -1035,9 +1041,18 @@ export function dryRun(ops: Op[], live: ProjectStore = useProject): DryRun {
   };
 }
 
-/** Lands a dry run on the live project as one undo step. */
-export function commit(run: DryRun, label: string, live: ProjectStore = useProject) {
-  live.getState().commitBatch(label, run.patch);
+/**
+ * Lands a dry run on the live project as one undo step, and answers the run
+ * that landed. The patch is the whole slice, so if the project moved since the
+ * run was drawn (an edit while a proposal waited) the ops run again on it
+ * first; landing the old patch would revert that edit (docs/audit/BUGS.md S1-06).
+ */
+export function commit(run: DryRun, label: string, live: ProjectStore = useProject): DryRun {
+  const now = live.getState();
+  const moved = (["screens", "bindings", "alarms", "objectMeta", "screenPlacement", "handles", "handleSeq"] as const).some((k) => now[k] !== run.base[k]);
+  const landed = moved ? dryRun(run.ops, live) : run;
+  now.commitBatch(label, landed.patch);
+  return landed;
 }
 
 /**

@@ -470,17 +470,18 @@ export function useChat() {
     }
     pending.delete(messageId);
     s.setPreview(undefined);
-    commit(run, run.outcome.applied[0]?.slice(0, 60) || "Accepted proposal");
+    // The run that landed: re-run on the project as it is now if it moved meanwhile (S1-06).
+    const landed = commit(run, run.outcome.applied[0]?.slice(0, 60) || "Accepted proposal");
     if (partial) {
       useProject.getState().log(`Accepted ${keep!.length} of ${ops!.length} proposed changes`);
-      for (const p of run.outcome.problems) useProject.getState().log(`Not applied: ${p}`);
     }
+    for (const p of partial || landed !== run ? landed.outcome.problems : []) useProject.getState().log(`Not applied: ${p}`);
     const after = useProject.getState();
-    for (const line of run.outcome.applied) after.log(line);
-    const versionAt = after.snapshot(run.outcome.applied[0]?.slice(0, 60) || "Accepted proposal");
+    for (const line of landed.outcome.applied) after.log(line);
+    const versionAt = after.snapshot(landed.outcome.applied[0]?.slice(0, 60) || "Accepted proposal");
     after.patchMessage(messageId, {
-      proposal: { ...message.proposal, status: "accepted", ...(partial ? { rejected: run.outcome.problems } : {}) },
-      changes: run.outcome.applied,
+      proposal: { ...message.proposal, status: "accepted", ...(partial || landed !== run ? { rejected: landed.outcome.problems } : {}) },
+      changes: landed.outcome.applied,
       versionAt,
       turn: message.turn ? { ...message.turn, decision: "accepted" } : undefined,
     });

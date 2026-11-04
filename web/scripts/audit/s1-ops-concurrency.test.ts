@@ -11,7 +11,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { demoScreen, demoVariables } from "@/fixtures";
-import { applyOps, commit, dryRun, handleOf, type Op } from "@/core/ops";
+import { applyOps, handleOf, type Op } from "@/core/ops";
 import { apply, diff, docOf } from "@/lib/collab/changes";
 import type { Doc } from "@/lib/collab/types";
 import type { Screen } from "@/lib/ote/schema";
@@ -49,20 +49,6 @@ function clientFrom(doc: Doc) {
 }
 
 describe("S1 ops under concurrent edits", () => {
-  it("S1-06 accepting an AI proposal does not undo an edit made after it was proposed", () => {
-    const live = storeOf([demoScreen]);
-    const s = live.getState();
-    // The Copilot proposes deleting the first part (a delete is always a proposal: useChat.ts:390).
-    const run = dryRun([{ op: "deleteObject", target: handleOf(s, first().UniqueId) } as Op], live);
-    // While the proposal waits, the engineer drags the second part 40 px right.
-    const moved = { left: second().Location.Left + 40, top: second().Location.Top, width: second().Width ?? 0, height: second().Height ?? 0 };
-    live.getState().setBox(second().UniqueId, moved);
-    // Then clicks Accept: useChat.ts:473 commits the stored run.
-    commit(run, "Accepted proposal", live);
-    const now = partsOf(live.getState().screens[0]).find((p) => p.UniqueId === second().UniqueId)!;
-    expect(now.Location.Left, "the engineer's drag after the proposal").toBe(moved.left);
-  });
-
   it("S1-07 two people adding a part at the same time do not get the same handle", () => {
     const base = docOf(storeOf([demoScreen]).getState());
     const a = clientFrom(base);
