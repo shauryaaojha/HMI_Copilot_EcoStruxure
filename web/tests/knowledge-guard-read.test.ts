@@ -1,5 +1,5 @@
 /**
- * S3-08: /api/knowledge reads and deletes the knowledge base for anyone.
+ * S3-08, merged into S2-06 (docs/audit/BUGS.md), moved from web/scripts/audit/ with the fix: /api/knowledge reads and deletes the knowledge base for anyone.
  *
  * src/app/api/knowledge/route.ts has no caller check on GET, POST or DELETE (lines 26, 40, 69).
  * A scan holds a plant's tag names, comments and alarm text (lib/knowledge/store.ts:4).

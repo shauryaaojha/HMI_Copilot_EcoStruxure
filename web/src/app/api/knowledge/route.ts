@@ -10,6 +10,11 @@
  * Opening a project through /api/import also scans it; this route is for the
  * engineer who wants to see, add to, or prune what the tool has learned.
  * Node runtime: sql.js reads the databases.
+ *
+ * A scan holds a customer's tag names and conventions, so every method needs a
+ * signed-in user (the laptop's local identity counts), and the writes refuse
+ * another origin (docs/audit/BUGS.md S2-06). Records have no owner yet, so any
+ * signed-in user still sees the whole store: per-user scoping is design C.
  */
 
 import { fileNameFrom, ingestResponse, IngestError } from "@/lib/ingest/errors";
@@ -18,12 +23,26 @@ import { refuse, sniff } from "@/lib/ingest/sniff";
 import { scanProject, scanVijeo } from "@/lib/knowledge/scan";
 import { aggregate } from "@/lib/knowledge/conventions";
 import { allKnowledge, deleteKnowledge, getKnowledge, knowledgeStore, putKnowledge, summarise } from "@/lib/knowledge/store";
+import { errorResponse, sameOrigin, userRequired } from "@/lib/server/http";
+
+/** The caller check, as a response when it fails. */
+async function refused(request: Request, write: boolean): Promise<Response | null> {
+  try {
+    if (write) sameOrigin(request);
+    await userRequired();
+    return null;
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  const no = await refused(request, false);
+  if (no) return no;
   try {
     const id = new URL(request.url).searchParams.get("id");
     if (id) {
@@ -38,6 +57,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const no = await refused(request, true);
+  if (no) return no;
   const fileName = fileNameFrom(request, "project.eote");
   try {
     if (knowledgeStore() === "off") {
@@ -67,6 +88,8 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const no = await refused(request, true);
+  if (no) return no;
   const id = new URL(request.url).searchParams.get("id") ?? "";
   try {
     const gone = await deleteKnowledge(id);
