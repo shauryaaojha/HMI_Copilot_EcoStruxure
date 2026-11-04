@@ -72,6 +72,12 @@ export interface Preserved {
    * not carry the mode, so the writer takes it from here.
    */
   wireModes?: Record<string, number>;
+  /**
+   * Each wire's source PropertyFullName as the file had it, null where it had
+   * none, keyed as wireModes is. A key that is absent is a wire the file did
+   * not have, which follows the file's convention (packager.ts).
+   */
+  wireSourceProperties?: Record<string, string | null>;
   alarms: {
     groupId: string | null;
     groupName: string;
@@ -615,6 +621,7 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
           screenId: found.screenId,
           ...(converter ? { converter } : {}),
           ...(implicit || !Number.isFinite(mode) ? {} : { mode }),
+          ...(typeof source?.PropertyFullName === "string" ? { sourceProperty: source.PropertyFullName } : {}),
         });
         usedSources.add(sourceRefs[0]);
         usedTargets.add(row.Target);
@@ -729,6 +736,9 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
       variableRefs,
       wireModes: Object.fromEntries(
         wires.flatMap((w) => (w.mode === undefined ? [] : [[`${w.part.UniqueId.toLowerCase()}|${w.property}`, w.mode]])),
+      ),
+      wireSourceProperties: Object.fromEntries(
+        wires.map((w) => [`${w.part.UniqueId.toLowerCase()}|${w.property}`, w.sourceProperty ?? null]),
       ),
       alarms: alarmMeta,
       alarmTargets,

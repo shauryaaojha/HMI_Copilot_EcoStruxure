@@ -28,6 +28,13 @@ export interface Source {
   ObjectId: string;
   ParentIds?: string;
   ObjectFullName: string;
+  /**
+   * The variable's property the binding reads, where the file names it. OTE
+   * writes "Value" here on some bindings and leaves it out on others, by file
+   * rather than by part type. A rebuild that drops it makes a project OTE
+   * refuses to simulate (docs/audit/BUGS.md S1-02).
+   */
+  PropertyFullName?: string;
 }
 
 /**
@@ -91,6 +98,8 @@ export interface Wire {
    * both ways). Absent on a new wire, which takes the default below.
    */
   mode?: number;
+  /** The source's PropertyFullName, as an opened file had it or as its other wires name it. */
+  sourceProperty?: string;
 }
 
 export function buildGraph(
@@ -109,10 +118,11 @@ export function buildGraph(
   const Targets: Target[] = [];
   const Bindings: BindingRow[] = [];
 
-  /** One source per tag, however many things it drives. */
+  /** One source per tag and property, however many things it drives. */
   const sourceIndex = new Map<string, number>();
-  const sourceFor = (tag: string) => {
-    const existing = sourceIndex.get(tag);
+  const sourceFor = (tag: string, property?: string) => {
+    const key = `${tag}|${property ?? ""}`;
+    const existing = sourceIndex.get(key);
     if (existing !== undefined) return existing;
 
     const objectId = variableIds[tag];
@@ -122,7 +132,7 @@ export function buildGraph(
       );
     }
     const referenceId = Sources.length;
-    sourceIndex.set(tag, referenceId);
+    sourceIndex.set(key, referenceId);
     const parentIds = refs[tag]?.parentIds;
     Sources.push({
       ObjectType: OBJECT_TYPE.VARIABLE,
@@ -130,12 +140,13 @@ export function buildGraph(
       ObjectId: objectId,
       ...(parentIds ? { ParentIds: parentIds } : {}),
       ObjectFullName: fullName(tag),
+      ...(property === undefined ? {} : { PropertyFullName: property }),
     });
     return referenceId;
   };
 
-  for (const { part, tag, property, screenId: on, converter, mode } of wires) {
-    const source = sourceFor(tag);
+  for (const { part, tag, property, screenId: on, converter, mode, sourceProperty } of wires) {
+    const source = sourceFor(tag, sourceProperty);
     const converterName = converter ? scaleName(converter) : null;
     const converterId = converterName ? (converterIds[converterName] ?? converter?.id ?? null) : null;
     if (converterName && !converterId) {

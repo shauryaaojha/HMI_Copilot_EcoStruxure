@@ -157,4 +157,105 @@ describe.skipIf(!SKELETON)("the .eote writer keeps what the file holds", () => {
     const rowB = g.Bindings.find((r: J) => targetOf(g, r)?.ObjectId === b.UniqueId);
     expect(targetOf(g, rowB).SubType, "the untouched CO binding's target SubType").toBe("CompoundObject.Def");
   });
+
+  describe("S1-02 a binding rebuild keeps a source's PropertyFullName", () => {
+    /** Every source as a Compound Object's binding has it in the product's own file. */
+    const withProperty = (bytes: Uint8Array) => patch(bytes, async (_z, json, put) => {
+      const g = await json("Bindings.dat");
+      for (const s of g.Sources) s.PropertyFullName = "Value";
+      put("Bindings.dat", g);
+    });
+    /** A wire as the client's store holds it: neither of the file's own details comes back. */
+    const asClient = (w: Wire): Wire => ({ part: w.part, tag: w.tag, property: w.property, screenId: w.screenId });
+    const sourceOf = (g: J, partId: string) => {
+      const row = g.Bindings.find((r: J) => targetOf(g, r)?.ObjectId === partId);
+      return g.Sources.find((s: J) => s.ReferenceId === Number(row.Sources));
+    };
+
+    it("on a deleted part's neighbour", async () => {
+      const { bytes, a, b } = await base();
+      const out = await exportAfter(await withProperty(bytes), (read) => ({
+        screens: without(read.screens, a.UniqueId),
+        wires: read.wires.filter((w) => w.part.UniqueId !== a.UniqueId).map(asClient),
+      }));
+      expect(sourceOf(await graph(out), b.UniqueId).PropertyFullName).toBe("Value");
+    });
+
+    it("on every binding when only a tag's comment changes", async () => {
+      const { bytes } = await base();
+      const out = await exportAfter(await withProperty(bytes), (read) => ({
+        screens: read.screens,
+        wires: read.wires.map(asClient),
+        variables: read.variables.map((x, i) => (i === 0 ? { ...x, Comments: "edited" } : x)),
+      }));
+      const g = await graph(out);
+      expect(g.Sources.map((s: J) => s.PropertyFullName)).toEqual(["Value", "Value", "Value"]);
+    });
+
+    it("when a binding moves to another tag", async () => {
+      const { bytes, a } = await base();
+      const out = await exportAfter(await withProperty(bytes), (read) => ({
+        screens: read.screens,
+        wires: read.wires.map(asClient).map((w) => (w.part.UniqueId === a.UniqueId ? { ...w, tag: "TagB" } : w)),
+      }));
+      const g = await graph(out);
+      expect(sourceOf(g, a.UniqueId).ObjectFullName).toBe("TagB");
+      expect(sourceOf(g, a.UniqueId).PropertyFullName).toBe("Value");
+    });
+
+    it("one tag used both ways keeps a source for each", async () => {
+      const { bytes, a, b, c } = await base();
+      // A reads TagA bare. B reads the same tag through a source of its own that names the property.
+      const edited = await patch(bytes, async (_z, json, put) => {
+        const g = await json("Bindings.dat");
+        const rowOf = (id: string) => g.Bindings.find((r: J) => targetOf(g, r)?.ObjectId === id);
+        const bare = g.Sources.find((s: J) => s.ReferenceId === Number(rowOf(a.UniqueId).Sources));
+        const ref = Math.max(...g.Sources.map((s: J) => s.ReferenceId)) + 1;
+        g.Sources.push({ ...bare, ReferenceId: ref, PropertyFullName: "Value" });
+        rowOf(b.UniqueId).Sources = String(ref);
+        put("Bindings.dat", g);
+      });
+      const out = await exportAfter(edited, (read) => ({
+        screens: without(read.screens, c.UniqueId),
+        wires: read.wires.filter((w) => w.part.UniqueId !== c.UniqueId).map(asClient),
+      }));
+      const g = await graph(out);
+      const [fromA, fromB] = [sourceOf(g, a.UniqueId), sourceOf(g, b.UniqueId)];
+      expect(fromA.ObjectFullName).toBe(fromB.ObjectFullName);
+      expect(fromA.PropertyFullName).toBeUndefined();
+      expect(fromB.PropertyFullName).toBe("Value");
+    });
+
+    it("a new wire takes what the file's other wires name", async () => {
+      const { bytes } = await base();
+      const edited = await withProperty(bytes);
+      const added = numericDisplay("PartNew", { left: 300, top: 10, width: 80, height: 30 });
+      const out = await exportAfter(edited, (read) => ({
+        screens: read.screens.map((s, i) => (i === 0 ? ({ ...s, Children: [{ ...s.Children[0], Children: [...s.Children[0].Children, added] }] }) as Screen : s)),
+        wires: [...read.wires.map(asClient), { part: added, tag: "TagA", property: "CurrentValue", screenId: read.screens[0].UniqueId }],
+      }));
+      expect(sourceOf(await graph(out), added.UniqueId).PropertyFullName).toBe("Value");
+    });
+
+    it("a new wire on a file that names none writes none", async () => {
+      const { bytes } = await base();
+      const added = numericDisplay("PartNew", { left: 300, top: 10, width: 80, height: 30 });
+      const out = await exportAfter(bytes, (read) => ({
+        screens: read.screens.map((s, i) => (i === 0 ? ({ ...s, Children: [{ ...s.Children[0], Children: [...s.Children[0].Children, added] }] }) as Screen : s)),
+        wires: [...read.wires.map(asClient), { part: added, tag: "TagA", property: "CurrentValue", screenId: read.screens[0].UniqueId }],
+      }));
+      expect(sourceOf(await graph(out), added.UniqueId).PropertyFullName).toBeUndefined();
+    });
+
+    it("writes none on a project whose file had none", async () => {
+      const { bytes } = await base();
+      const out = await exportAfter(bytes, (read) => ({
+        screens: read.screens,
+        wires: read.wires.map(asClient),
+        variables: read.variables.map((x, i) => (i === 0 ? { ...x, Comments: "edited" } : x)),
+      }));
+      const g = await graph(out);
+      expect(g.Sources.some((s: J) => "PropertyFullName" in s)).toBe(false);
+    });
+  });
 });

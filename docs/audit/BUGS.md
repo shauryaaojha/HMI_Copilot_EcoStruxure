@@ -294,8 +294,8 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **A binding rebuild rewrites bindings the engineer did not touch (CO target SubType, source PropertyFullName)**
 
-- Status: part fixed in 0a90291 (CO SubType kept); PropertyFullName still dropped: needs a field on the store's bindings, needs Shaurya
-- Severity: P1 broken flow. Whether OTE still resolves the rows is not verified.
+- Status: fixed. CO SubType in 0a90291. PropertyFullName on branch fix/audit-2026-11-review: taken from the stored original at export, as a wire's Mode is, so the store needs no new field. A new wire takes what the file's other wires name.
+- Severity: P1 broken flow. Proven in licensed OTE 4.4.20.31 on auto&manua.eote: changing one variable's comment made a project OTE refused to simulate, while preflight and selfCheck passed. Removing PropertyFullName from a single binding, of any part kind, was enough. With the fix, tag add, comment edit, rebind, new wires, bound-part delete and alarm add all simulate.
 - Where: web/src/lib/ote/bindings.ts:150-158 (`SubType: part.Type` writes "CompoundObject" for "CompoundObject.<Definition>") and bindings.ts:127-133 (Sources rebuilt without PropertyFullName). Triggered from web/src/lib/ote/packager.ts:575-603 on any change to wires, alarms or variables.
 - Repro: open HMICopilot_Panel1.eote, delete one bound NumericDisplay, then export. Compare Bindings.dat.
 - Expected: only the deleted part's rows change.

@@ -71,27 +71,6 @@ const without = (screens: Screen[], id: string) =>
   screens.map((s) => ({ ...s, Children: [{ ...s.Children[0], Children: s.Children[0].Children.filter((p) => p.UniqueId !== id) }] }) as Screen);
 
 describe.skipIf(!SKELETON)("S1 .eote writer", () => {
-  it("S1-02 (still open) a binding rebuild keeps the source's PropertyFullName", async () => {
-    const { bytes, a, b } = await base();
-    // B is a Compound Object instance, bound as the product writes it.
-    const edited = await patch(bytes, async (_z, json, put) => {
-      const { screen } = await base();
-      const sd = await json(screenDat({ ...screen, UniqueId: (await readProject(bytes)).screens[0].UniqueId } as Screen));
-      for (const p of sd.Children[0].Children) if (p.UniqueId === b.UniqueId) p.Type = "CompoundObject.Def";
-      put(`Screens/${(await readProject(bytes)).screens[0].UniqueId}/Screen.dat`, sd);
-      const g = await json("Bindings.dat");
-      for (const t of g.Targets) if (t.ObjectId === b.UniqueId) t.SubType = "CompoundObject.Def";
-      for (const s of g.Sources) s.PropertyFullName = "Value";
-      put("Bindings.dat", g);
-    });
-    // The engineer deletes A: its wire goes, so Bindings.dat is rebuilt.
-    const out = await exportAfter(edited, (read) => ({ screens: without(read.screens, a.UniqueId), wires: read.wires.filter((w) => w.part.UniqueId !== a.UniqueId) }));
-    const g = await graph(out);
-    const rowB = g.Bindings.find((r: J) => targetOf(g, r)?.ObjectId === b.UniqueId);
-    const src = g.Sources.find((s: J) => s.ReferenceId === Number(rowB.Sources));
-    expect(src.PropertyFullName, "the untouched binding's source PropertyFullName").toBe("Value");
-  });
-
   it("S1-04 deleting a part leaves no binding row that targets it", async () => {
     const { bytes, b } = await base();
     // B's binding goes through a converter the reader cannot model, so it is carried, not a wire.

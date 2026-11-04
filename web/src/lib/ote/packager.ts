@@ -590,9 +590,20 @@ async function packagePreserved(input: PackageInput, kept: Preserved): Promise<U
       converterIds = written.result.ids;
     }
     const modes = kept.wireModes ?? {};
+    const sourceProperties = kept.wireSourceProperties ?? {};
+    // A wire the file did not have takes what the file's other wires name. In a
+    // file OTE wrote this way, a new binding without it is one OTE refuses to
+    // simulate (benched on a project that simulates, docs/audit/BUGS.md S1-02).
+    const convention = Object.values(sourceProperties).find((p) => p !== null) ?? undefined;
     const wires = input.wires.map((w) => {
-      const mode = w.mode ?? modes[`${w.part.UniqueId.toLowerCase()}|${w.property}`];
-      return mode === undefined ? w : { ...w, mode };
+      const key = `${w.part.UniqueId.toLowerCase()}|${w.property}`;
+      const mode = w.mode ?? modes[key];
+      const sourceProperty = w.sourceProperty ?? (key in sourceProperties ? sourceProperties[key] ?? undefined : convention);
+      return {
+        ...w,
+        ...(mode === undefined ? {} : { mode }),
+        ...(sourceProperty === undefined ? {} : { sourceProperty }),
+      };
     });
     const graph = appendExtra(
       buildGraph(first.UniqueId, wires, variableIds, alarmTargets, converterIds, kept.variableRefs),
