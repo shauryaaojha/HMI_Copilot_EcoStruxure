@@ -11,6 +11,7 @@
  * is never changed.
  */
 
+import { modelCaller } from "@/lib/server/model-gate";
 import { runAgent, type AgentTurn } from "@/lib/agent/run";
 import { Workspace } from "@/lib/agent/workspace";
 import { hasMongo } from "@/lib/db/mongo";
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
   let body: Body;
   try {
     sameOrigin(request);
+    await modelCaller();
   } catch (e) {
     return errorResponse(e as ServerError);
   }

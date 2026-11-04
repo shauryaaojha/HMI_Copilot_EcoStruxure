@@ -8,6 +8,8 @@
  * Phase 4 of docs/BUILD_PLAN.md.
  */
 
+import { modelCaller } from "@/lib/server/model-gate";
+import { errorResponse } from "@/lib/server/http";
 import { runPipeline, type ExistingScreen } from "@/lib/ai/pipeline";
 import type { StructureHint } from "@/lib/ai/infer";
 import { ScreenProgram } from "@/lib/program/program";
@@ -20,6 +22,11 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 
 export async function POST(request: Request) {
+  try {
+    await modelCaller();
+  } catch (e) {
+    return errorResponse(e);
+  }
   let body: {
     intent?: string;
     variables?: Variable[];

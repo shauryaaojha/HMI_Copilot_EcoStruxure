@@ -64,7 +64,7 @@ export const GENERATES_PER_PROJECT = 20;
  * What a counter counts. The scope is part of the key, so two policies cannot
  * collide on one value - a user id and a project id are both opaque strings.
  */
-export type LimitScope = "email" | "ip" | "connector" | "generate-user" | "generate-project";
+export type LimitScope = "email" | "ip" | "connector" | "generate-user" | "generate-project" | "model-user";
 
 /** The name this union went by while the connector was its only other caller. */
 export type Scope = LimitScope;

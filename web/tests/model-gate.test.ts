@@ -1,5 +1,5 @@
 /**
- * S2-02: the routes that spend the model (and the server's CPU) take no
+ * S2-02 (docs/audit/BUGS.md), moved from web/scripts/audit/ with the fix.: the routes that spend the model (and the server's CPU) take no
  * identity. On a deployment with accounts (VERCEL=1, AUTH_SECRET set) and
  * nobody signed in, /api/chat and /api/brief/draft still call the model.
  * The model calls are mocked here, so this spends no quota: the assertion is

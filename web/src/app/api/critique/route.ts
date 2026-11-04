@@ -7,6 +7,8 @@
  * looked at.
  */
 
+import { modelCaller } from "@/lib/server/model-gate";
+import { errorResponse } from "@/lib/server/http";
 import { Screen } from "@/lib/ote/schema";
 import { resolveProvider } from "@/lib/ai/provider";
 
@@ -23,6 +25,11 @@ export const runtime = "nodejs";
 export const maxDuration = 90;
 
 export async function POST(request: Request) {
+  try {
+    await modelCaller();
+  } catch (e) {
+    return errorResponse(e);
+  }
   let body: { screen?: unknown; renderOnly?: boolean };
   try {
     body = (await request.json()) as typeof body;

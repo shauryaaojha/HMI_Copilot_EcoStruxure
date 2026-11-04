@@ -11,6 +11,8 @@
  * and the digest; `repair` marks the one retry after rejected ops.
  */
 
+import { modelCaller } from "@/lib/server/model-gate";
+import { errorResponse } from "@/lib/server/http";
 import { describeModelError } from "@/lib/ai/model-error";
 import { converse, type Catalog, type HistoryItem, type ProjectDigest } from "@/lib/ai/converse";
 import { providerName, resolveProvider } from "@/lib/ai/provider";
@@ -60,6 +62,11 @@ async function ownObjects(source: string | undefined, request: Request): Promise
 
 export async function POST(request: Request) {
   let body: Body;
+  try {
+    await modelCaller();
+  } catch (e) {
+    return errorResponse(e);
+  }
   try {
     body = (await request.json()) as Body;
   } catch {

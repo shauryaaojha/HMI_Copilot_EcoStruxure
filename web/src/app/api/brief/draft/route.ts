@@ -6,6 +6,8 @@
  * confirms the brief in the browser, which is the whole point of the step: the
  * old route returned tags and the build started on them unseen.
  */
+import { modelCaller } from "@/lib/server/model-gate";
+import { errorResponse } from "@/lib/server/http";
 import { askJson } from "@/lib/ai/draft";
 import { draftBrief } from "@/lib/brief/draft";
 import { suggestionsFor } from "@/lib/brief/evidence";
@@ -19,6 +21,11 @@ const LONGEST = 2000;
 
 /** Body `{ intent, answers? }`; answers `{ brief, by, questions?, suggestions }`. */
 export async function POST(request: Request) {
+  try {
+    await modelCaller();
+  } catch (e) {
+    return errorResponse(e);
+  }
   const body = (await request.json().catch(() => null)) as { intent?: unknown; answers?: unknown } | null;
   const intent = typeof body?.intent === "string" ? body.intent.trim().slice(0, 4000) : "";
   // A clarify answer is more of the description, so it is bounded the same way
