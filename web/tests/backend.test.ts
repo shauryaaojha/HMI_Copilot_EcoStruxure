@@ -79,8 +79,10 @@ describe("the registry", () => {
 
 describe("capabilities", () => {
   it("has OTE declare every part type the schema holds, and Vijeo fewer", () => {
-    // Plus the Compound Object instances an opened project carries (S1-01).
-    expect([...OTE.capabilities.parts]).toEqual([...PART_TYPES, "CompoundObject"]);
+    expect([...OTE.capabilities.parts]).toEqual([...PART_TYPES]);
+    // A Compound Object instance is carried through the export, and never offered to the model (S1-01).
+    expect(OTE.capabilities.parts).not.toContain("CompoundObject");
+    expect(OTE.capabilities.carried).toEqual(["CompoundObject"]);
     expect(VIJEO.capabilities.parts.length).toBeLessThan(PART_TYPES.length);
     // Whatever Vijeo declares must be a part the tool can actually draw.
     for (const p of VIJEO.capabilities.parts) expect(PART_TYPES).toContain(p);

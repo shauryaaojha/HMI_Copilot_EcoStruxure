@@ -33,6 +33,12 @@ export type FormatId = "eote" | "vijeo";
 export interface Capabilities {
   /** The part types the writer can emit. A screen may contain nothing else. */
   parts: readonly PartType[];
+  /**
+   * Part types a project may hold because an opened file had them, written
+   * back as they were read. The writer cannot make a new one, so these are
+   * never offered to the model or to an op, only let through the export gate.
+   */
+  carried?: readonly PartType[];
   /** Colour is an index into the project's colour set, or a direct value. */
   colour: "palette" | "rgb";
   /** Composites can be written as one object rather than as grouped parts. */
@@ -91,7 +97,7 @@ export function unsupportedParts(
   screens: Screen[],
   backend: Backend,
 ): { screen: string; name: string; objectId: string; type: PartType }[] {
-  const can = new Set<PartType>(backend.capabilities.parts);
+  const can = new Set<PartType>([...backend.capabilities.parts, ...(backend.capabilities.carried ?? [])]);
   return screens.flatMap((screen) =>
     screen.Children[0].Children.filter((p) => !can.has(p.Type)).map((p) => ({
       screen: screen.Name,
