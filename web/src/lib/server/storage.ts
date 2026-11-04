@@ -140,6 +140,8 @@ export class FileStorage implements Storage {
         // it has its writes silently dropped on the laptop store, which is
         // exactly where the MCP Inspector is tested.
         "oauthClients", "oauthCodes", "connectorGrants", "connectorTokens",
+        // MCP generate jobs (lib/server/repo-jobs.ts).
+        "generationJobs",
       ];
       const journal = path.join(this.root, "journal.json");
       const readJson = async (file: string) => {

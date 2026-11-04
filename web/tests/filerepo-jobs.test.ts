@@ -1,5 +1,5 @@
 /**
- * S2-03: the laptop store (FileStorage, src/lib/server/storage.ts:132-143)
+ * S2-03 (docs/audit/BUGS.md), moved from web/scripts/audit/ with the fix: the laptop store (FileStorage, src/lib/server/storage.ts:132-143)
  * keeps an allow-list of tables and silently drops writes to any other.
  * "generationJobs" (src/lib/server/repo-jobs.ts) is not on it, so on a laptop
  * without MongoDB - where the MCP Inspector is tested - a generate job is
@@ -10,7 +10,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { FileRepo } from "@/lib/server/repo";
-import { sample } from "../../tests/fixtures/collab";
+import { sample } from "./fixtures/collab";
 
 const dirs: string[] = [];
 afterEach(async () => { for (const dir of dirs.splice(0)) await rm(dir, { recursive: true, force: true }); });
