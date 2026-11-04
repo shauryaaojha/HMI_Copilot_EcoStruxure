@@ -8,7 +8,7 @@
  */
 
 import { modelCaller } from "@/lib/server/model-gate";
-import { errorResponse } from "@/lib/server/http";
+import { errorResponse, json } from "@/lib/server/http";
 import { Screen } from "@/lib/ote/schema";
 import { resolveProvider } from "@/lib/ai/provider";
 
@@ -32,9 +32,9 @@ export async function POST(request: Request) {
   }
   let body: { screen?: unknown; renderOnly?: boolean };
   try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return Response.json({ error: "expected JSON with a screen" }, { status: 400 });
+    body = (await json(request)) as typeof body;
+  } catch (e) {
+    return errorResponse(e);
   }
   const parsed = Screen.safeParse(body.screen);
   if (!parsed.success) {

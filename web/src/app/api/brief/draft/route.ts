@@ -7,7 +7,7 @@
  * old route returned tags and the build started on them unseen.
  */
 import { modelCaller } from "@/lib/server/model-gate";
-import { errorResponse } from "@/lib/server/http";
+import { errorResponse, json } from "@/lib/server/http";
 import { askJson } from "@/lib/ai/draft";
 import { draftBrief } from "@/lib/brief/draft";
 import { suggestionsFor } from "@/lib/brief/evidence";
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   } catch (e) {
     return errorResponse(e);
   }
-  const body = (await request.json().catch(() => null)) as { intent?: unknown; answers?: unknown } | null;
+  const body = (await json(request).catch(() => null)) as { intent?: unknown; answers?: unknown } | null;
   const intent = typeof body?.intent === "string" ? body.intent.trim().slice(0, 4000) : "";
   // A clarify answer is more of the description, so it is bounded the same way
   // and read the same way: engineer's text, never instructions to the model.

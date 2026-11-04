@@ -9,7 +9,7 @@
  */
 
 import { modelCaller } from "@/lib/server/model-gate";
-import { errorResponse } from "@/lib/server/http";
+import { errorResponse, json } from "@/lib/server/http";
 import { runPipeline, type ExistingScreen } from "@/lib/ai/pipeline";
 import type { StructureHint } from "@/lib/ai/infer";
 import { ScreenProgram } from "@/lib/program/program";
@@ -36,9 +36,9 @@ export async function POST(request: Request) {
     programs?: ScreenProgram[];
   };
   try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return Response.json({ error: "expected a JSON body" }, { status: 400 });
+    body = (await json(request)) as typeof body;
+  } catch (e) {
+    return errorResponse(e);
   }
 
   const intent = (body.intent ?? "").trim();

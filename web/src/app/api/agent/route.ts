@@ -19,7 +19,7 @@ import { getImport, importStore, putImport } from "@/lib/ote/imports";
 import { readProject } from "@/lib/ote/reader";
 import { readSource } from "@/lib/server/access";
 import { ServerError } from "@/lib/server/errors";
-import { errorResponse, sameOrigin } from "@/lib/server/http";
+import { errorResponse, sameOrigin, json } from "@/lib/server/http";
 import { repo } from "@/lib/server/repo";
 import { currentUser } from "@/lib/server/session";
 import { shareTokens } from "@/lib/server/shares";
@@ -43,9 +43,9 @@ export async function POST(request: Request) {
     return errorResponse(e as ServerError);
   }
   try {
-    body = (await request.json()) as Body;
-  } catch {
-    return Response.json({ error: "expected a JSON body" }, { status: 400 });
+    body = (await json(request)) as Body;
+  } catch (e) {
+    return errorResponse(e);
   }
   const { source, message } = body;
   if (!source || !/^[0-9a-f-]{36}$/i.test(source)) return Response.json({ error: "open a project file first: the agent works on its file" }, { status: 400 });

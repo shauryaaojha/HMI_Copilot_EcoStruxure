@@ -12,7 +12,7 @@
  */
 
 import { modelCaller } from "@/lib/server/model-gate";
-import { errorResponse } from "@/lib/server/http";
+import { errorResponse, json } from "@/lib/server/http";
 import { describeModelError } from "@/lib/ai/model-error";
 import { converse, type Catalog, type HistoryItem, type ProjectDigest } from "@/lib/ai/converse";
 import { providerName, resolveProvider } from "@/lib/ai/provider";
@@ -68,9 +68,10 @@ export async function POST(request: Request) {
     return errorResponse(e);
   }
   try {
-    body = (await request.json()) as Body;
-  } catch {
-    return Response.json({ error: "expected a JSON body" }, { status: 400 });
+    // Capped at 4 MB before parsing, so an oversized turn never reaches the model.
+    body = (await json(request)) as Body;
+  } catch (e) {
+    return errorResponse(e);
   }
 
   const history = (body.history ?? []).filter((m) => m && typeof m.text === "string");

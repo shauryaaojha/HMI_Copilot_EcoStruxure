@@ -42,3 +42,10 @@ it("refuses an anonymous brief draft before calling the model", async () => {
   const response = await brief(post("/api/brief/draft", { intent: "two pumps and a tank" }));
   expect({ status: response.status, modelCalls: calls.brief }, "anonymous POST /api/brief/draft reached the model").toEqual({ status: 401, modelCalls: 0 });
 });
+
+it("refuses a 4 MB chat turn from a signed-in caller before calling the model", async () => {
+  vi.stubEnv("VERCEL", ""); vi.stubEnv("AUTH_SECRET", ""); // laptop mode: the local engineer is signed in
+  const huge = "x".repeat(4 * 1024 * 1024);
+  const response = await chat(post("/api/chat", { history: [{ role: "user", text: huge }], digest: { name: "x" } }));
+  expect({ status: response.status, modelCalls: calls.converse }, "a 4 MB chat body reached the model").toEqual({ status: 413, modelCalls: 0 });
+});

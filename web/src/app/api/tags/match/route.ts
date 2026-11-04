@@ -4,7 +4,7 @@
  * matched and reports what did not.
  */
 import { modelCaller } from "@/lib/server/model-gate";
-import { errorResponse } from "@/lib/server/http";
+import { errorResponse, json } from "@/lib/server/http";
 import { matchTags } from "@/lib/ai/draft";
 import { Variable } from "@/lib/ote/schema";
 
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   } catch (e) {
     return errorResponse(e);
   }
-  const body = (await request.json().catch(() => null)) as { placeholders?: unknown; variables?: unknown } | null;
+  const body = (await json(request).catch(() => null)) as { placeholders?: unknown; variables?: unknown } | null;
   const placeholders = variablesOf(body?.placeholders, 2000);
   const variables = variablesOf(body?.variables, 20000);
   if (!placeholders || !variables) return Response.json({ error: "expected two lists of variables" }, { status: 400 });
