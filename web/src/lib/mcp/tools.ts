@@ -22,8 +22,24 @@ import { WRITE_TOOLS } from "./write";
 
 export const TOOLS: readonly McpTool[] = [...READ_TOOLS, ...WRITE_TOOLS, ...GENERATE_TOOLS];
 
+/**
+ * The scope a narrowed credential needs for this tool, or null when it has it.
+ *
+ * A caller with no scopes (a session, a personal token) is not narrowed. A tool
+ * not marked read-only counts as a write, so a tool added without annotations
+ * fails closed.
+ */
+export function missingScope(spec: McpTool, caller: ToolContext["caller"]): string | null {
+  const scopes = caller.scopes;
+  if (!scopes?.length) return null;
+  if (spec.annotations?.readOnlyHint === true) return scopes.includes("mcp:read") || scopes.includes("mcp:write") ? null : "mcp:read";
+  return scopes.includes("mcp:write") ? null : "mcp:write";
+}
+
 /** Runs one tool, turning a role or storage failure into something sayable. */
 export async function runTool(spec: McpTool, args: Record<string, never>, ctx: ToolContext): Promise<ToolOutput> {
+  const needed = missingScope(spec, ctx.caller);
+  if (needed) return refusal(`${spec.name} needs the ${needed} scope, which this connection was not granted. Reconnect the connector and allow it.`, "insufficient_scope");
   try {
     return await spec.run(args, ctx);
   } catch (error) {
