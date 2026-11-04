@@ -113,4 +113,20 @@ describe.skipIf(!SKELETON)("the .eote writer keeps what the file holds", () => {
     expect(type).toBe("BOOL");
     expect(init, "42 is not a BOOL, so the type's default replaces it").not.toBe("42");
   });
+
+  it("S1-05 a carried binding on a part that also has a modelled wire keeps pointing at that part after a rebuild", async () => {
+    const { bytes, a, b, c } = await base();
+    // B gets a second binding, through an unmodelled converter, on the same Target row as its wire.
+    const edited = await patch(bytes, async (_z, json, put) => {
+      const g = await json("Bindings.dat");
+      const row = g.Bindings.find((r: J) => targetOf(g, r)?.ObjectId === b.UniqueId);
+      g.Bindings.push({ ...row, TargetProperty: "Visibility", ConverterId: "11111111-2222-4333-8444-555555555555", ConverterName: "SomeExpression", Mode: 1 });
+      put("Bindings.dat", g);
+    });
+    // Deleting A rebuilds the graph: the carried row is re-appended by appendExtra.
+    const out = await exportAfter(edited, (read) => ({ screens: without(read.screens, a.UniqueId), wires: read.wires.filter((w) => w.part.UniqueId !== a.UniqueId) }));
+    const g = await graph(out);
+    const vis = g.Bindings.find((r: J) => r.TargetProperty === "Visibility");
+    expect(targetOf(g, vis)?.ObjectId, `the Visibility binding now targets ${targetOf(g, vis)?.ObjectId === c.UniqueId ? "PartC" : String(targetOf(g, vis)?.ObjectId)}`).toBe(b.UniqueId);
+  });
 });

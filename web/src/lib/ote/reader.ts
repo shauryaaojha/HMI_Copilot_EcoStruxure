@@ -629,7 +629,14 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
     }
     extra.bindings.push(row);
   }
-  for (const t of graph.Targets) if (!usedTargets.has(t.ReferenceId)) extra.targets.push(t);
+  // A target a modelled wire uses can also be the target of a binding we carry
+  // (a Visibility through another converter, say). The rebuild renumbers the
+  // modelled targets, so the carried binding must keep its own copy of the row,
+  // or its old number indexes some other part's target. One row per binding is
+  // also how bindings.ts writes them.
+  const carriedTargets = new Set(extra.bindings.map((b) => b.Target));
+  const keepTarget = (id: number) => !usedTargets.has(id) || carriedTargets.has(id);
+  for (const t of graph.Targets) if (keepTarget(t.ReferenceId)) extra.targets.push(t);
   for (const s of graph.Sources) {
     // A source is only "extra" if some extra binding still needs it.
     const needed = extra.bindings.some((b) => String(b.Sources).split(",").map(Number).includes(s.ReferenceId));
@@ -637,9 +644,7 @@ export async function readProject(bytes: Uint8Array, fileName = "project.eote"):
   }
   // Extra targets that no extra binding references are dropped from `extra`
   // only if they are the ones we modelled; anything else stays.
-  extra.targets = extra.targets.filter(
-    (t) => !usedTargets.has(t.ReferenceId),
-  );
+  extra.targets = extra.targets.filter((t) => keepTarget(t.ReferenceId));
 
   // --- alarms -------------------------------------------------------------
   const alarms: Alarm[] = [];
