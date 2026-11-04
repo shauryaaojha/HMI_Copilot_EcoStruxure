@@ -1,5 +1,5 @@
 /**
- * S3-02: the agent can delete the project's core files despite the guard.
+ * S3-02 (docs/audit/BUGS.md), moved from web/scripts/audit/ with the fix: the agent could delete the project's core files despite the guard.
  *
  * docs/AGENT_WORKSPACE.md: "Core files (Project.dat, Bindings.dat, a screen's
  * Screen.dat and Metadata.dat, the hierarchies) cannot be deleted."
@@ -48,5 +48,13 @@ describe("S3-02 core files survive every delete the agent can make", () => {
     const ws = await project();
     const r = await runAgentTool(contextFor(ws), "run_script", { code: 'ws.delete("Project.dat"); "ok"' });
     expect(ws.has("Project.dat"), `run_script answered "${r.text.trim()}" and Project.dat is gone`).toBe(true);
+  });
+
+  it("delete_path on a whole screen folder still deletes the screen", async () => {
+    const ws = await project();
+    const r = await runAgentTool(contextFor(ws), "delete_path", { path: `Screens/${SCREEN}` });
+    expect(r.isError, r.text).toBeFalsy();
+    expect(ws.has(`Screens/${SCREEN}/Screen.dat`)).toBe(false);
+    expect(ws.has("Project.dat")).toBe(true);
   });
 });

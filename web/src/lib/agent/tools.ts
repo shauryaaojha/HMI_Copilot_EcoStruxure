@@ -22,7 +22,7 @@ import { readProject, type ReadProject } from "@/lib/ote/reader";
 import { packageProject } from "@/lib/ote/packager";
 import { preflight } from "@/lib/ote/preflight";
 import { describeOwn, harvest } from "@/lib/ote/exemplars";
-import { JSON_FILE, Workspace, WorkspaceError } from "./workspace";
+import { CORE, deletion, JSON_FILE, Workspace, WorkspaceError } from "./workspace";
 import {
   bind, bindings, cloneObject, duplicateScreen, findObject, get, objects, screenByName, screens, set, unbind, walk,
 } from "./project";
@@ -74,12 +74,6 @@ export function contextFor(ws: Workspace): AgentContext {
   };
 }
 
-/**
- * Files a project does not open without. A model that deletes a screen's
- * Screen.dat "to start again" leaves a folder the editor cannot read; it is
- * pointed at undo instead.
- */
-const CORE = /^(Project\.dat|Target\.dat|Bindings\.dat|Variables\.db|Alarm\.db|Resources\.dat|_metadata.*|(Screens|Contents|CompoundObjects)\/Hierarchy\.dat|(Screens|Contents|CompoundObjects)\/[^/]+\/(Screen\.dat|Metadata\.dat|Folder\.dat|CompoundObject\.objdef))$/i;
 
 /** Results are cut here; the agent can read further with offset. */
 const MAX_CHARS = 14_000;
@@ -275,7 +269,8 @@ export const TOOLS: AgentTool[] = [
       if (CORE.test(p)) {
         return { text: `${p} is part of the project's structure and cannot be deleted on its own${/Screen\.dat$/i.test(p) ? "; delete the whole screen folder, or use undo to start over" : ""}`, isError: true };
       }
-      const under = ws.has(p) ? [p] : ws.list(p);
+      const under = deletion(ws, p);
+      if (typeof under === "string") return { text: under, isError: true };
       if (under.length === 0) return { text: `${p} does not exist`, isError: true };
       for (const f of under) ws.delete(f);
       const folder = /^(Screens|Contents)\/([^/]+)$/i.exec(p)?.[2]?.toLowerCase();

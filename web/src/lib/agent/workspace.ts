@@ -27,6 +27,28 @@ export interface Change {
   kind: "added" | "modified" | "deleted";
 }
 
+/**
+ * Files a project does not open without. A model that deletes a screen's
+ * Screen.dat "to start again" leaves a folder the editor cannot read; it is
+ * pointed at undo instead.
+ */
+export const CORE = /^(Project\.dat|Target\.dat|Bindings\.dat|Variables\.db|Alarm\.db|Resources\.dat|_metadata.*|(Screens|Contents|CompoundObjects)\/Hierarchy\.dat|(Screens|Contents|CompoundObjects)\/[^/]+\/(Screen\.dat|Metadata\.dat|Folder\.dat|CompoundObject\.objdef))$/i;
+
+/**
+ * The files a delete of `path` would remove, or why it may not. A folder or
+ * the root holding core files is refused whole: deleting what it lists took
+ * every core file with it (docs/audit/BUGS.md S3-02). A whole screen folder is
+ * the one exception: that deletes the screen, which is allowed.
+ */
+export function deletion(ws: Workspace, path: string): string[] | string {
+  const p = path.replace(/\\/g, "/").replace(/\/+$/, "");
+  if (ws.has(p)) return CORE.test(p) ? `${p} is part of the project's structure and cannot be deleted on its own` : [p];
+  const under = ws.list(p);
+  if (/^(Screens|Contents)\/[^/]+$/i.test(p)) return under;
+  const core = under.filter((f) => CORE.test(f));
+  return core.length ? `${p || "the project root"} holds the project's core files (${core.slice(0, 3).join(", ")}${core.length > 3 ? ", ..." : ""}); delete files inside it, or a whole screen folder` : under;
+}
+
 export class WorkspaceError extends Error {
   override name = "WorkspaceError";
 }

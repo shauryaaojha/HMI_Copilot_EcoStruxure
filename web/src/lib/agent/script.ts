@@ -11,7 +11,7 @@
  */
 
 import { getQuickJS, shouldInterruptAfterDeadline, type QuickJSContext, type QuickJSHandle } from "quickjs-emscripten";
-import type { Workspace } from "./workspace";
+import { deletion, type Workspace } from "./workspace";
 
 const TIME_MS = 10_000;
 const MEMORY = 64 * 1024 * 1024;
@@ -56,7 +56,11 @@ export async function runScript(ws: Workspace, code: string): Promise<ScriptResu
     read: (path) => ws.text(path),
     write: (path, text) => (ws.writeText(path, text), true),
     copy: (from, to) => ws.copy(from, to),
-    delete: (path) => (ws.has(path) ? [path] : ws.list(path)).map((p) => (ws.delete(p), p)),
+    delete: (path) => {
+      const under = deletion(ws, path);
+      if (typeof under === "string") throw new Error(under);
+      return under.map((p) => (ws.delete(p), p));
+    },
     exists: (path) => ws.has(path),
     guid: () => crypto.randomUUID(),
   };
