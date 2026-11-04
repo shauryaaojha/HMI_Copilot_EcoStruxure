@@ -23,6 +23,7 @@ import { useProject } from "@/store/project";
 import { useCanEdit } from "@/store/access";
 import { StartPane } from "./StartPane";
 import { useProjectHydration } from "./useProjectHydration";
+import { startPaneFor } from "./startPaneDecision";
 import { useCollab } from "./useCollab";
 import { CanvasPane } from "@/components/canvas/CanvasPane";
 import { Inspector } from "@/components/inspector/Inspector";
@@ -50,17 +51,13 @@ export function Workspace({ projectId }: { projectId: string }) {
    * the middle of its own reveal. The pane says when it is finished.
    */
   const [start, setStart] = useState<boolean | null>(null);
+  // Re-run when the store takes this project: hydration is asynchronous.
+  const loadedId = useProject((s) => s.id);
   useEffect(() => {
     if (start !== null) return;
-    // Read through, not from a selector: the hydration effect above has run by
-    // now, but this component has not re-rendered on what it wrote.
-    const s = useProject.getState();
-    const empty =
-      s.screens.every((screen) => screen.Children[0].Children.length === 0) &&
-      s.variables.length === 0 &&
-      s.chat.length === 0;
-    setStart(empty);
-  }, [start, projectId]);
+    const decided = startPaneFor(useProject.getState(), projectId);
+    if (decided !== null) setStart(decided);
+  }, [start, projectId, loadedId]);
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
