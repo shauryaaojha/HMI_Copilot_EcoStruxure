@@ -277,7 +277,8 @@ export interface ProjectState {
   adoptTags: (variables: Variable[], meta: TagImport, renames: Record<string, string>) => void;
   setStandards: (patch: Partial<Standards>) => void;
   snapshot: (description: string) => number;
-  restore: (at: number) => void;
+  /** Put a kept version back; `checkpoint` first keeps the present as a version of that name. */
+  restore: (at: number, checkpoint?: string) => void;
   ensureScreen: (viewBoxId: string, name: string) => void;
   appendToView: (viewBoxId: string, part: Part) => void;
   setStep: (step: PipelineStep, state: StepState, detail?: string) => void;

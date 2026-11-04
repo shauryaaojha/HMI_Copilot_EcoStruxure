@@ -1,4 +1,5 @@
 /**
+ * S4-02 (docs/audit/BUGS.md), moved from web/scripts/audit/ with the fix.
  * S4: History > Restore on the oldest of twenty versions does nothing, but says it restored.
  *
  * HistoryScreen.goBackTo (src/components/history/HistoryScreen.tsx:310-316) runs
@@ -34,8 +35,7 @@ describe("restoring the oldest version when twenty are kept", () => {
       expect(oldest.description).toBe("v1");
 
       // Exactly what HistoryScreen.goBackTo does.
-      s().snapshot("Before restore");
-      s().restore(oldest.at);
+      s().restore(oldest.at, "Before restore");
     } finally {
       Date.now = realNow;
     }
@@ -44,5 +44,7 @@ describe("restoring the oldest version when twenty are kept", () => {
       s().screens[0].Children[0].Children.length,
       "restoring v1 of 20 left the 19 later objects on the screen: the version was dropped by the checkpoint taken first",
     ).toBe(before);
+    expect(s().versions[0].description, "the present is kept as a version").toBe("Before restore");
+    expect(s().versions).toHaveLength(20);
   });
 });

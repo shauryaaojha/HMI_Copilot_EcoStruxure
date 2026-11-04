@@ -51,17 +51,24 @@ export const createCollabSlice: SliceOf<CollabSlice> = (set, get) => ({
       return at;
     },
 
-    restore: (at) =>
+    restore: (at, checkpoint) =>
       set((s) => {
-        const version = s.versions.find((v) => v.at === at);
-        if (!version) return;
-        remember(s, "Restore version");
+        const found = s.versions.find((v) => v.at === at);
+        if (!found) return;
         // Same reason: `version` is read out of the draft, so its arrays are
-        // drafts too. current() detaches them before they become live state.
-        s.screens = current(version.screens);
-        s.variables = current(version.variables);
-        s.alarms = current(version.alarms);
-        s.bindings = current(version.bindings);
+        // drafts too. current() detaches them before they become live state,
+        // and before the checkpoint below can push the oldest version out of
+        // the twenty kept (S4-02).
+        const version = current(found);
+        if (checkpoint) {
+          s.versions.unshift({ at: Date.now(), description: checkpoint, author: "You", screens: current(s.screens), variables: current(s.variables), alarms: current(s.alarms), bindings: current(s.bindings) });
+          if (s.versions.length > 20) s.versions.length = 20;
+        }
+        remember(s, "Restore version");
+        s.screens = version.screens;
+        s.variables = version.variables;
+        s.alarms = version.alarms;
+        s.bindings = version.bindings;
         s.activeScreenId = s.screens[0]?.UniqueId;
         s.selectedIds = [];
         s.findings = [];

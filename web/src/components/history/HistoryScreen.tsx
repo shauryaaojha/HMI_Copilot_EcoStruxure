@@ -35,9 +35,8 @@ export function HistoryScreen({ projectId }: { projectId: string }) {
   const screens = useProject((s) => s.screens);
 
   function goBackTo(at: number, description: string) {
-    // Snapshot the present first, so restoring is not a one-way door.
-    snapshot("Before restore");
-    restore(at);
+    // Keep the present as a version first, so restoring is not a one-way door.
+    restore(at, "Before restore");
     log(`Restored version: ${description}`);
     router.push(`/project/${projectId}`);
   }
