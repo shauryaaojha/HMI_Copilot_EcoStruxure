@@ -1,4 +1,5 @@
 /**
+ * S3-03 (docs/audit/BUGS.md), moved from web/scripts/audit/ with the fix.
  * S3-03: alignObjects reports success when it could not do what was asked.
  *
  * core/ops/apply.ts `alignObjects` drops every target it cannot resolve without

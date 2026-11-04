@@ -890,6 +890,12 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
           reject(op, `None of ${asked} exist on any screen, so there was nothing to align${near.length ? `; objects nearby: ${near.join(", ")}` : ""}. To fix overlaps, use tidyLayout.`);
           break;
         }
+        // Aligning what was found without the rest moved one button to the screen edge and said "done" (S3-03).
+        const missing = (op.targets ?? []).filter((name) => !resolve(s, name));
+        if (missing.length > 0) {
+          reject(op, `Nothing was aligned: ${missing.map((name) => unresolved(s, name)).join("; ")}`);
+          break;
+        }
         // No mode said is not "left": six lamps on three faceplates, asked to
         // line up "to the top", were all stacked on one x because the model
         // left mode out and the default moved them sideways. The note usually
@@ -907,6 +913,11 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
           : undefined);
         if (!mode) {
           reject(op, "Say which way to align: left, centre, right, top, middle or bottom, or spread.");
+          break;
+        }
+        if (mode.startsWith("spread") && ids.length < 3) {
+          // Two objects are already evenly spread: nothing would move.
+          reject(op, `Spreading needs at least three objects; ${ids.length} given. To move one, use moveObject.`);
           break;
         }
         if (mode === "spreadHorizontal") s.spread(ids, "horizontal");
