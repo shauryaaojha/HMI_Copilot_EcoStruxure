@@ -1,4 +1,5 @@
 /**
+ * S4-03 (docs/audit/BUGS.md), moved from web/scripts/audit/ with the fix.
  * S4: a new project inherits the previous project's settings, including
  * "Review every AI edit before it lands".
  *

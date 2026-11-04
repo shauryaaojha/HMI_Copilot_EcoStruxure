@@ -226,6 +226,9 @@ export function createProjectStore() {
         s.versions = [];
         s.chat = [];
         s.logs = [];
+        // Standards belong to a project: a new one must not inherit "Review every AI edit" (S4-03).
+        s.standards = structuredClone(DEFAULT_STANDARDS);
+        s.preview = undefined;
       }),
   })),
   );
