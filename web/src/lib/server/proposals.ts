@@ -18,6 +18,7 @@ import type { StoreChange } from "@/lib/collab/types";
 import { can } from "./access";
 import { ServerError } from "./errors";
 import { repo, type Proposal, type Repo, type User } from "./repo";
+import { announceRevision } from "@/lib/realtime/announce";
 import type { StreamEvent } from "./stream";
 
 /** The name every member sees beside the Copilot's work. */
@@ -148,6 +149,7 @@ export async function decideProposal(user: User | null, projectId: string, id: s
     const result = await storage.live.append(projectId, [{ id: `proposal-${id}`, base: rev, author: proposal.author, ops: changes, acceptedBy: actor.id }]);
     if (result.rejected.length > 0) throw new ServerError(409, "stale", `The project changed under this proposal (${result.rejected[0].reason}); ask again`);
     landed = result.rev;
+    announceRevision({ projectId, rev: landed, author: actor.id });
   }
   const status = keep.length < all.length ? "partially-accepted" : "accepted";
   return storage.proposals.decide(projectId, id, { status, ...who, acceptedOpIndexes: keep, rev: landed });

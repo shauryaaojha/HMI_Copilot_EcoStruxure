@@ -38,6 +38,7 @@ import type { OpOutcome } from "@/core/ops";
 import type { Doc, StoreChange } from "@/lib/collab/types";
 import type { Variable } from "@/lib/ote/schema";
 import { repo } from "@/lib/server/repo";
+import { announceRevision } from "@/lib/realtime/announce";
 import { ServerError } from "@/lib/server/errors";
 import { agentAuthor, proposeAgentRun, proposeEdit } from "@/lib/server/proposals";
 import type { TagImport } from "@/store/types";
@@ -236,6 +237,7 @@ export async function land(caller: Caller, projectId: string, landing: Landing):
   const result = await repo().live.append(projectId, [
     { id: crypto.randomUUID(), base: rev, author: agentAuthor(), ops: changes, acceptedBy: caller.userId },
   ]);
+  if (result.rejected.length === 0) announceRevision({ projectId, rev: result.rev, author: caller.userId });
   if (result.rejected.length > 0) {
     throw new ServerError(409, "stale", `The project changed while this was being worked out (${result.rejected[0].reason}); read it again and ask again`);
   }

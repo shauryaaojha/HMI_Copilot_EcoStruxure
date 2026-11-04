@@ -1,5 +1,5 @@
 /**
- * S2-04: only POST /api/projects/[id]/changes announces a new revision on
+ * S2-04 (docs/audit/BUGS.md), moved from web/scripts/audit/ with the fix. Before it, only POST /api/projects/[id]/changes announces a new revision on
  * Supabase Realtime (src/app/api/projects/[id]/changes/route.ts:32-40). Four
  * other writes move the project's revision and announce nothing, so a
  * session on the Realtime transport (lib/collab/realtime.ts), which learns of
@@ -15,7 +15,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { demoScreen, demoVariables } from "@/fixtures";
 import { MemoryRepo, type Snapshot, type User } from "@/lib/server/repo";
 import type { Op } from "@/lib/ai/ops";
-import { sample } from "../../tests/fixtures/collab";
+import { sample } from "./fixtures/collab";
 
 const state = vi.hoisted(() => ({ repo: null as unknown as MemoryRepo, user: null as User | null }));
 vi.mock("@/lib/server/repo", async original => ({ ...await original<typeof import("@/lib/server/repo")>(), repo: () => state.repo }));

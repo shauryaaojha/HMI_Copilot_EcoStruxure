@@ -1,5 +1,6 @@
 /** Current snapshot (with the caller's access), compare-and-save, connector settings, and owner-only deletion. */
 import { repo } from "@/lib/server/repo";
+import { announceRevision } from "@/lib/realtime/announce";
 import { requireAccess, requireReader } from "@/lib/server/access";
 import { currentUser } from "@/lib/server/session";
 import { ServerError } from "@/lib/server/errors";
@@ -21,7 +22,9 @@ export async function PUT(request: Request, context: Context) {
     const { id } = await context.params; const user = await requireAccess(await currentUser(), id, "edit");
     const body = await snapshotBody(request, user);
     const value = await snapshot(body.snapshot, user);
-    return Response.json(await repo().projects.save(id, revision(body.rev), value, user.id, label(body.label)));
+    const saved = await repo().projects.save(id, revision(body.rev), value, user.id, label(body.label));
+    announceRevision({ projectId: id, rev: saved.rev, author: user.id });
+    return Response.json(saved);
   } catch (e) { return errorResponse(e); }
 }
 /**

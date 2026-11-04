@@ -1,5 +1,6 @@
 /** Restoring writes a new authored revision; old history remains immutable. */
 import { repo } from "@/lib/server/repo";
+import { announceRevision } from "@/lib/realtime/announce";
 import { requireAccess } from "@/lib/server/access";
 import { currentUser } from "@/lib/server/session";
 import { json, revision, errorResponse, type Context } from "@/lib/server/http";
@@ -13,6 +14,8 @@ export async function GET(_request: Request, context: Context) {
 export async function POST(request: Request, context: Context) {
   try {
     const { id } = await context.params; const user = await requireAccess(await currentUser(), id, "edit");
-    return Response.json(await repo().versions.restore(id, revision((await json(request)).rev), user.id));
+    const restored = await repo().versions.restore(id, revision((await json(request)).rev), user.id);
+    announceRevision({ projectId: id, rev: restored.rev, author: user.id });
+    return Response.json(restored);
   } catch (e) { return errorResponse(e); }
 }
