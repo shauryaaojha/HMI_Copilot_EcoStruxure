@@ -114,7 +114,7 @@ export function PlantScreen() {
           className="ml-auto"
           icon={<RefreshCw size={13} />}
           title="Rebuild from the tag list, keeping your answers and your ranges"
-          onClick={() => setPlant(modelPlant(variables, plant.answers, useProject.getState().tagImport?.structure))}
+          onClick={() => useProject.getState().rebuildPlant()}
         >
           Rebuild from tags
         </Button>

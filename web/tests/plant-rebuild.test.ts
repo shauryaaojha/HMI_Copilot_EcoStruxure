@@ -1,4 +1,5 @@
 /**
+ * S4-05 (docs/audit/BUGS.md), moved from web/scripts/audit/ with the fix.
  * S4: Plant > "Rebuild from tags" throws away the ranges the engineer typed.
  *
  * The button's title says "Rebuild from the tag list, keeping your answers and your
@@ -24,8 +25,8 @@ describe("rebuilding the plant model", () => {
     s().setRange(e!.id, tag, { max: 4321 });
     expect(s().plant!.equipment.find((x) => x.id === e!.id)!.ranges[tag].max).toBe(4321);
 
-    // Exactly PlantScreen's "Rebuild from tags" onClick.
-    s().setPlant(modelPlant(s().variables, s().plant!.answers, s().tagImport?.structure));
+    // PlantScreen's "Rebuild from tags" onClick.
+    s().rebuildPlant();
 
     const after = s().plant!.equipment.find((x) => x.id === e!.id)!.ranges[tag];
     expect(after.max, `"Rebuild from tags" promised to keep the range; ${tag}.max went from 4321 back to ${after.max} (${after.source})`).toBe(4321);

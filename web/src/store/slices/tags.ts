@@ -12,7 +12,7 @@ import { modelPlant} from "@/lib/plant/model";
 import { retagEquipment, retagRefs} from "@/lib/refs";
 
 
-import type { ProjectState, SliceOf } from "../state";
+import type { Draft, ProjectState, SliceOf } from "../state";
 import {
   remember,
   screenHolding,
@@ -24,6 +24,7 @@ export type TagsSlice = Pick<
   ProjectState,
   | "setPlant"
   | "answerQuestion"
+  | "rebuildPlant"
   | "setRange"
   | "connect"
   | "disconnect"
@@ -34,6 +35,27 @@ export type TagsSlice = Pick<
   | "setEquipment"
 >;
 
+/**
+ * Model the plant again from the tags, keeping what the engineer set: typed
+ * ranges and drawn connections. "Rebuild from tags" promised this and called
+ * modelPlant bare, which reset every range (docs/audit/BUGS.md S4-05).
+ */
+function rebuildKeeping(s: Draft, answers: Record<string, string>) {
+  if (!s.plant) return;
+  const engineerRanges = s.plant.equipment.flatMap((e) =>
+    Object.entries(e.ranges).filter(([, r]) => r.source === "engineer").map(([tag, r]) => [e.id, tag, r] as const),
+  );
+  const rebuilt = modelPlant(s.variables, answers, s.tagImport?.structure);
+  // Ranges the engineer typed survive a rebuild; class defaults do not need to.
+  for (const [eid, tag, r] of engineerRanges) {
+    const e = rebuilt.equipment.find((x) => x.id === eid);
+    if (e && e.ranges[tag]) e.ranges[tag] = r;
+  }
+  const kept = s.plant.connections.filter((c) => c.source === "engineer");
+  for (const c of kept) if (!rebuilt.connections.some((x) => x.from === c.from && x.to === c.to)) rebuilt.connections.push(c);
+  s.plant = rebuilt;
+}
+
 export const createTagsSlice: SliceOf<TagsSlice> = (set, get) => ({
     setPlant: (model) =>
       set((s) => {
@@ -42,20 +64,12 @@ export const createTagsSlice: SliceOf<TagsSlice> = (set, get) => ({
 
     answerQuestion: (id, answer) =>
       set((s) => {
-        if (!s.plant) return;
-        const answers = { ...s.plant.answers, [id]: answer };
-        const engineerRanges = s.plant.equipment.flatMap((e) =>
-          Object.entries(e.ranges).filter(([, r]) => r.source === "engineer").map(([tag, r]) => [e.id, tag, r] as const),
-        );
-        const rebuilt = modelPlant(s.variables, answers, s.tagImport?.structure);
-        // Ranges the engineer typed survive a rebuild; class defaults do not need to.
-        for (const [eid, tag, r] of engineerRanges) {
-          const e = rebuilt.equipment.find((x) => x.id === eid);
-          if (e && e.ranges[tag]) e.ranges[tag] = r;
-        }
-        const kept = s.plant.connections.filter((c) => c.source === "engineer");
-        for (const c of kept) if (!rebuilt.connections.some((x) => x.from === c.from && x.to === c.to)) rebuilt.connections.push(c);
-        s.plant = rebuilt;
+        if (s.plant) rebuildKeeping(s, { ...s.plant.answers, [id]: answer });
+      }),
+
+    rebuildPlant: () =>
+      set((s) => {
+        if (s.plant) rebuildKeeping(s, s.plant.answers);
       }),
 
     setRange: (equipmentId, tag, patch) =>

@@ -233,6 +233,8 @@ export interface ProjectState {
   setPlant: (model: PlantModel | undefined) => void;
   /** Answer the modeller's question; the model is rebuilt with the answer kept. */
   answerQuestion: (id: string, answer: string) => void;
+  /** Model the plant again from the tags, keeping the engineer's ranges and connections. */
+  rebuildPlant: () => void;
   setRange: (equipmentId: string, tag: string, patch: Partial<Range>) => void;
   connect: (from: string, to: string) => void;
   disconnect: (from: string, to: string) => void;
@@ -320,7 +322,7 @@ export type ProjectActions = Pick<
   | "hover" | "setSimulating" | "setPreview" | "addScreen" | "duplicateScreen" | "renameScreen"
   | "removeScreen" | "setActiveScreen" | "reorderScreens" | "placeScreen"
   | "tidyBoard" | "importScreens" | "applyStandard" | "addComposite" | "setCompositeProps"
-  | "registerComposite" | "setProgram" | "markGenerated" | "applyRegeneration" | "setPlant" | "answerQuestion" | "setRange" | "connect" | "disconnect"
+  | "registerComposite" | "setProgram" | "markGenerated" | "applyRegeneration" | "setPlant" | "answerQuestion" | "rebuildPlant" | "setRange" | "connect" | "disconnect"
   | "appendObject"
   | "updateObject" | "setProperty" | "nudge" | "setBox" | "removeObjects"
   | "duplicateObjects" | "copyObjects" | "cutObjects" | "pasteObjects" | "align"
