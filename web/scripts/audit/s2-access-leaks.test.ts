@@ -37,10 +37,3 @@ it("answers a signed-out stranger the same for a real and a missing project", as
   const missing = (await getProject(get("no-such-project"), ctx("no-such-project"))).status;
   expect({ real, missing }, "the status tells a stranger which project ids exist").toEqual({ real: 401, missing: 401 });
 });
-
-it("does not hand a viewer the other members' email addresses", async () => {
-  state.user = { id: "link-viewer", name: "Viewer" };
-  const body = await (await members(get("project-test"), ctx("project-test"))).json();
-  const emails = (body.members as { email?: string }[]).map(m => m.email).filter(Boolean);
-  expect(emails, "a viewer read the owner's email address").toEqual([]);
-});

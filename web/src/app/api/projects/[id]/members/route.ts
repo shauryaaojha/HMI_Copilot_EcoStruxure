@@ -3,7 +3,7 @@
  * see the list; changing it is the owner's (see ./[userId]).
  */
 import { repo } from "@/lib/server/repo";
-import { requireAccess } from "@/lib/server/access";
+import { can, requireAccess } from "@/lib/server/access";
 import { currentUser } from "@/lib/server/session";
 import { errorResponse, type Context } from "@/lib/server/http";
 export const runtime = "nodejs";
@@ -12,15 +12,17 @@ export const runtime = "nodejs";
 export async function GET(request: Request, context: Context) {
   try {
     const { id } = await context.params;
-    await requireAccess(await currentUser(), id, "read", request);
+    const user = await requireAccess(await currentUser(), id, "read", request);
+    // Addresses are for whoever manages the members, not every viewer (S2-10).
+    const showEmail = await can(user, id, "manage");
     const members = [];
     for (const m of await repo().members.list(id)) {
-      const user = await repo().users.get(m.userId);
+      const profile = await repo().users.get(m.userId);
       members.push({
         userId: m.userId,
-        name: user?.name ?? (m.userId === "local" ? "Local engineer" : "Engineer"),
-        email: user?.email ?? undefined,
-        image: user?.image ?? undefined,
+        name: profile?.name ?? (m.userId === "local" ? "Local engineer" : "Engineer"),
+        email: showEmail ? profile?.email ?? undefined : undefined,
+        image: profile?.image ?? undefined,
         role: m.role,
         addedAt: m.addedAt,
         ...(m.exportDenied ? { exportDenied: true } : {}),
