@@ -16,7 +16,7 @@
  */
 
 import type { AlarmTarget, VariableIds } from "./databases";
-import type { Part } from "./schema";
+import { productType, type Part } from "./schema";
 import { scaleName, type Scale } from "./converters";
 
 /** ObjectType 4 = variable, 8 = screen part, 30 = alarm. */
@@ -149,7 +149,8 @@ export function buildGraph(
     const owner = on ?? screenId;
     Targets.push({
       ObjectType: OBJECT_TYPE.PART,
-      SubType: part.Type,
+      // The file names a Compound Object target by its definition, as Screen.dat does.
+      SubType: productType(part as { Type: string; Definition?: unknown }),
       ReferenceId: target,
       ObjectId: part.UniqueId,
       ParentIds: owner.toUpperCase(),

@@ -196,6 +196,11 @@ export function asCompoundObject(part: unknown): unknown {
   return { ...(part as Record<string, unknown>), Type: "CompoundObject", Definition: type.slice(CO_PREFIX.length) };
 }
 
+/** A part's Type as the file spells it: a Compound Object instance by its definition. */
+export function productType(part: { Type: string; Definition?: unknown }): string {
+  return part.Type === "CompoundObject" && typeof part.Definition === "string" ? CO_PREFIX + part.Definition : part.Type;
+}
+
 /** A screen tree as the file wants it: each Compound Object typed by its definition again, with nothing of the editor's left on it. */
 export function productTree<T>(node: T): T {
   if (Array.isArray(node)) return node.map(productTree) as T;

@@ -137,4 +137,24 @@ describe.skipIf(!SKELETON)("the .eote writer keeps what the file holds", () => {
     const refused = unsupportedParts([screen], OTE).map((m) => m.type);
     expect(refused, "export route would answer 409 'cannot write CompoundObject'").toEqual([]);
   });
+
+  it("S1-02 a binding rebuild keeps a Compound Object target's SubType", async () => {
+    const { bytes, a, b } = await base();
+    // B is a Compound Object instance, bound as the product writes it.
+    const edited = await patch(bytes, async (_z, json, put) => {
+      const { screen } = await base();
+      const sd = await json(screenDat({ ...screen, UniqueId: (await readProject(bytes)).screens[0].UniqueId } as Screen));
+      for (const p of sd.Children[0].Children) if (p.UniqueId === b.UniqueId) p.Type = "CompoundObject.Def";
+      put(`Screens/${(await readProject(bytes)).screens[0].UniqueId}/Screen.dat`, sd);
+      const g = await json("Bindings.dat");
+      for (const t of g.Targets) if (t.ObjectId === b.UniqueId) t.SubType = "CompoundObject.Def";
+      for (const s of g.Sources) s.PropertyFullName = "Value";
+      put("Bindings.dat", g);
+    });
+    // The engineer deletes A: its wire goes, so Bindings.dat is rebuilt.
+    const out = await exportAfter(edited, (read) => ({ screens: without(read.screens, a.UniqueId), wires: read.wires.filter((w) => w.part.UniqueId !== a.UniqueId) }));
+    const g = await graph(out);
+    const rowB = g.Bindings.find((r: J) => targetOf(g, r)?.ObjectId === b.UniqueId);
+    expect(targetOf(g, rowB).SubType, "the untouched CO binding's target SubType").toBe("CompoundObject.Def");
+  });
 });
