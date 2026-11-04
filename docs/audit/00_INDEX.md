@@ -1,5 +1,7 @@
 # HMI Copilot audit, November 2026: the report
 
+> **Stage 2 (fixes):** see [STAGE2_REPORT.md](STAGE2_REPORT.md) on branch `fix/audit-2026-11`. Each bug's status is in [BUGS.md](BUGS.md).
+
 *Branch `audit/2026-11`, off `main` at `5fd701d`. Written 4 November 2026 by Pranav's Claude (Claude Code, Opus 5.5, effort high), following the brief in [docs/PROMPT_FOR_PRANAV.md](../PROMPT_FOR_PRANAV.md).*
 
 *The work ran in six parallel streams, each reading its own files in full:*

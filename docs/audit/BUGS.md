@@ -14,28 +14,28 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 | Id | Sev | Bug | Where | Proof | Users hit | Status |
 |---|---|---|---|---|---|---|
-| [S1-03](#s1-03) | P0 | Editing one tag resets every other variable's InitialValue to the type default | web/src/lib/ote/databases.ts:140-143 (`UPDATE ... "InitialValue" = INITIAL[type]` for eve… | web/scripts/audit/s1-eote-writer.test.ts (fails with "TagA's InitialV… | importers who edit, add or rename a tag (any variables fing… | open · needs Shaurya |
-| [S3-01](#s3-01) | P0 | Connector token scopes are recorded but never enforced: a read-only token can write | web/src/lib/mcp/caller.ts:92 puts `scopes` on the Caller. No tool reads them: `grep -n sc… | web/scripts/audit/s3-mcp-scope.test.ts fails with `read-only token (s… | connector users whose client asks for less than all scopes.… | open · needs Shaurya |
-| [S1-05](#s1-05) | P0 | A rebuild retargets a carried binding onto a different part when its target is shared with a modelled wire | web/src/lib/ote/reader.ts:632-642 (a target used by a modelled wire is removed from `extr… | web/scripts/audit/s1-eote-writer.test.ts (fails with "the Visibility … | rare. Any project where an object has both a plain tag bind… | open · needs Shaurya |
-| [S1-01](#s1-01) | P1 | The export route refuses every project that holds a Compound Object instance | web/src/lib/backend/types.ts:165-178. The cause is web/src/lib/ote/schema.ts:910-938 (PAR… | web/scripts/audit/s1-eote-writer.test.ts (fails with "export route wo… | every importer of a real OTE project that uses Compound Obj… | open |
-| [S1-06](#s1-06) | P1 | Accepting an AI proposal reverts every edit made after the proposal was drawn | web/src/core/ops/apply.ts:1039-1041 (`commit` lands `run.patch` whole), web/src/store/pro… | web/scripts/audit/s1-ops-concurrency.test.ts (fails with "the enginee… | every user who touches the canvas while a proposal (any del… | open |
-| [S2-01](#s2-01) | P1 | /signin?next= redirects off-site with a backslash or a tab | web/src/app/signin/page.tsx:41-43 (safeNext), used at :19 (server redirect) and :26 -> we… | web/scripts/audit/s2-signin-next-redirect.test.ts (fails with `next="… | anyone who follows a crafted link; every sign-in. | open |
-| [S2-02](#s2-02) | P1 | Model-spending and compute routes accept anonymous callers | web/src/app/api/chat/route.ts:61-143, brief/draft/route.ts:21-38, generate/route.ts:22-88… | web/scripts/audit/s2-model-routes-anonymous.test.ts (fails with `anon… | all users, when someone scripts it; also every connector us… | open |
-| [S2-04](#s2-04) | P1 | Four writers move a project's revision without a Realtime broadcast | web/src/lib/server/proposals.ts:148 (accept), web/src/app/api/projects/[id]/route.ts:24 (… | web/scripts/audit/s2-realtime-no-broadcast.test.ts (control passes; f… | every shared-project member once Realtime is on; proposal a… | open |
-| [S2-07](#s2-07) | P1 | No quotas: open sign-up (and anonymous upload) can fill the database | web/src/app/api/upload/route.ts:6-13 (anonymous, 100 MB each, no count), web/src/lib/serv… | measured (above). Not exercised against Mongo or prod (would write li… | all users, once someone does it. | open · needs Shaurya |
-| [S3-10](#s3-10) | P1 | Rendering a screen of height 50 px or less crashes the whole Node process (resvg panic) | web/src/lib/critic/render.ts:`screenToPng` (resvg `render()`). Reached from web/src/app/a… | web/scripts/audit/s3-model-routes-open.test.ts test 4 (fails: "one an… | anyone (critique is anonymous). Connector and agent users w… | open |
-| [S4-01](#s4-01) | P1 | Reopening a project shows the "New project" start pane over it, with no way out | web/src/components/shell/Workspace.tsx:52-63 (with useProjectHydration.ts:121-126, which … | live: reload of /project/pmw1gbxb0 (1 screen, 19 objects, 7 tags) sho… | every user who reloads or reopens a project, every time. | open |
-| [S4-22](#s4-22) | P1 | With Supabase Realtime on, server proposals and agent steps never reach the open tab | web/src/lib/collab/realtime.ts (no `proposal` or `agent` handler; only lib/collab/browser… | live: flow 2 step 7; `grep -n "proposal\\|agent" lib/collab/realtime.… | every signed-in user who uses the Copilot. | open |
-| [S1-02](#s1-02) | P1 | A binding rebuild rewrites bindings the engineer did not touch (CO target SubType, source PropertyFullName) | web/src/lib/ote/bindings.ts:150-158 (`SubType: part.Type` writes "CompoundObject" for "Co… | web/scripts/audit/s1-eote-writer.test.ts (fails with "the untouched C… | importers whose project uses COs or carries PropertyFullNam… | open · needs Shaurya |
-| [S2-03](#s2-03) | P1 | The laptop store silently drops generation jobs | web/src/lib/server/storage.ts:132-143 (table allow-list without "generationJobs"); writes… | web/scripts/audit/s2-filerepo-jobs.test.ts (fails with `FileRepo drop… | connector users testing locally (MCP Inspector), the shared… | open |
-| [S2-06](#s2-06) | P1 | /api/knowledge reads, adds and deletes with no identity and no Origin check | web/src/app/api/knowledge/route.ts:26-77; related: web/src/lib/knowledge/privacy.ts:6-9 l… | web/scripts/audit/s2-knowledge-unguarded.test.ts (fails with `a forei… | laptop users browsing other sites while the app runs; any d… | open |
-| [S1-09](#s1-09) | P2 | An op that names a screen edits the same-named object on another screen | web/src/core/ops/apply.ts:153-160 (`findPartByName` scans every screen and takes the firs… | web/scripts/audit/s1-ops-concurrency.test.ts (fails with "Banner on s… | chat, agent and MCP users who address by name on multi-scre… | open |
-| [S2-08](#s2-08) | P2 | No security headers: pages can be framed, no CSP | web/next.config.ts (no `headers()`), no web/src/middleware.ts | prod (GET, read-only) headers for `/`, `/signin`, `/api/me` as above.… | every user; connector users most. | open |
+| [S1-03](#s1-03) | P0 | Editing one tag resets every other variable's InitialValue to the type default | web/src/lib/ote/databases.ts:140-143 (`UPDATE ... "InitialValue" = INITIAL[type]` for eve… | web/scripts/audit/s1-eote-writer.test.ts (fails with "TagA's InitialV… | importers who edit, add or rename a tag (any variables fing… | fixed in d2864b5 · review: Shaurya (changes the .eote writer's output) |
+| [S3-01](#s3-01) | P0 | Connector token scopes are recorded but never enforced: a read-only token can write | web/src/lib/mcp/caller.ts:92 puts `scopes` on the Caller. No tool reads them: `grep -n sc… | web/scripts/audit/s3-mcp-scope.test.ts fails with `read-only token (s… | connector users whose client asks for less than all scopes.… | fixed in 79a2463 (the 403 WWW-Authenticate challenge shape: needs Shaurya) · review: Shaurya (changes the .eote writer's output) |
+| [S1-05](#s1-05) | P0 | A rebuild retargets a carried binding onto a different part when its target is shared with a modelled wire | web/src/lib/ote/reader.ts:632-642 (a target used by a modelled wire is removed from `extr… | web/scripts/audit/s1-eote-writer.test.ts (fails with "the Visibility … | rare. Any project where an object has both a plain tag bind… | fixed in 2b5b179 · review: Shaurya (changes the .eote writer's output) |
+| [S1-01](#s1-01) | P1 | The export route refuses every project that holds a Compound Object instance | web/src/lib/backend/types.ts:165-178. The cause is web/src/lib/ote/schema.ts:910-938 (PAR… | web/scripts/audit/s1-eote-writer.test.ts (fails with "export route wo… | every importer of a real OTE project that uses Compound Obj… | fixed in 78fb189 |
+| [S1-06](#s1-06) | P1 | Accepting an AI proposal reverts every edit made after the proposal was drawn | web/src/core/ops/apply.ts:1039-1041 (`commit` lands `run.patch` whole), web/src/store/pro… | web/scripts/audit/s1-ops-concurrency.test.ts (fails with "the enginee… | every user who touches the canvas while a proposal (any del… | fixed in 43f9794 |
+| [S2-01](#s2-01) | P1 | /signin?next= redirects off-site with a backslash or a tab | web/src/app/signin/page.tsx:41-43 (safeNext), used at :19 (server redirect) and :26 -> we… | web/scripts/audit/s2-signin-next-redirect.test.ts (fails with `next="… | anyone who follows a crafted link; every sign-in. | fixed in 6c27db5 |
+| [S2-02](#s2-02) | P1 | Model-spending and compute routes accept anonymous callers | web/src/app/api/chat/route.ts:61-143, brief/draft/route.ts:21-38, generate/route.ts:22-88… | web/scripts/audit/s2-model-routes-anonymous.test.ts (fails with `anon… | all users, when someone scripts it; also every connector us… | fixed in e7fa6aa, 4c41fea |
+| [S2-04](#s2-04) | P1 | Four writers move a project's revision without a Realtime broadcast | web/src/lib/server/proposals.ts:148 (accept), web/src/app/api/projects/[id]/route.ts:24 (… | web/scripts/audit/s2-realtime-no-broadcast.test.ts (control passes; f… | every shared-project member once Realtime is on; proposal a… | fixed in 803c62f |
+| [S2-07](#s2-07) | P1 | No quotas: open sign-up (and anonymous upload) can fill the database | web/src/app/api/upload/route.ts:6-13 (anonymous, 100 MB each, no count), web/src/lib/serv… | measured (above). Not exercised against Mongo or prod (would write li… | all users, once someone does it. | open · needs Shaurya (the quota numbers are a product decision) |
+| [S3-10](#s3-10) | P1 | Rendering a screen of height 50 px or less crashes the whole Node process (resvg panic) | web/src/lib/critic/render.ts:`screenToPng` (resvg `render()`). Reached from web/src/app/a… | web/scripts/audit/s3-model-routes-open.test.ts test 4 (fails: "one an… | anyone (critique is anonymous). Connector and agent users w… | fixed in 480e4c1 |
+| [S4-01](#s4-01) | P1 | Reopening a project shows the "New project" start pane over it, with no way out | web/src/components/shell/Workspace.tsx:52-63 (with useProjectHydration.ts:121-126, which … | live: reload of /project/pmw1gbxb0 (1 screen, 19 objects, 7 tags) sho… | every user who reloads or reopens a project, every time. | fixed in c664057 |
+| [S4-22](#s4-22) | P1 | With Supabase Realtime on, server proposals and agent steps never reach the open tab | web/src/lib/collab/realtime.ts (no `proposal` or `agent` handler; only lib/collab/browser… | live: flow 2 step 7; `grep -n "proposal\\|agent" lib/collab/realtime.… | every signed-in user who uses the Copilot. | fixed in 538ba50 |
+| [S1-02](#s1-02) | P1 | A binding rebuild rewrites bindings the engineer did not touch (CO target SubType, source PropertyFullName) | web/src/lib/ote/bindings.ts:150-158 (`SubType: part.Type` writes "CompoundObject" for "Co… | web/scripts/audit/s1-eote-writer.test.ts (fails with "the untouched C… | importers whose project uses COs or carries PropertyFullNam… | part fixed in 0a90291 (CO SubType kept); PropertyFullName still dropped: needs a field on the store's bindings, needs Shaurya |
+| [S2-03](#s2-03) | P1 | The laptop store silently drops generation jobs | web/src/lib/server/storage.ts:132-143 (table allow-list without "generationJobs"); writes… | web/scripts/audit/s2-filerepo-jobs.test.ts (fails with `FileRepo drop… | connector users testing locally (MCP Inspector), the shared… | fixed in 345a564 |
+| [S2-06](#s2-06) | P1 | /api/knowledge reads, adds and deletes with no identity and no Origin check | web/src/app/api/knowledge/route.ts:26-77; related: web/src/lib/knowledge/privacy.ts:6-9 l… | web/scripts/audit/s2-knowledge-unguarded.test.ts (fails with `a forei… | laptop users browsing other sites while the app runs; any d… | fixed in 0f4c173 |
+| [S1-09](#s1-09) | P2 | An op that names a screen edits the same-named object on another screen | web/src/core/ops/apply.ts:153-160 (`findPartByName` scans every screen and takes the firs… | web/scripts/audit/s1-ops-concurrency.test.ts (fails with "Banner on s… | chat, agent and MCP users who address by name on multi-scre… | fixed in 35a1d13 (rejecting a name ambiguous across screens is left out) |
+| [S2-08](#s2-08) | P2 | No security headers: pages can be framed, no CSP | web/next.config.ts (no `headers()`), no web/src/middleware.ts | prod (GET, read-only) headers for `/`, `/signin`, `/api/me` as above.… | every user; connector users most. | fixed in 9c8f899 (frame-ancestors, nosniff, no X-Powered-By); a full script-src CSP is left: it needs nonces |
 | [S3-09](#s3-09) | P2 | tidyLayout, and the overlaps line the model is shown, cannot see overlaps inside a card | web/src/lib/ote/tidy.ts `unitsOf` folds every part held by a Rectangle card into one unit… | web/scripts/audit/s3-tidy-card-blind.test.ts (fails: "the symbol cove… | everyone who asks the chat to tidy a generated screen. The … | open |
-| [S4-02](#s4-02) | P2 | History > Restore on the oldest of 20 versions does nothing, and logs "Restored version" | web/src/components/history/HistoryScreen.tsx:310-316; web/src/store/slices/collab.ts:381,… | web/scripts/audit/s4-history-restore-oldest.test.ts (fails with "rest… | anyone with a long session (versions are taken on every bui… | open |
-| [S4-03](#s4-03) | P2 | A new project inherits the previous project's standards, including "Review every AI edit" | web/src/store/project.ts:536-567 (reset leaves `standards`); web/src/components/shell/use… | web/scripts/audit/s4-standards-leak-new-project.test.ts (fails with "… | anyone who changes a setting and starts another project. Th… | open |
-| [S4-05](#s4-05) | P2 | Plant "Rebuild from tags" drops the ranges the engineer typed | web/src/components/plant/PlantScreen.tsx:305-306 | web/scripts/audit/s4-plant-rebuild-drops-ranges.test.ts (fails with "… | anyone correcting ranges. | open |
-| [S4-07](#s4-07) | P2 | Undo after deleting a composite brings back loose parts; the composite is lost | web/src/store/state.ts:61-76 (EditSnapshot), web/src/store/internals.ts:22-45 | web/scripts/audit/s4-undo-delete-composite.test.ts (fails with "the p… | anyone undoing a delete of a generated indicator, tile or s… | open |
+| [S4-02](#s4-02) | P2 | History > Restore on the oldest of 20 versions does nothing, and logs "Restored version" | web/src/components/history/HistoryScreen.tsx:310-316; web/src/store/slices/collab.ts:381,… | web/scripts/audit/s4-history-restore-oldest.test.ts (fails with "rest… | anyone with a long session (versions are taken on every bui… | fixed in 711f5b8 |
+| [S4-03](#s4-03) | P2 | A new project inherits the previous project's standards, including "Review every AI edit" | web/src/store/project.ts:536-567 (reset leaves `standards`); web/src/components/shell/use… | web/scripts/audit/s4-standards-leak-new-project.test.ts (fails with "… | anyone who changes a setting and starts another project. Th… | fixed in 758dc8a |
+| [S4-05](#s4-05) | P2 | Plant "Rebuild from tags" drops the ranges the engineer typed | web/src/components/plant/PlantScreen.tsx:305-306 | web/scripts/audit/s4-plant-rebuild-drops-ranges.test.ts (fails with "… | anyone correcting ranges. | fixed in ee1d368 |
+| [S4-07](#s4-07) | P2 | Undo after deleting a composite brings back loose parts; the composite is lost | web/src/store/state.ts:61-76 (EditSnapshot), web/src/store/internals.ts:22-45 | web/scripts/audit/s4-undo-delete-composite.test.ts (fails with "the p… | anyone undoing a delete of a generated indicator, tile or s… | fixed in 0a2d46e |
 | [S4-12](#s4-12) | P2 | Standards "Correct tag names on import" toggle does nothing | web/src/components/standards/StandardsScreen.tsx:180-183 | measured: `grep -rn enforceNaming src tests scripts` → only Standards… | anyone relying on the switch. | open |
 | [S4-13](#s4-13) | P2 | Settings says "Nothing is uploaded" when files and projects are uploaded | web/src/components/settings/SettingsScreen.tsx:112-114 | measured: flow 1 network log `POST /api/import`; flow 2 `PUT /api/pro… | anyone deciding whether client data may go in. | open |
 | [S4-14](#s4-14) | P2 | Landing "Open an existing .eote" does the same as "Start a project" | web/src/components/landing/StartButtons.tsx:655-670; Sections.tsx:595-600 | live: flow 1 step 1 (prod and local). | every brownfield first visit. | open |
@@ -55,19 +55,19 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 | [S2-13](#s2-13) | P2 | Size limits on whole-body routes are unreachable on Vercel | web/src/app/api/tags/parse/route.ts:18,21-35; web/src/app/api/vijeo/migrate/route.ts:29-3… | code; the platform ceiling is the one lib/client/upload.ts:1-5 and li… | importers with large tag lists or Vijeo backups. | open |
 | [S1-07](#s1-07) | P2 | Two clients adding objects at the same time get the same handle | web/src/store/internals.ts:63-66 and web/src/store/slices/objects.ts:67 (`o${++handleSeq}… | web/scripts/audit/s1-ops-concurrency.test.ts (fails with "handles hel… | sharers co-editing, and the Copilot/agent working while an … | open |
 | [S1-08](#s1-08) | P2 | Concurrent edits to different properties of one part: one is lost, and no base check reports it | web/src/lib/server/repo-live.ts:99-135 (applies in arrival order; `change.base` is never … | web/scripts/audit/s1-ops-concurrency.test.ts (fails with "A's text, o… | sharers co-editing the same object. The Copilot accepting a… | open |
-| [S2-05](#s2-05) | P2 | Anyone can lock any account out of sign-in | web/src/lib/server/credentials.ts:119-120 (both limits counted before the password is che… | web/scripts/audit/s2-signin-lockout-dos.test.ts (fails with `the owne… | rare, but any named user an attacker picks; also the connec… | open |
-| [S2-10](#s2-10) | P2 | Any member, including a viewer who joined by link, gets every member's email address | web/src/app/api/projects/[id]/members/route.ts:15-27 (`email: user?.email`) | web/scripts/audit/s2-access-leaks.test.ts (fails with `a viewer read … | sharers. | open |
+| [S2-05](#s2-05) | P2 | Anyone can lock any account out of sign-in | web/src/lib/server/credentials.ts:119-120 (both limits counted before the password is che… | web/scripts/audit/s2-signin-lockout-dos.test.ts (fails with `the owne… | rare, but any named user an attacker picks; also the connec… | fixed in df983c6 |
+| [S2-10](#s2-10) | P2 | Any member, including a viewer who joined by link, gets every member's email address | web/src/app/api/projects/[id]/members/route.ts:15-27 (`email: user?.email`) | web/scripts/audit/s2-access-leaks.test.ts (fails with `a viewer read … | sharers. | fixed in 0ef6b25 |
 | [S2-15](#s2-15) | P2 | Sign-out does not end a session; a copied cookie works for 30 days | web/src/auth.ts:25 (`session: { strategy: "jwt" }`, no maxAge, no adapter); Auth.js defau… | local (production build): signed in as s2-a (cookie `authjs.session-t… | all signed-in users, on shared machines. | open |
-| [S3-05](#s3-05) | P2 | The token endpoint does not bind codes and refresh tokens to the client | web/src/lib/server/oauth.ts:540-543 (`if (clientId && clientId !== code.clientId)`) and o… | web/scripts/audit/s3-oauth-client-binding.test.ts (fails with "a publ… | connector users (none affected in normal use). | open · needs Shaurya |
-| [S3-06](#s3-06) | P2 | MCP generate takes a brief with an unbounded unit count | - web/src/lib/mcp/generate.ts:111 `count: z.number().int().optional()`; | web/scripts/audit/s3-brief-count.test.ts (fails: "problemsWith accept… | connector users, rarely. Only a client that sends the brief… | open |
+| [S3-05](#s3-05) | P2 | The token endpoint does not bind codes and refresh tokens to the client | web/src/lib/server/oauth.ts:540-543 (`if (clientId && clientId !== code.clientId)`) and o… | web/scripts/audit/s3-oauth-client-binding.test.ts (fails with "a publ… | connector users (none affected in normal use). | part fixed in 86a0aec (refresh token bound to its client); requiring client_id on the code exchange changes the wire contract: needs Shaurya |
+| [S3-06](#s3-06) | P2 | MCP generate takes a brief with an unbounded unit count | - web/src/lib/mcp/generate.ts:111 `count: z.number().int().optional()`; | web/scripts/audit/s3-brief-count.test.ts (fails: "problemsWith accept… | connector users, rarely. Only a client that sends the brief… | fixed in bcdb85d |
 | [S1-11](#s1-11) | P2 | setColor and setText report success with no visible change on several types | web/src/core/ops/apply.ts:766-767 (setColor always writes the top-level `Fill.Color.Value… | measured by fidelity.mts. Applied but not visible: setColor TextBox 1… | chat, agent and MCP users restyling objects. | open |
-| [S3-03](#s3-03) | P2 | alignObjects silently drops targets it cannot find, and reports a no-op spread as done | web/src/core/ops/apply.ts:879-881 drops unresolved names without a word; it rejects only … | web/scripts/audit/s3-align-partial.test.ts (2 of 2 fail with the mess… | chat and MCP users who ask to align, whenever the model mis… | open |
-| [S4-06](#s4-06) | P2 | Variables.csv exports placeholder tags that the .eote leaves out | web/src/components/export/useExport.ts:129-131 | web/scripts/audit/s4-variables-csv-placeholders.test.ts (fails with "… | screens-first users who hand the CSV to the PLC programmer. | open |
-| [S4-08](#s4-08) | P2 | Restoring a version drops locks, groups, provenance keys and bind intents | web/src/store/types.ts:117-125 (Version), web/src/store/slices/collab.ts:364-401 | web/scripts/audit/s4-restore-drops-meta.test.ts (fails with "the rest… | History and "revert to here" users. Regeneration then treat… | open |
+| [S3-03](#s3-03) | P2 | alignObjects silently drops targets it cannot find, and reports a no-op spread as done | web/src/core/ops/apply.ts:879-881 drops unresolved names without a word; it rejects only … | web/scripts/audit/s3-align-partial.test.ts (2 of 2 fail with the mess… | chat and MCP users who ask to align, whenever the model mis… | fixed in ed0bb1c |
+| [S4-06](#s4-06) | P2 | Variables.csv exports placeholder tags that the .eote leaves out | web/src/components/export/useExport.ts:129-131 | web/scripts/audit/s4-variables-csv-placeholders.test.ts (fails with "… | screens-first users who hand the CSV to the PLC programmer. | fixed in 2b7483a |
+| [S4-08](#s4-08) | P2 | Restoring a version drops locks, groups, provenance keys and bind intents | web/src/store/types.ts:117-125 (Version), web/src/store/slices/collab.ts:364-401 | web/scripts/audit/s4-restore-drops-meta.test.ts (fails with "the rest… | History and "revert to here" users. Regeneration then treat… | fixed in 1b693cf |
 | [S4-25](#s4-25) | P2 | The brief's "Alarms" screen is not built | the generator path from requestFromBrief (lib/brief) to the pipeline. Not my file; hit in… | live: flow 2 step 10. | screens-first users. | open |
 | [S6-04](#s6-04) | P2 | A level 2 card's equipment symbol overlaps its first analogue indicator | web/src/lib/ote/layout.ts:454 (symbol at y+8, 52 px tall) vs web/src/lib/ote/layout.ts:51… | web/scripts/audit/s6-card-symbol-overlap.test.ts (fails with "18 symb… | generators whose units have readings but no run or fault BO… | open |
-| [S3-02](#s3-02) | P2 | The agent can delete the project's core files: delete_path on a folder or "", and run_script ws.delete | web/src/lib/agent/tools.ts:275-280 tests `CORE` only against the path it was given, then … | web/scripts/audit/s3-agent-core-delete.test.ts. 3 of its 4 tests fail… | Agent-tab users, rarely. It needs the model to delete a fol… | open |
-| [S3-07](#s3-07) | P2 | The agent's regex tools block the event loop on a catastrophic pattern | web/src/lib/agent/tools.ts:104-111 `pattern()` compiles any model-supplied regex. It is r… | web/scripts/audit/s3-agent-redos.test.ts (fails with "one search call… | Agent-tab users, rarely. The pattern can come from a confus… | open |
+| [S3-02](#s3-02) | P2 | The agent can delete the project's core files: delete_path on a folder or "", and run_script ws.delete | web/src/lib/agent/tools.ts:275-280 tests `CORE` only against the path it was given, then … | web/scripts/audit/s3-agent-core-delete.test.ts. 3 of its 4 tests fail… | Agent-tab users, rarely. It needs the model to delete a fol… | fixed in 5d69132 |
+| [S3-07](#s3-07) | P2 | The agent's regex tools block the event loop on a catastrophic pattern | web/src/lib/agent/tools.ts:104-111 `pattern()` compiles any model-supplied regex. It is r… | web/scripts/audit/s3-agent-redos.test.ts (fails with "one search call… | Agent-tab users, rarely. The pattern can come from a confus… | fixed in 7b62ea8 |
 | [S0-01](#s0-01) | P3 | A stale local build breaks `tsc --noEmit` | web/tsconfig.json:36 (`".next-build/types/**/*.ts"` in `include`) | measured on this machine at baseline (3 errors with the stale dir, 0 … | every developer who used the documented `NEXT_DIST_DIR=.nex… | open |
 | [S4-09](#s4-09) | P3 | Form labels are not tied to their inputs (sign-in, settings, share) | web/src/components/ui/Field.tsx (label htmlFor={id}; the id is never given to the child) | web/scripts/audit/s4-signin-labels.test.ts (fails with "labels point … | assistive-technology users; every Field in the app. | open |
 | [S4-30](#s4-30) | P3 | The Projects card loses "Opened <file>" on the first autosave | web/src/components/shell/useProjectHydration.ts:275-287 (touchProject `intent` from chat)… | live: flow 1 step 6. | every opened file. | open |
@@ -103,7 +103,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Editing one tag resets every other variable's InitialValue to the type default**
 
-- Status: open
+- Status: fixed in d2864b5
 - Severity: P0 data loss
 - Where: web/src/lib/ote/databases.ts:140-143 (`UPDATE ... "InitialValue" = INITIAL[type]` for every kept variable)
 - Repro: open a project whose variables have initial values, change one tag's comment, then export.
@@ -118,7 +118,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Connector token scopes are recorded but never enforced: a read-only token can write**
 
-- Status: open
+- Status: fixed in 79a2463 (the 403 WWW-Authenticate challenge shape: needs Shaurya)
 - Severity: P0 (security: what the engineer consented to does not limit the token)
 - Where: web/src/lib/mcp/caller.ts:92 puts `scopes` on the Caller. No tool reads them: `grep -n scopes web/src/lib/mcp/*.ts` finds only caller.ts:33,48,92. The write path at web/src/lib/mcp/write.ts:184 (`land`) and web/src/lib/mcp/write.ts:288 (`propose`) checks only the project role.
 - Repro:
@@ -136,7 +136,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **A rebuild retargets a carried binding onto a different part when its target is shared with a modelled wire**
 
-- Status: open
+- Status: fixed in 2b5b179
 - Severity: P0 data loss (silent rebinding)
 - Where: web/src/lib/ote/reader.ts:632-642 (a target used by a modelled wire is removed from `extra.targets`) and web/src/lib/ote/packager.ts:396 (`targetMap.get(b.Target) ?? b.Target` keeps the stale number, which then indexes some other target)
 - Repro: a part with one variable wire and one binding through a non-Scale converter (Visibility, say). Delete any other bound part, then export.
@@ -153,7 +153,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **The export route refuses every project that holds a Compound Object instance**
 
-- Status: open
+- Status: fixed in 78fb189
 - Severity: P1 broken flow
 - Where: web/src/lib/backend/types.ts:165-178. The cause is web/src/lib/ote/schema.ts:910-938 (PART_TYPES has no "CompoundObject") feeding web/src/lib/backend/ote.ts:24, as enforced by web/src/app/api/export/route.ts:99-109.
 - Repro: open demo_project/HMICopilot_Panel1.eote, samples/hmi-panel-1/auto-manual.eote or demo_project/HMICopilot_Drive_4.1.eote, change anything, then export.
@@ -168,7 +168,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Accepting an AI proposal reverts every edit made after the proposal was drawn**
 
-- Status: open
+- Status: fixed in 43f9794
 - Severity: P1 broken flow (it loses the engineer's own edits, and in a live project those of collaborators that arrived meanwhile)
 - Where: web/src/core/ops/apply.ts:1039-1041 (`commit` lands `run.patch` whole), web/src/store/project.ts:185-191 (`restoreSlice` replaces screens, bindings, alarms, handles), and web/src/components/chat/useChat.ts:462-473 (Accept commits the stored run)
 - Repro: ask the Copilot to delete an object, so a proposal appears. Drag another object. Click Accept.
@@ -183,7 +183,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **/signin?next= redirects off-site with a backslash or a tab**
 
-- Status: open
+- Status: fixed in 6c27db5
 - Severity: P1 (security: open redirect after a real sign-in, usable for phishing and as a step in the connector consent flow, which also routes through /signin?next=)
 - Where: web/src/app/signin/page.tsx:41-43 (safeNext), used at :19 (server redirect) and :26 -> web/src/components/shell/SignInForm.tsx:58 (`window.location.assign(next)`)
 - Repro: send `https://hmibuildtimecopilot.vercel.app/signin?next=/%5Cevil.example` (or `/%09/evil.example`); the victim signs in; the browser goes to https://evil.example/. A signed-in visitor is redirected immediately by the server (307 Location `/\evil.example`).
@@ -198,7 +198,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Model-spending and compute routes accept anonymous callers**
 
-- Status: open
+- Status: fixed in e7fa6aa, 4c41fea
 - Also reported as: S3-04 (merged here)
 - Severity: P1 (cost and availability: one shared Gemini key; anyone on the internet can spend it, and when the quota is gone the product's chat, brief, agent and connector all stop for everyone)
 - Where: web/src/app/api/chat/route.ts:61-143, brief/draft/route.ts:21-38, generate/route.ts:22-88, critique/route.ts:25-58, tags/match/route.ts:20-26 (model via matchTags, lib/ai/draft.ts:209), agent/route.ts:36-115 (anonymous allowed at :52-55, maxDuration 300, `message` uncapped); compute-only and also anonymous: regenerate, validate, export (projectless), export/report, import/screens, tags/parse, vijeo/migrate.
@@ -214,7 +214,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Four writers move a project's revision without a Realtime broadcast**
 
-- Status: open
+- Status: fixed in 803c62f
 - Also reported as: S4-24 (merged here)
 - Severity: P1 (broken flow for live sync on the Realtime transport: other people do not see an accepted Copilot proposal, a save, a restore or a claude.ai write until someone else happens to post an edit)
 - Where: web/src/lib/server/proposals.ts:148 (accept), web/src/app/api/projects/[id]/route.ts:24 (PUT save), web/src/app/api/projects/[id]/versions/route.ts:16 (restore), web/src/lib/mcp/write.ts:236 (MCP direct write); the only publisher is web/src/app/api/projects/[id]/changes/route.ts:32-40,57.
@@ -230,7 +230,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **No quotas: open sign-up (and anonymous upload) can fill the database**
 
-- Status: open
+- Status: open · needs Shaurya (the quota numbers are a product decision)
 - Severity: P1 (availability and data loss: when Mongo is full every save, change and sign-up fails for every user)
 - Where: web/src/app/api/upload/route.ts:6-13 (anonymous, 100 MB each, no count), web/src/lib/server/repo.ts:276-283 (sources permanent for accounts), :201-208 (projects), :303-308 (uploads); web/src/app/api/import/route.ts:134 (every signed-in import stores a permanent copy); comments have no count limit (repo-collab.ts:212-229)
 - Repro: sign up (50 accounts per IP per 15 min allowed), then loop: POST /api/upload size 100 MB, PUT 25 parts, complete. Or anonymously: uploads live 24 h each.
@@ -245,7 +245,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Rendering a screen of height 50 px or less crashes the whole Node process (resvg panic)**
 
-- Status: open
+- Status: fixed in 480e4c1
 - Severity: P1 (security and availability: one anonymous request to /api/critique kills the server instance. The same renderer serves MCP `render_screen` and the agent's `view_screen`.)
 - Where: web/src/lib/critic/render.ts:`screenToPng` (resvg `render()`). Reached from web/src/app/api/critique/route.ts:39-42 with no caller check and no size bounds (the ViewBox schema only says `positive()`, web/src/lib/ote/schema.ts:796-797). Also from web/src/lib/mcp/read.ts:183 and web/src/lib/agent/tools.ts:616.
 - Repro: `POST /api/critique {screen: <demo screen with Children[0].Height = 2>, renderOnly: true}`. SCRATCH probe: web/scripts/audit/s3-render-probe.mts 1024 2.
@@ -264,7 +264,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Reopening a project shows the "New project" start pane over it, with no way out**
 
-- Status: open
+- Status: fixed in c664057
 - Severity: P1 broken flow
 - Where: web/src/components/shell/Workspace.tsx:52-63 (with useProjectHydration.ts:121-126, which loads asynchronously)
 - Repro: open any project with content (local or server), then press F5, or open it from the Projects page after a reset, or sign in and click Workspace before the cloud load finishes.
@@ -279,7 +279,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **With Supabase Realtime on, server proposals and agent steps never reach the open tab**
 
-- Status: open
+- Status: fixed in 538ba50
 - Severity: P1 broken flow
 - Where: web/src/lib/collab/realtime.ts (no `proposal` or `agent` handler; only lib/collab/browser.ts:69-70 forwards them). Not my file; hit in the flow.
 - Repro: as in S4-21, wait.
@@ -294,7 +294,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **A binding rebuild rewrites bindings the engineer did not touch (CO target SubType, source PropertyFullName)**
 
-- Status: open
+- Status: part fixed in 0a90291 (CO SubType kept); PropertyFullName still dropped: needs a field on the store's bindings, needs Shaurya
 - Severity: P1 broken flow. Whether OTE still resolves the rows is not verified.
 - Where: web/src/lib/ote/bindings.ts:150-158 (`SubType: part.Type` writes "CompoundObject" for "CompoundObject.<Definition>") and bindings.ts:127-133 (Sources rebuilt without PropertyFullName). Triggered from web/src/lib/ote/packager.ts:575-603 on any change to wires, alarms or variables.
 - Repro: open HMICopilot_Panel1.eote, delete one bound NumericDisplay, then export. Compare Bindings.dat.
@@ -309,7 +309,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **The laptop store silently drops generation jobs**
 
-- Status: open
+- Status: fixed in 345a564
 - Severity: P1 (broken flow: MCP `generate` on a laptop/MCP Inspector returns a job id that `generation_status` can never find)
 - Where: web/src/lib/server/storage.ts:132-143 (table allow-list without "generationJobs"); writes at web/src/lib/server/repo-jobs.ts:126,134,142,150,161
 - Repro: `new FileRepo(dir)`; create a project; `jobs.create(...)`; `jobs.get(id)` -> null.
@@ -324,7 +324,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **/api/knowledge reads, adds and deletes with no identity and no Origin check**
 
-- Status: open
+- Status: fixed in 0f4c173
 - Severity set by the orchestrator: P1. S2 rated it P2 and S5 (as S5-05) rated it P0. It is a security hole with data loss (anonymous DELETE), so it is above P2, but production's knowledge store is off today, so it is latent there: P1 until a deployment turns the store on.
 - Also reported as: S3-08, S5-05 (merged here)
 - Severity: P2 (security: on a laptop any web page can POST a project into the retrieval corpus the model is fed, or DELETE records; on a deployment with KNOWLEDGE_STORE=mongo anyone can list customer tag conventions, poison or wipe them)
@@ -343,7 +343,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **An op that names a screen edits the same-named object on another screen**
 
-- Status: open
+- Status: fixed in 35a1d13 (rejecting a name ambiguous across screens is left out)
 - Severity: P2 wrong output
 - Where: web/src/core/ops/apply.ts:153-160 (`findPartByName` scans every screen and takes the first) via resolve at 376-383. `op.screen` is ignored for moveObject, resizeObject, setText, setColor, deleteObject and bindTag.
 - Repro: two screens each holding a part with one name; `{op:"moveObject", screen:"Second", target:<name>, dx:30}`.
@@ -358,7 +358,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **No security headers: pages can be framed, no CSP**
 
-- Status: open
+- Status: fixed in 9c8f899 (frame-ancestors, nosniff, no X-Powered-By); a full script-src CSP is left: it needs nonces
 - Severity: P2 (security: clickjacking of /signin and of the connector consent page /oauth/authorize, where one click grants claude.ai access to the account; no defence in depth against XSS)
 - Where: web/next.config.ts (no `headers()`), no web/src/middleware.ts
 - Repro: `curl -sD - https://hmibuildtimecopilot.vercel.app/signin -o /dev/null`
@@ -388,7 +388,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **History > Restore on the oldest of 20 versions does nothing, and logs "Restored version"**
 
-- Status: open
+- Status: fixed in 711f5b8
 - Severity: P2 wrong output
 - Where: web/src/components/history/HistoryScreen.tsx:310-316; web/src/store/slices/collab.ts:381, 388-389
 - Repro: take 20 versions, then click Restore on v1.
@@ -403,7 +403,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **A new project inherits the previous project's standards, including "Review every AI edit"**
 
-- Status: open
+- Status: fixed in 758dc8a
 - Severity: P2 wrong output
 - Where: web/src/store/project.ts:536-567 (reset leaves `standards`); web/src/components/shell/useProjectHydration.ts:165-177 (the new-project hydrate sets none)
 - Repro: in project A, turn on "Review every AI edit" and set grid 20. Click New project.
@@ -418,7 +418,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Plant "Rebuild from tags" drops the ranges the engineer typed**
 
-- Status: open
+- Status: fixed in ee1d368
 - Severity: P2 wrong output
 - Where: web/src/components/plant/PlantScreen.tsx:305-306
 - Repro: Plant → set a max on a reading → Rebuild from tags.
@@ -433,7 +433,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Undo after deleting a composite brings back loose parts; the composite is lost**
 
-- Status: open
+- Status: fixed in 0a2d46e
 - Severity: P2 wrong output
 - Where: web/src/store/state.ts:61-76 (EditSnapshot), web/src/store/internals.ts:22-45
 - Repro: add an AnalogIndicator, delete it, Ctrl+Z.
@@ -738,7 +738,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Anyone can lock any account out of sign-in**
 
-- Status: open
+- Status: fixed in df983c6
 - Severity: P2 (security: targeted denial of service; 11 requests per 15 minutes keep a named engineer out indefinitely)
 - Where: web/src/lib/server/credentials.ts:119-120 (both limits counted before the password is checked), web/src/lib/server/rate-limit.ts:98-105
 - Repro: 10 wrong passwords for victim@... from any IP; the victim then types the right password from their own IP.
@@ -753,7 +753,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Any member, including a viewer who joined by link, gets every member's email address**
 
-- Status: open
+- Status: fixed in 0ef6b25
 - Severity: P2 (privacy: a viewer link forwarded around a plant hands out the owner's and editors' addresses)
 - Where: web/src/app/api/projects/[id]/members/route.ts:15-27 (`email: user?.email`)
 - Repro: sign in, open a viewer link (becomes viewer member), GET /api/projects/<id>/members.
@@ -783,7 +783,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **The token endpoint does not bind codes and refresh tokens to the client**
 
-- Status: open
+- Status: part fixed in 86a0aec (refresh token bound to its client); requiring client_id on the code exchange changes the wire contract: needs Shaurya
 - Severity: P2 (a security weakening against OAuth 2.1 MUSTs. PKCE still protects the code, and the refresh token is a bearer secret, so the practical exposure is narrow.)
 - Where: web/src/lib/server/oauth.ts:540-543 (`if (clientId && clientId !== code.clientId)`) and oauth.ts:558-576 (refreshGrant never reads `client_id`).
 - Repro: exchange a code with no `client_id`; or refresh client A's refresh token sending client B's `client_id`.
@@ -798,7 +798,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **MCP generate takes a brief with an unbounded unit count**
 
-- Status: open
+- Status: fixed in bcdb85d
 - Severity: P2 (a cost and memory problem: a model call and a pipeline run are paid for before the refusal, and the placeholder tags are built in memory)
 - Where:
   - web/src/lib/mcp/generate.ts:111 `count: z.number().int().optional()`;
@@ -832,7 +832,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **alignObjects silently drops targets it cannot find, and reports a no-op spread as done**
 
-- Status: open
+- Status: fixed in ed0bb1c
 - Severity: P2 (wrong output: an object jumps to the screen edge, or nothing moves, and the engineer is told it worked)
 - Where: web/src/core/ops/apply.ts:879-881 drops unresolved names without a word; it rejects only when *none* resolve (apply.ts:882). Then:
   - with one object left, web/src/store/edits.ts:61-64 aligns it to the screen frame;
@@ -850,7 +850,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Variables.csv exports placeholder tags that the .eote leaves out**
 
-- Status: open
+- Status: fixed in 2b7483a
 - Severity: P2 wrong output
 - Where: web/src/components/export/useExport.ts:129-131
 - Repro: a screens-first project (confirmed brief, no real export) → Export → Generate files.
@@ -865,7 +865,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Restoring a version drops locks, groups, provenance keys and bind intents**
 
-- Status: open
+- Status: fixed in 1b693cf
 - Severity: P2 wrong output
 - Where: web/src/store/types.ts:117-125 (Version), web/src/store/slices/collab.ts:364-401
 - Repro: lock a generated object, save a checkpoint, delete it, restore.
@@ -913,7 +913,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **The agent can delete the project's core files: delete_path on a folder or "", and run_script ws.delete**
 
-- Status: open
+- Status: fixed in 5d69132
 - Severity: P2 (wrong output: the agent saves a project that does not open. The opened file is not changed, because /api/agent stores the result as a new source.)
 - Where: web/src/lib/agent/tools.ts:275-280 tests `CORE` only against the path it was given, then deletes everything `ws.list(p)` returns. `delete_path {path:""}` lists every file. web/src/lib/agent/script.ts:241 (`host.delete`) never consults CORE. Compare docs/AGENT_WORKSPACE.md:42: "Core files ... cannot be deleted".
 - Repro: `runAgentTool(ctx, "delete_path", {path: ""})`, or `{path: "Screens"}`, or `run_script` with `ws.delete("Project.dat")`.
@@ -928,7 +928,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **The agent's regex tools block the event loop on a catastrophic pattern**
 
-- Status: open
+- Status: fixed in 7b62ea8
 - Severity: P2 (availability: one tool call freezes the function instance; the run's AbortSignal cannot stop it)
 - Where: web/src/lib/agent/tools.ts:104-111 `pattern()` compiles any model-supplied regex. It is run synchronously over every line in `search` (tools.ts:172-174), and also in `find_objects`, `bindings` and `tags`.
 - Repro: `search {pattern: "(a+)+$"}` over a file with a line of 26 `a`s and a `!`.

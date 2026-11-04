@@ -343,4 +343,17 @@ The 24 baseline skips are these:
 | Run | Weighted read | Drew | Took edit | Survived (writer) | Survived and exportable |
 |---|---|---|---|---|---|
 | Before fixes (5fd701d) | 98.4 % | 99.3 % | 98.9 % | 95.8 % | 66.1 % |
-| After fixes (Stage 2) | to fill | | | | |
+| After fixes (`fix/audit-2026-11` at `ed0bb1c`) | 98.4 % | 99.3 % | 98.9 % | 96.3 % | 96.3 % |
+
+| Raw op attempts | Before | After |
+|---|---|---|
+| All files, survived the writer (464 applicable ops) | 430/464 = 92.7 % | 435/464 = 93.8 % |
+| The 4 distinct engineer files, survived the writer (207 ops) | 184/207 = 88.9 % | 189/207 = 91.3 % |
+| The 4 distinct engineer files, survived and exportable | **41/207 = 19.8 %** | **189/207 = 91.3 %** |
+| Files the export route refuses | 4 (`409 cannot write CompoundObject`) | 0 |
+
+The jump in the last column is S1-01: the export route no longer refuses a
+project that holds Compound Objects. The writer gains (+5 ops) are S1-03,
+S1-05 and S1-02's SubType half. Whether OTE Expert opens the output is still
+**not verified**: OTE Expert is not installed on this machine. Same command,
+same corpus; the full result is in the audit scratchpad, not the repository.
