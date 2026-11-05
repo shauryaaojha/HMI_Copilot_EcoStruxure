@@ -156,7 +156,7 @@ describe("the transport", () => {
     const { body } = await rpc("tools/list");
     const tools = body.result.tools as { name: string; inputSchema: { properties?: Record<string, unknown> } }[];
     expect(tools.map(t => t.name).sort()).toEqual(
-      ["apply_ops", "find_tags", "generate", "generation_cancel", "generation_status", "get_screens", "list_projects", "propose", "render_screen", "validate"],
+      ["apply_ops", "find_tags", "generate", "generation_cancel", "generation_status", "get_screens", "kb_get", "kb_search", "list_projects", "propose", "render_screen", "validate"],
     );
     expect(tools.map(t => t.name).sort()).toEqual(TOOLS.map(t => t.name).sort());
     // apply_ops publishes the Op union itself: the op names come from
@@ -164,6 +164,8 @@ describe("the transport", () => {
     const ops = tools.find(t => t.name === "apply_ops")!.inputSchema.properties!.ops as { items: { properties: { op: { enum: string[] } } } };
     expect(ops.items.properties.op.enum).toContain("addEquipment");
     expect(ops.items.properties.op.enum).toContain("tidyLayout");
+    const search = tools.find(t => t.name === "kb_search")!.inputSchema;
+    expect(search.properties?.query).toMatchObject({ type: "string" });
   });
 
   it("answers 405 to GET and DELETE, and 401 to them with no caller", async () => {
@@ -181,6 +183,17 @@ describe("the transport", () => {
     vi.stubEnv("VERCEL", "1");
     expect((await rpc("tools/list")).response.status).toBe(401);
     vi.stubEnv("VERCEL", "");
+  });
+});
+
+describe("indexed knowledge", () => {
+  it("serves public entries through new read tools", async () => {
+    const search = await call("kb_search", { query: "lamp" });
+    expect(search.refused).toBe(false);
+    expect(search.text).toContain("part:Lamp");
+    const get = await call("kb_get", { id: "part:Lamp" });
+    expect(get.refused).toBe(false);
+    expect(get.text).toContain('"emitted":true');
   });
 });
 
