@@ -22,8 +22,10 @@
  */
 import { errorResponse } from "@/lib/server/errors";
 import { resolveCaller } from "@/lib/mcp/caller";
-import { checkOrigin, unauthorized } from "@/lib/mcp/http";
+import { checkOrigin, insufficientScope, unauthorized } from "@/lib/mcp/http";
+import { missingScope, TOOLS } from "@/lib/mcp/tools";
 import { handleMcpRequest } from "@/lib/mcp/server";
+import { readBody } from "@/lib/ingest/body";
 
 export const runtime = "nodejs";
 /**
@@ -40,6 +42,17 @@ export async function POST(request: Request): Promise<Response> {
     checkOrigin(request);
     const caller = await resolveCaller(request);
     if (!caller) return unauthorized(request);
+    // A scope failure is an HTTP challenge so an OAuth client can ask the
+    // engineer for the missing grant. The tool handler still checks it too.
+    const declared = Number(request.headers.get("content-length"));
+    if (!Number.isFinite(declared) || declared <= 1024 * 1024) {
+      const body = await readBody(request.clone(), 1024 * 1024).then(bytes => JSON.parse(new TextDecoder().decode(bytes))).catch(() => null);
+      if (body?.method === "tools/call") {
+        const spec = TOOLS.find(tool => tool.name === body.params?.name);
+        const scope = spec && missingScope(spec, caller);
+        if (scope) return insufficientScope(request, scope);
+      }
+    }
     return await handleMcpRequest(request, caller);
   } catch (error) {
     return errorResponse(error);

@@ -20,7 +20,7 @@
  * is exactly what decision 1 keeps out.
  */
 import { compare, hash } from "bcryptjs";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { repo, type Repo, type User } from "./repo";
 import { ServerError } from "./errors";
 import { checkAuthConfig } from "./session";
@@ -57,7 +57,7 @@ export function normalizeEmail(value: unknown): { email: string; emailKey: strin
 }
 
 /** The password rules, applied before anything is hashed or stored. */
-function checkPassword(value: unknown): string {
+export function checkPassword(value: unknown): string {
   const password = typeof value === "string" ? value : "";
   if (password.length < MIN_PASSWORD) throw new ServerError(400, "weak-password", `Use at least ${MIN_PASSWORD} characters`);
   if (new TextEncoder().encode(password).length > MAX_PASSWORD_BYTES) throw new ServerError(400, "weak-password", `Use at most ${MAX_PASSWORD_BYTES} bytes`);
@@ -128,4 +128,47 @@ export async function verifyPassword(
   await clearAttempts("email-ip", `${emailKey}|${ip}`, storage);
   await clearAttempts("email", emailKey, storage);
   return found.user;
+}
+
+/** A password change ends browser sessions and every connector credential. */
+export async function changePassword(
+  user: User, current: unknown, next: unknown, request?: Request | null, storage: Repo = repo(),
+): Promise<void> {
+  const verified = await verifyPassword(user.email, current, request, storage);
+  if (verified?.id !== user.id) throw new ServerError(403, "invalid-password", "The current password is incorrect");
+  // Verify first so every current-password attempt reaches the normal limits,
+  // even when the proposed replacement would not meet the password rules.
+  const password = checkPassword(next);
+  await storage.users.replacePassword(user.id, await hash(password, COST));
+}
+
+/** A password confirmation also spends a sign-in attempt before destructive cleanup starts. */
+export async function deleteAccountWithPassword(
+  user: User, password: unknown, request?: Request | null, storage: Repo = repo(),
+): Promise<{ retainedSources: string[] }> {
+  const verified = await verifyPassword(user.email, password, request, storage);
+  if (verified?.id !== user.id) throw new ServerError(403, "invalid-password", "The password is incorrect");
+  return storage.users.deleteAccount(user.id);
+}
+
+const RESET_MS = 30 * 60 * 1000;
+const resetHash = (token: string) => createHash("sha256").update(token).digest("hex");
+
+/** Only the operator calls this. The token is printed once; the database keeps its hash. */
+export async function createPasswordReset(email: unknown, storage: Repo = repo()): Promise<string> {
+  const key = normalizeEmail(email).emailKey;
+  const token = randomBytes(32).toString("base64url");
+  if (!await storage.users.issueReset(key, resetHash(token), Date.now() + RESET_MS)) {
+    throw new ServerError(404, "not-found", `No account exists for ${String(email)}`);
+  }
+  return token;
+}
+
+/** A reset is claimed once, in the same transaction as the credential update. */
+export async function resetPassword(token: unknown, next: unknown, storage: Repo = repo()): Promise<string> {
+  const password = checkPassword(next);
+  if (typeof token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(token)) throw new ServerError(400, "invalid-reset", "This reset link is invalid or expired");
+  const userId = await storage.users.consumeReset(resetHash(token), await hash(password, COST));
+  if (!userId) throw new ServerError(400, "invalid-reset", "This reset link is invalid or expired");
+  return userId;
 }

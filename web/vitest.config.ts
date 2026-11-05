@@ -1,5 +1,8 @@
 import { defineConfig } from "vitest/config";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   // 20 s rather than the default 5: on Windows, file-store and sandbox cases that
@@ -8,5 +11,5 @@ export default defineConfig({
   // The canvas tests render React components, and tsconfig sets jsx "preserve"
   // for Next's own transform. esbuild needs telling explicitly.
   esbuild: { jsx: "automatic" },
-  resolve: { alias: { "@": path.resolve(__dirname, "src") } },
+  resolve: { alias: { "@": path.resolve(here, "src") } },
 });

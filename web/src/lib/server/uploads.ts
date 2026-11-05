@@ -3,7 +3,7 @@
  * bound to an account when signed in. Completion is idempotent, and importing
  * verifies ownership again rather than trusting a source id sent by the client.
  * Each request stays below the host's body ceiling; the repository enforces the
- * declared size and the aggregate 100 MB limit before storing any part.
+ * declared size and repository quotas before storing any part.
  */
 import { repo, type Repo, type User } from "./repo";
 import { ServerError } from "./errors";

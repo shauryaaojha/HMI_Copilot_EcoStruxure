@@ -9,6 +9,7 @@
  * reply is one level deep and sits where its thread sits on the canvas.
  */
 import { ServerError } from "./errors";
+import { quotas, refuseCount } from "./quotas";
 import { validId, type Data, type Row } from "./storage";
 import type { Member, Project, Role } from "./repo";
 
@@ -212,6 +213,8 @@ export function commentsRepo(tx: Tx, now: Clock, read: Tx = tx): CommentsRepo {
     get: (projectId, id) => read(d => find(d, projectId, id)),
     create: (projectId, authorId, draft) => tx(async d => {
       if (!await d.get<Project>("projects", projectId)) throw missing();
+      const limit = quotas().comments;
+      if ((await d.list("comments", { projectId }, { projection: { _id: 1 }, limit })).length >= limit) refuseCount("Comments per project", limit);
       const comment: Comment = { _id: crypto.randomUUID(), projectId, authorId, body: commentBody(draft.body), createdAt: now() };
       if (draft.parentId !== undefined && draft.parentId !== null) {
         const parent = typeof draft.parentId === "string" ? await find(d, projectId, draft.parentId) : null;
