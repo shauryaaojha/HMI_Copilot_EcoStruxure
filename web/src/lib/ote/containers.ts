@@ -377,6 +377,14 @@ export function mergeTree(root: Raw, laid: Laid, parts: Raw[], modelled: Set<str
       if (!edited || !leaf) continue; // deleted in the editor
       next.push(writeBack(kid, edited, leaf));
     }
+    // Modelled siblings paint in the editor's order. Carried nodes keep their
+    // place; they have no editable representative in the flat list.
+    const ranks = new Map(parts.map((part, index) => [String(part.UniqueId), index]));
+    const ordered = next.map((kid, index) => ({ kid, index }));
+    const indices = ordered.filter(({ kid }) => ranks.has(String(kid.UniqueId))).map(({ index }) => index);
+    const siblings = indices.map((index) => next[index]).sort((a, b) =>
+      ranks.get(String(a.UniqueId))! - ranks.get(String(b.UniqueId))!);
+    indices.forEach((index, at) => { next[index] = siblings[at]; });
     return { ...node, Children: next };
   };
 

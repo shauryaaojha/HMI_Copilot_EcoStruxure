@@ -17,6 +17,11 @@ export interface Box {
   height: number;
 }
 
+/** Snap the resulting position, so a part starting off-grid can land on it. */
+export function snapPositionDelta(start: number, delta: number, unit: number): number {
+  return Math.round((start + delta) / unit) * unit - start;
+}
+
 export const boxOf = (part: Part): Box => ({
   left: part.Location.Left,
   top: part.Location.Top,

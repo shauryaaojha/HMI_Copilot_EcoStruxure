@@ -106,29 +106,30 @@ export function placementOf(
  * column count. The origin shifts with it, so nothing lands at a negative
  * offset that the scroll container could not reach.
  */
+export function boardLayout(
+  frames: { id: string; width: number; height: number }[],
+  placements: Record<string, { x: number; y: number }>,
+) {
+  const largest = frames.reduce((size, frame) => ({
+    width: Math.max(size.width, frame.width),
+    height: Math.max(size.height, frame.height),
+  }), { width: 0, height: 0 });
+  const metrics = boardMetrics(frames.length, largest);
+  const spots = frames.map((frame, i) => placementOf(i, metrics, placements[frame.id]));
+  const minX = Math.min(0, ...spots.map((p) => p.x));
+  const minY = Math.min(0, ...spots.map((p) => p.y));
+  const maxX = Math.max(largest.width, ...spots.map((p, i) => p.x + frames[i].width));
+  const maxY = Math.max(largest.height, ...spots.map((p, i) => p.y + frames[i].height + BOARD_LABEL));
+  return { metrics, originX: minX, originY: minY, width: maxX - minX, height: maxY - minY };
+}
+
+/** Compatibility for callers with one common frame size. */
 export function boardExtent(
   screen: { width: number; height: number },
   ids: string[],
   placements: Record<string, { x: number; y: number }>,
 ) {
-  const metrics = boardMetrics(ids.length, screen);
-  const spots = ids.map((id, i) => placementOf(i, metrics, placements[id]));
-
-  const minX = Math.min(0, ...spots.map((p) => p.x));
-  const minY = Math.min(0, ...spots.map((p) => p.y));
-  const maxX = Math.max(screen.width, ...spots.map((p) => p.x + screen.width));
-  const maxY = Math.max(
-    screen.height,
-    ...spots.map((p) => p.y + screen.height + BOARD_LABEL),
-  );
-
-  return {
-    metrics,
-    originX: minX,
-    originY: minY,
-    width: maxX - minX,
-    height: maxY - minY,
-  };
+  return boardLayout(ids.map((id) => ({ id, ...screen })), placements);
 }
 
 export interface ScreenBoardProps {
@@ -224,18 +225,12 @@ export function ScreenBoard({
 }: ScreenBoardProps) {
   // A Canvas root (an opened project's) has no size of its own: it is the panel's.
   const target = useProject((s) => s.target);
-  const first = screens[0]?.Children[0];
-  const size = first ? rootBox(first, target) : target;
-
   const spots = useMemo(() => placements ?? {}, [placements]);
   const extent = useMemo(
-    () =>
-      boardExtent(
-        size,
-        screens.map((s) => s.UniqueId),
-        spots,
-      ),
-    [screens, size.width, size.height, spots],
+    () => boardLayout(screens.map((screen) => ({
+      id: screen.UniqueId, ...rootBox(screen.Children[0], target),
+    })), spots),
+    [screens, target, spots],
   );
 
   /** The frame being dragged, and where the grab started. */
