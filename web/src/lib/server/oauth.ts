@@ -529,18 +529,19 @@ export async function exchangeToken(
 async function codeGrant(form: URLSearchParams, request: Request, storage: Repo): Promise<TokenResponse> {
   const presented = form.get("code") ?? "";
   const verifier = form.get("code_verifier") ?? "";
+  const clientId = form.get("client_id") ?? "";
   if (!presented) throw new OauthError("invalid_request", "code is required");
   if (!verifier) throw new OauthError("invalid_request", "code_verifier is required: this server only accepts PKCE");
+  if (!clientId) throw new OauthError("invalid_request", "client_id is required for a public client");
   // Claimed before anything is checked, so that a wrong verifier burns the
   // code rather than leaving it on the table for the next guess.
   const code = await storage.connector.claimCode(tokenHash(presented));
   if (!code) throw new OauthError("invalid_grant", "That authorization code is not valid");
   if (code.expiresAt <= Date.now()) throw new OauthError("invalid_grant", "That authorization code has expired");
 
-  const clientId = form.get("client_id") ?? "";
   // A public client has no secret, so the only thing tying the exchange to the
   // client that started it is the client id and the PKCE verifier. Both.
-  if (clientId && clientId !== code.clientId) throw new OauthError("invalid_grant", "That code was issued to another client");
+  if (clientId !== code.clientId) throw new OauthError("invalid_grant", "That code was issued to another client");
   const redirectUri = form.get("redirect_uri") ?? "";
   if (redirectUri && redirectUri !== code.redirectUri) throw new OauthError("invalid_grant", "redirect_uri does not match the authorization request");
   if (!pkceMatches(verifier, code.codeChallenge)) throw new OauthError("invalid_grant", "The code verifier does not match the challenge");
@@ -557,7 +558,9 @@ async function codeGrant(form: URLSearchParams, request: Request, storage: Repo)
 
 async function refreshGrant(form: URLSearchParams, request: Request, storage: Repo): Promise<TokenResponse> {
   const presented = form.get("refresh_token") ?? "";
+  const clientId = form.get("client_id") ?? "";
   if (!presented) throw new OauthError("invalid_request", "refresh_token is required");
+  if (!clientId) throw new OauthError("invalid_request", "client_id is required for a public client");
   const found = await storage.connector.byHash(tokenHash(presented));
   // Everything wrong with a refresh token is `invalid_grant` - unknown,
   // expired, already rotated, or the wrong kind of token presented here. The
@@ -569,8 +572,7 @@ async function refreshGrant(form: URLSearchParams, request: Request, storage: Re
   const grant = await storage.connector.grant(found.grantId);
   if (!grant) throw new OauthError("invalid_grant", "That authorization has been revoked");
   // As for a code: a client that names itself must be the one the token was issued to (S3-05).
-  const clientId = form.get("client_id") ?? "";
-  if (clientId && clientId !== grant.clientId) throw new OauthError("invalid_grant", "That refresh token is not valid");
+  if (clientId !== grant.clientId) throw new OauthError("invalid_grant", "That refresh token is not valid");
 
   const asked = form.get("resource");
   if (!resourceIsOurs(request, asked)) throw new OauthError("invalid_target", "This server can only issue tokens for its own MCP endpoint");

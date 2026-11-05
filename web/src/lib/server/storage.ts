@@ -77,6 +77,8 @@ const DAY = 24 * HOUR;
 export const TTL: Record<string, { field: string; graceMs: number }> = {
   presence: { field: "expiresAt", graceMs: HOUR },
   signInAttempts: { field: "resetAt", graceMs: HOUR },
+  revokedSessions: { field: "expiresAt", graceMs: 0 },
+  passwordResets: { field: "expiresAt", graceMs: 0 },
   oauthCodes: { field: "expiresAt", graceMs: HOUR },
   uploads: { field: "expiresAt", graceMs: DAY },
   uploadParts: { field: "expiresAt", graceMs: DAY },
@@ -308,7 +310,7 @@ function mongoData(db: Db, session?: ClientSession): Data {
  * creates the indexes (idempotent, so two cold starts racing is harmless) and
  * records the version; one that is current pays a single read per process.
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 const ttlIndex = (): IndexDescription => ({ key: { _expireAt: 1 }, expireAfterSeconds: 0, name: "ttl_expireAt" });
 export const INDEXES: Record<string, IndexDescription[]> = {
   projects: [{ key: { sources: 1 } }, { key: { ownerId: 1 } }],
@@ -318,6 +320,8 @@ export const INDEXES: Record<string, IndexDescription[]> = {
   // lookup, and this index is what makes the loser fail.
   users: [{ key: { emailKey: 1 }, unique: true, sparse: true }],
   signInAttempts: [{ key: { resetAt: 1 } }, ttlIndex()],
+  revokedSessions: [{ key: { userId: 1 } }, ttlIndex()],
+  passwordResets: [{ key: { userId: 1 } }, ttlIndex()],
   members: [{ key: { userId: 1, projectId: 1 } }, { key: { projectId: 1, addedAt: 1 } }],
   uploads: [{ key: { expiresAt: 1 } }, ttlIndex()],
   uploadParts: [{ key: { uploadId: 1, part: 1 }, unique: true }, ttlIndex()],

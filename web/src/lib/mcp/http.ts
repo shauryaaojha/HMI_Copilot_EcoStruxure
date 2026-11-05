@@ -56,9 +56,18 @@ export function unauthorized(request: Request): Response {
     {
       status: 401,
       headers: {
-        "WWW-Authenticate": `Bearer resource_metadata="${metadata}"`,
+        "WWW-Authenticate": `Bearer error="invalid_token", resource_metadata="${metadata}"`,
         "Cache-Control": "no-store",
       },
     },
+  );
+}
+
+/** A narrowed credential may retry authorization asking for the named scope. */
+export function insufficientScope(request: Request, scope: string): Response {
+  const metadata = `${publicOrigin(request)}${RESOURCE_METADATA_PATH}`;
+  return Response.json(
+    { error: `This tool requires the ${scope} scope`, code: "insufficient_scope" },
+    { status: 403, headers: { "WWW-Authenticate": `Bearer error="insufficient_scope", scope="${scope}", resource_metadata="${metadata}"`, "Cache-Control": "no-store" } },
   );
 }

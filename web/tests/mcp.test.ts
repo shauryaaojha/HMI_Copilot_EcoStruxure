@@ -114,7 +114,7 @@ describe("the transport", () => {
     const { response, body } = await rpc("tools/list");
     expect(response.status).toBe(401);
     expect(response.headers.get("WWW-Authenticate")).toBe(
-      'Bearer resource_metadata="https://hmi.example.com/.well-known/oauth-protected-resource"',
+      'Bearer error="invalid_token", resource_metadata="https://hmi.example.com/.well-known/oauth-protected-resource"',
     );
     expect(body.code).toBe("unauthorized");
   });
