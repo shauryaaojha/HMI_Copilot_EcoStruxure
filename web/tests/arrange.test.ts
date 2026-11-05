@@ -66,7 +66,7 @@ describe("chat ops", () => {
 
   it("snapToGrid with no targets snaps each faceplate whole, keeping the lamp's place on its card", () => {
     const s = storeWith([rect("Card_A", 13, 13, 200, 100), rect("Lamp_A", 33, 43, 20, 20, "TextBox"), rect("Free", 301, 301, 40, 40)]);
-    const out = applyOps([{ op: "snapToGrid" }], s);
+    const out = applyOps([{ op: "snapToGrid", grid: 8 }], s);
     expect(out.rejected).toEqual([]);
     expect([part(s, "Card_A").Location.Left, part(s, "Card_A").Location.Top]).toEqual([16, 16]);
     expect([part(s, "Lamp_A").Location.Left, part(s, "Lamp_A").Location.Top]).toEqual([36, 46]);

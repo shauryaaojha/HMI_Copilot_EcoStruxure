@@ -157,7 +157,7 @@ export function gridFor(
   const width = Math.min(design.width, usable);
   const columns = Math.max(1, Math.min(design.columns, Math.floor((usable + GAP) / (width + GAP))));
   // A detail panel takes the whole body height: one row of them.
-  const height = level === 3 ? Math.max(CARD.height, bottom - top) : design.height;
+  const height = level === 3 ? Math.max(0, bottom - top) : Math.min(design.height, Math.max(0, bottom - top));
   const rows = level === 3 ? 1 : Math.max(1, Math.floor((bottom - top + GAP) / (height + GAP)));
   return { width, height, columns, rows, capacity: rows * columns, top, bottom };
 }

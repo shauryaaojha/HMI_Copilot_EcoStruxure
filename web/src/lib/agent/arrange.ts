@@ -124,7 +124,7 @@ export function matchSize(ws: Workspace, refs: string[], dimension: "width" | "h
 }
 
 /** Each named object, or with none named each faceplate in the screen's main container. */
-export function snapToGrid(ws: Workspace, screen: string, panel: Panel, refs: string[], grid = 8): string {
+export function snapToGrid(ws: Workspace, screen: string, panel: Panel, refs: string[], grid = 4): string {
   if (!(grid >= 1)) throw new WorkspaceError(`A grid of ${grid} pixels cannot be snapped to`);
   const named = refs.length > 0 ? pick(ws, refs, panel, screen) : undefined;
   const container = named?.container ?? mainContainer(ws, screen, panel);

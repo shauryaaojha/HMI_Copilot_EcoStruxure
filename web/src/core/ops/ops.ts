@@ -18,6 +18,7 @@ import { z } from "zod";
 import { PART_TYPES } from "@/lib/ote/schema";
 import { COMPOSITE_KINDS } from "@/lib/composites";
 import { REGIONS, SIDES } from "@/lib/ote/regions";
+import type { Constraint } from "@/lib/layout/types";
 
 export const OP_NAMES = [
   "addScreen",
@@ -38,6 +39,7 @@ export const OP_NAMES = [
   "addAlarm",
   "applyPack",
   "tidyLayout",
+  "arrange",
   "matchSize",
   "snapToGrid",
 ] as const;
@@ -140,8 +142,23 @@ export const Op = z.object({
   mode: z.enum(ALIGN_MODES).optional(),
   /** matchSize: which side to copy from the first target. Absent means both. */
   dimension: z.enum(["width", "height", "both"]).optional(),
-  /** snapToGrid: the spacing in pixels. Absent means the layout's own 8. */
+  /** snapToGrid: the spacing in pixels. Absent means the screen's own grid. */
   grid: z.number().optional(),
+  /** Intent-only geometry constraints. Coordinates are deliberately absent. */
+  constraints: z.array(z.object({
+    id: z.string(),
+    kind: z.enum(["align", "distribute", "sameSize", "inside", "noOverlap", "snap", "keep", "row", "column"]),
+    units: z.array(z.string()).optional(),
+    edge: z.enum(["left", "centre", "right", "top", "middle", "bottom", "baseline"]).optional(),
+    axis: z.enum(["x", "y"]).optional(),
+    gap: z.number().optional(),
+    dim: z.enum(["width", "height", "both"]).optional(),
+    to: z.string().optional(),
+    unit: z.string().optional(),
+    container: z.string().optional(),
+    pad: z.number().optional(),
+    scope: z.union([z.literal("screen"), z.array(z.string())]).optional(),
+  })).optional() as z.ZodType<Constraint[] | undefined>,
   message: z.string().optional(),
   severity: z.number().optional(),
   alarmType: z.number().optional(),
@@ -218,7 +235,11 @@ export function coerceTurn(value: unknown): Turn | null {
     .map((op) =>
       op.op === "addObject" || op.op === "addEquipment"
         ? { ...op, left: undefined, top: undefined }
-        : op,
+        : op.op === "arrange"
+          // An arrangement states relationships. Coordinates would bypass the
+          // deterministic solver, so they are never part of this wire shape.
+          ? { ...op, left: undefined, top: undefined, dx: undefined, dy: undefined, width: undefined, height: undefined }
+          : op,
     );
   return { ...parsed.data, ops };
 }

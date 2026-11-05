@@ -28,6 +28,8 @@ import { rootBox } from "@/lib/ote/schema";
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
 import { regionOf, regionsOf, roomReport } from "@/lib/ote/regions";
 import { overlapsOn } from "@/lib/ote/tidy";
+import { sceneOf } from "@/lib/layout/scene";
+import { layoutFacts, printLayoutFacts } from "@/lib/layout/facts";
 import { ALIGN_MODES, COLOR_NAMES, OP_NAMES, coerceTurn, type Op, type Turn } from "./ops";
 import { PART_TYPES } from "@/lib/ote/schema";
 import { REGIONS, SIDES } from "@/lib/ote/regions";
@@ -71,6 +73,8 @@ export interface ScreenDigest {
   room?: string;
   /** Only for the active screen: objects that share pixels, by handle. */
   overlaps?: string[];
+  /** Resolved, coordinate-free layout evidence for an arrange request. */
+  layout?: string;
   /** A content screen: not navigated to, drawn inside a ContentDisplay. Says which screens show it. */
   content?: string;
   /** Only for the active screen: the engineer's Compound Objects and other carried objects, with what they read. */
@@ -215,6 +219,8 @@ export function digestOf(project: DigestSource, request = ""): ProjectDigest {
         });
       }
       digest.room = roomReport(parts, panel);
+      const scene = sceneOf({ screen, panel: project.target, handles: project.handles, opened: true, contentScreens: project.screens });
+      digest.layout = printLayoutFacts(layoutFacts(scene, parts, `${project.target.model} ${project.target.width}x${project.target.height}`));
       const found = overlapsOn(parts, (id) => project.objectMeta?.[id]?.groupId, panel);
       if (found.length > 0) {
         digest.overlaps = found
@@ -437,6 +443,13 @@ Scope - one op can reach many screens and many objects:
   never twelve ops.
 
 Overlaps and alignment:
+- The active screen has resolved Layout facts in SDU: use their unit handles and
+  relationships, never invent coordinates. ViewBox panel scale is an explicitly
+  labelled renderer assumption, not an OTE bench result.
+- Use arrange with constraints for new layout edits. Its constraints name
+  relationships such as align, distribute, sameSize, inside, noOverlap, snap,
+  keep, row and column; they never carry left, top, width, height, dx or dy.
+  alignObjects and tidyLayout remain accepted aliases for recorded transcripts.
 - The active screen's overlaps are listed for you, by handle. "Fix the
   overlapping", "things are on top of each other", "tidy this screen" is
   tidyLayout: the layout engine moves each overlapping object (a faceplate
@@ -742,6 +755,7 @@ export function volatileContext(digest: ProjectDigest): string {
   return [
     active ? `Active screen: ${active.handle} ${active.name}` : "No active screen.",
     active ? `Room on it: ${active.room}` : "",
+    active?.layout ? `Layout facts (resolved SDU):\n${active.layout}` : "",
     active ? `Overlaps on it:${active.overlaps?.length ? `\n${active.overlaps.join("\n")}` : " none"}` : "",
     active ? `Objects on it:\n${objects || "- none"}` : "",
     active?.carried?.length

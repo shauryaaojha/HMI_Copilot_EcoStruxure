@@ -22,6 +22,7 @@ import { rootBox } from "@/lib/ote/schema";
 import type { Part, Screen } from "@/lib/ote/schema";
 import { DEFAULT_PACK, tokenHex, type StandardPack } from "@/lib/standard/pack";
 import { COLOR_SETS, packedHex, resolveColor } from "@/lib/ote/palette";
+import { nearMisses } from "@/lib/layout/facts";
 
 /* --- geometry ---------------------------------------------------------- */
 
@@ -291,42 +292,18 @@ export function critiqueGeometry(screen: Screen, pack: StandardPack = DEFAULT_PA
     });
   }
 
-  // --- geom.alignment ---------------------------------------------------
-  // Edges that nearly line up. A grid-snapped layout produces none of these,
-  // which is the property worth having: the rule is silent until something
-  // drifts off the grid by a few pixels, which is the difference between a
-  // screen that looks made and one that looks typed.
-  //
-  // Shapes only. Text on a shared row is aligned by its baseline, not by its
-  // box, so a 12pt caption beside a 13pt title sits a pixel lower on purpose -
-  // that is typography, and a rule that reads box tops would call every
-  // well-set row a defect. Cards count: a column of cards that nearly lines up
-  // is exactly what this is for.
-  for (const edge of ["left", "top"] as const) {
-    const values = body
-      .filter((p) => !isRoute(p) && !TEXT_TYPES.has(p.Type))
-      .map((p) => ({ part: p, value: box(p)[edge] }))
-      .sort((a, b) => a.value - b.value);
-    let cluster: typeof values = [];
-    const flush = () => {
-      const distinct = new Set(cluster.map((c) => c.value));
-      if (cluster.length >= 3 && distinct.size > 1) {
-        const names = cluster.map((c) => c.part.Name).join(", ");
-        findings.push({
-          severity: "info",
-          rule: "geom.alignment",
-          objectId: cluster[0].part.UniqueId,
-          message: `${cluster.length} objects nearly share a ${edge} edge (${[...distinct].join(", ")}): ${names}.`,
-          suggestion: `Put them all on the same ${edge}, or move them far enough apart that they are not read as a column.`,
-        });
-      }
-      cluster = [];
-    };
-    for (const v of values) {
-      if (cluster.length && v.value - cluster[cluster.length - 1].value > g.alignmentSlop) flush();
-      cluster.push(v);
-    }
-    flush();
+  // --- geom.nearMiss ----------------------------------------------------
+  // A single slipped label matters; compare edges and centres on all parts.
+  for (const miss of nearMisses(all, g.alignmentSlop)) {
+    const a = all.find((part) => part.UniqueId === miss.a)!;
+    const other = all.find((part) => part.UniqueId === miss.b)!;
+    findings.push({
+      severity: "info",
+      rule: "geom.nearMiss",
+      objectId: a.UniqueId,
+      message: a.Name + " and " + other.Name + " nearly share a " + miss.edge + " edge (" + miss.by + "px apart).",
+      suggestion: "Align " + a.Name + " and " + other.Name + ", or leave their intended offset.",
+    });
   }
 
   // --- geom.balance and geom.crowding -----------------------------------

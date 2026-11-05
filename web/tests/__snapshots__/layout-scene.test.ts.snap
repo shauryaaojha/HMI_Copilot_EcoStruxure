@@ -1,0 +1,12 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`read-only layout scenes > resolves a Grid cell and nested CO and content transforms 1`] = `
+"screen screen 400x200 SDU (panel 800x600) grid 4
+ViewBox letterbox scale is assumed from the renderer; OTE bench confirmation is pending.
+units (id kind type parent box [row col]):
+ co coInstance CompoundObject.Switch root 250,130,100x40 r1 c1
+ display part ContentDisplay root 50,25,100x50 r0 c0
+offGrid co
+offGrid display
+free: body: 0 of 0 card cells free (room only for small objects); header: room for 0 small objects; nav: room for 1 small object; footer: room for 0 small objects; alarms: no banner on this screen"
+`;

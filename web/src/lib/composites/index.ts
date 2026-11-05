@@ -181,7 +181,7 @@ export const AnalogIndicator: CompositeDef<AnalogIndicatorProps> = {
         }
       }
       parts.push(numericDisplay(`${name}_Val`, { left: x + w - 8 - valueWidth - unitWidth, top: y + 4, width: valueWidth, height: 24 }, p.decimals));
-      parts.push(textBox(`${name}_Unit`, p.units, { left: x + w - 8 - unitWidth + 4, top: y + 6, width: unitWidth - 4, height: 20 }, { size: 12, colour: T.muted }));
+      parts.push(textBox(`${name}_Unit`, p.units, { left: x + w - 8 - unitWidth + 4, top: y + 4, width: unitWidth - 4, height: 20 }, { size: 12, colour: T.muted }));
     }
 
     if (p.tag) {

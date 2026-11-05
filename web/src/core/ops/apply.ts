@@ -72,6 +72,10 @@ import { valuePropertyOf } from "@/lib/tags/binder";
 import { expandOps } from "@/lib/ai/expand";
 import { moveSetOf, planTidy, unitsOf } from "@/lib/ote/tidy";
 import { matchSizes, snapPosition } from "@/store/edits";
+import { sceneOf } from "@/lib/layout/scene";
+import { solveLayout } from "@/lib/layout/solve";
+import { verifyPlan } from "@/lib/layout/verify";
+import type { Constraint } from "@/lib/layout/types";
 import { createProjectStore, sameCondition, useProject, type BatchPatch, type ProjectStore } from "@/store/project";
 import type { ScreenPreview } from "@/store/types";
 
@@ -863,20 +867,36 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
           reject(op, `No screen called ${op.screen}`);
           break;
         }
-        const plan = planTidy(viewOf(screen).Children, panelOf(screen), (id) => s.objectMeta[id]?.groupId);
+        const scene = sceneOf({ screen, panel: panelOf(screen), meta: s.objectMeta, handles: s.handles, opened: true });
+        const plan = solveLayout({ scene, parts: viewOf(screen).Children, groupOf: (id) => s.objectMeta[id]?.groupId,
+          constraints: [{ id: "tidy", kind: "noOverlap", scope: "screen" }, { id: "tidy-snap", kind: "snap", scope: "screen" }] });
+        const verified = verifyPlan({ scene, parts: viewOf(screen).Children, groupOf: (id) => s.objectMeta[id]?.groupId,
+          constraints: [{ id: "tidy", kind: "noOverlap", scope: "screen" }, { id: "tidy-snap", kind: "snap", scope: "screen" }] }, plan);
         tidied.screens++;
-        if (plan.found.length === 0) break;
-        tidied.found++;
-        for (const move of plan.moves) {
+        const moved: string[] = [];
+        // The solver places the whole screen or nothing, so one overlap with no
+        // room would stop the others. Then it falls to the part-by-part plan,
+        // which clears what it can and names what it could not.
+        if (!plan.conflict && verified.ok) {
+          for (const move of plan.moves) {
+            s.nudge(move.ids, move.to.left - move.from.left, move.to.top - move.from.top);
+            for (const id of move.ids) touch(s, id);
+            moved.push(viewOf(screen).Children.find((part) => part.UniqueId === move.ids[0])?.Name ?? move.unit);
+          }
+        }
+        const live = store.getState().screens.find((x) => x.UniqueId === screen.UniqueId) ?? screen;
+        const rest = planTidy(viewOf(live).Children, panelOf(live), (id) => s.objectMeta[id]?.groupId);
+        for (const move of rest.moves) {
           s.nudge(move.ids, move.dx, move.dy);
           for (const id of move.ids) touch(s, id);
+          moved.push(move.name);
         }
-        const moved = plan.moves.map((m) => m.name);
+        if (moved.length > 0 || rest.stuck.length > 0) tidied.found++;
         if (moved.length > 0) {
           ok(`${note ? `${note}: ` : ""}${screen.Name}: moved ${moved.length} clear (${moved.slice(0, 4).join(", ")}${moved.length > 4 ? ", …" : ""})`);
         }
-        if (plan.stuck.length > 0) {
-          reject(op, `${screen.Name}: no clear spot for ${plan.stuck.join(", ")}; the screen is full - ask for a new screen or say what to remove`);
+        if (rest.stuck.length > 0) {
+          reject(op, `${screen.Name}: no clear spot for ${rest.stuck.join(", ")}; the screen is full - ask for a new screen or say what to remove`);
         }
         break;
       }
@@ -921,31 +941,55 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
           reject(op, `Spreading needs at least three objects; ${ids.length} given. To move one, use moveObject.`);
           break;
         }
-        // Aligning cards moves what is on them: the same rule as moveObject,
-        // or the lamps stay behind on the old spot.
-        const home = resolve(s, op.targets![0])!.screen;
-        const followers = new Map(ids.map((id) => [
-          id,
-          moveSetOf(viewOf(home).Children, id, (x) => s.objectMeta[x]?.groupId, panelOf(home)).filter((m) => !ids.includes(m)),
-        ]));
-        const before = new Map(viewOf(home).Children.map((p) => [p.UniqueId, { left: p.Location.Left, top: p.Location.Top }]));
-        if (mode === "spreadHorizontal") s.spread(ids, "horizontal");
-        else if (mode === "spreadVertical") s.spread(ids, "vertical");
-        else s.align(ids, mode as "left");
-        const moved = viewOf(store.getState().screens.find((x) => x.UniqueId === home.UniqueId)!).Children;
-        for (const id of ids) {
-          touch(s, id);
-          const was = before.get(id);
-          const now = moved.find((p) => p.UniqueId === id);
-          const rest = followers.get(id) ?? [];
-          if (!was || !now || rest.length === 0) continue;
-          const dx = now.Location.Left - was.left;
-          const dy = now.Location.Top - was.top;
-          if (dx === 0 && dy === 0) continue;
-          s.nudge(rest, dx, dy);
-          for (const m of rest) touch(s, m);
+        const targetScreen = findPartById(s, ids[0])?.screen;
+        if (!targetScreen || ids.some((id) => findPartById(s, id)?.screen.UniqueId !== targetScreen.UniqueId)) {
+          reject(op, "Alignment needs objects on one screen.");
+          break;
         }
+        const scene = sceneOf({ screen: targetScreen, panel: panelOf(targetScreen), meta: s.objectMeta, handles: s.handles, opened: true });
+        const constraint: Constraint = mode === "spreadHorizontal" ? { id: "align", kind: "distribute", units: ids, axis: "x" }
+          : mode === "spreadVertical" ? { id: "align", kind: "distribute", units: ids, axis: "y" }
+          : { id: "align", kind: "align", units: ids, edge: mode as "left" };
+        const input = { scene, parts: viewOf(targetScreen).Children,
+          constraints: [constraint], groupOf: (id: string) => s.objectMeta[id]?.groupId };
+        const plan = solveLayout(input);
+        const verification = verifyPlan(input, plan);
+        if (plan.conflict || !verification.ok) {
+          reject(op, plan.conflict?.reason ?? `Alignment was not applied: ${verification.checks.filter((check) => !check.ok).map((check) => check.name).join(", ")}`);
+          break;
+        }
+        for (const move of plan.moves) {
+          s.nudge(move.ids, move.to.left - move.from.left, move.to.top - move.from.top);
+          if (move.ids.length === 1 && (move.to.width !== move.from.width || move.to.height !== move.from.height)) s.setBox(move.ids[0], move.to);
+        }
+        for (const id of ids) touch(s, id);
         ok(note || `Aligned ${ids.length} objects`);
+        break;
+      }
+
+      case "arrange": {
+        const screen = findScreen(s, op.screen);
+        if (!screen) { reject(op, `No screen called ${op.screen}`); break; }
+        if ([op.left, op.top, op.dx, op.dy, op.width, op.height].some((value) => value !== undefined)) {
+          reject(op, "Arrange accepts constraints, not coordinates.");
+          break;
+        }
+        const constraints = op.constraints ?? [];
+        if (!constraints.length) { reject(op, "Arrange needs one or more layout constraints."); break; }
+        const scene = sceneOf({ screen, panel: panelOf(screen), meta: s.objectMeta, handles: s.handles, opened: true });
+        const input = { scene, parts: viewOf(screen).Children, constraints, groupOf: (id: string) => s.objectMeta[id]?.groupId };
+        const plan = solveLayout(input);
+        const verified = verifyPlan(input, plan);
+        if (plan.conflict || !verified.ok) {
+          reject(op, plan.conflict?.reason ?? `Arrangement was not applied: ${verified.checks.filter((check) => !check.ok).map((check) => check.name).join(", ")}`);
+          break;
+        }
+        for (const move of plan.moves) {
+          s.nudge(move.ids, move.to.left - move.from.left, move.to.top - move.from.top);
+          if (move.ids.length === 1 && (move.to.width !== move.from.width || move.to.height !== move.from.height)) s.setBox(move.ids[0], move.to);
+          for (const id of move.ids) touch(s, id);
+        }
+        ok(note || `${screen.Name}: arranged ${plan.moves.length} unit${plan.moves.length === 1 ? "" : "s"}`);
         break;
       }
 
@@ -971,11 +1015,6 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
       }
 
       case "snapToGrid": {
-        const grid = op.grid ?? 8;
-        if (!(grid >= 1)) {
-          reject(op, `A grid of ${grid} pixels cannot be snapped to.`);
-          break;
-        }
         const found = (op.targets ?? []).map((name) => resolve(s, name));
         const missing = (op.targets ?? []).filter((_, i) => !found[i]);
         if (missing.length > 0) {
@@ -990,6 +1029,14 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
         const groupOf = (id: string) => s.objectMeta[id]?.groupId;
         const parts = viewOf(screen).Children;
         const panel = panelOf(screen);
+        // The grid this screen is on, unless one was asked for.
+        const onScreen = sceneOf({ screen, panel, meta: s.objectMeta, handles: s.handles, opened: true }).grid.unit;
+        // A unit of 1 is what a screen with no grid reads as; snapping to it does nothing.
+        const grid = op.grid ?? (onScreen === 1 ? 4 : onScreen);
+        if (!(grid >= 1)) {
+          reject(op, `A grid of ${grid} pixels cannot be snapped to.`);
+          break;
+        }
         // Each faceplate snaps as one, so its lamps keep their place on the card.
         const asked = found.length > 0
           ? found.map((f) => moveSetOf(parts, f!.part.UniqueId, groupOf, panel))

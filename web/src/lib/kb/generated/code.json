@@ -1,5 +1,5 @@
 {
-  "version": "df86b5e362bac89a414ec4c874b2354eabfdbdb4ef2bd50ceea6a782c84c227b",
+  "version": "47a7145d67265213e73a68b26da03c2c0abd60032e44699a24a731354c7ea4d8",
   "entries": [
     {
       "id": "class:ahu",
@@ -157,15 +157,19 @@
             "action": "Check the supply fan and the frost stat"
           }
         ],
-        "description": "Supply/return fans, coils, dampers and filters under one controller."
+        "description": "Supply/return fans, coils, dampers and filters under one controller.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "4903ac513b54ac56d6c864dda09d0960f1f2d1f97a58f1c6854dda5cf2569823"
+        "inputHash": "f41a61440fcb1815102b6ed8e0094f49ff59b5f734b7354238d1663e67e84ef2"
       },
-      "rev": "4903ac513b54ac56d6c864dda09d0960f1f2d1f97a58f1c6854dda5cf2569823"
+      "rev": "f41a61440fcb1815102b6ed8e0094f49ff59b5f734b7354238d1663e67e84ef2"
     },
     {
       "id": "class:analyser",
@@ -269,15 +273,19 @@
             "action": "Check the dosing and sample a grab for confirmation"
           }
         ],
-        "description": "Quality analyser: pH, ORP, chlorine, turbidity, conductivity, dissolved oxygen."
+        "description": "Quality analyser: pH, ORP, chlorine, turbidity, conductivity, dissolved oxygen.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "2ff30f55cc5eceaada5f8ff36c1c5b6948a600cc18e49c29ccc4a44a3cf70cce"
+        "inputHash": "af8214f910684ee4361e91be7c41b255ed4144ec44775bd7eb728988db91674b"
       },
-      "rev": "2ff30f55cc5eceaada5f8ff36c1c5b6948a600cc18e49c29ccc4a44a3cf70cce"
+      "rev": "af8214f910684ee4361e91be7c41b255ed4144ec44775bd7eb728988db91674b"
     },
     {
       "id": "class:boiler",
@@ -467,15 +475,19 @@
             "action": "Check demand and the pressure controller"
           }
         ],
-        "description": "Steam or hot-water boiler with burner management; protection is in the burner controller, never in the HMI."
+        "description": "Steam or hot-water boiler with burner management; protection is in the burner controller, never in the HMI.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "824419176fc7ef63185ce98af53902edd98d74011f2c9b1567a718139edaf785"
+        "inputHash": "a73d6dae0187cee3921251a87a86c1116b33220f5fe3274c472270706323a14d"
       },
-      "rev": "824419176fc7ef63185ce98af53902edd98d74011f2c9b1567a718139edaf785"
+      "rev": "a73d6dae0187cee3921251a87a86c1116b33220f5fe3274c472270706323a14d"
     },
     {
       "id": "class:capper",
@@ -662,15 +674,19 @@
           }
         ],
         "packml": true,
-        "description": "Capper following the PackML state model (ISA-TR88.00.02): state, mode, speed and production counters as PackTags."
+        "description": "Capper following the PackML state model (ISA-TR88.00.02): state, mode, speed and production counters as PackTags.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "7a20c423d5fb13dfc426af8b900c10689d1f0200e5114d7a8c222fd78bf4d950"
+        "inputHash": "c80bc84e73c3538b7c23c6bfc498a8862034d6a4bb273d5f2f9ae9c7a6cac10a"
       },
-      "rev": "7a20c423d5fb13dfc426af8b900c10689d1f0200e5114d7a8c222fd78bf4d950"
+      "rev": "c80bc84e73c3538b7c23c6bfc498a8862034d6a4bb273d5f2f9ae9c7a6cac10a"
     },
     {
       "id": "class:case-packer",
@@ -858,15 +874,19 @@
           }
         ],
         "packml": true,
-        "description": "Case packer following the PackML state model (ISA-TR88.00.02): state, mode, speed and production counters as PackTags."
+        "description": "Case packer following the PackML state model (ISA-TR88.00.02): state, mode, speed and production counters as PackTags.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "246e0df9e853cfd9b9028de7185a18e131e688f179a6e2bf49ecb449dde0761a"
+        "inputHash": "90e02864fa4d7b825af59ccb345ca6efd7c81d37c26aaabb5c818670e41f6d54"
       },
-      "rev": "246e0df9e853cfd9b9028de7185a18e131e688f179a6e2bf49ecb449dde0761a"
+      "rev": "90e02864fa4d7b825af59ccb345ca6efd7c81d37c26aaabb5c818670e41f6d54"
     },
     {
       "id": "class:centrifuge",
@@ -1024,15 +1044,19 @@
             "action": "Check the drive or starter fault code, reset when clear, start the standby if fitted"
           }
         ],
-        "description": "High-speed separator; vibration protection is mandatory."
+        "description": "High-speed separator; vibration protection is mandatory.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "44a08e0f0b514521887d86b766a94ea889587e7aacc84f2a0a7ae59b3f425646"
+        "inputHash": "881ee62ca59b025eb197e732110d10c92640bd4a8311ace06286a37069ae65c1"
       },
-      "rev": "44a08e0f0b514521887d86b766a94ea889587e7aacc84f2a0a7ae59b3f425646"
+      "rev": "881ee62ca59b025eb197e732110d10c92640bd4a8311ace06286a37069ae65c1"
     },
     {
       "id": "class:chiller",
@@ -1191,15 +1215,19 @@
             "action": "Start the standby chiller, check load"
           }
         ],
-        "description": "Packaged chiller, normally run through its own controller; the HMI shows status and leaving water temperature."
+        "description": "Packaged chiller, normally run through its own controller; the HMI shows status and leaving water temperature.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "c5c7959a305ecaf1388a99c3b00eb5163fe2ef521c39e6d507f5197f968fe486"
+        "inputHash": "2574cef108c1b57e911da3c6f78f0195200266227cdf8615088b7f94f71d1089"
       },
-      "rev": "c5c7959a305ecaf1388a99c3b00eb5163fe2ef521c39e6d507f5197f968fe486"
+      "rev": "2574cef108c1b57e911da3c6f78f0195200266227cdf8615088b7f94f71d1089"
     },
     {
       "id": "class:cnc",
@@ -1377,15 +1405,19 @@
             "action": "Find why the stop was pressed, make safe, release and reset locally"
           }
         ],
-        "description": "Machine tool on its own NC; the HMI is a cell overview of cycle state, spindle, feed override and counts."
+        "description": "Machine tool on its own NC; the HMI is a cell overview of cycle state, spindle, feed override and counts.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "414d7d0b0be93bf2abd16c64246a5b63570263170a9b1288b9569f10a338e851"
+        "inputHash": "27002df08f34720a57ffcfe8a8e14da98b742ad1a804b75890178b21cc11487e"
       },
-      "rev": "414d7d0b0be93bf2abd16c64246a5b63570263170a9b1288b9569f10a338e851"
+      "rev": "27002df08f34720a57ffcfe8a8e14da98b742ad1a804b75890178b21cc11487e"
     },
     {
       "id": "class:compressor",
@@ -1586,15 +1618,19 @@
             "action": "Check cooling, reduce load"
           }
         ],
-        "description": "Screw or piston compressor with loaded/unloaded state and header pressure."
+        "description": "Screw or piston compressor with loaded/unloaded state and header pressure.",
+        "component": {
+          "kind": "Motor",
+          "variant": "plain"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "354d43ab1da05df5e723bc2d64496ae576dbbdfc5d89ce0a3f47949efdc33f05"
+        "inputHash": "01b1572bd4bc1a352cc94e1a4e5b1a78c2f1e322a7eedc2c72600ff76bdc286a"
       },
-      "rev": "354d43ab1da05df5e723bc2d64496ae576dbbdfc5d89ce0a3f47949efdc33f05"
+      "rev": "01b1572bd4bc1a352cc94e1a4e5b1a78c2f1e322a7eedc2c72600ff76bdc286a"
     },
     {
       "id": "class:control-valve",
@@ -1706,15 +1742,19 @@
             "action": "Check the positioner and air supply"
           }
         ],
-        "description": "Modulating valve: demand from a loop or the operator, position feedback."
+        "description": "Modulating valve: demand from a loop or the operator, position feedback.",
+        "component": {
+          "kind": "Valve",
+          "variant": "control"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "2bb7ec9318f944eb862bc1af78cd9714d29ca5f1a41dd5d1364f816ca5cd3faf"
+        "inputHash": "02e83917c8cb9835b41b174a0da9f8ffd9ca21a072c6cb91b042a3b95ec75e3e"
       },
-      "rev": "2bb7ec9318f944eb862bc1af78cd9714d29ca5f1a41dd5d1364f816ca5cd3faf"
+      "rev": "02e83917c8cb9835b41b174a0da9f8ffd9ca21a072c6cb91b042a3b95ec75e3e"
     },
     {
       "id": "class:conveyor",
@@ -1913,15 +1953,19 @@
             "action": "Find the operated switch, make safe, reset locally"
           }
         ],
-        "description": "Belt or roller conveyor with zone photo-eyes, pull-cords and belt-alignment switches."
+        "description": "Belt or roller conveyor with zone photo-eyes, pull-cords and belt-alignment switches.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "1e02052ba1218b8688102e0cc67b603b570ec669a0465007e843e507061836ef"
+        "inputHash": "8d13b865c94b3eae79f9515071a843a411345b28d9500040adbd77b2ee35d213"
       },
-      "rev": "1e02052ba1218b8688102e0cc67b603b570ec669a0465007e843e507061836ef"
+      "rev": "8d13b865c94b3eae79f9515071a843a411345b28d9500040adbd77b2ee35d213"
     },
     {
       "id": "class:cooling-tower",
@@ -2066,15 +2110,19 @@
             "action": "Check fan staging and water treatment"
           }
         ],
-        "description": "Evaporative tower: fan speed, basin level, water temperatures, conductivity for blowdown."
+        "description": "Evaporative tower: fan speed, basin level, water temperatures, conductivity for blowdown.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "c26341f4d05b22ac18e15bb81ffa480a8a1fd49f024e7fbc74fda83208e11ae8"
+        "inputHash": "226050dcc9399738bba0c70a1440253899f323a2f0ccda6244bdf08fa573f54e"
       },
-      "rev": "c26341f4d05b22ac18e15bb81ffa480a8a1fd49f024e7fbc74fda83208e11ae8"
+      "rev": "226050dcc9399738bba0c70a1440253899f323a2f0ccda6244bdf08fa573f54e"
     },
     {
       "id": "class:crusher",
@@ -2225,15 +2273,19 @@
             "action": "Check lubrication; reduce feed"
           }
         ],
-        "description": "Size reduction; motor current is the operator's load indicator."
+        "description": "Size reduction; motor current is the operator's load indicator.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "a1d4e5c1b24c8ff0cb5cd42ab7d4349eadb84fc61e3b3fe6939d4a66be59b8b7"
+        "inputHash": "6135c554abc5f8b47663cbeffb534e5de9128257eae321cf1a93d9c55a9a400c"
       },
-      "rev": "a1d4e5c1b24c8ff0cb5cd42ab7d4349eadb84fc61e3b3fe6939d4a66be59b8b7"
+      "rev": "6135c554abc5f8b47663cbeffb534e5de9128257eae321cf1a93d9c55a9a400c"
     },
     {
       "id": "class:damper",
@@ -2335,15 +2387,19 @@
         ],
         "trends": [],
         "alarms": [],
-        "description": "Air damper, two-position or modulating."
+        "description": "Air damper, two-position or modulating.",
+        "component": {
+          "kind": "Valve",
+          "variant": "onOff"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "9ac9f17126852314b5488a23600aeecc23cfa9f165b8e3271cc2383380d15852"
+        "inputHash": "b650b499462f62c985e09e95267a524e4113d15fbfaf2fa7f6eba14e1c4196f6"
       },
-      "rev": "9ac9f17126852314b5488a23600aeecc23cfa9f165b8e3271cc2383380d15852"
+      "rev": "b650b499462f62c985e09e95267a524e4113d15fbfaf2fa7f6eba14e1c4196f6"
     },
     {
       "id": "class:doser",
@@ -2536,15 +2592,19 @@
             "action": "Arrange a chemical delivery or changeover"
           }
         ],
-        "description": "Metering pump with stroke rate or speed control and dosed totaliser."
+        "description": "Metering pump with stroke rate or speed control and dosed totaliser.",
+        "component": {
+          "kind": "Pump",
+          "variant": "centrifugal"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "49cf6dbe476ca7a5f42d3d64eec8c61a022824b0e16bad64270952f9c0211571"
+        "inputHash": "b85d52162852f29e76e76200f258f7c10e6384fd5c039ba65d735923b0cd816c"
       },
-      "rev": "49cf6dbe476ca7a5f42d3d64eec8c61a022824b0e16bad64270952f9c0211571"
+      "rev": "b85d52162852f29e76e76200f258f7c10e6384fd5c039ba65d735923b0cd816c"
     },
     {
       "id": "class:drive",
@@ -2743,15 +2803,19 @@
             "action": "Read the drive's fault code at the keypad or over the network, correct, reset"
           }
         ],
-        "description": "An Altivar-type drive: run/fault, speed reference and feedback, motor current and power."
+        "description": "An Altivar-type drive: run/fault, speed reference and feedback, motor current and power.",
+        "component": {
+          "kind": "Motor",
+          "variant": "withDrive"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "28f754acb6729218c7ca847d39d8ddbb1c062d805bbb4af664b2b6431c2485a6"
+        "inputHash": "78ee6184f19961c2befd7b781263fde26387460b0b75ba7b7929c502e4e654fb"
       },
-      "rev": "28f754acb6729218c7ca847d39d8ddbb1c062d805bbb4af664b2b6431c2485a6"
+      "rev": "78ee6184f19961c2befd7b781263fde26387460b0b75ba7b7929c502e4e654fb"
     },
     {
       "id": "class:dryer",
@@ -2880,15 +2944,19 @@
             "action": "Stop the heat source; keep the fan running"
           }
         ],
-        "description": "Convective dryer: inlet/outlet air temperature and moisture."
+        "description": "Convective dryer: inlet/outlet air temperature and moisture.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "c2952aedd39a1dde6d1ceee87fdd8d17950b2c2a93ef756168f21c78c9c22f87"
+        "inputHash": "58ab56b0055e75534924b10dbbd3b38794ddbe0b2ebebb2c0aa74b2121d1f7fe"
       },
-      "rev": "c2952aedd39a1dde6d1ceee87fdd8d17950b2c2a93ef756168f21c78c9c22f87"
+      "rev": "58ab56b0055e75534924b10dbbd3b38794ddbe0b2ebebb2c0aa74b2121d1f7fe"
     },
     {
       "id": "class:extruder",
@@ -3045,15 +3113,19 @@
             "action": "Stop the screw immediately"
           }
         ],
-        "description": "Screw extruder: zone temperatures, melt pressure, screw speed and load."
+        "description": "Screw extruder: zone temperatures, melt pressure, screw speed and load.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "a67c9848984b1abc14c94e0cb750e024a2b6496217b856f0d2030e6ed886394e"
+        "inputHash": "680c9e80199fd7206c97191538a40dd7fa62bb815da4ff8726849fdd4b711d04"
       },
-      "rev": "a67c9848984b1abc14c94e0cb750e024a2b6496217b856f0d2030e6ed886394e"
+      "rev": "680c9e80199fd7206c97191538a40dd7fa62bb815da4ff8726849fdd4b711d04"
     },
     {
       "id": "class:fan",
@@ -3243,15 +3315,19 @@
             "action": "Plan an inspection; stop if it continues to rise"
           }
         ],
-        "description": "Supply, extract or process fan, often on a drive, with airflow proved by differential pressure."
+        "description": "Supply, extract or process fan, often on a drive, with airflow proved by differential pressure.",
+        "component": {
+          "kind": "Motor",
+          "variant": "fan"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "e1cfac99cc6bd5db2f7f0f90a9540de60016d69d3c5231bb1808674839a4a245"
+        "inputHash": "bd0ecef182c3596d448d77affcd66e7daa67901de875b68b2c1de86171166b60"
       },
-      "rev": "e1cfac99cc6bd5db2f7f0f90a9540de60016d69d3c5231bb1808674839a4a245"
+      "rev": "bd0ecef182c3596d448d77affcd66e7daa67901de875b68b2c1de86171166b60"
     },
     {
       "id": "class:feeder",
@@ -3385,15 +3461,19 @@
             "action": "Investigate the protection relay before reclosing"
           }
         ],
-        "description": "A breaker and its power meter (PowerLogic-type): state, V, I, kW, kWh, PF."
+        "description": "A breaker and its power meter (PowerLogic-type): state, V, I, kW, kWh, PF.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "5b7721732a1c90f07db16f60440eb8c183e6f6bfcfdc9cc82516057be1fd1a16"
+        "inputHash": "8e9ad6a97e6b17ce81c2eb64cb1e414a8c0b44c60367ebed1463e27e2cb3045a"
       },
-      "rev": "5b7721732a1c90f07db16f60440eb8c183e6f6bfcfdc9cc82516057be1fd1a16"
+      "rev": "8e9ad6a97e6b17ce81c2eb64cb1e414a8c0b44c60367ebed1463e27e2cb3045a"
     },
     {
       "id": "class:filler",
@@ -3578,15 +3658,19 @@
           }
         ],
         "packml": true,
-        "description": "Filler following the PackML state model (ISA-TR88.00.02): state, mode, speed and production counters as PackTags."
+        "description": "Filler following the PackML state model (ISA-TR88.00.02): state, mode, speed and production counters as PackTags.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "7a17af2e7cee978ac154e38ccb6b7ab62e23038b9290704fa6e659e1aa265818"
+        "inputHash": "de4778d9f895a51ae70f4e8f24bf3c94b3d29272b4bacd193fcddddee5fa699a"
       },
-      "rev": "7a17af2e7cee978ac154e38ccb6b7ab62e23038b9290704fa6e659e1aa265818"
+      "rev": "de4778d9f895a51ae70f4e8f24bf3c94b3d29272b4bacd193fcddddee5fa699a"
     },
     {
       "id": "class:filter",
@@ -3700,15 +3784,19 @@
             "action": "Initiate a backwash or change the element"
           }
         ],
-        "description": "Media or cartridge filter with differential pressure and a backwash sequence."
+        "description": "Media or cartridge filter with differential pressure and a backwash sequence.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "bd34b268811175a909a30b5e2932aefc82e97f89a8a6255ae6998f9856b87a70"
+        "inputHash": "5e115125a4c04c08bf82327d9e286aba4b796a5810ad3c8d8f69586524c3f347"
       },
-      "rev": "bd34b268811175a909a30b5e2932aefc82e97f89a8a6255ae6998f9856b87a70"
+      "rev": "5e115125a4c04c08bf82327d9e286aba4b796a5810ad3c8d8f69586524c3f347"
     },
     {
       "id": "class:generator",
@@ -3890,15 +3978,19 @@
             "action": "Arrange refuelling"
           }
         ],
-        "description": "Diesel or gas genset under its own controller."
+        "description": "Diesel or gas genset under its own controller.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "21f8df0733c98cae19b812f82eddf649ecea9f9f2630a3eec988de1bc82bf17f"
+        "inputHash": "dd404aede353b0d2300e7f277edfb59103a7c772cf72ad4083f0ef47ada6dcbc"
       },
-      "rev": "21f8df0733c98cae19b812f82eddf649ecea9f9f2630a3eec988de1bc82bf17f"
+      "rev": "dd404aede353b0d2300e7f277edfb59103a7c772cf72ad4083f0ef47ada6dcbc"
     },
     {
       "id": "class:heat-exchanger",
@@ -4006,15 +4098,19 @@
             "action": "Schedule a clean"
           }
         ],
-        "description": "Shell-and-tube or plate exchanger: inlet/outlet temperatures and differential pressure for fouling."
+        "description": "Shell-and-tube or plate exchanger: inlet/outlet temperatures and differential pressure for fouling.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "ec05ac62f1cc9bea0f1b8d83c2b343afd64cf8bbb171f5224664552dffa98eff"
+        "inputHash": "492a81edf70752e4b51c3ba3c059bd86b666293066200c02801a3018327677cc"
       },
-      "rev": "ec05ac62f1cc9bea0f1b8d83c2b343afd64cf8bbb171f5224664552dffa98eff"
+      "rev": "492a81edf70752e4b51c3ba3c059bd86b666293066200c02801a3018327677cc"
     },
     {
       "id": "class:heater",
@@ -4130,15 +4226,19 @@
             "action": "Confirm the heater has tripped; check the controller"
           }
         ],
-        "description": "Electric heater with temperature control."
+        "description": "Electric heater with temperature control.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "5849ccf5693389c78fa3fbd97a789a457ebd6c9135fd6693e38c3a44bd1e4df8"
+        "inputHash": "22e26d3933f57cbfdc6918fd0d2dda4ced1d2630a18bcbc677b6749052114ec7"
       },
-      "rev": "5849ccf5693389c78fa3fbd97a789a457ebd6c9135fd6693e38c3a44bd1e4df8"
+      "rev": "22e26d3933f57cbfdc6918fd0d2dda4ced1d2630a18bcbc677b6749052114ec7"
     },
     {
       "id": "class:injection-molding",
@@ -4306,15 +4406,19 @@
             "action": "Check the zone heater controller"
           }
         ],
-        "description": "Cycle-driven machine: barrel zones, injection pressure, cycle time and shot counts."
+        "description": "Cycle-driven machine: barrel zones, injection pressure, cycle time and shot counts.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "8f0bd780d681ae927f8eeeab1d5effd4b7270a08dd6a9f49e14dc9af56a5bef1"
+        "inputHash": "e30ee92f2e90d23ee626477b30e54a39804d607f7c32a7ed302ff5fd2dd6360e"
       },
-      "rev": "8f0bd780d681ae927f8eeeab1d5effd4b7270a08dd6a9f49e14dc9af56a5bef1"
+      "rev": "e30ee92f2e90d23ee626477b30e54a39804d607f7c32a7ed302ff5fd2dd6360e"
     },
     {
       "id": "class:labeler",
@@ -4502,15 +4606,19 @@
           }
         ],
         "packml": true,
-        "description": "Labeller following the PackML state model (ISA-TR88.00.02): state, mode, speed and production counters as PackTags."
+        "description": "Labeller following the PackML state model (ISA-TR88.00.02): state, mode, speed and production counters as PackTags.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "3a6bfe78dee2bcaed6e95d2f583083ad0387b9a6b971323487596cc1081be581"
+        "inputHash": "a1e7200c69ae0b0f9de852c917b98dea9bc0018539b7d26514b3c8731058ce9a"
       },
-      "rev": "3a6bfe78dee2bcaed6e95d2f583083ad0387b9a6b971323487596cc1081be581"
+      "rev": "a1e7200c69ae0b0f9de852c917b98dea9bc0018539b7d26514b3c8731058ce9a"
     },
     {
       "id": "class:mixer",
@@ -4657,15 +4765,19 @@
             "action": "Check the drive or starter fault code, reset when clear, start the standby if fitted"
           }
         ],
-        "description": "Tank agitator; must not run below a minimum level, which the interlock and the faceplate should show."
+        "description": "Tank agitator; must not run below a minimum level, which the interlock and the faceplate should show.",
+        "component": {
+          "kind": "Motor",
+          "variant": "plain"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "6a3115f0fe254979a8e997d76645d382d77dcf417de7d4117076c3597665ab03"
+        "inputHash": "6ae6ef98f04292ecff410d125f77402bcae1ee395bb547a891a30b1dc9f024c3"
       },
-      "rev": "6a3115f0fe254979a8e997d76645d382d77dcf417de7d4117076c3597665ab03"
+      "rev": "6ae6ef98f04292ecff410d125f77402bcae1ee395bb547a891a30b1dc9f024c3"
     },
     {
       "id": "class:motor",
@@ -4837,15 +4949,19 @@
             "action": "Check the drive or starter fault code, reset when clear, start the standby if fitted"
           }
         ],
-        "description": "Contactor-started motor with overload trip."
+        "description": "Contactor-started motor with overload trip.",
+        "component": {
+          "kind": "Motor",
+          "variant": "plain"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "209c5a585a410904eb4d6f64a231d56fb2f41b41b9646f1b4bea822120c9ab17"
+        "inputHash": "02ea772750a1b30349ffcca67bae8ad49e8f4826cc8354a75514f5924aee676e"
       },
-      "rev": "209c5a585a410904eb4d6f64a231d56fb2f41b41b9646f1b4bea822120c9ab17"
+      "rev": "02ea772750a1b30349ffcca67bae8ad49e8f4826cc8354a75514f5924aee676e"
     },
     {
       "id": "class:oven",
@@ -4981,15 +5097,19 @@
             "action": "Stop the burner/heaters, keep exhaust running, stop the conveyor feed"
           }
         ],
-        "description": "Tunnel or batch oven with zone temperatures and a belt speed."
+        "description": "Tunnel or batch oven with zone temperatures and a belt speed.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "1d00a5869d0fad9582e26cbaf025ee98f92863a5a72aae01fcd9943f9f1c1233"
+        "inputHash": "e28fe5827916c3f908a94141747c7f18b7d6fe6f3819e76a9ceb23b943565427"
       },
-      "rev": "1d00a5869d0fad9582e26cbaf025ee98f92863a5a72aae01fcd9943f9f1c1233"
+      "rev": "e28fe5827916c3f908a94141747c7f18b7d6fe6f3819e76a9ceb23b943565427"
     },
     {
       "id": "class:palletizer",
@@ -5176,15 +5296,19 @@
           }
         ],
         "packml": true,
-        "description": "Palletiser following the PackML state model (ISA-TR88.00.02): state, mode, speed and production counters as PackTags."
+        "description": "Palletiser following the PackML state model (ISA-TR88.00.02): state, mode, speed and production counters as PackTags.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "ccf7d04e05b5fd7793ce5ad82e103381d660aa18cc0703a6d9239587ec190eb4"
+        "inputHash": "f1acf75180874f38d330f2e80bdb7f8c7ffc32301c8d102dd57882a097fd99d2"
       },
-      "rev": "ccf7d04e05b5fd7793ce5ad82e103381d660aa18cc0703a6d9239587ec190eb4"
+      "rev": "f1acf75180874f38d330f2e80bdb7f8c7ffc32301c8d102dd57882a097fd99d2"
     },
     {
       "id": "class:pid",
@@ -5294,15 +5418,19 @@
             "action": "Check the final element; consider manual"
           }
         ],
-        "description": "A control loop: PV, SP, output and mode. The faceplate is the standard loop faceplate."
+        "description": "A control loop: PV, SP, output and mode. The faceplate is the standard loop faceplate.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "f489956996359d287652cdd7981e66d57f4d759d556deec36aaade0819c4219b"
+        "inputHash": "7822b48b256fa3c2db9d4f83e6c44250aad9f1ba7fdd62c7d5faf04689937fab"
       },
-      "rev": "f489956996359d287652cdd7981e66d57f4d759d556deec36aaade0819c4219b"
+      "rev": "7822b48b256fa3c2db9d4f83e6c44250aad9f1ba7fdd62c7d5faf04689937fab"
     },
     {
       "id": "class:pump",
@@ -5511,15 +5639,19 @@
             "action": "Find why the stop was pressed, make safe, release and reset locally"
           }
         ],
-        "description": "Direct-on-line or soft-started pump: run/fault/available feedback, start/stop commands, optional discharge flow and pressure."
+        "description": "Direct-on-line or soft-started pump: run/fault/available feedback, start/stop commands, optional discharge flow and pressure.",
+        "component": {
+          "kind": "Pump",
+          "variant": "centrifugal"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "94bda0bc6aacf5f2b5f7daa412295117534f71a4102057dd7e2f6afa15bd89dc"
+        "inputHash": "d6fb6307bf3a37aedb17146254556cb5ac2615932ec073df7e6d26db310b998b"
       },
-      "rev": "94bda0bc6aacf5f2b5f7daa412295117534f71a4102057dd7e2f6afa15bd89dc"
+      "rev": "d6fb6307bf3a37aedb17146254556cb5ac2615932ec073df7e6d26db310b998b"
     },
     {
       "id": "class:reactor",
@@ -5658,15 +5790,19 @@
             "action": "Vent to the scrubber per procedure, stop heating"
           }
         ],
-        "description": "Batch reactor (ISA-88 unit): jacket temperature control, pressure, and a phase/step number."
+        "description": "Batch reactor (ISA-88 unit): jacket temperature control, pressure, and a phase/step number.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "890119db46178c6c13d1166128442a12e837d582781923730713957bb824b8f8"
+        "inputHash": "7f682e9ac9378ac7e2fa2125367c91217fb7e9dfbeabc6e6778febf497e23a8b"
       },
-      "rev": "890119db46178c6c13d1166128442a12e837d582781923730713957bb824b8f8"
+      "rev": "7f682e9ac9378ac7e2fa2125367c91217fb7e9dfbeabc6e6778febf497e23a8b"
     },
     {
       "id": "class:robot",
@@ -5850,15 +5986,19 @@
             "action": "Close and reset the guard; never bypass"
           }
         ],
-        "description": "Robot behind a guarded cell, controlled through its own controller; the HMI shows mode, home and guard status."
+        "description": "Robot behind a guarded cell, controlled through its own controller; the HMI shows mode, home and guard status.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "5eaaa5ac544856b73fb832825d543a5fbb8f081621bb3ea5f2933b76c848b280"
+        "inputHash": "ddd0f9d31ffaa3f198c631abc485ac1949230d0993d08b63283851953de1009a"
       },
-      "rev": "5eaaa5ac544856b73fb832825d543a5fbb8f081621bb3ea5f2933b76c848b280"
+      "rev": "ddd0f9d31ffaa3f198c631abc485ac1949230d0993d08b63283851953de1009a"
     },
     {
       "id": "class:scale",
@@ -5959,15 +6099,19 @@
           "weight"
         ],
         "alarms": [],
-        "description": "Load-cell scale or loss-in-weight feeder."
+        "description": "Load-cell scale or loss-in-weight feeder.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "e344bf073d4f306bd0675329b5ecf2d41ba2bcc14b0e32c2e6c21c2d259160f7"
+        "inputHash": "41431ea216b39482fccf0dc56afc511e92fdb5685581a1108738779d67dce8e4"
       },
-      "rev": "e344bf073d4f306bd0675329b5ecf2d41ba2bcc14b0e32c2e6c21c2d259160f7"
+      "rev": "41431ea216b39482fccf0dc56afc511e92fdb5685581a1108738779d67dce8e4"
     },
     {
       "id": "class:silo",
@@ -6098,15 +6242,19 @@
             "action": "Stop the inflow; investigate why the transmitter did not alarm first"
           }
         ],
-        "description": "Bulk-solids store: level by radar or weight by load cells."
+        "description": "Bulk-solids store: level by radar or weight by load cells.",
+        "component": {
+          "kind": "Tank",
+          "variant": "vertical"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "e980d88df01113fc020f6f527133b80189bdb2e4b51af1b7fe6c448217337ca9"
+        "inputHash": "868615bcd725fabb550829b2d8cc2bfb87184c5d9b6a09c80b23e4c782674b59"
       },
-      "rev": "e980d88df01113fc020f6f527133b80189bdb2e4b51af1b7fe6c448217337ca9"
+      "rev": "868615bcd725fabb550829b2d8cc2bfb87184c5d9b6a09c80b23e4c782674b59"
     },
     {
       "id": "class:tank",
@@ -6265,15 +6413,19 @@
             "action": "Stop the inflow; investigate why the transmitter did not alarm first"
           }
         ],
-        "description": "Storage or buffer vessel with continuous level and independent level switches."
+        "description": "Storage or buffer vessel with continuous level and independent level switches.",
+        "component": {
+          "kind": "Tank",
+          "variant": "vertical"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "91ad896f0e9e8419a400699bc8c00fb90fc6263b481de88ada76bdb8f7906205"
+        "inputHash": "08e51b2d14d7e69d515ffa4b4d9ba10dfce8d63eff0dd7266d11d753ec5fc56e"
       },
-      "rev": "91ad896f0e9e8419a400699bc8c00fb90fc6263b481de88ada76bdb8f7906205"
+      "rev": "08e51b2d14d7e69d515ffa4b4d9ba10dfce8d63eff0dd7266d11d753ec5fc56e"
     },
     {
       "id": "class:valve",
@@ -6397,15 +6549,19 @@
             "action": "Check air supply and the limit switches; operate locally to confirm"
           }
         ],
-        "description": "Two-position valve with open and closed limit switches; a discrepancy timer raises failed-to-move."
+        "description": "Two-position valve with open and closed limit switches; a discrepancy timer raises failed-to-move.",
+        "component": {
+          "kind": "Valve",
+          "variant": "onOff"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "5ddaaeb2ddff436bfb0ccc7ce5ed9afe9ad3efc73df0bd9588fbabd0216b0bab"
+        "inputHash": "76afd2227c0921d24cf429b078891255448032f2be95a7c350a9a875190aebe6"
       },
-      "rev": "5ddaaeb2ddff436bfb0ccc7ce5ed9afe9ad3efc73df0bd9588fbabd0216b0bab"
+      "rev": "76afd2227c0921d24cf429b078891255448032f2be95a7c350a9a875190aebe6"
     },
     {
       "id": "class:vsd-pump",
@@ -6638,15 +6794,19 @@
             "action": "Check the drive or starter fault code, reset when clear, start the standby if fitted"
           }
         ],
-        "description": "Pump on a drive: as a fixed-speed pump plus speed feedback and a speed reference the operator or a loop sets."
+        "description": "Pump on a drive: as a fixed-speed pump plus speed feedback and a speed reference the operator or a loop sets.",
+        "component": {
+          "kind": "Pump",
+          "variant": "withSpeed"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "5a6092ea504d90a1203ec839acec603eb7cf187b87b1c4ffa5cfa98e78abe7bb"
+        "inputHash": "7c9339360d88efe3aeb98cc55d2d340e6960da87f2a707b07246a3012aebda1b"
       },
-      "rev": "5a6092ea504d90a1203ec839acec603eb7cf187b87b1c4ffa5cfa98e78abe7bb"
+      "rev": "7c9339360d88efe3aeb98cc55d2d340e6960da87f2a707b07246a3012aebda1b"
     },
     {
       "id": "class:wrapper",
@@ -6833,15 +6993,19 @@
           }
         ],
         "packml": true,
-        "description": "Stretch wrapper following the PackML state model (ISA-TR88.00.02): state, mode, speed and production counters as PackTags."
+        "description": "Stretch wrapper following the PackML state model (ISA-TR88.00.02): state, mode, speed and production counters as PackTags.",
+        "component": {
+          "kind": "StatusTile",
+          "variant": "state"
+        }
       },
       "related": [],
       "source": {
         "kind": "code",
         "ref": "web/src/lib/library/machines.ts#MACHINE_CLASSES",
-        "inputHash": "1add361ae688ba31750a3d9616ad21c7a2dde26b78606b9d40b065623619fb51"
+        "inputHash": "288974bd38d944cc489aabf0e4d8d8968238c087463c44e7c609832202e425ec"
       },
-      "rev": "1add361ae688ba31750a3d9616ad21c7a2dde26b78606b9d40b065623619fb51"
+      "rev": "288974bd38d944cc489aabf0e4d8d8968238c087463c44e7c609832202e425ec"
     },
     {
       "id": "panel:HMIGTO4310",
@@ -6958,6 +7122,35 @@
         "inputHash": "423701a5e17687042ca023c0f585656daa953a9152f54ca94d92fd8765e710d6"
       },
       "rev": "423701a5e17687042ca023c0f585656daa953a9152f54ca94d92fd8765e710d6"
+    },
+    {
+      "id": "panel:HMIST6600",
+      "kind": "panel",
+      "layer": "code",
+      "title": "HMIST6600",
+      "summary": "1280x800 touch panel.",
+      "tags": [
+        "1280x800",
+        "eote",
+        "hmist6600"
+      ],
+      "body": {
+        "model": "HMIST6600",
+        "width": 1280,
+        "height": 800,
+        "formats": [
+          "eote"
+        ],
+        "viewing": "touch",
+        "from": "code"
+      },
+      "related": [],
+      "source": {
+        "kind": "code",
+        "ref": "web/src/lib/backend/panels.ts#PANELS",
+        "inputHash": "29dd5c173df994c9bb576023e304ad01e155cf9a962013a448b5c69abfb64b07"
+      },
+      "rev": "29dd5c173df994c9bb576023e304ad01e155cf9a962013a448b5c69abfb64b07"
     },
     {
       "id": "panel:HMISTU855",
@@ -8253,6 +8446,12 @@
           "prop:Rectangle.Fill",
           "prop:Rectangle.Border",
           "prop:Rectangle.Thickness",
+          "prop:Rectangle.CornerRadius",
+          "prop:Rectangle.CornerRadius.Style",
+          "prop:Rectangle.CornerRadius.TopLeft",
+          "prop:Rectangle.CornerRadius.TopRight",
+          "prop:Rectangle.CornerRadius.BottomLeft",
+          "prop:Rectangle.CornerRadius.BottomRight",
           "prop:Rectangle.Animation",
           "prop:Rectangle.Animation.FillLevel",
           "prop:Rectangle.Animation.FillLevel.Enable",
@@ -8274,6 +8473,12 @@
         "prop:Rectangle.Fill",
         "prop:Rectangle.Border",
         "prop:Rectangle.Thickness",
+        "prop:Rectangle.CornerRadius",
+        "prop:Rectangle.CornerRadius.Style",
+        "prop:Rectangle.CornerRadius.TopLeft",
+        "prop:Rectangle.CornerRadius.TopRight",
+        "prop:Rectangle.CornerRadius.BottomLeft",
+        "prop:Rectangle.CornerRadius.BottomRight",
         "prop:Rectangle.Animation",
         "prop:Rectangle.Animation.FillLevel",
         "prop:Rectangle.Animation.FillLevel.Enable",
@@ -8287,9 +8492,9 @@
       "source": {
         "kind": "code",
         "ref": "web/src/lib/backend/ote.ts#capabilities.parts",
-        "inputHash": "a6eba86347e3fcf302e45e1ce0f070dd3f507e0a964dba156cb244354c08d47f"
+        "inputHash": "0f03c3462c1e22ddb372de592739b8efbe9461579f09ea282b0aa1ad96b18595"
       },
-      "rev": "a6eba86347e3fcf302e45e1ce0f070dd3f507e0a964dba156cb244354c08d47f"
+      "rev": "0f03c3462c1e22ddb372de592739b8efbe9461579f09ea282b0aa1ad96b18595"
     },
     {
       "id": "part:StringDisplay",
@@ -8658,6 +8863,7 @@
       "summary": "Level 1 layout of readings and equipment on every listed panel.",
       "tags": [
         "1024x600",
+        "1280x800",
         "320x240",
         "640x480",
         "800x600",
@@ -8668,60 +8874,70 @@
       "body": {
         "level": 1,
         "zones": {
-          "header": 44,
-          "nav": 32,
-          "footer": 28,
-          "margin": 12,
+          "header": 32,
+          "nav": 40,
+          "footer": 16,
+          "margin": 8,
           "gap": 16
         },
         "perPanel": [
           {
             "panel": "HMIST6500AWADI",
             "columns": 4,
-            "rows": 3,
+            "rows": 4,
             "cell": {
-              "width": 238,
-              "height": 100
+              "width": 240,
+              "height": 96
+            },
+            "capacity": 12
+          },
+          {
+            "panel": "HMIST6600",
+            "columns": 4,
+            "rows": 6,
+            "cell": {
+              "width": 240,
+              "height": 96
             },
             "capacity": 12
           },
           {
             "panel": "HMIGTO6310",
             "columns": 3,
-            "rows": 3,
+            "rows": 4,
             "cell": {
-              "width": 238,
-              "height": 100
+              "width": 240,
+              "height": 96
             },
-            "capacity": 9
+            "capacity": 12
           },
           {
             "panel": "HMIGTO5310",
             "columns": 2,
-            "rows": 1,
+            "rows": 3,
             "cell": {
-              "width": 238,
-              "height": 100
+              "width": 240,
+              "height": 96
             },
-            "capacity": 2
+            "capacity": 6
           },
           {
             "panel": "HMIGTO4310",
             "columns": 2,
-            "rows": 1,
+            "rows": 3,
             "cell": {
-              "width": 238,
-              "height": 100
+              "width": 240,
+              "height": 96
             },
-            "capacity": 2
+            "capacity": 6
           },
           {
             "panel": "HMISTU855",
             "columns": 1,
             "rows": 1,
             "cell": {
-              "width": 238,
-              "height": 100
+              "width": 240,
+              "height": 96
             },
             "capacity": 1
           }
@@ -8729,6 +8945,7 @@
       },
       "related": [
         "panel:HMIST6500AWADI",
+        "panel:HMIST6600",
         "panel:HMIGTO6310",
         "panel:HMIGTO5310",
         "panel:HMIGTO4310",
@@ -8737,9 +8954,9 @@
       "source": {
         "kind": "code",
         "ref": "web/src/lib/ote/layout.ts#gridFor",
-        "inputHash": "8dfb824ae0064083d87f62e18dfd3e9d247d40d13ef9e2ddce6a13cee6142293"
+        "inputHash": "69a0c83a8de7686904145456f93cc93e9d51f1c2d6a43d0a3762930d0fc800eb"
       },
-      "rev": "8dfb824ae0064083d87f62e18dfd3e9d247d40d13ef9e2ddce6a13cee6142293"
+      "rev": "69a0c83a8de7686904145456f93cc93e9d51f1c2d6a43d0a3762930d0fc800eb"
     },
     {
       "id": "pattern:l2.grid",
@@ -8749,6 +8966,7 @@
       "summary": "Level 2 layout of readings and equipment on every listed panel.",
       "tags": [
         "1024x600",
+        "1280x800",
         "320x240",
         "640x480",
         "800x600",
@@ -8759,32 +8977,42 @@
       "body": {
         "level": 2,
         "zones": {
-          "header": 44,
-          "nav": 32,
-          "footer": 28,
-          "margin": 12,
+          "header": 32,
+          "nav": 40,
+          "footer": 16,
+          "margin": 8,
           "gap": 16
         },
         "perPanel": [
           {
             "panel": "HMIST6500AWADI",
             "columns": 3,
-            "rows": 1,
+            "rows": 2,
             "cell": {
               "width": 320,
-              "height": 162
+              "height": 176
             },
-            "capacity": 3
+            "capacity": 6
+          },
+          {
+            "panel": "HMIST6600",
+            "columns": 3,
+            "rows": 3,
+            "cell": {
+              "width": 320,
+              "height": 176
+            },
+            "capacity": 6
           },
           {
             "panel": "HMIGTO6310",
             "columns": 2,
-            "rows": 1,
+            "rows": 2,
             "cell": {
               "width": 320,
-              "height": 162
+              "height": 176
             },
-            "capacity": 2
+            "capacity": 4
           },
           {
             "panel": "HMIGTO5310",
@@ -8792,7 +9020,7 @@
             "rows": 1,
             "cell": {
               "width": 320,
-              "height": 162
+              "height": 176
             },
             "capacity": 1
           },
@@ -8802,7 +9030,7 @@
             "rows": 1,
             "cell": {
               "width": 320,
-              "height": 162
+              "height": 176
             },
             "capacity": 1
           },
@@ -8811,8 +9039,8 @@
             "columns": 1,
             "rows": 1,
             "cell": {
-              "width": 296,
-              "height": 162
+              "width": 304,
+              "height": 104
             },
             "capacity": 1
           }
@@ -8820,6 +9048,7 @@
       },
       "related": [
         "panel:HMIST6500AWADI",
+        "panel:HMIST6600",
         "panel:HMIGTO6310",
         "panel:HMIGTO5310",
         "panel:HMIGTO4310",
@@ -8828,9 +9057,9 @@
       "source": {
         "kind": "code",
         "ref": "web/src/lib/ote/layout.ts#gridFor",
-        "inputHash": "ae2f2b4af56834bce1566adf7739c57780ceee1596cc9a8b43a18d1a989575ee"
+        "inputHash": "fadafb4c2c8597732c2ac0e69616c7d8c47770c10fe032d815bfa110267a252d"
       },
-      "rev": "ae2f2b4af56834bce1566adf7739c57780ceee1596cc9a8b43a18d1a989575ee"
+      "rev": "fadafb4c2c8597732c2ac0e69616c7d8c47770c10fe032d815bfa110267a252d"
     },
     {
       "id": "pattern:l3.grid",
@@ -8840,6 +9069,7 @@
       "summary": "Level 3 layout of readings and equipment on every listed panel.",
       "tags": [
         "1024x600",
+        "1280x800",
         "320x240",
         "640x480",
         "800x600",
@@ -8850,22 +9080,32 @@
       "body": {
         "level": 3,
         "zones": {
-          "header": 44,
-          "nav": 32,
-          "footer": 28,
-          "margin": 12,
+          "header": 32,
+          "nav": 40,
+          "footer": 16,
+          "margin": 8,
           "gap": 16
         },
         "perPanel": [
           {
             "panel": "HMIST6500AWADI",
-            "columns": 1,
+            "columns": 2,
             "rows": 1,
             "cell": {
               "width": 496,
-              "height": 332
+              "height": 464
             },
-            "capacity": 1
+            "capacity": 2
+          },
+          {
+            "panel": "HMIST6600",
+            "columns": 2,
+            "rows": 1,
+            "cell": {
+              "width": 496,
+              "height": 664
+            },
+            "capacity": 2
           },
           {
             "panel": "HMIGTO6310",
@@ -8873,7 +9113,7 @@
             "rows": 1,
             "cell": {
               "width": 496,
-              "height": 332
+              "height": 464
             },
             "capacity": 1
           },
@@ -8883,7 +9123,7 @@
             "rows": 1,
             "cell": {
               "width": 496,
-              "height": 212
+              "height": 344
             },
             "capacity": 1
           },
@@ -8893,7 +9133,7 @@
             "rows": 1,
             "cell": {
               "width": 496,
-              "height": 212
+              "height": 344
             },
             "capacity": 1
           },
@@ -8902,8 +9142,8 @@
             "columns": 1,
             "rows": 1,
             "cell": {
-              "width": 296,
-              "height": 162
+              "width": 304,
+              "height": 104
             },
             "capacity": 1
           }
@@ -8911,6 +9151,7 @@
       },
       "related": [
         "panel:HMIST6500AWADI",
+        "panel:HMIST6600",
         "panel:HMIGTO6310",
         "panel:HMIGTO5310",
         "panel:HMIGTO4310",
@@ -8919,9 +9160,9 @@
       "source": {
         "kind": "code",
         "ref": "web/src/lib/ote/layout.ts#gridFor",
-        "inputHash": "8a7cc1e5aa157fae1490f5576b342e94e4ee77349dcad7b044acbe2eaa4c63de"
+        "inputHash": "0240b263d8b4ff2eb32983e7ee1e8d1f8e6aac34f313f6ca30319ec3d28663c8"
       },
-      "rev": "8a7cc1e5aa157fae1490f5576b342e94e4ee77349dcad7b044acbe2eaa4c63de"
+      "rev": "0240b263d8b4ff2eb32983e7ee1e8d1f8e6aac34f313f6ca30319ec3d28663c8"
     },
     {
       "id": "prop:AlarmSummary.Fill",
@@ -17552,6 +17793,178 @@
         "inputHash": "928e782fcc317f0f4ab9c0cb1005c66102ecd7b54af842921ecb56feadfcc6c4"
       },
       "rev": "928e782fcc317f0f4ab9c0cb1005c66102ecd7b54af842921ecb56feadfcc6c4"
+    },
+    {
+      "id": "prop:Rectangle.CornerRadius",
+      "kind": "property",
+      "layer": "code",
+      "title": "Rectangle CornerRadius",
+      "summary": "group property in Other.",
+      "tags": [
+        "group",
+        "rectangle"
+      ],
+      "body": {
+        "type": "Rectangle",
+        "path": "CornerRadius",
+        "fieldKind": "group",
+        "optional": true,
+        "readOnly": false,
+        "group": "Other"
+      },
+      "related": [
+        "part:Rectangle"
+      ],
+      "source": {
+        "kind": "code",
+        "ref": "web/src/lib/ote/schema.ts#Rectangle",
+        "inputHash": "341b17579876299ed6c7dd88cd58451e5b2de034076cab520f172f58f22cd93e"
+      },
+      "rev": "341b17579876299ed6c7dd88cd58451e5b2de034076cab520f172f58f22cd93e"
+    },
+    {
+      "id": "prop:Rectangle.CornerRadius.BottomLeft",
+      "kind": "property",
+      "layer": "code",
+      "title": "Rectangle CornerRadius.BottomLeft",
+      "summary": "number property in Other.",
+      "tags": [
+        "number",
+        "rectangle"
+      ],
+      "body": {
+        "type": "Rectangle",
+        "path": "CornerRadius.BottomLeft",
+        "fieldKind": "number",
+        "optional": false,
+        "readOnly": false,
+        "group": "Other",
+        "min": 0
+      },
+      "related": [
+        "part:Rectangle"
+      ],
+      "source": {
+        "kind": "code",
+        "ref": "web/src/lib/ote/schema.ts#Rectangle",
+        "inputHash": "d742ec5e0204bd8b7581f5e6ed3f2b74bceec41eb7d412947d6e91128c724b14"
+      },
+      "rev": "d742ec5e0204bd8b7581f5e6ed3f2b74bceec41eb7d412947d6e91128c724b14"
+    },
+    {
+      "id": "prop:Rectangle.CornerRadius.BottomRight",
+      "kind": "property",
+      "layer": "code",
+      "title": "Rectangle CornerRadius.BottomRight",
+      "summary": "number property in Other.",
+      "tags": [
+        "number",
+        "rectangle"
+      ],
+      "body": {
+        "type": "Rectangle",
+        "path": "CornerRadius.BottomRight",
+        "fieldKind": "number",
+        "optional": false,
+        "readOnly": false,
+        "group": "Other",
+        "min": 0
+      },
+      "related": [
+        "part:Rectangle"
+      ],
+      "source": {
+        "kind": "code",
+        "ref": "web/src/lib/ote/schema.ts#Rectangle",
+        "inputHash": "91ccc0aa7182546cd438510399fcface63db95b7acabb6b282ce76677cf7a76a"
+      },
+      "rev": "91ccc0aa7182546cd438510399fcface63db95b7acabb6b282ce76677cf7a76a"
+    },
+    {
+      "id": "prop:Rectangle.CornerRadius.Style",
+      "kind": "property",
+      "layer": "code",
+      "title": "Rectangle CornerRadius.Style",
+      "summary": "integer property in Other.",
+      "tags": [
+        "integer",
+        "rectangle"
+      ],
+      "body": {
+        "type": "Rectangle",
+        "path": "CornerRadius.Style",
+        "fieldKind": "integer",
+        "optional": false,
+        "readOnly": false,
+        "group": "Other"
+      },
+      "related": [
+        "part:Rectangle"
+      ],
+      "source": {
+        "kind": "code",
+        "ref": "web/src/lib/ote/schema.ts#Rectangle",
+        "inputHash": "7e6b25a071bf8411f856fd8c6ca2a7e9a0a7ece0a8c21179522941be39695289"
+      },
+      "rev": "7e6b25a071bf8411f856fd8c6ca2a7e9a0a7ece0a8c21179522941be39695289"
+    },
+    {
+      "id": "prop:Rectangle.CornerRadius.TopLeft",
+      "kind": "property",
+      "layer": "code",
+      "title": "Rectangle CornerRadius.TopLeft",
+      "summary": "number property in Other.",
+      "tags": [
+        "number",
+        "rectangle"
+      ],
+      "body": {
+        "type": "Rectangle",
+        "path": "CornerRadius.TopLeft",
+        "fieldKind": "number",
+        "optional": false,
+        "readOnly": false,
+        "group": "Other",
+        "min": 0
+      },
+      "related": [
+        "part:Rectangle"
+      ],
+      "source": {
+        "kind": "code",
+        "ref": "web/src/lib/ote/schema.ts#Rectangle",
+        "inputHash": "c0bf8ebc0a99e72a7aa5449eecb51018d85e6b6c7929462f6a3e389a52d8a865"
+      },
+      "rev": "c0bf8ebc0a99e72a7aa5449eecb51018d85e6b6c7929462f6a3e389a52d8a865"
+    },
+    {
+      "id": "prop:Rectangle.CornerRadius.TopRight",
+      "kind": "property",
+      "layer": "code",
+      "title": "Rectangle CornerRadius.TopRight",
+      "summary": "number property in Other.",
+      "tags": [
+        "number",
+        "rectangle"
+      ],
+      "body": {
+        "type": "Rectangle",
+        "path": "CornerRadius.TopRight",
+        "fieldKind": "number",
+        "optional": false,
+        "readOnly": false,
+        "group": "Other",
+        "min": 0
+      },
+      "related": [
+        "part:Rectangle"
+      ],
+      "source": {
+        "kind": "code",
+        "ref": "web/src/lib/ote/schema.ts#Rectangle",
+        "inputHash": "f05b331f95eb4ee5680a36309de841ac86c315d899400cf4927c3cb12db0f44a"
+      },
+      "rev": "f05b331f95eb4ee5680a36309de841ac86c315d899400cf4927c3cb12db0f44a"
     },
     {
       "id": "prop:Rectangle.Fill",

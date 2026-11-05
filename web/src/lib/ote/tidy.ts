@@ -28,7 +28,7 @@ const SIDES: Side[] = ["below", "rightOf", "leftOf", "above"];
 const INNER_STEP = 4;
 const INNER_PASSES = 40;
 
-interface Unit {
+export interface TidyUnit {
   ids: string[];
   name: string;
   box: Box;
@@ -36,8 +36,8 @@ interface Unit {
 
 export interface Overlap {
   /** The smaller of the two: the one in the wrong place. */
-  mover: Unit;
-  other: Unit;
+  mover: TidyUnit;
+  other: TidyUnit;
   width: number;
   height: number;
   /** Set when both sit on one card: the card's name. They move within it, not off it. */
@@ -95,7 +95,7 @@ function containerOf(parts: Part[], panel?: { width: number; height: number }) {
   };
 }
 
-export function unitsOf(parts: Part[], groupOf: (id: string) => string | undefined, panel?: { width: number; height: number }): Unit[] {
+export function unitsOf(parts: Part[], groupOf: (id: string) => string | undefined, panel?: { width: number; height: number }): TidyUnit[] {
   const movable = parts.filter((p) => !CHROME.test(p.Name) && p.Type !== "Pipe");
   const inner = containerOf(movable, panel);
   // Up the chain of innermost holders to the top: a value in a bar band on a
@@ -174,7 +174,7 @@ function shared(a: Box, b: Box): { width: number; height: number } | undefined {
  * anything else alone. A rectangle holding another member is a band or a card
  * of its own, a background rather than something in the way.
  */
-function contentsOf(unit: Unit, parts: Part[], groupOf: (id: string) => string | undefined): Unit[] {
+function contentsOf(unit: TidyUnit, parts: Part[], groupOf: (id: string) => string | undefined): TidyUnit[] {
   const members = parts.filter((p) => unit.ids.includes(p.UniqueId));
   const background = (p: Part) => p.Type === "Rectangle" && members.some((m) => m !== p && holds(boxOf(p), boxOf(m)));
   const byKey = new Map<string, Part[]>();

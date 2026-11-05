@@ -99,7 +99,7 @@ export interface Standards {
 }
 
 export const DEFAULT_STANDARDS: Standards = {
-  gridSize: 8,
+  gridSize: 4,
   showGrid: false,
   snap: true,
   smartGuides: true,

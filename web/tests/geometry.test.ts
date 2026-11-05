@@ -173,8 +173,8 @@ describe("the rest of the rules", () => {
   it("stays silent on a grid-snapped column and speaks on one that drifted", () => {
     const column = (lefts: number[]) =>
       lefts.map((left, i) => rectangle(`Box_${i}`, { left, top: 100 + i * 40, width: 80, height: 24 }, { fill: T.panel, border: T.line }));
-    expect(rules(critiqueGeometry(screen(...column([200, 200, 200])), ISA101).findings)).not.toContain("geom.alignment");
-    expect(rules(critiqueGeometry(screen(...column([200, 202, 203])), ISA101).findings)).toContain("geom.alignment");
+    expect(rules(critiqueGeometry(screen(...column([200, 200, 200])), ISA101).findings)).not.toContain("geom.nearMiss");
+    expect(rules(critiqueGeometry(screen(...column([200, 202, 203])), ISA101).findings)).toContain("geom.nearMiss");
   });
 
   it("calls a screen lopsided when one quarter carries it, and an empty screen nothing", () => {

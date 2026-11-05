@@ -28,6 +28,7 @@ import type { FormatId, PanelProfile } from "./types";
 
 export const PANELS: readonly PanelProfile[] = [
   { model: "HMIST6500AWADI", width: 1024, height: 600, formats: ["eote"], viewing: "touch" },
+  { model: "HMIST6600", width: 1280, height: 800, formats: ["eote"], viewing: "touch", provisional: true },
   { model: "HMIGTO6310", width: 800, height: 600, formats: ["eote"], viewing: "touch" },
   { model: "HMIGTO5310", width: 640, height: 480, formats: ["eote"], viewing: "touch" },
   { model: "HMIGTO4310", width: 640, height: 480, formats: ["eote"], viewing: "touch" },

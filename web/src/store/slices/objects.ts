@@ -8,14 +8,13 @@
 
 
 import { current } from "immer";
-import { rootBox } from "@/lib/ote/schema";
 import {
-  alignTo,
   clonePartsInto,
-  distribute,
   restack,
   uniqueName,
 } from "../edits";
+import { sceneOf } from "@/lib/layout/scene";
+import { solveLayout } from "@/lib/layout/solve";
 import { isEmptyMeta } from "../types";
 import { withoutObjects } from "@/lib/refs";
 
@@ -192,12 +191,16 @@ export const createObjectsSlice: SliceOf<ObjectsSlice> = (set, get) => ({
         if (parts.length === 0 || !screen) return;
         remember(s, `Align ${mode}`);
         touch(s, wanted);
-        const moves = alignTo(detachedPartsByIds(s, wanted), mode, rootBox(viewOf(screen), s.target));
-        for (const part of parts) {
-          const to = moves.get(part.UniqueId);
-          if (!to) continue;
-          part.Location.Left = to.left;
-          part.Location.Top = to.top;
+        const scene = sceneOf({ screen, panel: s.target, meta: s.objectMeta, handles: s.handles, opened: true });
+        const plan = solveLayout({ scene, parts: viewOf(screen).Children,
+          groupOf: (id) => s.objectMeta[id]?.groupId,
+          constraints: [{ id: "toolbar-align", kind: "align", units: wanted, edge: mode }] });
+        if (plan.conflict) return;
+        for (const move of plan.moves) for (const id of move.ids) {
+          const part = viewOf(screen).Children.find((candidate) => candidate.UniqueId === id);
+          if (!part) continue;
+          part.Location.Left += move.to.left - move.from.left;
+          part.Location.Top += move.to.top - move.from.top;
         }
       }),
 
@@ -208,12 +211,18 @@ export const createObjectsSlice: SliceOf<ObjectsSlice> = (set, get) => ({
         if (parts.length < 3) return;
         remember(s, `Distribute ${axis}`);
         touch(s, wanted);
-        const moves = distribute(detachedPartsByIds(s, wanted), axis);
-        for (const part of parts) {
-          const to = moves.get(part.UniqueId);
-          if (!to) continue;
-          part.Location.Left = to.left;
-          part.Location.Top = to.top;
+        const screen = activeScreen(s);
+        if (!screen) return;
+        const scene = sceneOf({ screen, panel: s.target, meta: s.objectMeta, handles: s.handles, opened: true });
+        const plan = solveLayout({ scene, parts: viewOf(screen).Children,
+          groupOf: (id) => s.objectMeta[id]?.groupId,
+          constraints: [{ id: "toolbar-distribute", kind: "distribute", units: wanted, axis: axis === "horizontal" ? "x" : "y" }] });
+        if (plan.conflict) return;
+        for (const move of plan.moves) for (const id of move.ids) {
+          const part = viewOf(screen).Children.find((candidate) => candidate.UniqueId === id);
+          if (!part) continue;
+          part.Location.Left += move.to.left - move.from.left;
+          part.Location.Top += move.to.top - move.from.top;
         }
       }),
 

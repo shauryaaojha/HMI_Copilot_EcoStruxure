@@ -31,7 +31,7 @@ import { partDefaultSize } from "@/lib/ote/default-size";
 import { COMPOSITES, isCompositeKind } from "@/lib/composites";
 import type { ToolType } from "./newPart";
 import type { ForeignPart, ObjectMeta, ScreenPreview } from "@/store/types";
-import { snapDelta, snapTargets, unionOf, type Box } from "@/store/edits";
+import { snapDelta, snapPositionDelta, snapTargets, unionOf, type Box } from "@/store/edits";
 import { contentsById, PartNode, type AlarmRow, type DrawEnv } from "./parts";
 import { FALLBACK_PANEL, ForeignLayer, PAPER, ScreenFrame } from "./StaticScreen";
 import { useProject } from "@/store/project";
@@ -253,7 +253,7 @@ export function ScreenRenderer({
   contentForeign,
   scale = 1,
   showGrid = false,
-  gridSize = 8,
+  gridSize = 4,
   snap = false,
   smartGuides = false,
   interactive = true,
@@ -352,8 +352,9 @@ export function ScreenRenderer({
     if (drag.kind === "move") {
       // Commit whole units as they accumulate so Location stays integral, the
       // way every Location in a real Screen.dat is.
-      let wantX = round(dx);
-      let wantY = round(dy);
+      const start = drag.startUnion;
+      let wantX = start && snap ? snapPositionDelta(start.left, dx, gridSize) : Math.round(dx);
+      let wantY = start && snap ? snapPositionDelta(start.top, dy, gridSize) : Math.round(dy);
 
       // Smart guides run after the grid, so an object that is near both lands
       // on the object - which is the one the engineer was aiming at.
@@ -379,8 +380,10 @@ export function ScreenRenderer({
           caught.h = h.line;
         }
       }
-      wantX = Math.round(wantX);
-      wantY = Math.round(wantY);
+      if (!snap) {
+        wantX = Math.round(wantX);
+        wantY = Math.round(wantY);
+      }
 
       const stepX = wantX - drag.appliedX;
       const stepY = wantY - drag.appliedY;

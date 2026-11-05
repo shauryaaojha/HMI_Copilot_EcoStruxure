@@ -106,29 +106,30 @@ export function placementOf(
  * column count. The origin shifts with it, so nothing lands at a negative
  * offset that the scroll container could not reach.
  */
+export function boardLayout(
+  frames: { id: string; width: number; height: number }[],
+  placements: Record<string, { x: number; y: number }>,
+) {
+  const largest = frames.reduce((size, frame) => ({
+    width: Math.max(size.width, frame.width),
+    height: Math.max(size.height, frame.height),
+  }), { width: 0, height: 0 });
+  const metrics = boardMetrics(frames.length, largest);
+  const spots = frames.map((frame, i) => placementOf(i, metrics, placements[frame.id]));
+  const minX = Math.min(0, ...spots.map((p) => p.x));
+  const minY = Math.min(0, ...spots.map((p) => p.y));
+  const maxX = Math.max(largest.width, ...spots.map((p, i) => p.x + frames[i].width));
+  const maxY = Math.max(largest.height, ...spots.map((p, i) => p.y + frames[i].height + BOARD_LABEL));
+  return { metrics, originX: minX, originY: minY, width: maxX - minX, height: maxY - minY };
+}
+
+/** Compatibility for callers with one common frame size. */
 export function boardExtent(
   screen: { width: number; height: number },
   ids: string[],
   placements: Record<string, { x: number; y: number }>,
 ) {
-  const metrics = boardMetrics(ids.length, screen);
-  const spots = ids.map((id, i) => placementOf(i, metrics, placements[id]));
-
-  const minX = Math.min(0, ...spots.map((p) => p.x));
-  const minY = Math.min(0, ...spots.map((p) => p.y));
-  const maxX = Math.max(screen.width, ...spots.map((p) => p.x + screen.width));
-  const maxY = Math.max(
-    screen.height,
-    ...spots.map((p) => p.y + screen.height + BOARD_LABEL),
-  );
-
-  return {
-    metrics,
-    originX: minX,
-    originY: minY,
-    width: maxX - minX,
-    height: maxY - minY,
-  };
+  return boardLayout(ids.map((id) => ({ id, ...screen })), placements);
 }
 
 export interface ScreenBoardProps {
@@ -224,19 +225,26 @@ export function ScreenBoard({
 }: ScreenBoardProps) {
   // A Canvas root (an opened project's) has no size of its own: it is the panel's.
   const target = useProject((s) => s.target);
-  const first = screens[0]?.Children[0];
-  const size = first ? rootBox(first, target) : target;
-
   const spots = useMemo(() => placements ?? {}, [placements]);
   const extent = useMemo(
-    () =>
-      boardExtent(
-        size,
-        screens.map((s) => s.UniqueId),
-        spots,
-      ),
-    [screens, size.width, size.height, spots],
+    () => boardLayout(screens.map((screen) => ({
+      id: screen.UniqueId, ...rootBox(screen.Children[0], target),
+    })), spots),
+    [screens, target, spots],
   );
+  // Definitions are deliberately a board read, not an editor: changing one
+  // would require the separate .co writer path. An instance's Look is enough
+  // to name the definition even when the original definition tree is opaque.
+  const definitions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const screen of screens) for (const part of screen.Children[0].Children) {
+      if (part.Type !== "CompoundObject") continue;
+      const key = part.Definition ?? part.Name;
+      seen.set(key, key);
+    }
+    return [...seen.values()].sort((a, b) => a.localeCompare(b));
+  }, [screens]);
+  const definitionsHeight = definitions.length ? BOARD_LABEL + 112 : 0;
 
   /** The frame being dragged, and where the grab started. */
   const drag = useRef<{
@@ -251,7 +259,7 @@ export function ScreenBoard({
   return (
     <div
       className="relative shrink-0"
-      style={{ width: extent.width * scale, height: extent.height * scale }}
+      style={{ width: extent.width * scale, height: (extent.height + definitionsHeight) * scale }}
     >
       {screens.map((screen, index) => {
         const view = screen.Children[0];
@@ -398,6 +406,26 @@ export function ScreenBoard({
           </div>
         );
       })}
+      {definitions.length > 0 && (
+        <section
+          aria-label="Compound Object definitions"
+          className="absolute flex gap-3"
+          style={{ left: 0, top: extent.height * scale, height: definitionsHeight * scale }}
+        >
+          {definitions.map((definition) => (
+            <div
+              key={definition}
+              className="rounded border border-dashed border-line bg-surface px-3 py-2 text-text-muted"
+              style={{ width: 180 * scale, height: 92 * scale, fontSize: Math.max(9, 11 * scale) }}
+              title="Compound Object definition — read-only on the project canvas"
+            >
+              <p className="truncate font-medium text-text-secondary">{definition}</p>
+              <p className="mt-1 text-[0.9em]">Compound Object definition</p>
+              <p className="text-[0.9em]">read-only</p>
+            </div>
+          ))}
+        </section>
+      )}
     </div>
   );
 }

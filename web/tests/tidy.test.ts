@@ -170,12 +170,16 @@ describe("tidyLayout, from the conversation", () => {
   it("aligns to the side the note names when mode is left out, and never stacks them sideways", () => {
     const store = seeded(false);
     const view = () => store.getState().screens[1].Children[0].Children;
+    // Two lamps on cards side by side: each stays on its own card.
     const lamps = view().filter((p) => p.Type === "Lamp");
-    expect(lamps.length).toBeGreaterThan(2);
-    const lefts = lamps.map((l) => l.Location.Left);
-    const outcome = applyOps([{ op: "alignObjects", select: "Lamp", note: "Aligned all lamps to the top" } as Op], store);
+    const firstRow = lamps.filter((l) => l.Location.Top === lamps[0].Location.Top);
+    const names = [firstRow[0].Name, firstRow.at(-1)!.Name];
+    expect(new Set(names).size).toBe(2);
+    store.getState().nudge([firstRow[0].UniqueId], 0, 4);
+    const lefts = view().filter((p) => names.includes(p.Name)).map((l) => l.Location.Left);
+    const outcome = applyOps([{ op: "alignObjects", targets: names, note: "Aligned all lamps to the top" } as Op], store);
     expect(outcome.rejected).toEqual([]);
-    const after = view().filter((p) => p.Type === "Lamp");
+    const after = view().filter((p) => names.includes(p.Name));
     expect(after.map((l) => l.Location.Left)).toEqual(lefts);
     expect(new Set(after.map((l) => l.Location.Top)).size).toBe(1);
   });

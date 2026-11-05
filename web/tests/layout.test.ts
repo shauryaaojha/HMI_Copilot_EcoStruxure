@@ -92,6 +92,13 @@ describe("one screen", () => {
     const [plain] = layoutApplication([spec({ sections: ["status"] })], units, PANEL);
     expect(plain.parts.some((p) => p.Type === "AlarmSummary")).toBe(false);
   });
+
+  it("puts generated locations on the 4 px layout lattice", () => {
+    const aligned = built.parts.filter((part) =>
+      part.Location.Left % 4 === 0 && part.Location.Top % 4 === 0,
+    );
+    expect(aligned.length / built.parts.length).toBeGreaterThanOrEqual(0.95);
+  });
 });
 
 describe("an application", () => {
