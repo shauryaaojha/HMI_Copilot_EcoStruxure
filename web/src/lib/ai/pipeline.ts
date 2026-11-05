@@ -17,7 +17,7 @@
  * Phase 4 of docs/BUILD_PLAN.md.
  */
 
-import { gridFor, HEADER, NAV, Placer, type LayoutUnit } from "@/lib/ote/layout";
+import { ALARM_SCREEN, gridFor, HEADER, NAV, Placer, type LayoutUnit } from "@/lib/ote/layout";
 import { modelPlant, rangeOf } from "@/lib/plant/model";
 import { architectPrograms, programOf, type ScreenProgram } from "@/lib/program/program";
 import { compileProgram, kpiBandHeight, specOf } from "@/lib/program/compile";
@@ -366,10 +366,21 @@ export async function* runPipeline(
       const stem = best.spec.screenName.replace(/_\d+$/, "");
       let name = `${stem}Process`;
       for (let n = 2; takenNames.has(name.toLowerCase()); n++) name = `${stem}Process${n}`;
+      // Taken now, not after the loop: two process views over one planned
+      // screen came out with the same name, and an .eote cannot hold that.
+      takenNames.add(name.toLowerCase());
       return { ...p, name, title: `${best.spec.title.replace(/ \(\d+\)$/, "")} - process` };
     });
   for (const p of processPrograms) takenNames.add(p.name.toLowerCase());
   programs.push(...processPrograms);
+
+  // The screens carry a one-line alarm banner. The table it opens is a screen
+  // of its own, unless the request was for named screens only or the
+  // application has that screen already.
+  if (!explicit && plan.scope !== "named" && !takenNames.has(ALARM_SCREEN.toLowerCase()) && programs.some((p) => p.sections?.includes("alarms"))) {
+    programs.push({ name: ALARM_SCREEN, title: "Alarms", level: 2, kpis: [], sections: ["alarms"], rationale: "the full alarm table the banners open" });
+    takenNames.add(ALARM_SCREEN.toLowerCase());
+  }
 
   const navigation = [
     ...existing.map((s) => ({
