@@ -62,3 +62,6 @@ auto&manua.eote
 images of real hmi/
 # A worktree symlinks node_modules; the trailing slash above misses a symlink.
 node_modules
+
+# Database v2 migration backups (npm run db -- migrate --apply). Real project data.
+web/.backups/

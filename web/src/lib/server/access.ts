@@ -7,7 +7,7 @@
  * An original source is readable by its uploader or through a permitted project;
  * knowing a permanent file id alone never grants access to customer data.
  */
-import { repo, type Repo, type User, type Role } from "./repo";
+import { repo, type Project, type Repo, type User, type Role } from "./repo";
 import { ServerError } from "./errors";
 import { cookieShares, hashShareToken, shareTokens } from "./shares";
 export type Action = "read" | "comment" | "edit" | "manage" | "export";
@@ -31,18 +31,27 @@ export interface ProjectAccess {
  * export keeps that restriction; so does a viewer link without export.
  */
 export async function accessOf(user: User | null, projectId: string, storage: Repo = repo(), tokens: string[] = []): Promise<ProjectAccess | null> {
-  if (!await storage.projects.get(projectId)) return null;
-  if (user) {
-    const member = await storage.members.get(projectId, user.id);
-    if (member) {
-      const allowed = actions[member.role].filter(a => a !== "export" || !member.exportDenied);
-      return { role: member.role, actions: allowed, via: "member" };
-    }
+  return (await resolve(user, projectId, storage, tokens))?.access ?? null;
+}
+
+/**
+ * The project and the caller's access to it, from one read of the project and
+ * the membership together - the share links are read only when there is no
+ * membership. `null` means the project does not exist; `access: null` means
+ * it does and the caller has no way in.
+ */
+async function resolve(user: User | null, projectId: string, storage: Repo, tokens: string[]): Promise<{ project: Project; access: ProjectAccess | null } | null> {
+  const found = await storage.projects.access(projectId, user?.id ?? null);
+  if (!found) return null;
+  const { project, member } = found;
+  if (member) {
+    const allowed = actions[member.role].filter(a => a !== "export" || !member.exportDenied);
+    return { project, access: { role: member.role, actions: allowed, via: "member" } };
   }
   const shares = await cookieShares(projectId, tokens, storage);
-  if (shares.length === 0) return null;
+  if (shares.length === 0) return { project, access: null };
   const exportable = shares.some(s => s.allowExport);
-  return { role: "viewer", actions: actions.viewer.filter(a => a !== "export" || exportable), via: "share" };
+  return { project, access: { role: "viewer", actions: actions.viewer.filter(a => a !== "export" || exportable), via: "share" } };
 }
 
 /** Resolve membership (or a viewer link) before allowing an operation on private project data. */
@@ -54,8 +63,9 @@ export async function can(user: User | null, projectId: string, action: Action, 
 /** Give route callers a consistent missing-identity or permission failure. */
 export async function requireAccess(user: User | null, id: string, action: Action, request?: Request) {
   if (!user) throw new ServerError(401, "unauthorized", "Sign in to access projects");
-  if (!await repo().projects.get(id)) throw new ServerError(404, "not-found", "Project not found");
-  if (!await can(user, id, action, repo(), shareTokens(request))) throw new ServerError(403, "forbidden", "You do not have permission for this action");
+  const found = await resolve(user, id, repo(), shareTokens(request));
+  if (!found) throw new ServerError(404, "not-found", "Project not found");
+  if (!found.access?.actions.includes(action)) throw new ServerError(403, "forbidden", "You do not have permission for this action");
   return user;
 }
 
@@ -65,15 +75,16 @@ export async function requireAccess(user: User | null, id: string, action: Actio
  * Returns the access so the editor can hide what it may not do.
  */
 export async function requireReader(user: User | null, id: string, request: Request | undefined, action: "read" | "export" = "read") {
-  if (!await repo().projects.get(id)) throw new ServerError(404, "not-found", "Project not found");
   const tokens = shareTokens(request);
+  const found = await resolve(user, id, repo(), tokens);
+  if (!found) throw new ServerError(404, "not-found", "Project not found");
   if (!user && tokens.length === 0) throw new ServerError(401, "unauthorized", "Sign in to access projects");
-  const access = await accessOf(user, id, repo(), tokens);
+  const access = found.access;
   if (!access || !access.actions.includes(action)) {
     if (!user) throw new ServerError(401, "unauthorized", "Sign in to access projects");
     throw new ServerError(403, "forbidden", "You do not have permission for this action");
   }
-  return { user, access };
+  return { user, access, project: found.project };
 }
 
 /** Authorize source references using small project metadata, never snapshots. */
@@ -87,10 +98,10 @@ export async function sourceInfo(id: string, user: User | null, action: "read" |
     throw new ServerError(401, "unauthorized", "Sign in to access this source");
   }
   if (source.ownerId === user.id) return source;
-  for (const p of await storage.projects.list(user.id)) {
-    if (await can(user, p._id, action, storage)) {
-      if (p.sourceId === id || p.sources?.includes(id)) return source;
-    }
+  // The projects that use this file, from an index - not every project the
+  // user is in, each checked in turn.
+  for (const p of await storage.projects.referencing(id)) {
+    if (await can(user, p._id, action, storage)) return source;
   }
   throw new ServerError(403, "forbidden", "You do not have access to this source");
 }

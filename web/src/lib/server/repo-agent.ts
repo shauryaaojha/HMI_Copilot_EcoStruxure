@@ -101,7 +101,7 @@ export interface LocksRepo {
 const lockId = (projectId: string, screenId: string) => `${projectId}:${screenId}`;
 
 /** Proposals and their decisions, bound to the repository's transaction and clock. */
-export function proposalsRepo(tx: Tx, now: Clock): ProposalsRepo {
+export function proposalsRepo(tx: Tx, now: Clock, read: Tx = tx): ProposalsRepo {
   const find = async (d: Data, projectId: string, id: string) => {
     const row = validId(id) ? await d.get<Proposal>("proposals", id) : null;
     return row && row.projectId === projectId ? row : null;
@@ -113,8 +113,8 @@ export function proposalsRepo(tx: Tx, now: Clock): ProposalsRepo {
       await d.put("proposals", row);
       return row;
     }),
-    get: (projectId, id) => tx(d => find(d, projectId, id)),
-    list: projectId => tx(async d => {
+    get: (projectId, id) => read(d => find(d, projectId, id)),
+    list: projectId => read(async d => {
       const rows = await d.list<Proposal>("proposals", { projectId });
       return rows.sort((a, b) => b.createdAt - a.createdAt);
     }),
@@ -142,7 +142,7 @@ export function proposalsRepo(tx: Tx, now: Clock): ProposalsRepo {
       await d.put("decisions", entry);
       return next;
     }),
-    decisions: projectId => tx(async d => {
+    decisions: projectId => read(async d => {
       const rows = await d.list<Decision>("decisions", { projectId });
       return rows.sort((a, b) => a.at - b.at);
     }),
@@ -150,7 +150,7 @@ export function proposalsRepo(tx: Tx, now: Clock): ProposalsRepo {
 }
 
 /** One agent turn per screen, bound to the repository's transaction and clock. */
-export function locksRepo(tx: Tx, now: Clock): LocksRepo {
+export function locksRepo(tx: Tx, now: Clock, read: Tx = tx): LocksRepo {
   return {
     acquire: (projectId, screenId, holder, holderName) => tx(async d => {
       const id = lockId(projectId, screenId);
@@ -184,6 +184,6 @@ export function locksRepo(tx: Tx, now: Clock): LocksRepo {
       // A step is also a sign of life: the run keeps its screen while it works.
       await d.put("agentLocks", { ...lock, steps, expiresAt: Math.max(lock.expiresAt, now() + LOCK_MS) });
     }),
-    list: projectId => tx(d => d.list<AgentLock>("agentLocks", { projectId })),
+    list: projectId => read(d => d.list<AgentLock>("agentLocks", { projectId })),
   };
 }

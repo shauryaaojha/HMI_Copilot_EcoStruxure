@@ -107,8 +107,8 @@ export function stalled(job: GenerationJob, now: number): boolean {
 }
 
 /** Generation jobs, bound to the repository's transaction and clock. */
-export function jobsRepo(tx: Tx, now: Clock): JobsRepo {
-  const read = async (d: Data, id: string) => (validId(id) ? d.get<GenerationJob>("generationJobs", id) : null);
+export function jobsRepo(tx: Tx, now: Clock, read: Tx = tx): JobsRepo {
+  const load = async (d: Data, id: string) => (validId(id) ? d.get<GenerationJob>("generationJobs", id) : null);
   return {
     create: job => tx(async d => {
       if (!await d.get("projects", job.projectId)) throw new ServerError(404, "not-found", "Project not found");
@@ -126,16 +126,16 @@ export function jobsRepo(tx: Tx, now: Clock): JobsRepo {
       await d.put("generationJobs", row);
       return row;
     }),
-    get: id => tx(d => read(d, id)),
+    get: id => read(d => load(d, id)),
     claim: id => tx(async d => {
-      const job = await read(d, id);
+      const job = await load(d, id);
       if (!job || job.state !== "queued") return null;
       const next: GenerationJob = { ...job, state: "running", updatedAt: now(), expiresAt: now() + JOB_LEASE_MS };
       await d.put("generationJobs", next);
       return next;
     }),
     step: (id, step) => tx(async d => {
-      const job = await read(d, id);
+      const job = await load(d, id);
       if (!job || (job.state !== "running" && job.state !== "queued")) return job;
       const steps = [...job.steps, { at: now(), ...step }].slice(-MAX_STEPS);
       const next: GenerationJob = { ...job, steps, updatedAt: now(), expiresAt: now() + JOB_LEASE_MS };
@@ -143,7 +143,7 @@ export function jobsRepo(tx: Tx, now: Clock): JobsRepo {
       return next;
     }),
     finish: (id, outcome) => tx(async d => {
-      const job = await read(d, id);
+      const job = await load(d, id);
       if (!job) return null;
       const next: GenerationJob = { ...job, ...outcome, updatedAt: now() };
       delete next.expiresAt;
@@ -151,7 +151,7 @@ export function jobsRepo(tx: Tx, now: Clock): JobsRepo {
       return next;
     }),
     cancel: id => tx(async d => {
-      const job = await read(d, id);
+      const job = await load(d, id);
       if (!job) throw new ServerError(404, "not-found", "No such generation job");
       // A finished job is left exactly as it finished: cancelling something
       // that already landed would misreport what is in the project.
@@ -161,7 +161,7 @@ export function jobsRepo(tx: Tx, now: Clock): JobsRepo {
       await d.put("generationJobs", next);
       return next;
     }),
-    list: projectId => tx(async d => {
+    list: projectId => read(async d => {
       const rows = await d.list<GenerationJob>("generationJobs", { projectId });
       return rows.sort((a, b) => b.createdAt - a.createdAt);
     }),
