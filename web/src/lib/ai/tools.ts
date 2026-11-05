@@ -38,6 +38,10 @@ import type { ProjectKnowledge } from "@/lib/knowledge/scan";
 import type { Alarm, Variable } from "@/lib/ote/schema";
 import { rationalise } from "@/lib/alarms/rationalise";
 import type { OwnObject } from "@/lib/ote/exemplars";
+// Types only: the browser imports this file, and the index is 500 KB of JSON.
+// The server route hands the index in, as it does the records above.
+import type { Kb, Kind } from "@/lib/kb";
+import { getEntry, searchEntries } from "@/lib/kb/serve";
 
 export interface ToolContext {
   tags: { name: string; dataType: string; comment: string }[];
@@ -45,6 +49,7 @@ export interface ToolContext {
   structure?: StructureHint[];
   /** Finished projects, when the server has a knowledge base. */
   knowledge?: ProjectKnowledge[];
+  kb?: Kb;
   /** The part types the target format can write (lib/backend). */
   targetParts?: readonly string[];
   targetName?: string;
@@ -263,16 +268,40 @@ export const TOOLS: readonly ToolSpec[] = [
   {
     name: "target_capabilities",
     does: "Says which part types the project's target format can write, and whether a given one is among them.",
-    when: "Before adding a part type that is not Rectangle, TextBox, Lamp or NumericDisplay, or when the engineer asks whether something can be exported.",
+    when: "Before adding an unfamiliar part type, or when the engineer asks whether something can be exported.",
     not: "To ask how a part looks - the part list in the system prompt covers that.",
     schema: { type: "object", properties: { partType: { type: "string", description: "A part type to check, or an empty string for the full list" } }, required: ["partType"], additionalProperties: false },
     run(input, ctx) {
-      const parts = ctx.targetParts ?? [];
+      const parts = ctx.kb?.byTag("emitted").map((entry) => entry.id.slice(5)).filter((part) => !ctx.targetParts || ctx.targetParts.includes(part)) ?? ctx.targetParts ?? [];
       const target = ctx.targetName ?? "the target";
       const want = str(input.partType).trim();
       if (!want) return `${target} can write: ${parts.join(", ") || "unknown"}`;
       const ok = parts.some((p) => p.toLowerCase() === want.toLowerCase());
       return ok ? `${want}: yes, ${target} writes it` : `${want}: no - ${target} cannot write it. It writes: ${parts.join(", ")}`;
+    },
+  },
+  {
+    name: "kb_search",
+    does: "Searches the indexed HMI parts, panels, machine classes, layout patterns and enforced rules; returns at most eight short results with ids.",
+    when: "You need to choose a part, panel pattern or standard rule from repository knowledge.",
+    not: "For tags or objects in this project; use find_tags or find_objects.",
+    schema: { type: "object", properties: { query: { type: "string", description: "Search words" }, kinds: { type: "array", items: { type: "string" }, description: "Entry kinds, or [] for all" }, tags: { type: "array", items: { type: "string" }, description: "Facet tags, or [] for all" } }, required: ["query", "kinds", "tags"], additionalProperties: false },
+    run(input, ctx) {
+      const kb = ctx.kb;
+      if (!kb) return "the indexed knowledge base is unavailable";
+      const kinds = list(input.kinds) as Kind[];
+      return JSON.stringify(searchEntries(kb, str(input.query), "chat", { ...(kinds.length ? { kinds } : {}), tags: list(input.tags) }));
+    },
+  },
+  {
+    name: "kb_get",
+    does: "Gets one indexed knowledge entry by id, including its bounded body and source.",
+    when: "A kb_search result needs more detail.",
+    not: "For a raw project scan or customer data.",
+    schema: { type: "object", properties: { id: { type: "string", description: "Entry id from kb_search" } }, required: ["id"], additionalProperties: false },
+    run(input, ctx) {
+      const kb = ctx.kb;
+      return kb ? JSON.stringify(getEntry(kb, str(input.id), "chat") ?? { error: "no such entry" }) : "the indexed knowledge base is unavailable";
     },
   },
 ];
@@ -309,6 +338,7 @@ export const TOOL_GUIDE = [
   "- whether the target can write a part type -> target_capabilities",
   "- how this project draws a button, display, entry or toggle -> project_style",
   "- alarm priorities, missing operator actions, floods -> alarm_rationalisation",
+  "- repository parts, panels, patterns or rules -> kb_search, then kb_get for its detail",
   "Call nothing when the context already has the answer. Never guess a tag, object or equipment name: look it up.",
 ].join("\n");
 

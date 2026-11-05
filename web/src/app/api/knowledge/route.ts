@@ -13,8 +13,7 @@
  *
  * A scan holds a customer's tag names and conventions, so every method needs a
  * signed-in user (the laptop's local identity counts), and the writes refuse
- * another origin (docs/audit/BUGS.md S2-06). Records have no owner yet, so any
- * signed-in user still sees the whole store: per-user scoping is design C.
+ * another origin (docs/audit/BUGS.md S2-06). Raw scans belong to one owner.
  */
 
 import { fileNameFrom, ingestResponse, IngestError } from "@/lib/ingest/errors";
@@ -22,15 +21,14 @@ import { readBody } from "@/lib/ingest/body";
 import { refuse, sniff } from "@/lib/ingest/sniff";
 import { scanProject, scanVijeo } from "@/lib/knowledge/scan";
 import { aggregate } from "@/lib/knowledge/conventions";
-import { allKnowledge, deleteKnowledge, getKnowledge, knowledgeStore, putKnowledge, summarise } from "@/lib/knowledge/store";
+import { allKnowledge, deleteKnowledge, getKnowledge, knowledgeStore, ownedBy, ownScan, putKnowledge, summarise } from "@/lib/knowledge/store";
 import { errorResponse, sameOrigin, userRequired } from "@/lib/server/http";
 
 /** The caller check, as a response when it fails. */
-async function refused(request: Request, write: boolean): Promise<Response | null> {
+async function refused(request: Request, write: boolean): Promise<{ id: string } | Response> {
   try {
     if (write) sameOrigin(request);
-    await userRequired();
-    return null;
+    return await userRequired();
   } catch (error) {
     return errorResponse(error);
   }
@@ -42,14 +40,14 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const no = await refused(request, false);
-  if (no) return no;
+  if (no instanceof Response) return no;
   try {
     const id = new URL(request.url).searchParams.get("id");
     if (id) {
       const found = await getKnowledge(id);
-      return found ? Response.json(found) : Response.json({ error: "no such project in the knowledge base", code: "not-found" }, { status: 404 });
+      return found && ownedBy(found, no.id) ? Response.json(found) : Response.json({ error: "no such project in the knowledge base", code: "not-found" }, { status: 404 });
     }
-    const records = await allKnowledge();
+    const records = (await allKnowledge()).filter((record) => ownedBy(record, no.id));
     return Response.json({ store: knowledgeStore(), projects: records.map(summarise), conventions: aggregate(records) });
   } catch (error) {
     return ingestResponse(error, "could not read the knowledge base");
@@ -58,7 +56,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const no = await refused(request, true);
-  if (no) return no;
+  if (no instanceof Response) return no;
   const fileName = fileNameFrom(request, "project.eote");
   try {
     if (knowledgeStore() === "off") {
@@ -79,7 +77,7 @@ export async function POST(request: Request) {
     if (kind.kind !== "ote-project" && !vdz) {
       throw refuse(kind, fileName) ?? new IngestError("unsupported-format", `${fileName} is not an Operator Terminal Expert or Vijeo Designer project.`);
     }
-    const knowledge = vdz ? await scanVijeo(bytes, fileName) : await scanProject(bytes, fileName);
+    const knowledge = await ownScan(vdz ? await scanVijeo(bytes, fileName) : await scanProject(bytes, fileName), no.id);
     const kept = await putKnowledge(knowledge);
     return Response.json({ ...kept, summary: summarise(knowledge), problems: knowledge.problems });
   } catch (error) {
@@ -89,10 +87,11 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   const no = await refused(request, true);
-  if (no) return no;
+  if (no instanceof Response) return no;
   const id = new URL(request.url).searchParams.get("id") ?? "";
   try {
-    const gone = await deleteKnowledge(id);
+    const found = await getKnowledge(id);
+    const gone = found && ownedBy(found, no.id) ? await deleteKnowledge(id) : false;
     return gone ? Response.json({ deleted: id }) : Response.json({ error: "no such project in the knowledge base", code: "not-found" }, { status: 404 });
   } catch (error) {
     return ingestResponse(error, "could not delete from the knowledge base");

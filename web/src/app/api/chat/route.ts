@@ -19,7 +19,8 @@ import { providerName, resolveProvider } from "@/lib/ai/provider";
 import type { Turn } from "@/core/ops";
 import type { StructureHint } from "@/lib/ai/infer";
 import { backendFor } from "@/lib/backend";
-import { allKnowledge } from "@/lib/knowledge/store";
+import { allKnowledge, ownedBy } from "@/lib/knowledge/store";
+import { loadKb } from "@/lib/kb";
 import { readProject } from "@/lib/ote/reader";
 import { describeOwn, harvest, type OwnObject } from "@/lib/ote/exemplars";
 import { getImport } from "@/lib/ote/imports";
@@ -62,8 +63,9 @@ async function ownObjects(source: string | undefined, request: Request): Promise
 
 export async function POST(request: Request) {
   let body: Body;
+  let caller: Awaited<ReturnType<typeof modelCaller>>;
   try {
-    await modelCaller();
+    caller = await modelCaller();
   } catch (e) {
     return errorResponse(e);
   }
@@ -83,6 +85,8 @@ export async function POST(request: Request) {
     );
   }
 
+  const kb = loadKb();
+  const trace = { kb: kb?.version ?? null };
   const choice = resolveProvider();
   if (!choice.provider) {
     // Not an error: the product runs without a model, it just cannot converse.
@@ -98,6 +102,7 @@ export async function POST(request: Request) {
             "The Generate button still lays out a screen from the tag names, and " +
             "every editing tool works.",
         } satisfies Turn,
+        trace,
       },
       { status: 200 },
     );
@@ -108,9 +113,10 @@ export async function POST(request: Request) {
       body.catalog && Array.isArray(body.catalog.tags) && Array.isArray(body.catalog.objects)
         ? body.catalog
         : undefined;
-    // The knowledge base informs the tools; a store that cannot be read
-    // costs the turn its precedents, never the turn itself.
-    const knowledge = await allKnowledge().catch(() => []);
+    // binding_precedent and example_screens read the caller's own scans until
+    // the corpus layer replaces them. Nobody else's scan ever reaches a turn, and
+    // a store that cannot be read costs the turn its precedents, never the turn.
+    const knowledge = (await allKnowledge().catch(() => [])).filter((record) => ownedBy(record, caller.id));
     const own = await ownObjects(body.source, request);
     const target = backendFor();
     const result = await converse({
@@ -120,6 +126,7 @@ export async function POST(request: Request) {
       catalog,
       structure: Array.isArray(body.structure) ? body.structure : undefined,
       knowledge,
+      kb,
       own,
       target: { name: target.name, parts: target.capabilities.parts },
     });
@@ -132,6 +139,7 @@ export async function POST(request: Request) {
             mode: "answer",
             reply: "The model answered with something I could not read as a turn.",
           } satisfies Turn,
+          trace,
         },
         { status: 200 },
       );
@@ -141,6 +149,7 @@ export async function POST(request: Request) {
       model: result.model,
       turn: result.turn,
       usage: result.usage,
+      trace,
     });
   } catch (error) {
     // The provider's own error is JSON or an SDK object; the engineer gets a

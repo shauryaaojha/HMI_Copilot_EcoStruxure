@@ -23,6 +23,7 @@
  */
 
 import type Anthropic from "@anthropic-ai/sdk";
+import type { Kb } from "@/lib/kb";
 import { resolveProvider, type Provider } from "@/lib/ai/provider";
 import { TOOLS, availableTools, closeShell, contextFor, inputSchema, runAgentTool, type ToolResult } from "./tools";
 import type { Change, Workspace } from "./workspace";
@@ -34,7 +35,7 @@ export type AgentEvent =
   | { type: "result"; id: string; name: string; ok: boolean; summary: string; image?: boolean }
   | { type: "usage"; input: number; output: number; cached: number }
   | { type: "error"; message: string }
-  | { type: "done"; text: string; changes: Change[]; steps: number; provider: Provider; model: string };
+  | { type: "done"; text: string; changes: Change[]; steps: number; provider: Provider; model: string; kbVersion?: Kb["version"] };
 
 export interface AgentTurn {
   role: "user" | "assistant";
@@ -193,7 +194,7 @@ async function* claudeLoop(options: AgentOptions, model: string, maxSteps: numbe
     messages.push({ role: "user", content: results });
     if (step === maxSteps) yield { type: "error", message: `Stopped after ${maxSteps} steps; say "continue" to go on.` };
   }
-  yield { type: "done", text: finalText, changes: options.ws.changes(), steps: messages.length, provider: "claude", model };
+  yield { type: "done", text: finalText, changes: options.ws.changes(), steps: messages.length, provider: "claude", model, kbVersion: ctx.kb?.version };
 }
 
 /* ------------------------------------------------------------------ gemini */
@@ -278,5 +279,5 @@ async function* geminiLoop(options: AgentOptions, model: string, maxSteps: numbe
     contents.push({ role: "user", parts: [...replies, ...images] });
     if (step === maxSteps) yield { type: "error", message: `Stopped after ${maxSteps} steps; say "continue" to go on.` };
   }
-  yield { type: "done", text: finalText, changes: options.ws.changes(), steps: contents.length, provider: "gemini", model };
+  yield { type: "done", text: finalText, changes: options.ws.changes(), steps: contents.length, provider: "gemini", model, kbVersion: ctx.kb?.version };
 }

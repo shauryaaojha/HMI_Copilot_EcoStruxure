@@ -15,12 +15,13 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ServerError } from "@/lib/server/errors";
 import { GENERATE_TOOLS } from "./generate";
+import { KB_TOOLS } from "./kb";
 import { READ_TOOLS } from "./read";
 import { refusal, toolResult, type ToolOutput } from "./result";
 import type { McpTool, ToolContext } from "./spec";
 import { WRITE_TOOLS } from "./write";
 
-export const TOOLS: readonly McpTool[] = [...READ_TOOLS, ...WRITE_TOOLS, ...GENERATE_TOOLS];
+export const TOOLS: readonly McpTool[] = [...READ_TOOLS, ...KB_TOOLS, ...WRITE_TOOLS, ...GENERATE_TOOLS];
 
 /**
  * The scope a narrowed credential needs for this tool, or null when it has it.

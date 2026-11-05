@@ -35,6 +35,7 @@ import { inferEquipment, type StructureHint } from "./infer";
 import { relevantTags, type ObjectEntry } from "./retrieve";
 import { TOOLS, TOOL_GUIDE, describeTool, prepare, routedContext, runTool, type PreparedContext } from "./tools";
 import type { ProjectKnowledge } from "@/lib/knowledge/scan";
+import type { Kb } from "@/lib/kb";
 import { resolveProvider, type Provider } from "./provider";
 import { isUnnamed } from "./name";
 
@@ -667,6 +668,7 @@ export interface ConverseInput {
   structure?: StructureHint[];
   /** Finished projects, handed in by the server route (lib/knowledge). */
   knowledge?: ProjectKnowledge[];
+  kb?: Kb;
   /** What the target format can write, for target_capabilities. */
   target?: { name: string; parts: readonly string[] };
   /** How the opened project draws its objects, for project_style (lib/ote/exemplars.ts). */
@@ -681,6 +683,7 @@ function toolContext(input: ConverseInput): PreparedContext {
     alarms: input.catalog?.alarms,
     structure: input.structure,
     knowledge: input.knowledge,
+    kb: input.kb,
     targetParts: input.target?.parts,
     targetName: input.target?.name,
     own: input.own,

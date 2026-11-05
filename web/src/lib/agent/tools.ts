@@ -29,6 +29,8 @@ import {
 import { alignObjects, distributeObjects, findOverlaps, matchSize, snapToGrid, tidyScreen } from "./arrange";
 import { runScript } from "./script";
 import { Shell, shellAvailable, type Box } from "./sandbox";
+import { loadKb, type Kb } from "@/lib/kb";
+import { canServe, getEntry, searchEntries } from "@/lib/kb/serve";
 
 export interface ToolResult {
   text: string;
@@ -57,6 +59,7 @@ export interface AgentTool {
 
 export interface AgentContext {
   ws: Workspace;
+  kb?: Kb;
   /** The project as read from the workspace, cached per workspace version. */
   read(): Promise<ReadProject>;
 }
@@ -65,6 +68,7 @@ export function contextFor(ws: Workspace): AgentContext {
   let cached: { version: number; read: Promise<ReadProject> } | undefined;
   return {
     ws,
+    kb: loadKb(),
     read() {
       if (!cached || cached.version !== ws.version) {
         const version = ws.version;
@@ -738,6 +742,33 @@ export const TOOLS: AgentTool[] = [
       if (!shellAvailable()) return { text: "No sandbox here (it needs Vercel, or VERCEL_OIDC_TOKEN locally). Use run_script or the file tools.", isError: true };
       const r = await shellFor(ws).run(String(i.command), i.timeout_s === undefined ? undefined : Number(i.timeout_s));
       return { text: ok(r.text).text, isError: r.isError };
+    },
+  },
+  {
+    name: "kb_search",
+    description: "Search repository parts, panels, layout patterns, machine classes and enforced rules. Returns up to eight short entries with ids.",
+    params: { query: { type: "string", description: "Search words" } },
+    run(ctx, input) {
+      const kb = ctx.kb ?? loadKb();
+      return ok(kb ? json(searchEntries(kb, String(input.query), "agent")) : "the indexed knowledge base is unavailable");
+    },
+  },
+  {
+    name: "kb_get",
+    description: "Read one indexed knowledge entry by id, including its bounded body and source.",
+    params: { id: { type: "string", description: "Entry id from kb_search" } },
+    run(ctx, input) {
+      const kb = ctx.kb ?? loadKb();
+      return ok(kb ? json(getEntry(kb, String(input.id), "agent") ?? { error: "no such entry" }) : "the indexed knowledge base is unavailable");
+    },
+  },
+  {
+    name: "kb_related",
+    description: "List entries directly related to an indexed knowledge entry.",
+    params: { id: { type: "string", description: "Knowledge entry id" } },
+    run(ctx, input) {
+      const kb = ctx.kb ?? loadKb();
+      return ok(kb ? json(kb.related(String(input.id)).filter((entry) => canServe(entry, "agent")).slice(0, 8).map((entry) => ({ id: entry.id, title: entry.title, summary: entry.summary }))) : "the indexed knowledge base is unavailable");
     },
   },
 ];
