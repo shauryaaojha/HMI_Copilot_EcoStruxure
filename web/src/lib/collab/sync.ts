@@ -19,6 +19,7 @@
  * take other people's work with it, so while a session runs, undo sends the
  * inverse of this person's last change instead, and redo the inverse of that.
  */
+import { ServerRefused } from "@/lib/client/refused";
 import { apply, compact, diff, docOf, invert, SYNCED_KEYS } from "./changes";
 import type { Change, ChangesResult, Doc, LoggedChange, Presence, StoreChange } from "./types";
 import type { Snapshot } from "@/lib/server/repo";
@@ -83,7 +84,7 @@ export interface SessionOptions {
   /** Presence heartbeat interval. */
   heartbeat?: number;
   /** Told when the confirmed revision or the queue changes (for the save status). */
-  onStatus?: (status: { rev: number; pending: number; error?: string }) => void;
+  onStatus?: (status: { rev: number; pending: number; error?: string; refused?: boolean }) => void;
   onPresence?: (users: Presence[]) => void;
   onProposal?: (body: unknown) => void;
   onAgent?: (body: unknown) => void;
@@ -276,7 +277,7 @@ export class CollabSession {
     } catch (error) {
       // Offline or refused: keep it, and try again with the next batch.
       this.queued.unshift(merged);
-      this.report(error instanceof Error ? error.message : "Could not reach the server");
+      this.report(error instanceof Error ? error.message : "Could not reach the server", error instanceof ServerRefused);
     } finally {
       this.inflight = false;
     }
@@ -378,7 +379,7 @@ export class CollabSession {
     }, ms);
   }
 
-  private report(error?: string) {
-    this.options.onStatus?.({ rev: this.rev, pending: this.pending.length, ...(error ? { error } : {}) });
+  private report(error?: string, refused = false) {
+    this.options.onStatus?.({ rev: this.rev, pending: this.pending.length, ...(error ? { error } : {}), ...(refused ? { refused } : {}) });
   }
 }

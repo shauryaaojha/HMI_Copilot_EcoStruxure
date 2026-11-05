@@ -24,7 +24,7 @@ import { useCallback, useRef } from "react";
 import { describeOp, digestOf, type HistoryItem } from "@/lib/ai/converse";
 import { isUnnamed, nameProject } from "@/lib/ai/name";
 import { buildsInstead, type Op, type Turn } from "@/core/ops";
-import { buildsWithoutModel, type ModelErrorCode } from "@/lib/ai/model-error";
+import { buildsWithoutModel, isModelErrorCode, type ModelErrorCode } from "@/lib/ai/model-error";
 import { inferEquipment } from "@/lib/ai/infer";
 import type { ExistingScreen } from "@/lib/ai/pipeline";
 import { commit, dryRun, previewOf, type DryRun, type OpOutcome } from "@/core/ops";
@@ -151,7 +151,7 @@ export function useChat() {
     if (!response.ok) {
       const body = (await response.json().catch(() => null)) as { error?: string; code?: ModelErrorCode } | null;
       const message = body?.error ?? `the chat route answered ${response.status}`;
-      throw body?.code ? new ModelCallFailed(message, body.code) : new Error(message);
+      throw isModelErrorCode(body?.code) ? new ModelCallFailed(message, body.code) : new Error(message);
     }
     return (await response.json()) as {
       provider: string | null;
@@ -432,6 +432,8 @@ export function useChat() {
         ) {
           try {
             await runGeneration(request, true);
+            // The build was refused too, and its reason is already the answer.
+            if (!useProject.getState().screens.some((x) => x.Children[0].Children.length > 0)) return;
             patch({
               text: `${message.replace(/ Nothing in the project changed\.| Try again in a minute\./g, "")} The screens were laid out from the tag names alone; ask for changes once the model answers again.`,
               provider: "local",

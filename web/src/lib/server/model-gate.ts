@@ -19,6 +19,21 @@ export const MODEL_CALLS_PER_USER = 120;
 export async function modelCaller(): Promise<User> {
   const user = await currentUser();
   if (!user) throw new ServerError(401, "unauthorized", "Sign in to use the Copilot");
-  await countAttempt("model-user", user.id, MODEL_CALLS_PER_USER);
+  try {
+    await countAttempt("model-user", user.id, MODEL_CALLS_PER_USER);
+  } catch (error) {
+    // "Too many attempts" is the sign-in form's sentence. Here it should say what ran out.
+    if (error instanceof ServerError && error.status === 429) {
+      const seconds = Number(error.detail?.retryAfter) || 60;
+      const minutes = Math.ceil(seconds / 60);
+      throw new ServerError(
+        429,
+        error.code,
+        `You have reached the Copilot limit of ${MODEL_CALLS_PER_USER} requests in 15 minutes. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`,
+        error.detail,
+      );
+    }
+    throw error;
+  }
   return user;
 }
