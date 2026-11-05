@@ -91,10 +91,12 @@ export function promptKind(path: string, method: string): "action" | "automatic"
 }
 
 /** The server's sentence for a refusal, read from a response nothing else will read. */
-export async function signInSentence(response: Response): Promise<string> {
+export async function serverSentence(response: Response, otherwise: string): Promise<string> {
   const body = (await response.json().catch(() => null)) as { error?: unknown } | null;
-  return typeof body?.error === "string" && body.error ? body.error : "Sign in to continue.";
+  return typeof body?.error === "string" && body.error ? body.error : otherwise;
 }
+
+export const signInSentence = (response: Response) => serverSentence(response, "Sign in to continue.");
 
 function requestOf(input: RequestInfo | URL, init: RequestInit | undefined, origin: string): { path: string; method: string } | null {
   try {

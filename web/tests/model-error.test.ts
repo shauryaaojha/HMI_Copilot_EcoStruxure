@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { buildsWithoutModel, describeModelError } from "@/lib/ai/model-error";
+import { buildsWithoutModel, describeModelError, isModelErrorCode } from "@/lib/ai/model-error";
 
 const GEMINI_503 =
   '{"error":{"code":503,"message":"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.","status":"UNAVAILABLE"}}';
@@ -43,5 +43,12 @@ describe("buildsWithoutModel", () => {
     expect(buildsWithoutModel({ hasContent: false, hasTags: true })).toBe(true);
     expect(buildsWithoutModel({ hasContent: true, hasTags: true })).toBe(false);
     expect(buildsWithoutModel({ hasContent: false, hasTags: false })).toBe(false);
+  });
+});
+
+describe("which codes are about the model", () => {
+  it("knows the model's codes from the server's own", () => {
+    for (const code of ["busy", "quota", "auth", "timeout", "failed"]) expect(isModelErrorCode(code)).toBe(true);
+    for (const code of ["unauthorized", "too-many-attempts", "forbidden", undefined, 7]) expect(isModelErrorCode(code)).toBe(false);
   });
 });

@@ -49,3 +49,21 @@ it("refuses a 4 MB chat turn from a signed-in caller before calling the model", 
   const response = await chat(post("/api/chat", { history: [{ role: "user", text: huge }], digest: { name: "x" } }));
   expect({ status: response.status, modelCalls: calls.converse }, "a 4 MB chat body reached the model").toEqual({ status: 413, modelCalls: 0 });
 });
+
+it("says what ran out when a signed-in person reaches the model limit", async () => {
+  vi.resetModules();
+  vi.doMock("@/lib/server/session", () => ({ currentUser: async () => ({ id: "user:busy", name: "Busy" }) }));
+  vi.doMock("@/lib/server/rate-limit", async () => {
+    const { ServerError } = await import("@/lib/server/errors");
+    return { countAttempt: async () => { throw new ServerError(429, "too-many-attempts", "Too many attempts. Try again later.", { retryAfter: 125 }); } };
+  });
+  const { modelCaller, MODEL_CALLS_PER_USER } = await import("@/lib/server/model-gate");
+  await expect(modelCaller()).rejects.toMatchObject({
+    status: 429,
+    code: "too-many-attempts",
+    detail: { retryAfter: 125 },
+    message: `You have reached the Copilot limit of ${MODEL_CALLS_PER_USER} requests in 15 minutes. Try again in 3 minutes.`,
+  });
+  vi.doUnmock("@/lib/server/session");
+  vi.doUnmock("@/lib/server/rate-limit");
+});

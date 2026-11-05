@@ -71,7 +71,7 @@ export function SignInPrompt() {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/60 p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) setAsk(null);
       }}
@@ -82,19 +82,22 @@ export function SignInPrompt() {
         aria-modal="true"
         aria-label="Sign in"
         onKeyDown={keys}
-        className="relative w-full max-w-sm rounded-xl border border-line bg-surface-float p-6 text-left"
+        className="beam-border reveal is-in relative w-full max-w-sm rounded-2xl border border-line bg-surface-float p-6 text-left"
         style={{ boxShadow: "var(--elev-2)" }}
       >
+        <div aria-hidden className="copilot-aurora vivid pointer-events-none absolute inset-0 overflow-hidden rounded-2xl" />
         <Button
           variant="ghost"
           size="sm"
           iconOnly
           aria-label="Close"
-          className="absolute right-3 top-3"
+          className="absolute right-3 top-3 z-10"
           icon={<X size={14} aria-hidden />}
           onClick={() => setAsk(null)}
         />
-        <SignInForm heading="h2" initialMode={ask.mode ?? "in"} lead={ask.reason} autoFocus />
+        <div className="relative">
+          <SignInForm heading="h2" initialMode={ask.mode ?? "in"} lead={ask.reason} autoFocus />
+        </div>
       </div>
     </div>
   );

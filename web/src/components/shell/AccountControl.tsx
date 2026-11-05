@@ -43,6 +43,7 @@ export function AccountControl({ projectId = "" }: { projectId?: string }) {
   }
   return <div className="flex items-center gap-2 text-[11px] text-text-muted">
     {projectId && (account?.user || savedAt) && <span role="status" title={cloudError(projectId)}>{status}</span>}
+    {status === "Not saved on the server" && <span role="alert" className="line-clamp-2 max-w-80 leading-tight text-status-warn">{cloudError(projectId)}</span>}
     {status === "Changed elsewhere" && <span className="flex items-center gap-2 text-status-warn">
       <span>Changed elsewhere - reload or keep yours</span>
       <button className="focus-ring underline" onClick={() => void resolve(false)}>Reload</button>

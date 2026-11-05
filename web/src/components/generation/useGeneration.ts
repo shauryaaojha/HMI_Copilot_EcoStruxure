@@ -16,7 +16,7 @@
  * Phase 4 of docs/BUILD_PLAN.md.
  */
 
-import { signInSentence } from "@/lib/client/sign-in";
+import { serverSentence } from "@/lib/client/sign-in";
 import { useCallback, useRef, useState } from "react";
 import type { GenerationEvent, PipelineStep } from "@/types/events";
 import type { ExistingScreen } from "@/lib/ai/pipeline";
@@ -190,9 +190,10 @@ export function useGeneration() {
             }),
           });
 
-          if (response.status === 401) {
-            // Drawing a made-up screen here would pass for the Copilot's answer.
-            pipelineError = await signInSentence(response);
+          if (response.status >= 400 && response.status < 500) {
+            // No account, a limit, no permission. The route answered, so drawing
+            // a local screen here would hide the answer and look like a result.
+            pipelineError = await serverSentence(response, `The server refused this (${response.status}).`);
             applyFailure = new Error(pipelineError);
           } else if (response.ok && response.body) {
             const events: GenerationEvent[] = [];

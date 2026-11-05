@@ -51,7 +51,7 @@ export function useCollab(projectId: string, rev?: number) {
         store: useProject as never,
         transport: liveTransport(),
         onStatus: (status) => {
-          if (author) void liveSaved(projectId, status.rev, status.pending, status.error);
+          if (author) void liveSaved(projectId, status.rev, status.pending, status.error, status.refused);
         },
         onPresence: (users) => usePresence.getState().set(users),
         onProposal: (body) => useProposals.getState().receive(body),

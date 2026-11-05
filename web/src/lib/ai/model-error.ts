@@ -14,6 +14,11 @@
 
 export type ModelErrorCode = "busy" | "quota" | "auth" | "timeout" | "failed";
 
+/** The chat route also answers with codes of ours, like "unauthorized", that say nothing about the model. */
+export function isModelErrorCode(code: unknown): code is ModelErrorCode {
+  return code === "busy" || code === "quota" || code === "auth" || code === "timeout" || code === "failed";
+}
+
 export interface ModelError {
   code: ModelErrorCode;
   /** Whether trying the same request again later can work. */

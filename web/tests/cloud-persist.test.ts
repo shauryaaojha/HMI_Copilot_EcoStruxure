@@ -59,3 +59,17 @@ it("never uploads when the public site has cloud disabled", async () => {
   p.saveProject(sample()); await vi.advanceTimersByTimeAsync(1500);
   expect(fetcher).toHaveBeenCalledTimes(1); expect(fetcher.mock.calls[0][0]).toBe("/api/me");
 });
+
+it("says a refused save is refused, with the reason, and not that the network is down", async () => {
+  const p = await import("@/store/persist");
+  fetcher.mockImplementation(async (url: string, options?: RequestInit) => {
+    if (url === "/api/me") return Response.json(me);
+    if (!options?.method) return Response.json({ error: "Not found", code: "not-found" }, { status: 404 });
+    return Response.json({ error: "Projects per account limit is 10; remove an existing item before adding another", code: "quota" }, { status: 429 });
+  });
+  await p.loadCloudProject("project-test");
+  p.saveProject({ ...sample(), name: "Over the limit" });
+  await vi.advanceTimersByTimeAsync(2000);
+  expect(p.cloudStatus("project-test")).toBe("Not saved on the server");
+  expect(p.cloudError("project-test")).toContain("limit is 10");
+});

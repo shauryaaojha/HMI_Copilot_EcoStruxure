@@ -6,5 +6,5 @@
  * Phase 0 of docs/BUILD_PLAN.md.
  */
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
-  return <div className="h-screen">{children}</div>;
+  return <div className="h-screen overflow-hidden">{children}</div>;
 }

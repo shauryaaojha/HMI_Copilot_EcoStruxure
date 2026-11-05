@@ -14,6 +14,7 @@
  */
 
 
+import { ServerRefused } from "@/lib/client/refused";
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
 import { snapshotRequest } from "@/lib/client/snapshot";
 import { allowed, useAccess } from "./access";
@@ -120,7 +121,7 @@ export function clearProject(id: string) {
  * project are serialized so a slow response cannot acknowledge a newer edit.
  */
 export interface Account { user: { id: string; name: string } | null; cloud: boolean; providers: string[] }
-export type SyncStatus = "Saved" | "Saving…" | "Offline - saved on this device" | "Changed elsewhere";
+export type SyncStatus = "Saved" | "Saving…" | "Offline - saved on this device" | "Not saved on the server" | "Changed elsewhere";
 interface SyncMeta { userId: string; rev: number; dirty: boolean }
 interface SyncEntry { base?: SyncMeta; status: SyncStatus; latest?: PersistedProject; conflict?: { rev: number; snapshot: PersistedProject }; timer?: ReturnType<typeof setTimeout>; running?: Promise<void>; loading?: Promise<PersistedProject | null>; error?: string }
 const sync = new Map<string, SyncEntry>();
@@ -158,10 +159,13 @@ function cache(project: PersistedProject) {
   try { localStorage.setItem(KEY(project.id), JSON.stringify(project)); } catch { /* Reported by the normal local cache path. */ }
 }
 async function responseJson(response: Response) {
-  const body = await response.json();
-  if (!response.ok) throw new Error(body.error ?? "Could not save project");
+  const body = await response.json().catch(() => null);
+  if (!response.ok) throw new ServerRefused(body?.error ?? "The server would not save this project");
+  if (body === null) throw new Error("Could not save project");
   return body;
 }
+/** What to say when a save failed: only a call that never arrived is being offline. */
+const failedStatus = (error: unknown): SyncStatus => error instanceof ServerRefused ? "Not saved on the server" : "Offline - saved on this device";
 /**
  * Projects with a live co-editing session (lib/collab/sync.ts). Their edits
  * travel as changes, so the whole-snapshot save stands down: two writers on
@@ -184,11 +188,11 @@ export function setLiveProject(id: string, on: boolean) {
  * and whether any of its changes are still unconfirmed. The device cache
  * metadata follows, so a reload with nothing pending is not a conflict.
  */
-export async function liveSaved(id: string, rev: number, pending: number, error?: string) {
+export async function liveSaved(id: string, rev: number, pending: number, error?: string, refused = false) {
   const me = await getAccount().catch(() => null);
   if (me?.user) writeMeta(id, { userId: me.user.id, rev, dirty: pending > 0 });
   entry(id).error = error;
-  announce(id, error ? "Offline - saved on this device" : pending > 0 ? "Saving…" : "Saved");
+  announce(id, error ? (refused ? "Not saved on the server" : "Offline - saved on this device") : pending > 0 ? "Saving…" : "Saved");
 }
 
 /** The server revision this device last loaded or saved, for a session to start from. */
@@ -255,7 +259,7 @@ export async function syncProject(id: string): Promise<void> {
     } catch (error) {
       e.latest ??= attempted;
       e.error = error instanceof Error ? error.message : "Could not save project";
-      announce(id, "Offline - saved on this device");
+      announce(id, failedStatus(error));
     }
   })();
   await e.running;
@@ -294,7 +298,7 @@ export function loadCloudProject(id: string): Promise<PersistedProject | null> {
       return snapshot as PersistedProject;
     } catch (error) {
       e.error = error instanceof Error ? error.message : "Could not load project";
-      announce(id, "Offline - saved on this device"); return null;
+      announce(id, failedStatus(error)); return null;
     }
   })();
   return e.loading.finally(() => { e.loading = undefined; });

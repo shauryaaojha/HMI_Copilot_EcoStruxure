@@ -5,13 +5,14 @@
  * EventSource for the stream. Kept apart from sync.ts so the session's logic
  * is tested with an in-memory transport and no network.
  */
+import { ServerRefused } from "@/lib/client/refused";
 import type { StreamHandlers, Transport } from "./sync";
 import type { Presence } from "./types";
 
 /** Read a JSON answer, turning a refusal into an error that names it. */
 async function answer<T>(response: Response): Promise<T> {
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error((body as { error?: string }).error ?? `The server answered ${response.status}`);
+  if (!response.ok) throw new ServerRefused((body as { error?: string }).error ?? `The server answered ${response.status}`);
   return body as T;
 }
 

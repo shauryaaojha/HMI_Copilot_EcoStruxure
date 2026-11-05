@@ -20,6 +20,8 @@
  * first thing a visitor sees is that happening.
  */
 
+import { useEffect, useState } from "react";
+
 const T = {
   ground: "#d9d9d9",
   panel: "#f1f1f1",
@@ -91,6 +93,27 @@ function Indicator({ x, y, label, value, unit, fill, delay }: { x: number; y: nu
         <line key={f} x1={x + 8 + 160 * f} y1={y + 50} x2={x + 8 + 160 * f} y2={y + 55} stroke={T.line} strokeWidth={0.75} />
       ))}
     </g>
+  );
+}
+
+/** The screen in a window frame. With `replayEveryMs` it builds itself again and again. */
+export function ScreenFigure({ replayEveryMs }: { replayEveryMs?: number }) {
+  const [run, setRun] = useState(0);
+  useEffect(() => {
+    if (!replayEveryMs || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = setInterval(() => setRun((n) => n + 1), replayEveryMs);
+    return () => clearInterval(timer);
+  }, [replayEveryMs]);
+  return (
+    <figure className="overflow-hidden rounded-xl border border-line-subtle bg-surface-raised shadow-2xl">
+      <div className="flex items-center gap-1.5 border-b border-line-subtle px-3 py-2">
+        <span className="h-2 w-2 rounded-full bg-text-faint/40" />
+        <span className="h-2 w-2 rounded-full bg-text-faint/40" />
+        <span className="h-2 w-2 rounded-full bg-text-faint/40" />
+        <span className="ml-2 font-mono text-[10px] text-text-faint">Transfer_Pump_Station.eote</span>
+      </div>
+      <ScreenBuild key={run} />
+    </figure>
   );
 }
 

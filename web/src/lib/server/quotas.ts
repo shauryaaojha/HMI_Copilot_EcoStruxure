@@ -27,5 +27,5 @@ export function refuseCount(label: string, limit: number): never {
 }
 
 export function refuseBytes(label: string, limit: number): never {
-  throw new ServerError(413, "quota", `${label} limit is ${limit} bytes (${(limit / MB).toFixed(1)} MB)`);
+  throw new ServerError(413, "quota", `${label} limit is ${limit >= MB ? `${(limit / MB).toFixed(1)} MB` : `${limit} bytes`}`);
 }
