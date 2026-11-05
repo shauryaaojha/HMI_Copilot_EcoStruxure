@@ -213,3 +213,11 @@ export const TEMPLATES: Template[] = [
 ];
 
 export const CATEGORIES = ["All", ...new Set(TEMPLATES.map((t) => t.category))];
+
+/** The first number whose block shares no part name with what is on the screen. */
+export function nextBlockNumber(template: Template, at: Parameters<Template["build"]>[0], existing: { Name: string }[]): number {
+  const onScreen = new Set(existing.map((part) => part.Name));
+  let n = 1;
+  while (n < 1000 && template.build(at, n).some((part) => onScreen.has(part.Name))) n++;
+  return n;
+}

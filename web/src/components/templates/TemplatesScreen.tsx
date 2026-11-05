@@ -19,7 +19,7 @@ import type { Part, Screen } from "@/lib/ote/schema";
 import { useProject } from "@/store/project";
 import { ScreenRenderer } from "@/components/canvas/ScreenRenderer";
 import { Badge, Button, Input, Tabs, cn, type TabItem } from "@/components/ui";
-import { CATEGORIES, TEMPLATES, type Template } from "./templates";
+import { CATEGORIES, TEMPLATES, nextBlockNumber, type Template } from "./templates";
 
 /**
  * A preview part's id, fixed by where it sits rather than drawn at random.
@@ -114,9 +114,7 @@ export function TemplatesScreen({ projectId }: { projectId: string }) {
     const at = freeSpotBelow(existing, standards.gridSize);
     // Numbering continues from what is already on the screen, so a second pump
     // block is PUMP 2 rather than a second PUMP 1.
-    const onScreen = new Set(existing.map((p) => p.Name));
-    let n = 1;
-    while (n < 1000 && template.build(at, n).some((p) => onScreen.has(p.Name))) n++;
+    const n = nextBlockNumber(template, at, existing);
 
     const parts = template.build(at, n);
     for (const part of parts) appendObject(screen.UniqueId, part);
