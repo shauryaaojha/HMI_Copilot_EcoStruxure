@@ -83,6 +83,8 @@ export interface MachineClass {
   commentWords: string[];
   /** "Category/Name" in OTE's shipped 03-Icons library. */
   symbol?: string;
+  /** Simplified generated picture; symbol is reserved for the opt-in libraryIcon variant. */
+  component?: { kind: "Tank" | "Pump" | "Valve" | "Motor" | "StatusTile"; variant: string };
   roles: RoleSpec[];
   /** Faceplate order: what the machine is for first. */
   headline: string[];
@@ -166,7 +168,7 @@ const PACKML_ALARMS: AlarmTemplate[] = [
 
 /* ---------------------------------------------------------------- classes */
 
-export const MACHINE_CLASSES: readonly MachineClass[] = [
+const CLASS_DATA: readonly MachineClass[] = [
   // --- rotating equipment -------------------------------------------------
   {
     id: "pump", name: "Pump (fixed speed)", industries: ["water", "process", "utilities", "food-bev"], level: "equipment-module",
@@ -520,6 +522,17 @@ export const MACHINE_CLASSES: readonly MachineClass[] = [
     description: "Quality analyser: pH, ORP, chlorine, turbidity, conductivity, dissolved oxygen.",
   },
 ];
+
+export function componentForClass(id: string): NonNullable<MachineClass["component"]> {
+  const key = id.toLowerCase();
+  if (/pump|doser/.test(key)) return { kind: "Pump", variant: key === "vsd-pump" ? "withSpeed" : "centrifugal" };
+  if (/valve|damper/.test(key)) return { kind: "Valve", variant: key === "control-valve" ? "control" : "onOff" };
+  if (/tank|silo/.test(key)) return { kind: "Tank", variant: "vertical" };
+  if (/motor|drive|fan|compressor|mixer/.test(key)) return { kind: "Motor", variant: key === "drive" ? "withDrive" : key === "fan" ? "fan" : "plain" };
+  return { kind: "StatusTile", variant: "state" };
+}
+
+export const MACHINE_CLASSES: readonly MachineClass[] = CLASS_DATA.map((entry) => ({ ...entry, component: componentForClass(entry.id) }));
 
 /* --------------------------------------------------------------- lookups */
 
