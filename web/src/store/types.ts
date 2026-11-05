@@ -252,6 +252,8 @@ export interface CompositeInstance {
   size?: "S" | "M" | "L";
   backend?: "parts" | "co" | "exemplar";
   use?: import("@/lib/components/types").ComponentUse;
+  /** A component's box corner from its parts' corner, so a re-expansion lands where it was. */
+  offset?: { x: number; y: number };
   name: string;
   props: Record<string, unknown>;
   screenId: string;

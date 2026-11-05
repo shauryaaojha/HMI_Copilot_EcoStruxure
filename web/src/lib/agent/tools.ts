@@ -31,6 +31,10 @@ import { runScript } from "./script";
 import { Shell, shellAvailable, type Box } from "./sandbox";
 import { loadKb, type Kb } from "@/lib/kb";
 import { canServe, getEntry, searchEntries } from "@/lib/kb/serve";
+import { applyOps, type Op } from "@/core/ops";
+import { COMPONENT_KINDS } from "@/lib/components/types";
+import { componentCatalogue } from "@/lib/components/place";
+import { inputOf, storeOf } from "./store-input";
 import { sceneOf } from "@/lib/layout/scene";
 import { layoutFacts, printLayoutFacts } from "@/lib/layout/facts";
 import { solveLayout } from "@/lib/layout/solve";
@@ -501,6 +505,48 @@ export const TOOLS: AgentTool[] = [
       if (i.constraints.some((item) => forbidden.some((key) => key in (item as object))))
         return { text: "layout_solve accepts relationships, not coordinates", isError: true };
       return solveWorkspace(ctx, String(i.screen), i.constraints as Constraint[], Boolean(i.apply));
+    },
+  },
+  {
+    name: "components",
+    description: "The component catalogue: every kind you can place with place_component, its variants, sizes and the tag roles it takes.",
+    params: {},
+    run() {
+      return ok(JSON.stringify(componentCatalogue(), null, 1));
+    },
+  },
+  {
+    name: "place_component",
+    description: `Draw a component on a screen: ${COMPONENT_KINDS.join(", ")}. Give no coordinates and no colours: the size comes from the catalogue, the colours from the theme, the tags from the equipment, and the place from a region or an object it goes beside. Refused rather than guessed if it does not fit.`,
+    writes: true,
+    params: {
+      screen: { type: "string", description: "Screen name or id" },
+      kind: { type: "string", description: "One of the kinds in the components tool" },
+      equipment: { type: "string", description: "The unit it draws, e.g. PMP_101: its tags are bound by role", optional: true },
+      variant: { type: "string", description: "Which drawing; the kind's first if left out", optional: true },
+      size: { type: "string", description: "S, M or L; M if left out", optional: true },
+      tags: { type: "any", description: "Tags by role, beyond what the equipment offers", optional: true },
+      name: { type: "string", description: "Object name", optional: true },
+      label: { type: "string", description: "The label it shows", optional: true },
+      region: { type: "string", description: "A region of the screen, e.g. body", optional: true },
+      anchor: { type: "string", description: "An object it goes beside", optional: true },
+      side: { type: "string", description: "Which side of the anchor: rightOf, leftOf, above or below", optional: true },
+    },
+    async run(ctx, i) {
+      const read = await ctx.read();
+      const info = screenByName(ctx.ws, String(i.screen));
+      if (!read.screens.some((candidate) => candidate.UniqueId === info.id)) return { text: `${info.name} is carried whole, so nothing can be drawn on it`, isError: true };
+      const store = storeOf(read);
+      const place = i.anchor ? { anchor: String(i.anchor), side: str(i.side) ?? "rightOf" } : i.region ? { region: String(i.region) } : undefined;
+      const op = { op: "addObject", screen: info.name, type: String(i.kind), ...(str(i.equipment) ? { equipment: str(i.equipment) } : {}),
+        ...(str(i.variant) ? { variant: str(i.variant) } : {}), ...(str(i.size) ? { size: str(i.size) } : {}),
+        ...(i.tags && typeof i.tags === "object" ? { tags: i.tags } : {}), ...(str(i.name) ? { name: str(i.name) } : {}),
+        ...(str(i.label) ? { text: str(i.label) } : {}), ...(place ? { place } : {}) } as Op;
+      if (!(COMPONENT_KINDS as readonly string[]).includes(String(i.kind))) return { text: `${String(i.kind)} is not a component; they are ${COMPONENT_KINDS.join(", ")}`, isError: true };
+      const outcome = applyOps([op], store);
+      if (outcome.rejected.length > 0) return { text: outcome.rejected.map((r) => r.reason).join("; "), isError: true };
+      await ctx.ws.load(await packageProject({ ...read, ...inputOf(store) }, undefined, read.preserved));
+      return ok(outcome.applied.join("\n"));
     },
   },
   {

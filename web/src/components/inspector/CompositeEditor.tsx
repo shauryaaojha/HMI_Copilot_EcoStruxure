@@ -11,7 +11,10 @@
  */
 
 import { Layers, Ungroup } from "lucide-react";
+import { z } from "zod";
 import { COMPOSITES, type CompositeKind } from "@/lib/composites";
+import { COMPONENTS, isComponentKind } from "@/lib/components";
+import type { SizeName } from "@/lib/components/types";
 import { ACCEPTS } from "@/lib/validation/rules";
 import type { CompositeInstance } from "@/store/types";
 import { useProject } from "@/store/project";
@@ -32,7 +35,125 @@ const TAG_PROPS: Record<string, readonly string[]> = {
   faultTag: ["BOOL"],
 };
 
+const SIZES: readonly SizeName[] = ["S", "M", "L"];
+
+/** Parts of a role's type: a REAL role reads any number, a BOOL role only a BOOL. */
+const fits = (want: string, have: string) => want === have || (want === "REAL" && have !== "BOOL" && have !== "STRING");
+
+/**
+ * A component: which drawing, how big, which tags, and what the kind itself
+ * offers. There is no x, y or colour here: those are the catalogue's and the theme's.
+ */
+function ComponentEditor({ instance }: { instance: CompositeInstance }) {
+  const variables = useProject((s) => s.variables);
+  const setCompositeProps = useProject((s) => s.setCompositeProps);
+  const ungroup = useProject((s) => s.ungroup);
+  const removeObjects = useProject((s) => s.removeObjects);
+  const use = instance.use!;
+  const def = COMPONENTS[use.kind];
+  // A strip of tabs reads its screens from the project, so they are not typed in here.
+  const fields = (def.props instanceof z.ZodObject ? fieldsOfSchema(def.props) : []).filter((f) => f.key !== "screens" && f.key !== "current");
+  return (
+    <>
+      <div className="flex items-center gap-1 px-3 py-2.5">
+        <Layers size={15} aria-hidden className="shrink-0 text-brand-400" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold">{use.kind}</p>
+          <p className="truncate font-mono text-[11px] text-text-muted">
+            #{instance.name} · {instance.partIds.length} parts
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          aria-label="Ungroup into parts"
+          title="Ungroup into its parts. They stay; the component does not."
+          onClick={() => ungroup(instance.partIds)}
+          icon={<Ungroup size={15} />}
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          aria-label="Delete component"
+          title="Delete the component and every part of it"
+          onClick={() => removeObjects(instance.partIds)}
+          icon={<span aria-hidden className="text-base leading-none">×</span>}
+        />
+      </div>
+
+      <Panel title="Component">
+        <div className="space-y-2">
+          {def.variants.length > 1 && (
+            <Field label="Variant">
+              <Select
+                aria-label="Variant"
+                size="sm"
+                value={use.variant}
+                options={def.variants.map((v) => ({ value: v, label: label(v) }))}
+                onChange={(e) => setCompositeProps(instance.id, {}, { variant: e.target.value })}
+              />
+            </Field>
+          )}
+          <Field label="Size">
+            <Select
+              aria-label="Size"
+              size="sm"
+              value={use.size}
+              options={SIZES.map((v) => ({ value: v, label: v }))}
+              onChange={(e) => setCompositeProps(instance.id, {}, { size: e.target.value as SizeName })}
+            />
+          </Field>
+        </div>
+      </Panel>
+
+      {def.roles.length > 0 && (
+        <Panel title="Tags">
+          <div className="space-y-2">
+            {def.roles.map((slot) => (
+              <Field key={slot.role} label={slot.role}>
+                <Select
+                  aria-label={slot.role}
+                  size="sm"
+                  value={use.tags[slot.role] ?? ""}
+                  options={[
+                    { value: "", label: "Unbound" },
+                    ...variables.filter((v) => fits(slot.dataType, v.DataType)).map((v) => ({ value: v.Name, label: v.Comments ? `${v.Name} — ${v.Comments}` : v.Name })),
+                  ]}
+                  onChange={(e) => setCompositeProps(instance.id, {}, { tags: { [slot.role]: e.target.value } })}
+                />
+              </Field>
+            ))}
+          </div>
+        </Panel>
+      )}
+
+      {fields.length > 0 && (
+        <Panel title="Properties">
+          <div className="space-y-2">
+            {fields.map((field) => (
+              <Field key={field.key} label={label(field.key)}>
+                <FieldEditor
+                  field={field}
+                  value={use.props[field.key]}
+                  onChange={(path, next) => setCompositeProps(instance.id, { [path[0]]: next })}
+                />
+              </Field>
+            ))}
+          </div>
+        </Panel>
+      )}
+    </>
+  );
+}
+
 export function CompositeEditor({ instance }: { instance: CompositeInstance }) {
+  if (instance.use && isComponentKind(instance.use.kind)) return <ComponentEditor instance={instance} />;
+  return <RecipeEditor instance={instance} />;
+}
+
+function RecipeEditor({ instance }: { instance: CompositeInstance }) {
   const variables = useProject((s) => s.variables);
   const setCompositeProps = useProject((s) => s.setCompositeProps);
   const ungroup = useProject((s) => s.ungroup);

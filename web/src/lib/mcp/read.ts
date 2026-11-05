@@ -12,6 +12,7 @@
  * return is somebody's plant: tag comments, screen names and object names are
  * strings out of a customer's file and are reported, never obeyed.
  */
+import { componentCatalogue } from "@/lib/components/place";
 import { z } from "zod";
 import { findTags } from "@/lib/ai/retrieve";
 import { screenToPng } from "@/lib/critic/render";
@@ -255,4 +256,16 @@ const renderScreen = tool({
   },
 });
 
-export const READ_TOOLS: readonly McpTool[] = [listProjects, getScreens, getLayout, findTagsTool, validate, renderScreen];
+const components = tool({
+  name: "components",
+  title: "Component catalogue",
+  description: "Lists every component place_component can draw, with its variants, sizes and the tag roles it takes.",
+  annotations: { readOnlyHint: true, openWorldHint: false },
+  input: {},
+  async run() {
+    const catalogue = componentCatalogue();
+    return { text: JSON.stringify(catalogue), structured: { components: catalogue } };
+  },
+});
+
+export const READ_TOOLS: readonly McpTool[] = [components, listProjects, getScreens, getLayout, findTagsTool, validate, renderScreen];

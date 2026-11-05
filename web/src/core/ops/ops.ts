@@ -17,6 +17,8 @@
 import { z } from "zod";
 import { PART_TYPES } from "@/lib/ote/schema";
 import { COMPOSITE_KINDS } from "@/lib/composites";
+import { COMPONENT_KINDS } from "@/lib/components/types";
+import { TOKEN_NAMES } from "@/lib/components/theme";
 import { REGIONS, SIDES } from "@/lib/ote/regions";
 import type { Constraint } from "@/lib/layout/types";
 
@@ -112,7 +114,14 @@ export const Op = z.object({
    * it - "PMP_101", "Boiler 4001". One op, one whole faceplate.
    */
   equipment: z.string().optional(),
-  type: z.enum([...PART_TYPES, ...COMPOSITE_KINDS]).optional(),
+  type: z.enum([...PART_TYPES, ...COMPOSITE_KINDS, ...COMPONENT_KINDS]).optional(),
+  /** addObject of a component: which drawing of it, and how big. */
+  variant: z.string().optional(),
+  size: z.enum(["S", "M", "L"]).optional(),
+  /** addObject of a component: tags by role, beyond what `equipment` offers. */
+  tags: z.record(z.string(), z.string()).optional(),
+  /** setColor: a colour by what it means, rather than by hue. */
+  token: z.enum(TOKEN_NAMES).optional(),
   text: z.string().optional(),
   offText: z.string().optional(),
   onText: z.string().optional(),

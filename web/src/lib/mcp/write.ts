@@ -30,6 +30,7 @@
  * decide what to do. The ops are the arguments the caller passed, and only
  * those.
  */
+import { COMPONENT_KINDS } from "@/lib/components/types";
 import { z } from "zod";
 import { Op } from "@/core/ops";
 import { diff } from "@/lib/collab/changes";
@@ -275,6 +276,38 @@ const applyOpsTool = tool({
   },
 });
 
+const placeComponentTool = tool({
+  name: "place_component",
+  title: "Place a component",
+  description: "Draws a component (see the components tool) on a screen with no coordinates and no colours: the size comes from the catalogue, the colours from the theme, the tags from the equipment. Goes through the same checks as apply_ops.",
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  input: {
+    projectId: z.string().describe("The project id, from list_projects."),
+    screen: z.string().describe("Screen handle or name, from get_screens."),
+    kind: z.enum(COMPONENT_KINDS).describe("The component to draw."),
+    equipment: z.string().optional().describe("The unit it draws, e.g. PMP_101: its tags are bound by role."),
+    variant: z.string().optional().describe("Which drawing; the kind's first if left out."),
+    size: z.enum(["S", "M", "L"]).optional().describe("How big; M if left out."),
+    tags: z.record(z.string(), z.string()).optional().describe("Tags by role, beyond what the equipment offers."),
+    name: z.string().optional().describe("Object name."),
+    label: z.string().optional().describe("The label it shows."),
+    region: z.string().optional().describe("A region of the screen, e.g. body."),
+    anchor: z.string().optional().describe("An object handle it goes beside."),
+    side: z.string().optional().describe("Which side of the anchor: rightOf, leftOf, above or below."),
+    confirm: z.boolean().optional().describe("Must be true to write directly into a project that was opened from a file."),
+  },
+  async run({ projectId, screen, kind, equipment, variant, size, tags, name, label, region, anchor, side, confirm }, { caller }) {
+    const place = anchor ? { anchor, side: side ?? "rightOf" } : region ? { region } : undefined;
+    const op = { op: "addObject", screen, type: kind, ...(equipment ? { equipment } : {}), ...(variant ? { variant } : {}), ...(size ? { size } : {}),
+      ...(tags ? { tags } : {}), ...(name ? { name } : {}), ...(label ? { text: label } : {}), ...(place ? { place } : {}) };
+    return land(caller, projectId, {
+      ops: [op] as z.infer<typeof Ops>,
+      note: `Placed a ${kind} through the claude.ai connector`,
+      ...(confirm === undefined ? {} : { confirm }),
+    });
+  },
+});
+
 const proposeTool = tool({
   name: "propose",
   title: "Propose a change",
@@ -295,4 +328,4 @@ const proposeTool = tool({
   },
 });
 
-export const WRITE_TOOLS: readonly McpTool[] = [applyOpsTool, proposeTool];
+export const WRITE_TOOLS: readonly McpTool[] = [applyOpsTool, placeComponentTool, proposeTool];

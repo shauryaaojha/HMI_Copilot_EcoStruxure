@@ -32,6 +32,8 @@ import { sceneOf } from "@/lib/layout/scene";
 import { layoutFacts, printLayoutFacts } from "@/lib/layout/facts";
 import { ALIGN_MODES, COLOR_NAMES, OP_NAMES, coerceTurn, type Op, type Turn } from "./ops";
 import { PART_TYPES } from "@/lib/ote/schema";
+import { COMPONENT_KINDS } from "@/lib/components/types";
+import { TOKEN_NAMES } from "@/lib/components/theme";
 import { REGIONS, SIDES } from "@/lib/ote/regions";
 import { inferEquipment, type StructureHint } from "./infer";
 import { relevantTags, type ObjectEntry } from "./retrieve";
@@ -439,6 +441,7 @@ Scope - one op can reach many screens and many objects:
   "PMP_101 lamps amber everywhere"      -> setColor select Lamp, selectText PMP_101, screens ["all"], color amber
   "title font 20 on every screen"       -> setText select title, screens ["all"], fontSize 20
   "add a 'Line 1' label to every screen" -> addObject type TextBox, text "Line 1", place region header, screens ["all"]
+  "add a pump for PMP_101 next to the tank" -> addObject type Pump, equipment PMP_101, place anchor <the tank's handle> side rightOf. A component takes its size, colours and tags from the catalogue, the theme and the equipment: name none of them. Use a component (${COMPONENT_KINDS.join(", ")}) for a machine, a level or a status, and a plain part for anything else.
 - One op per kind of change. Twelve screens is one op with screens ["all"],
   never twelve ops.
 
@@ -482,7 +485,10 @@ const D = {
   targets: "Object handles, for alignObjects, matchSize, snapToGrid, groupObjects and ungroupObjects",
   name: "New name, for addScreen / renameScreen / addObject",
   equipment: "For addEquipment: the unit id from the equipment list - PMP_101",
-  type: `Part type, one of: ${PART_TYPES.join(", ")}`,
+  type: `Part type, one of: ${PART_TYPES.join(", ")}; or a component, one of: ${COMPONENT_KINDS.join(", ")}`,
+  variant: "For addObject of a component: which drawing of it, when it matters",
+  size: "For addObject of a component: S, M or L. Absent means M",
+  token: `For setColor: a colour by meaning, one of: ${TOKEN_NAMES.join(", ")}`,
   place: "Where it goes: a region, or an anchor handle and a side",
   region: `One of: ${REGIONS.join(", ")}`,
   anchor: "Object handle to place relative to",
@@ -540,7 +546,10 @@ function geminiSchema() {
             targets: { type: "ARRAY", items: { type: "STRING" }, description: D.targets },
             name: S(D.name),
             equipment: S(D.equipment),
-            type: { type: "STRING", enum: [...PART_TYPES], description: D.type },
+            type: { type: "STRING", enum: [...PART_TYPES, ...COMPONENT_KINDS], description: D.type },
+            variant: S(D.variant),
+            size: { type: "STRING", enum: ["S", "M", "L"], description: D.size },
+            token: { type: "STRING", enum: [...TOKEN_NAMES], description: D.token },
             place: {
               type: "OBJECT",
               description: D.place,
@@ -608,7 +617,10 @@ const JSON_SCHEMA = {
           targets: { type: "array", items: { type: "string" } },
           name: { type: "string" },
           equipment: { type: "string", description: D.equipment },
-          type: { type: "string", enum: [...PART_TYPES] },
+          type: { type: "string", enum: [...PART_TYPES, ...COMPONENT_KINDS] },
+          variant: { type: "string", description: D.variant },
+          size: { type: "string", enum: ["S", "M", "L"], description: D.size },
+          token: { type: "string", enum: [...TOKEN_NAMES], description: D.token },
           place: {
             type: "object",
             description: D.place,

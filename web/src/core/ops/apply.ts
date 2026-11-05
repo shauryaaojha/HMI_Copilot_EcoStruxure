@@ -70,6 +70,8 @@ import { inferEquipment } from "@/lib/ai/infer";
 import type { Op } from "./ops";
 import { valuePropertyOf } from "@/lib/tags/binder";
 import { expandOps } from "@/lib/ai/expand";
+import { DEFAULT_THEME, isComponentKind } from "@/lib/components";
+import { componentUse, sizeOfUse } from "@/lib/components/place";
 import { moveSetOf, planTidy, unitsOf } from "@/lib/ote/tidy";
 import { matchSizes, snapPosition } from "@/store/edits";
 import { sceneOf } from "@/lib/layout/scene";
@@ -559,6 +561,78 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
         }
         const askedName = op.name ?? op.target;
         const name = (askedName ?? defaultName(op.type, screen)).replace(/[^A-Za-z0-9_]/g, "_");
+
+        if (isComponentKind(op.type)) {
+          const units = op.equipment ? inferEquipment(s.variables, s.tagImport?.structure) : [];
+          const unit = units.find((u) => u.id.toLowerCase() === op.equipment!.toLowerCase());
+          if (op.equipment && !unit) {
+            reject(op, `No equipment called ${op.equipment}; there is ${units.map((u) => u.id).slice(0, 8).join(", ") || "none"}.`);
+            break;
+          }
+          let use;
+          try {
+            use = componentUse({
+              kind: op.type, variant: op.variant, size: op.size, tags: op.tags, tag: op.tag, equipment: unit,
+              label: op.text ?? unit?.label,
+              // A strip of tabs lists the screens; nothing else has to say so.
+              props: op.type === "NavBar"
+                ? { screens: s.screens.filter((x) => x.Type !== "Content").map((x) => ({ name: x.Name, title: x.Name.replace(/_/g, " ") })), current: screen.Name }
+                : undefined,
+            });
+          } catch (error) {
+            reject(op, error instanceof Error ? error.message : `${op.type} could not be drawn.`);
+            break;
+          }
+          const missing = Object.values(use.tags).filter((tag) => !s.variables.some((v) => v.Name === tag));
+          if (missing.length > 0) {
+            reject(op, `${op.type} needs tags the project does not have: ${missing.join(", ")}`);
+            break;
+          }
+          const wanted = sizeOfUse(use);
+          const panel = panelOf(screen);
+          if (wanted.width > panel.width || wanted.height > panel.height) {
+            reject(op, `${op.type} size ${use.size} is ${wanted.width}x${wanted.height}, more than ${screen.Name} has; ask for a smaller size.`);
+            break;
+          }
+          let at: Box;
+          let where = "body";
+          if (op.left !== undefined && op.top !== undefined) at = { ...wanted, left: op.left, top: op.top };
+          else {
+            const slot = slotFor(s, op, screen, wanted);
+            if (!slot.ok) {
+              reject(op, slot.reason);
+              break;
+            }
+            at = slot.box;
+            where = slot.region;
+          }
+          // Components draw on the grid, and a slot beside an engineer's part need not be on it.
+          const unitPx = DEFAULT_THEME.grid.unit;
+          const onGrid = (value: number, most: number) => Math.max(0, Math.min(Math.round(value / unitPx), Math.floor(most / unitPx))) * unitPx;
+          const box = { ...wanted, left: onGrid(at.left, panel.width - wanted.width), top: onGrid(at.top, panel.height - wanted.height) };
+          let cid: string;
+          try {
+            cid = s.addComponent(screen.UniqueId, use, box, name);
+          } catch (error) {
+            reject(op, error instanceof Error ? error.message : `${op.type} could not be drawn.`);
+            break;
+          }
+          const afterC = store.getState();
+          const instance = afterC.composites[cid];
+          if (!instance) {
+            reject(op, `${op.type} could not be placed on ${screen.Name}.`);
+            break;
+          }
+          const frameId = instance.partIds[0];
+          const h = handleOf(afterC, frameId);
+          created.push({ asked: askedName, name: instance.name, type: op.type, id: frameId });
+          out.created.push({ handle: h, name: instance.name, type: op.type, screen: handleOf(afterC, screen.UniqueId) });
+          if (askedName && instance.name !== askedName) out.renamed.push({ asked: askedName, became: instance.name, handle: h });
+          touch(afterC, frameId);
+          ok(note || `Added ${op.type} ${h} ${instance.name} in the ${where} of ${screen.Name}`);
+          break;
+        }
+
         const size = {
           width: Math.max(1, Math.round(op.width ?? sizeFor(op.type).width)),
           height: Math.max(1, Math.round(op.height ?? sizeFor(op.type).height)),
@@ -764,19 +838,20 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
 
       case "setColor": {
         const found = resolve(s, op.target!);
-        const value = op.color ? COLOR[op.color] : undefined;
+        // A token says what the colour means; the theme says which colour that is.
+        const value = op.token ? DEFAULT_THEME.tokens[op.token] : op.color ? COLOR[op.color] : undefined;
         if (!found) {
           reject(op, unresolved(s, op.target!));
           break;
         }
         if (value === undefined) {
-          reject(op, `${op.color ?? "That"} is not a colour in the palette.`);
+          reject(op, `${op.token ?? op.color ?? "That"} is not a colour in the palette.`);
           break;
         }
         const key = op.colorRole === "border" ? "Border" : op.colorRole === "text" ? "TextColor" : "Fill";
         s.setProperty(found.part.UniqueId, [key, "Color", "Value"], value);
         touch(s, found.part.UniqueId);
-        ok(note || `Set ${found.part.Name} ${op.colorRole ?? "fill"} to ${op.color}`);
+        ok(note || `Set ${found.part.Name} ${op.colorRole ?? "fill"} to ${op.token ?? op.color}`);
         break;
       }
 

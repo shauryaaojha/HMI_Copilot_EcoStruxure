@@ -208,7 +208,9 @@ export interface ProjectState {
   /** Expand a composite onto a screen; its parts land grouped and bound. Returns the instance id. */
   addComposite: (screenId: string, kind: CompositeKind, props: Record<string, unknown>, box: Box, name?: string) => string;
   /** Change props and re-expand in place: same screen, same paint index, same box. */
-  setCompositeProps: (id: string, patch: Record<string, unknown>) => void;
+  setCompositeProps: (id: string, patch: Record<string, unknown>, usePatch?: Partial<Pick<import("@/lib/components/types").ComponentUse, "variant" | "size" | "tags">>) => void;
+  /** Draw a component onto a screen at a box on the grid; its parts land grouped and bound. Returns the instance id. */
+  addComponent: (screenId: string, use: import("@/lib/components/types").ComponentUse, box: Box, name?: string) => string;
   /** Adopt parts already on a screen (the generator's) as a composite instance. */
   registerComposite: (instance: CompositeInstance) => void;
 
@@ -321,7 +323,7 @@ export type ProjectActions = Pick<
   | "hydrate" | "rename" | "setTarget" | "markSaved" | "select" | "selectAll"
   | "hover" | "setSimulating" | "setPreview" | "addScreen" | "duplicateScreen" | "renameScreen"
   | "removeScreen" | "setActiveScreen" | "reorderScreens" | "placeScreen"
-  | "tidyBoard" | "importScreens" | "applyStandard" | "addComposite" | "setCompositeProps"
+  | "tidyBoard" | "importScreens" | "applyStandard" | "addComposite" | "addComponent" | "setCompositeProps"
   | "registerComposite" | "setProgram" | "markGenerated" | "applyRegeneration" | "setPlant" | "answerQuestion" | "rebuildPlant" | "setRange" | "connect" | "disconnect"
   | "appendObject"
   | "updateObject" | "setProperty" | "nudge" | "setBox" | "removeObjects"

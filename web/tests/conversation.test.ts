@@ -66,7 +66,7 @@ describe("coerceTurn", () => {
       coerceTurn({
         mode: "edit",
         reply: "x",
-        ops: [{ op: "addObject", type: "Gauge", note: "invented" }],
+        ops: [{ op: "addObject", type: "Speedometer", note: "invented" }],
       }),
     ).toBeNull();
   });
