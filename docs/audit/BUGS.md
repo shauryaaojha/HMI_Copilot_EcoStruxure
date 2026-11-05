@@ -10,6 +10,8 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Totals:** 82 bugs: P0 3, P1 12, P2 39, P3 28. (4 duplicates merged into the bug they repeat.)
 
+**Status on `feat/build-remaining`, 2026-11-06:** 78 of 84 rows closed, 6 open: S1-04, S1-10, S1-12, S1-17, S1-13, S2-11. The open ones wait on OTE file work or on Shaurya. Every status names its commit. The audit proofs run with the command above and only S1-04 still fails.
+
 ## Summary
 
 | Id | Sev | Bug | Where | Proof | Users hit | Status |
@@ -22,7 +24,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 | [S2-01](#s2-01) | P1 | /signin?next= redirects off-site with a backslash or a tab | web/src/app/signin/page.tsx:41-43 (safeNext), used at :19 (server redirect) and :26 -> we… | web/scripts/audit/s2-signin-next-redirect.test.ts (fails with `next="… | anyone who follows a crafted link; every sign-in. | fixed in 6c27db5 |
 | [S2-02](#s2-02) | P1 | Model-spending and compute routes accept anonymous callers | web/src/app/api/chat/route.ts:61-143, brief/draft/route.ts:21-38, generate/route.ts:22-88… | web/scripts/audit/s2-model-routes-anonymous.test.ts (fails with `anon… | all users, when someone scripts it; also every connector us… | fixed in e7fa6aa, 4c41fea |
 | [S2-04](#s2-04) | P1 | Four writers move a project's revision without a Realtime broadcast | web/src/lib/server/proposals.ts:148 (accept), web/src/app/api/projects/[id]/route.ts:24 (… | web/scripts/audit/s2-realtime-no-broadcast.test.ts (control passes; f… | every shared-project member once Realtime is on; proposal a… | fixed in 803c62f |
-| [S2-07](#s2-07) | P1 | No quotas: open sign-up (and anonymous upload) can fill the database | web/src/app/api/upload/route.ts:6-13 (anonymous, 100 MB each, no count), web/src/lib/serv… | measured (above). Not exercised against Mongo or prod (would write li… | all users, once someone does it. | open · needs Shaurya (the quota numbers are a product decision) |
+| [S2-07](#s2-07) | P1 | No quotas: open sign-up (and anonymous upload) can fill the database | web/src/app/api/upload/route.ts:6-13 (anonymous, 100 MB each, no count), web/src/lib/serv… | measured (above). Not exercised against Mongo or prod (would write li… | all users, once someone does it. | fixed in efa4e86 (per-owner limits in lib/server/quotas.ts; the default numbers are Shaurya's to change) |
 | [S3-10](#s3-10) | P1 | Rendering a screen of height 50 px or less crashes the whole Node process (resvg panic) | web/src/lib/critic/render.ts:`screenToPng` (resvg `render()`). Reached from web/src/app/a… | web/scripts/audit/s3-model-routes-open.test.ts test 4 (fails: "one an… | anyone (critique is anonymous). Connector and agent users w… | fixed in 480e4c1 |
 | [S4-01](#s4-01) | P1 | Reopening a project shows the "New project" start pane over it, with no way out | web/src/components/shell/Workspace.tsx:52-63 (with useProjectHydration.ts:121-126, which … | live: reload of /project/pmw1gbxb0 (1 screen, 19 objects, 7 tags) sho… | every user who reloads or reopens a project, every time. | fixed in c664057 |
 | [S4-22](#s4-22) | P1 | With Supabase Realtime on, server proposals and agent steps never reach the open tab | web/src/lib/collab/realtime.ts (no `proposal` or `agent` handler; only lib/collab/browser… | live: flow 2 step 7; `grep -n "proposal\\|agent" lib/collab/realtime.… | every signed-in user who uses the Copilot. | fixed in 538ba50 |
@@ -31,73 +33,73 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 | [S2-06](#s2-06) | P1 | /api/knowledge reads, adds and deletes with no identity and no Origin check | web/src/app/api/knowledge/route.ts:26-77; related: web/src/lib/knowledge/privacy.ts:6-9 l… | web/scripts/audit/s2-knowledge-unguarded.test.ts (fails with `a forei… | laptop users browsing other sites while the app runs; any d… | fixed in 0f4c173 |
 | [S1-09](#s1-09) | P2 | An op that names a screen edits the same-named object on another screen | web/src/core/ops/apply.ts:153-160 (`findPartByName` scans every screen and takes the firs… | web/scripts/audit/s1-ops-concurrency.test.ts (fails with "Banner on s… | chat, agent and MCP users who address by name on multi-scre… | fixed in 35a1d13 (rejecting a name ambiguous across screens is left out) |
 | [S2-08](#s2-08) | P2 | No security headers: pages can be framed, no CSP | web/next.config.ts (no `headers()`), no web/src/middleware.ts | prod (GET, read-only) headers for `/`, `/signin`, `/api/me` as above.… | every user; connector users most. | fixed in 9c8f899 (frame-ancestors, nosniff, no X-Powered-By); a full script-src CSP is left: it needs nonces |
-| [S3-09](#s3-09) | P2 | tidyLayout, and the overlaps line the model is shown, cannot see overlaps inside a card | web/src/lib/ote/tidy.ts `unitsOf` folds every part held by a Rectangle card into one unit… | web/scripts/audit/s3-tidy-card-blind.test.ts (fails: "the symbol cove… | everyone who asks the chat to tidy a generated screen. The … | open |
+| [S3-09](#s3-09) | P2 | tidyLayout, and the overlaps line the model is shown, cannot see overlaps inside a card | web/src/lib/ote/tidy.ts `unitsOf` folds every part held by a Rectangle card into one unit… | web/scripts/audit/s3-tidy-card-blind.test.ts (fails: "the symbol cove… | everyone who asks the chat to tidy a generated screen. The … | fixed in dfdf089, f68296a |
 | [S4-02](#s4-02) | P2 | History > Restore on the oldest of 20 versions does nothing, and logs "Restored version" | web/src/components/history/HistoryScreen.tsx:310-316; web/src/store/slices/collab.ts:381,… | web/scripts/audit/s4-history-restore-oldest.test.ts (fails with "rest… | anyone with a long session (versions are taken on every bui… | fixed in 711f5b8 |
 | [S4-03](#s4-03) | P2 | A new project inherits the previous project's standards, including "Review every AI edit" | web/src/store/project.ts:536-567 (reset leaves `standards`); web/src/components/shell/use… | web/scripts/audit/s4-standards-leak-new-project.test.ts (fails with "… | anyone who changes a setting and starts another project. Th… | fixed in 758dc8a |
 | [S4-05](#s4-05) | P2 | Plant "Rebuild from tags" drops the ranges the engineer typed | web/src/components/plant/PlantScreen.tsx:305-306 | web/scripts/audit/s4-plant-rebuild-drops-ranges.test.ts (fails with "… | anyone correcting ranges. | fixed in ee1d368 |
 | [S4-07](#s4-07) | P2 | Undo after deleting a composite brings back loose parts; the composite is lost | web/src/store/state.ts:61-76 (EditSnapshot), web/src/store/internals.ts:22-45 | web/scripts/audit/s4-undo-delete-composite.test.ts (fails with "the p… | anyone undoing a delete of a generated indicator, tile or s… | fixed in 0a2d46e |
-| [S4-12](#s4-12) | P2 | Standards "Correct tag names on import" toggle does nothing | web/src/components/standards/StandardsScreen.tsx:180-183 | measured: `grep -rn enforceNaming src tests scripts` → only Standards… | anyone relying on the switch. | open |
-| [S4-13](#s4-13) | P2 | Settings says "Nothing is uploaded" when files and projects are uploaded | web/src/components/settings/SettingsScreen.tsx:112-114 | measured: flow 1 network log `POST /api/import`; flow 2 `PUT /api/pro… | anyone deciding whether client data may go in. | open |
-| [S4-14](#s4-14) | P2 | Landing "Open an existing .eote" does the same as "Start a project" | web/src/components/landing/StartButtons.tsx:655-670; Sections.tsx:595-600 | live: flow 1 step 1 (prod and local). | every brownfield first visit. | open |
-| [S4-15](#s4-15) | P2 | Projects page deletes a project in one click, with no confirm or undo | web/src/components/projects/ProjectsScreen.tsx:191-194, 357-365 | code: `remove()` calls `clearProject(id)` directly on click. | anyone; device-only projects have no other copy. | open |
-| [S4-19](#s4-19) | P2 | A read-only member's tab PUTs the whole project and then shows "Offline - saved on this device" | web/src/components/shell/useProjectHydration.ts:228-297 (autosave with no role check); we… | live: flow 3 step 10, network `[PUT] /api/projects/pmw1gbxb0 => [403]… | every commenter and viewer member. | open |
-| [S4-21](#s4-21) | P2 | Every server project is treated as shared, so a solo engineer's chat becomes a proposal "for an editor to accept" | web/src/components/chat/shared.ts:280-285 | live: flow 2 step 6. | every signed-in user. | open |
-| [S4-23](#s4-23) | P2 | The conversation is lost on reload in any server project | web/src/store/persist.ts:169-179 (the whole-snapshot save stands down while live); web/sr… | live: flow 2 step 8. | every signed-in user. | open |
-| [S5-01](#s5-01) | P2 | Paint order changed in the editor is lost on export for container-rooted screens | web/src/lib/ote/containers.ts:363-381 (mergeTree rebuild keeps original child order); rea… | web/scripts/audit/s5-layers-order-lost.test.ts (fails with "the expor… | importers who restack on any of the 16 of 26 Grid-rooted en… | open |
-| [S5-02](#s5-02) | P2 | Align and distribute take composites apart | web/src/store/slices/objects.ts:187-218, web/src/store/edits.ts:53-128; selection of a wh… | web/scripts/audit/s5-align-collapses-composite.test.ts (fails with "e… | everyone who aligns generated faceplates or indicators; cha… | open |
-| [S5-04](#s5-04) | P2 | Generated screens overflow the 320x240 panel the app offers | web/src/lib/ote/layout.ts:284 (title 620 wide), :320 (footer label 500 wide), :116/:148 (… | web/scripts/audit/s5-small-panel-layout.test.ts (fails with "expected… | anyone who picks HMISTU855 (rare) | open |
-| [S5-06](#s5-06) | P2 | Snap-to-grid never puts an off-grid object on the grid | web/src/components/canvas/ScreenRenderer.tsx:314-317, 354-355 (rounds the drag delta), vs… | measured: 450 of 577 (78%) parts in the engineer files are off the 8 … | importers, every snapped drag | open |
-| [S6-01](#s6-01) | P2 | Server rasteriser draws Line, PolyLine, Polygon, Bezier and Path strokes as hairlines | web/src/components/canvas/parts/Shapes.tsx:59, web/src/components/canvas/parts/GraphicObj… | web/scripts/audit/s6-server-render-strokes.test.ts (fails with "darke… | every PNG the app makes: | open |
-| [S1-04](#s1-04) | P2 | Deleting a part leaves binding rows that target it | web/src/lib/ote/packager.ts:575-576. Bindings.dat is rewritten only when the modelled wir… | web/scripts/audit/s1-eote-writer.test.ts (fails with "binding rows st… | importers deleting objects with unmodelled bindings (expres… | open · needs Shaurya |
-| [S1-10](#s1-10) | P2 | A MasterScreen is not modelled: every screen of the project is shown without its frame | web/src/lib/ote/schema.ts:889-891 (`Type: z.enum(["Screen","Content"])`) and web/src/lib/… | measured by fidelity.mts. Panel1 carriedScreens `Screens:MasterScreen… | importers of any project that uses master screens. These ar… | open |
-| [S1-12](#s1-12) | P2 | Variables of TIME, USINT and Machine Expert structured or FB types are not modelled | web/src/lib/ote/schema.ts:946-957 (DATA_TYPES) and web/src/lib/ote/reader.ts:531-534 (row… | measured by fidelity.mts (inventory.variables.byDataType) | importers of Machine Expert projects. | open |
-| [S2-12](#s2-12) | P2 | Snapshots between 16 MB and 64 MB are accepted and then fail to save on Mongo | web/src/lib/server/snapshot.ts:9 and web/src/lib/client/snapshot.ts:216 (64 MiB cap) vs s… | measured: BSON maximum document size 16 MiB vs code cap 64 MiB (67,10… | importers of large projects on the deployment. | open |
-| [S2-13](#s2-13) | P2 | Size limits on whole-body routes are unreachable on Vercel | web/src/app/api/tags/parse/route.ts:18,21-35; web/src/app/api/vijeo/migrate/route.ts:29-3… | code; the platform ceiling is the one lib/client/upload.ts:1-5 and li… | importers with large tag lists or Vijeo backups. | open |
-| [S1-07](#s1-07) | P2 | Two clients adding objects at the same time get the same handle | web/src/store/internals.ts:63-66 and web/src/store/slices/objects.ts:67 (`o${++handleSeq}… | web/scripts/audit/s1-ops-concurrency.test.ts (fails with "handles hel… | sharers co-editing, and the Copilot/agent working while an … | open |
-| [S1-08](#s1-08) | P2 | Concurrent edits to different properties of one part: one is lost, and no base check reports it | web/src/lib/server/repo-live.ts:99-135 (applies in arrival order; `change.base` is never … | web/scripts/audit/s1-ops-concurrency.test.ts (fails with "A's text, o… | sharers co-editing the same object. The Copilot accepting a… | open |
+| [S4-12](#s4-12) | P2 | Standards "Correct tag names on import" toggle does nothing | web/src/components/standards/StandardsScreen.tsx:180-183 | measured: `grep -rn enforceNaming src tests scripts` → only Standards… | anyone relying on the switch. | fixed in dd813d7 |
+| [S4-13](#s4-13) | P2 | Settings says "Nothing is uploaded" when files and projects are uploaded | web/src/components/settings/SettingsScreen.tsx:112-114 | measured: flow 1 network log `POST /api/import`; flow 2 `PUT /api/pro… | anyone deciding whether client data may go in. | fixed in dd813d7 |
+| [S4-14](#s4-14) | P2 | Landing "Open an existing .eote" does the same as "Start a project" | web/src/components/landing/StartButtons.tsx:655-670; Sections.tsx:595-600 | live: flow 1 step 1 (prod and local). | every brownfield first visit. | fixed in dd813d7 |
+| [S4-15](#s4-15) | P2 | Projects page deletes a project in one click, with no confirm or undo | web/src/components/projects/ProjectsScreen.tsx:191-194, 357-365 | code: `remove()` calls `clearProject(id)` directly on click. | anyone; device-only projects have no other copy. | fixed in dd813d7 |
+| [S4-19](#s4-19) | P2 | A read-only member's tab PUTs the whole project and then shows "Offline - saved on this device" | web/src/components/shell/useProjectHydration.ts:228-297 (autosave with no role check); we… | live: flow 3 step 10, network `[PUT] /api/projects/pmw1gbxb0 => [403]… | every commenter and viewer member. | fixed in dd813d7 |
+| [S4-21](#s4-21) | P2 | Every server project is treated as shared, so a solo engineer's chat becomes a proposal "for an editor to accept" | web/src/components/chat/shared.ts:280-285 | live: flow 2 step 6. | every signed-in user. | fixed in dd813d7 |
+| [S4-23](#s4-23) | P2 | The conversation is lost on reload in any server project | web/src/store/persist.ts:169-179 (the whole-snapshot save stands down while live); web/sr… | live: flow 2 step 8. | every signed-in user. | fixed in dd813d7 |
+| [S5-01](#s5-01) | P2 | Paint order changed in the editor is lost on export for container-rooted screens | web/src/lib/ote/containers.ts:363-381 (mergeTree rebuild keeps original child order); rea… | web/scripts/audit/s5-layers-order-lost.test.ts (fails with "the expor… | importers who restack on any of the 16 of 26 Grid-rooted en… | fixed in 11d9848 |
+| [S5-02](#s5-02) | P2 | Align and distribute take composites apart | web/src/store/slices/objects.ts:187-218, web/src/store/edits.ts:53-128; selection of a wh… | web/scripts/audit/s5-align-collapses-composite.test.ts (fails with "e… | everyone who aligns generated faceplates or indicators; cha… | fixed in 64021fd |
+| [S5-04](#s5-04) | P2 | Generated screens overflow the 320x240 panel the app offers | web/src/lib/ote/layout.ts:284 (title 620 wide), :320 (footer label 500 wide), :116/:148 (… | web/scripts/audit/s5-small-panel-layout.test.ts (fails with "expected… | anyone who picks HMISTU855 (rare) | fixed in 11d9848 |
+| [S5-06](#s5-06) | P2 | Snap-to-grid never puts an off-grid object on the grid | web/src/components/canvas/ScreenRenderer.tsx:314-317, 354-355 (rounds the drag delta), vs… | measured: 450 of 577 (78%) parts in the engineer files are off the 8 … | importers, every snapped drag | fixed in 11d9848 |
+| [S6-01](#s6-01) | P2 | Server rasteriser draws Line, PolyLine, Polygon, Bezier and Path strokes as hairlines | web/src/components/canvas/parts/Shapes.tsx:59, web/src/components/canvas/parts/GraphicObj… | web/scripts/audit/s6-server-render-strokes.test.ts (fails with "darke… | every PNG the app makes: | fixed in 13ac74a |
+| [S1-04](#s1-04) | P2 | Deleting a part leaves binding rows that target it | web/src/lib/ote/packager.ts:575-576. Bindings.dat is rewritten only when the modelled wir… | web/scripts/audit/s1-eote-writer.test.ts (fails with "binding rows st… | importers deleting objects with unmodelled bindings (expres… | open · deferred, needs Shaurya (changes writer output, and OTE export work is on hold) |
+| [S1-10](#s1-10) | P2 | A MasterScreen is not modelled: every screen of the project is shown without its frame | web/src/lib/ote/schema.ts:889-891 (`Type: z.enum(["Screen","Content"])`) and web/src/lib/… | measured by fidelity.mts. Panel1 carriedScreens `Screens:MasterScreen… | importers of any project that uses master screens. These ar… | open · deferred (OTE file work is on hold, needs the bench) |
+| [S1-12](#s1-12) | P2 | Variables of TIME, USINT and Machine Expert structured or FB types are not modelled | web/src/lib/ote/schema.ts:946-957 (DATA_TYPES) and web/src/lib/ote/reader.ts:531-534 (row… | measured by fidelity.mts (inventory.variables.byDataType) | importers of Machine Expert projects. | open · deferred (OTE file work is on hold, needs the bench) |
+| [S2-12](#s2-12) | P2 | Snapshots between 16 MB and 64 MB are accepted and then fail to save on Mongo | web/src/lib/server/snapshot.ts:9 and web/src/lib/client/snapshot.ts:216 (64 MiB cap) vs s… | measured: BSON maximum document size 16 MiB vs code cap 64 MiB (67,10… | importers of large projects on the deployment. | fixed by Database v2 (ed261e1): a snapshot is stored in compressed pieces; test in cb9a72b, not run against a real 20 MB project on Mongo |
+| [S2-13](#s2-13) | P2 | Size limits on whole-body routes are unreachable on Vercel | web/src/app/api/tags/parse/route.ts:18,21-35; web/src/app/api/vijeo/migrate/route.ts:29-3… | code; the platform ceiling is the one lib/client/upload.ts:1-5 and li… | importers with large tag lists or Vijeo backups. | fixed in cb9a72b |
+| [S1-07](#s1-07) | P2 | Two clients adding objects at the same time get the same handle | web/src/store/internals.ts:63-66 and web/src/store/slices/objects.ts:67 (`o${++handleSeq}… | web/scripts/audit/s1-ops-concurrency.test.ts (fails with "handles hel… | sharers co-editing, and the Copilot/agent working while an … | fixed in cb9a72b |
+| [S1-08](#s1-08) | P2 | Concurrent edits to different properties of one part: one is lost, and no base check reports it | web/src/lib/server/repo-live.ts:99-135 (applies in arrival order; `change.base` is never … | web/scripts/audit/s1-ops-concurrency.test.ts (fails with "A's text, o… | sharers co-editing the same object. The Copilot accepting a… | fixed in cb9a72b |
 | [S2-05](#s2-05) | P2 | Anyone can lock any account out of sign-in | web/src/lib/server/credentials.ts:119-120 (both limits counted before the password is che… | web/scripts/audit/s2-signin-lockout-dos.test.ts (fails with `the owne… | rare, but any named user an attacker picks; also the connec… | fixed in df983c6 |
 | [S2-10](#s2-10) | P2 | Any member, including a viewer who joined by link, gets every member's email address | web/src/app/api/projects/[id]/members/route.ts:15-27 (`email: user?.email`) | web/scripts/audit/s2-access-leaks.test.ts (fails with `a viewer read … | sharers. | fixed in 0ef6b25 |
-| [S2-15](#s2-15) | P2 | Sign-out does not end a session; a copied cookie works for 30 days | web/src/auth.ts:25 (`session: { strategy: "jwt" }`, no maxAge, no adapter); Auth.js defau… | local (production build): signed in as s2-a (cookie `authjs.session-t… | all signed-in users, on shared machines. | open |
-| [S3-05](#s3-05) | P2 | The token endpoint does not bind codes and refresh tokens to the client | web/src/lib/server/oauth.ts:540-543 (`if (clientId && clientId !== code.clientId)`) and o… | web/scripts/audit/s3-oauth-client-binding.test.ts (fails with "a publ… | connector users (none affected in normal use). | part fixed in 86a0aec (refresh token bound to its client); requiring client_id on the code exchange changes the wire contract: needs Shaurya |
+| [S2-15](#s2-15) | P2 | Sign-out does not end a session; a copied cookie works for 30 days | web/src/auth.ts:25 (`session: { strategy: "jwt" }`, no maxAge, no adapter); Auth.js defau… | local (production build): signed in as s2-a (cookie `authjs.session-t… | all signed-in users, on shared machines. | fixed in efa4e86 |
+| [S3-05](#s3-05) | P2 | The token endpoint does not bind codes and refresh tokens to the client | web/src/lib/server/oauth.ts:540-543 (`if (clientId && clientId !== code.clientId)`) and o… | web/scripts/audit/s3-oauth-client-binding.test.ts (fails with "a publ… | connector users (none affected in normal use). | fixed: refresh token bound in 86a0aec, client_id required on both grants in efa4e86 |
 | [S3-06](#s3-06) | P2 | MCP generate takes a brief with an unbounded unit count | - web/src/lib/mcp/generate.ts:111 `count: z.number().int().optional()`; | web/scripts/audit/s3-brief-count.test.ts (fails: "problemsWith accept… | connector users, rarely. Only a client that sends the brief… | fixed in bcdb85d |
-| [S1-11](#s1-11) | P2 | setColor and setText report success with no visible change on several types | web/src/core/ops/apply.ts:766-767 (setColor always writes the top-level `Fill.Color.Value… | measured by fidelity.mts. Applied but not visible: setColor TextBox 1… | chat, agent and MCP users restyling objects. | open |
+| [S1-11](#s1-11) | P2 | setColor and setText report success with no visible change on several types | web/src/core/ops/apply.ts:766-767 (setColor always writes the top-level `Fill.Color.Value… | measured by fidelity.mts. Applied but not visible: setColor TextBox 1… | chat, agent and MCP users restyling objects. | fixed in dd813d7 |
 | [S1-16](#s1-16) | P1 | A new STRING tag makes a project OTE refuses to simulate | web/src/lib/ote/databases.ts (`shapeOf`) | licensed OTE, auto&manua.eote; web/tests/eote-writer-audit.test.ts | anyone who adds a STRING tag | fixed |
-| [S1-17](#s1-17) | P2 | A StringDisplay bound to a BOOL tag passes preflight, and OTE refuses to simulate it | web/src/core/ops/apply.ts (`bindTag`), web/src/lib/ote/preflight.ts | licensed OTE, auto&manua.eote | anyone who rebinds a StringDisplay | open |
+| [S1-17](#s1-17) | P2 | A StringDisplay bound to a BOOL tag passes preflight, and OTE refuses to simulate it | web/src/core/ops/apply.ts (`bindTag`), web/src/lib/ote/preflight.ts | licensed OTE, auto&manua.eote | anyone who rebinds a StringDisplay | open · deferred (OTE file work is on hold, needs the bench) |
 | [S3-03](#s3-03) | P2 | alignObjects silently drops targets it cannot find, and reports a no-op spread as done | web/src/core/ops/apply.ts:879-881 drops unresolved names without a word; it rejects only … | web/scripts/audit/s3-align-partial.test.ts (2 of 2 fail with the mess… | chat and MCP users who ask to align, whenever the model mis… | fixed in ed0bb1c |
 | [S4-06](#s4-06) | P2 | Variables.csv exports placeholder tags that the .eote leaves out | web/src/components/export/useExport.ts:129-131 | web/scripts/audit/s4-variables-csv-placeholders.test.ts (fails with "… | screens-first users who hand the CSV to the PLC programmer. | fixed in 2b7483a |
 | [S4-08](#s4-08) | P2 | Restoring a version drops locks, groups, provenance keys and bind intents | web/src/store/types.ts:117-125 (Version), web/src/store/slices/collab.ts:364-401 | web/scripts/audit/s4-restore-drops-meta.test.ts (fails with "the rest… | History and "revert to here" users. Regeneration then treat… | fixed in 1b693cf |
-| [S4-25](#s4-25) | P2 | The brief's "Alarms" screen is not built | the generator path from requestFromBrief (lib/brief) to the pipeline. Not my file; hit in… | live: flow 2 step 10. | screens-first users. | open |
-| [S6-04](#s6-04) | P2 | A level 2 card's equipment symbol overlaps its first analogue indicator | web/src/lib/ote/layout.ts:454 (symbol at y+8, 52 px tall) vs web/src/lib/ote/layout.ts:51… | web/scripts/audit/s6-card-symbol-overlap.test.ts (fails with "18 symb… | generators whose units have readings but no run or fault BO… | open |
+| [S4-25](#s4-25) | P2 | The brief's "Alarms" screen is not built | the generator path from requestFromBrief (lib/brief) to the pipeline. Not my file; hit in… | live: flow 2 step 10. | screens-first users. | fixed in d0e4f00 |
+| [S6-04](#s6-04) | P2 | A level 2 card's equipment symbol overlaps its first analogue indicator | web/src/lib/ote/layout.ts:454 (symbol at y+8, 52 px tall) vs web/src/lib/ote/layout.ts:51… | web/scripts/audit/s6-card-symbol-overlap.test.ts (fails with "18 symb… | generators whose units have readings but no run or fault BO… | fixed in d0e4f00 |
 | [S3-02](#s3-02) | P2 | The agent can delete the project's core files: delete_path on a folder or "", and run_script ws.delete | web/src/lib/agent/tools.ts:275-280 tests `CORE` only against the path it was given, then … | web/scripts/audit/s3-agent-core-delete.test.ts. 3 of its 4 tests fail… | Agent-tab users, rarely. It needs the model to delete a fol… | fixed in 5d69132 |
 | [S3-07](#s3-07) | P2 | The agent's regex tools block the event loop on a catastrophic pattern | web/src/lib/agent/tools.ts:104-111 `pattern()` compiles any model-supplied regex. It is r… | web/scripts/audit/s3-agent-redos.test.ts (fails with "one search call… | Agent-tab users, rarely. The pattern can come from a confus… | fixed in 7b62ea8 |
-| [S0-01](#s0-01) | P3 | A stale local build breaks `tsc --noEmit` | web/tsconfig.json:36 (`".next-build/types/**/*.ts"` in `include`) | measured on this machine at baseline (3 errors with the stale dir, 0 … | every developer who used the documented `NEXT_DIST_DIR=.nex… | open |
-| [S4-09](#s4-09) | P3 | Form labels are not tied to their inputs (sign-in, settings, share) | web/src/components/ui/Field.tsx (label htmlFor={id}; the id is never given to the child) | web/scripts/audit/s4-signin-labels.test.ts (fails with "labels point … | assistive-technology users; every Field in the app. | open |
-| [S4-30](#s4-30) | P3 | The Projects card loses "Opened <file>" on the first autosave | web/src/components/shell/useProjectHydration.ts:275-287 (touchProject `intent` from chat)… | live: flow 1 step 6. | every opened file. | open |
-| [S5-07](#s5-07) | P3 | Inspector geometry fields commit on every keystroke, through 0 | web/src/components/inspector/Inspector.tsx:310-322; each call is a setBox with its own un… | code. BindingEditor.tsx:133-137 commits on blur for exactly this reas… | everyone who types a coordinate | open |
-| [S6-03](#s6-03) | P3 | Every generated bar is drawn empty on the canvas and in the PNG | web/src/lib/ote/parts.ts:89,116 (writes 0), web/src/components/canvas/parts/BasicParts.ts… | measured: 82 bars with fill 0 on 36 pipeline screens (web/scripts/aud… | all users who generate screens (every AnalogIndicator). | open |
-| [S1-13](#s1-13) | P3 | Resizing or deleting a ContentDisplay: the editor keeps the old layout of the content it shows | web/src/lib/ote/reader.ts:192-197 and 434-435 (content laid out at the display's size onl… | measured by fidelity.mts (resize and delete ContentDisplay: 10 boxes … | importers of template-style projects. | open |
-| [S1-14](#s1-14) | P3 | HMIST6600 (1280x800), the panel of every engineer file, is not in the panel list | web/src/lib/backend/panels.ts:207-213 | measured by fidelity.mts. Target.dat in 4/4 engineer files says HMIST… | importers. | open |
-| [S5-03](#s5-03) | P3 | The board scrolls a double-click zoom to the wrong place when screens differ in size | web/src/components/canvas/CanvasPane.tsx:185, 289-297, 364-376 vs web/src/components/canv… | web/scripts/audit/s5-board-placement.test.ts (fails with "frame 2 is … | importers of projects with content screens (8 of 26 enginee… | open |
-| [S6-02](#s6-02) | P3 | Server PNG has a transparent background where no part covers the screen | web/src/components/canvas/StaticScreen.tsx:107 (`style={{ background: PAPER }}`) | web/scripts/audit/s6-server-render-strokes.test.ts (fails with "the c… | screens with no full-screen ground Rectangle: imported scre… | open |
-| [S6-05](#s6-05) | P3 | Rectangle CornerRadius is carried but never drawn | web/src/components/canvas/parts/BasicParts.tsx:31-38 (plain `<rect>`, no rx/ry) | measured: 1 `CornerRadius` in each of `HMICopilot_Panel1.eote`, `Moto… | importers, rarely (one per engineer project). | open |
-| [S4-18](#s4-18) | P3 | Commenter and editor links get "Allow export" switched on by default | web/src/components/shell/ShareDialog.tsx:391 | live: flow 3 step 3. | sharers; a reviewer receives the client's file. | open |
-| [S4-20](#s4-20) | P3 | History, Plant, Standards, Settings and Templates check no role | HistoryScreen.tsx:326-335, PlantScreen.tsx (no useCanEdit), StandardsScreen.tsx, Settings… | live: flow 3 step 14 (`checkpoint=true` for a commenter). | share-link members. The local change then fails to save (S4… | open |
-| [S1-15](#s1-15) | P3 | Two skip conditions hard-code Shaurya's home folder | web/tests/struct.test.ts:187 and web/tests/contents.test.ts:140 (`C:/Users/shaur/Download… | measured: baseline-vitest.txt. | developers. The 95-template breadth test never runs outside… | open |
-| [S2-14](#s2-14) | P3 | The per-IP sign-in limit trusts a client-supplied X-Forwarded-For | web/src/lib/server/rate-limit.ts:78-81 | local: after my two requests, web/.data/signInAttempts holds key `ip:… | self-hosted deployments. | open |
-| [S4-04](#s4-04) | P3 | Placing a template twice labels both blocks "PUMP 1" | web/src/components/templates/TemplatesScreen.tsx:115-117 | web/scripts/audit/s4-template-numbering.test.ts (7 failures, e.g. "pu… | template users. | open |
-| [S4-10](#s4-10) | P3 | Server project card reads "Version 3 ? HMIST6500AWADI" | web/src/components/projects/ProjectsScreen.tsx:212 | live: Projects page text "Version 3 ? HMIST6500AWADI". | all signed-in users. | open |
-| [S4-16](#s4-16) | P3 | Opening a just-uploaded server project from the Projects page shows no Share button and no live session | web/src/components/shell/useProjectHydration.ts:116-117 (hydratedFor skips the cloud load… | live: flow 1 step 8 (header text had no "Share"; after reload it did). | uploaders, once. | open |
-| [S4-17](#s4-17) | P3 | Export claims too much: a "verified" badge on every export, and "Nothing in it was hand-drawn" in the README | web/src/components/export/ExportScreen.tsx:286-295; web/src/components/export/useExport.t… | live: flow 1 step 9 ("verified"). | all exporters. | open |
-| [S4-26](#s4-26) | P3 | Landing says "699 tests" | web/src/app/page.tsx:204 | live: prod landing text. | all visitors. | open |
-| [S4-29](#s4-29) | P3 | The start pane shows a generic brief error instead of the server's | web/src/components/shell/StartPane.tsx:151-153, 168-171 (reads `brief.error` from the ren… | code: stale closure over `brief`. | screens-first users on a model failure. | open |
-| [S5-08](#s5-08) | P3 | Regenerate "Back" leaves the ghosts on the canvas | web/src/components/canvas/RegenerateDialog.tsx:86-93 (sets preview only in review, never … | code path; no DOM test environment | users of regenerate | open |
-| [S5-09](#s5-09) | P3 | Library drops ignore what is on the screen and the panel edge | web/src/components/library/LibraryPanel.tsx:167-186, web/src/components/library/LibrarySc… | arithmetic from the code. Measured on the real files: 0 screens curre… | users of the library | open |
-| [S2-09](#s2-09) | P3 | Signed-out callers can tell which project ids exist | web/src/lib/server/access.ts:68 (404 before the identity check in requireReader), used by… | web/scripts/audit/s2-access-leaks.test.ts (fails with `the status tel… | rare. | open |
-| [S2-11](#s2-11) | P3 | The Realtime INSERT policy lets any token holder broadcast forged notices | supabase/migrations/20261030170741_realtime_policies.sql:46-51; token TTL web/src/lib/rea… | code (policy lines above); not run (no Supabase credentials used by t… | rare. | open · needs Shaurya |
-| [S2-16](#s2-16) | P3 | The live change path skips the checks a whole-snapshot save makes | web/src/lib/collab/changes.ts:948-949 (`setField` checks only the field name); compare we… | code (no test written: time). | rare (needs an editor). | open |
-| [S4-11](#s4-11) | P3 | Top-bar Export link and chat "Import a tag export" link point at /project//… before the project loads | web/src/components/shell/TopBar.tsx:137, 253; web/src/components/chat/ChatPanel.tsx:82, 2… | live prod network log: `GET /project//export?_rsc=… => 308`, `GET /pr… | rare (first second after load). | open |
-| [S4-27](#s4-27) | P3 | Ctrl+K opens the palette from inside a text field | web/src/components/shell/CommandPalette.tsx:230-242 | code: no target check in onKeyDown. | rare. | open |
-| [S4-28](#s4-28) | P3 | On a network failure, the generation log says "replaying the bundled demo screen", then nothing is built, and a fresh r… | web/src/components/generation/useGeneration.ts:227-236; useChat.ts:212-224 (stopped is un… | code path: mockGeneration's error event is applied but not returned a… | rare (offline). | open |
+| [S0-01](#s0-01) | P3 | A stale local build breaks `tsc --noEmit` | web/tsconfig.json:36 (`".next-build/types/**/*.ts"` in `include`) | measured on this machine at baseline (3 errors with the stale dir, 0 … | every developer who used the documented `NEXT_DIST_DIR=.nex… | fixed in dd813d7 |
+| [S4-09](#s4-09) | P3 | Form labels are not tied to their inputs (sign-in, settings, share) | web/src/components/ui/Field.tsx (label htmlFor={id}; the id is never given to the child) | web/scripts/audit/s4-signin-labels.test.ts (fails with "labels point … | assistive-technology users; every Field in the app. | fixed in dd813d7 |
+| [S4-30](#s4-30) | P3 | The Projects card loses "Opened <file>" on the first autosave | web/src/components/shell/useProjectHydration.ts:275-287 (touchProject `intent` from chat)… | live: flow 1 step 6. | every opened file. | fixed in dd813d7 |
+| [S5-07](#s5-07) | P3 | Inspector geometry fields commit on every keystroke, through 0 | web/src/components/inspector/Inspector.tsx:310-322; each call is a setBox with its own un… | code. BindingEditor.tsx:133-137 commits on blur for exactly this reas… | everyone who types a coordinate | fixed in dd813d7 |
+| [S6-03](#s6-03) | P3 | Every generated bar is drawn empty on the canvas and in the PNG | web/src/lib/ote/parts.ts:89,116 (writes 0), web/src/components/canvas/parts/BasicParts.ts… | measured: 82 bars with fill 0 on 36 pipeline screens (web/scripts/aud… | all users who generate screens (every AnalogIndicator). | fixed in 303101f |
+| [S1-13](#s1-13) | P3 | Resizing or deleting a ContentDisplay: the editor keeps the old layout of the content it shows | web/src/lib/ote/reader.ts:192-197 and 434-435 (content laid out at the display's size onl… | measured by fidelity.mts (resize and delete ContentDisplay: 10 boxes … | importers of template-style projects. | open · deferred (OTE file work is on hold, needs the bench) |
+| [S1-14](#s1-14) | P3 | HMIST6600 (1280x800), the panel of every engineer file, is not in the panel list | web/src/lib/backend/panels.ts:207-213 | measured by fidelity.mts. Target.dat in 4/4 engineer files says HMIST… | importers. | fixed in 11d9848: listed, marked provisional because the installed OTE has no model list to check it against; Target.dat in the engineer files says 1280 x 800 |
+| [S5-03](#s5-03) | P3 | The board scrolls a double-click zoom to the wrong place when screens differ in size | web/src/components/canvas/CanvasPane.tsx:185, 289-297, 364-376 vs web/src/components/canv… | web/scripts/audit/s5-board-placement.test.ts (fails with "frame 2 is … | importers of projects with content screens (8 of 26 enginee… | fixed in 11d9848, proof in 8fde8d5 |
+| [S6-02](#s6-02) | P3 | Server PNG has a transparent background where no part covers the screen | web/src/components/canvas/StaticScreen.tsx:107 (`style={{ background: PAPER }}`) | web/scripts/audit/s6-server-render-strokes.test.ts (fails with "the c… | screens with no full-screen ground Rectangle: imported scre… | fixed in 13ac74a |
+| [S6-05](#s6-05) | P3 | Rectangle CornerRadius is carried but never drawn | web/src/components/canvas/parts/BasicParts.tsx:31-38 (plain `<rect>`, no rx/ry) | measured: 1 `CornerRadius` in each of `HMICopilot_Panel1.eote`, `Moto… | importers, rarely (one per engineer project). | fixed in 13ac74a |
+| [S4-18](#s4-18) | P3 | Commenter and editor links get "Allow export" switched on by default | web/src/components/shell/ShareDialog.tsx:391 | live: flow 3 step 3. | sharers; a reviewer receives the client's file. | fixed in dd813d7 |
+| [S4-20](#s4-20) | P3 | History, Plant, Standards, Settings and Templates check no role | HistoryScreen.tsx:326-335, PlantScreen.tsx (no useCanEdit), StandardsScreen.tsx, Settings… | live: flow 3 step 14 (`checkpoint=true` for a commenter). | share-link members. The local change then fails to save (S4… | fixed in dd813d7 |
+| [S1-15](#s1-15) | P3 | Two skip conditions hard-code Shaurya's home folder | web/tests/struct.test.ts:187 and web/tests/contents.test.ts:140 (`C:/Users/shaur/Download… | measured: baseline-vitest.txt. | developers. The 95-template breadth test never runs outside… | fixed in dd813d7 |
+| [S2-14](#s2-14) | P3 | The per-IP sign-in limit trusts a client-supplied X-Forwarded-For | web/src/lib/server/rate-limit.ts:78-81 | local: after my two requests, web/.data/signInAttempts holds key `ip:… | self-hosted deployments. | fixed in dd813d7 |
+| [S4-04](#s4-04) | P3 | Placing a template twice labels both blocks "PUMP 1" | web/src/components/templates/TemplatesScreen.tsx:115-117 | web/scripts/audit/s4-template-numbering.test.ts (7 failures, e.g. "pu… | template users. | fixed in dd813d7, proof in 8fde8d5 |
+| [S4-10](#s4-10) | P3 | Server project card reads "Version 3 ? HMIST6500AWADI" | web/src/components/projects/ProjectsScreen.tsx:212 | live: Projects page text "Version 3 ? HMIST6500AWADI". | all signed-in users. | fixed in dd813d7 |
+| [S4-16](#s4-16) | P3 | Opening a just-uploaded server project from the Projects page shows no Share button and no live session | web/src/components/shell/useProjectHydration.ts:116-117 (hydratedFor skips the cloud load… | live: flow 1 step 8 (header text had no "Share"; after reload it did). | uploaders, once. | fixed in dd813d7 |
+| [S4-17](#s4-17) | P3 | Export claims too much: a "verified" badge on every export, and "Nothing in it was hand-drawn" in the README | web/src/components/export/ExportScreen.tsx:286-295; web/src/components/export/useExport.t… | live: flow 1 step 9 ("verified"). | all exporters. | fixed in dd813d7 |
+| [S4-26](#s4-26) | P3 | Landing says "699 tests" | web/src/app/page.tsx:204 | live: prod landing text. | all visitors. | fixed in dd813d7 |
+| [S4-29](#s4-29) | P3 | The start pane shows a generic brief error instead of the server's | web/src/components/shell/StartPane.tsx:151-153, 168-171 (reads `brief.error` from the ren… | code: stale closure over `brief`. | screens-first users on a model failure. | fixed in dd813d7 |
+| [S5-08](#s5-08) | P3 | Regenerate "Back" leaves the ghosts on the canvas | web/src/components/canvas/RegenerateDialog.tsx:86-93 (sets preview only in review, never … | code path; no DOM test environment | users of regenerate | fixed in dd813d7 |
+| [S5-09](#s5-09) | P3 | Library drops ignore what is on the screen and the panel edge | web/src/components/library/LibraryPanel.tsx:167-186, web/src/components/library/LibrarySc… | arithmetic from the code. Measured on the real files: 0 screens curre… | users of the library | fixed in dd813d7 |
+| [S2-09](#s2-09) | P3 | Signed-out callers can tell which project ids exist | web/src/lib/server/access.ts:68 (404 before the identity check in requireReader), used by… | web/scripts/audit/s2-access-leaks.test.ts (fails with `the status tel… | rare. | fixed in dd813d7 |
+| [S2-11](#s2-11) | P3 | The Realtime INSERT policy lets any token holder broadcast forged notices | supabase/migrations/20261030170741_realtime_policies.sql:46-51; token TTL web/src/lib/rea… | code (policy lines above); not run (no Supabase credentials used by t… | rare. | open · needs Shaurya (run the drop policy line in the Supabase SQL editor) |
+| [S2-16](#s2-16) | P3 | The live change path skips the checks a whole-snapshot save makes | web/src/lib/collab/changes.ts:948-949 (`setField` checks only the field name); compare we… | code (no test written: time). | rare (needs an editor). | fixed in cb9a72b |
+| [S4-11](#s4-11) | P3 | Top-bar Export link and chat "Import a tag export" link point at /project//… before the project loads | web/src/components/shell/TopBar.tsx:137, 253; web/src/components/chat/ChatPanel.tsx:82, 2… | live prod network log: `GET /project//export?_rsc=… => 308`, `GET /pr… | rare (first second after load). | fixed in dd813d7 |
+| [S4-27](#s4-27) | P3 | Ctrl+K opens the palette from inside a text field | web/src/components/shell/CommandPalette.tsx:230-242 | code: no target check in onKeyDown. | rare. | fixed in dd813d7 |
+| [S4-28](#s4-28) | P3 | On a network failure, the generation log says "replaying the bundled demo screen", then nothing is built, and a fresh r… | web/src/components/generation/useGeneration.ts:227-236; useChat.ts:212-224 (stopped is un… | code path: mockGeneration's error event is applied but not returned a… | rare (offline). | fixed in dd813d7 |
 
 ## P0
 
@@ -232,7 +234,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **No quotas: open sign-up (and anonymous upload) can fill the database**
 
-- Status: open · needs Shaurya (the quota numbers are a product decision)
+- Status: fixed in efa4e86 (per-owner limits in lib/server/quotas.ts; the default numbers are Shaurya's to change)
 - Severity: P1 (availability and data loss: when Mongo is full every save, change and sign-up fails for every user)
 - Where: web/src/app/api/upload/route.ts:6-13 (anonymous, 100 MB each, no count), web/src/lib/server/repo.ts:276-283 (sources permanent for accounts), :201-208 (projects), :303-308 (uploads); web/src/app/api/import/route.ts:134 (every signed-in import stores a permanent copy); comments have no count limit (repo-collab.ts:212-229)
 - Repro: sign up (50 accounts per IP per 15 min allowed), then loop: POST /api/upload size 100 MB, PUT 25 parts, complete. Or anonymously: uploads live 24 h each.
@@ -375,7 +377,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **tidyLayout, and the overlaps line the model is shown, cannot see overlaps inside a card**
 
-- Status: open
+- Status: fixed in dfdf089, f68296a
 - Severity: P2 (wrong output: "make this screen tidy" reports done and leaves visible overlaps)
 - Where: web/src/lib/ote/tidy.ts `unitsOf` folds every part held by a Rectangle card into one unit, and `overlapsOn` compares units only. It is used by apply.ts:852 (tidyLayout) and by converse.ts digestOf ("Overlaps on it").
 - Repro: the tracked sample demo_project/HMICopilot_Bars.eote, screen PumpStation1. Sym_TNK101 (940,92 52x52) covers Ind_TNK101LEVEL_2 (696,128 296x56).
@@ -450,7 +452,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Standards "Correct tag names on import" toggle does nothing**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P2 wrong output
 - Where: web/src/components/standards/StandardsScreen.tsx:180-183
 - Repro: turn it off; import a file with an illegal tag name.
@@ -465,7 +467,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Settings says "Nothing is uploaded" when files and projects are uploaded**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P2 wrong output (a data-handling claim)
 - Where: web/src/components/settings/SettingsScreen.tsx:112-114
 - Repro: Settings → General → "This session".
@@ -480,7 +482,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Landing "Open an existing .eote" does the same as "Start a project"**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P2 wrong output (dead end)
 - Where: web/src/components/landing/StartButtons.tsx:655-670; Sections.tsx:595-600
 - Repro: click it.
@@ -495,7 +497,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Projects page deletes a project in one click, with no confirm or undo**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P2 (data loss of local work)
 - Where: web/src/components/projects/ProjectsScreen.tsx:191-194, 357-365
 - Repro: hover a card and click the bin.
@@ -510,7 +512,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **A read-only member's tab PUTs the whole project and then shows "Offline - saved on this device"**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P2 wrong output
 - Where: web/src/components/shell/useProjectHydration.ts:228-297 (autosave with no role check); web/src/store/persist.ts:209-259
 - Repro: open a project as a commenter or viewer member.
@@ -525,7 +527,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Every server project is treated as shared, so a solo engineer's chat becomes a proposal "for an editor to accept"**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P2 broken flow
 - Where: web/src/components/chat/shared.ts:280-285
 - Repro: sign in, start a project (it auto-saves to the server), confirm a brief.
@@ -540,7 +542,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **The conversation is lost on reload in any server project**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P2 (data loss of the chat and its version links)
 - Where: web/src/store/persist.ts:169-179 (the whole-snapshot save stands down while live); web/src/lib/collab/changes.ts:60-95 (chat and versions are not change-log fields)
 - Repro: in a signed-in project, send a chat turn, then reload.
@@ -555,7 +557,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Paint order changed in the editor is lost on export for container-rooted screens**
 
-- Status: open
+- Status: fixed in 11d9848
 - Severity: P2 wrong output
 - Where: web/src/lib/ote/containers.ts:363-381 (mergeTree rebuild keeps original child order); reached from web/src/components/inspector/LayersPanel.tsx:68-76, CanvasToolbar.tsx:292-297, useCanvasShortcuts.ts:392-403
 - Repro: open a Grid-rooted screen (every OTE-made screen), bring the first object to the front, export
@@ -570,7 +572,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Align and distribute take composites apart**
 
-- Status: open
+- Status: fixed in 64021fd
 - Severity: P2 wrong output
 - Where: web/src/store/slices/objects.ts:187-218, web/src/store/edits.ts:53-128; selection of a whole family at web/src/components/canvas/ScreenRenderer.tsx:522-529; buttons at CanvasToolbar.tsx:259-288; chat alignObjects at web/src/core/ops/apply.ts:907-909
 - Repro: click one analogue indicator, shift-click another (each selects its 6 parts), press "Align left"
@@ -585,7 +587,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Generated screens overflow the 320x240 panel the app offers**
 
-- Status: open
+- Status: fixed in 11d9848
 - Severity: P2 wrong output
 - Where: web/src/lib/ote/layout.ts:284 (title 620 wide), :320 (footer label 500 wide), :116/:148 (card 162 tall from y=84); panel offered at web/src/lib/backend/panels.ts:33
 - Repro: generate for HMISTU855
@@ -600,7 +602,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Snap-to-grid never puts an off-grid object on the grid**
 
-- Status: open
+- Status: fixed in 11d9848
 - Severity: P2 wrong output
 - Where: web/src/components/canvas/ScreenRenderer.tsx:314-317, 354-355 (rounds the drag delta), vs 395-398 (resize rounds the position)
 - Repro: snap on (default, store/types.ts:103); drag an object at Left 13 by about 20 px
@@ -615,7 +617,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Server rasteriser draws Line, PolyLine, Polygon, Bezier and Path strokes as hairlines**
 
-- Status: open
+- Status: fixed in 13ac74a
 - Severity: P2 wrong output
 - Where: web/src/components/canvas/parts/Shapes.tsx:59, web/src/components/canvas/parts/GraphicObject.tsx:79 (rasterised by web/src/lib/critic/render.ts:72-85)
 - Repro: render a screen with a Line part (Thickness 2, black, 100x40 box) through `screenToSvg`, then resvg.
@@ -635,7 +637,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Deleting a part leaves binding rows that target it**
 
-- Status: open
+- Status: open · deferred, needs Shaurya (changes writer output, and OTE export work is on hold)
 - Severity: P2 wrong output
 - Where: web/src/lib/ote/packager.ts:575-576. Bindings.dat is rewritten only when the modelled wires change, and even then appendExtra (377-405) re-appends every carried row, including those whose target part is gone. Carried rows come from web/src/lib/ote/reader.ts:630-642.
 - Repro: delete an AlarmSummary on HMICopilot_Panel1.eote (its binding is not a modelled wire), then export.
@@ -650,7 +652,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **A MasterScreen is not modelled: every screen of the project is shown without its frame**
 
-- Status: open
+- Status: open · deferred (OTE file work is on hold, needs the bench)
 - Severity: P2 wrong output
 - Where: web/src/lib/ote/schema.ts:889-891 (`Type: z.enum(["Screen","Content"])`) and web/src/lib/ote/reader.ts:436-441 (carried, with the warning "1 screen could not be modelled (root: 1 Grid)", which names the root, not the cause)
 - Repro: open HMICopilot_Panel1.eote or auto-manual.eote.
@@ -665,7 +667,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Variables of TIME, USINT and Machine Expert structured or FB types are not modelled**
 
-- Status: open
+- Status: open · deferred (OTE file work is on hold, needs the bench)
 - Severity: P2 wrong output (partly supported)
 - Where: web/src/lib/ote/schema.ts:946-957 (DATA_TYPES) and web/src/lib/ote/reader.ts:531-534 (row skipped)
 - Repro: open any of the 4 engineer files.
@@ -680,7 +682,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Snapshots between 16 MB and 64 MB are accepted and then fail to save on Mongo**
 
-- Status: open
+- Status: fixed by Database v2 (ed261e1): a snapshot is stored in compressed pieces; test in cb9a72b, not run against a real 20 MB project on Mongo
 - Severity: P2 (large imported plants cannot be saved to the server; the user sees "Server storage is unavailable")
 - Where: web/src/lib/server/snapshot.ts:9 and web/src/lib/client/snapshot.ts:216 (64 MiB cap) vs single-document writes web/src/lib/server/repo.ts:194-196 (versions), web/src/lib/server/repo-live.ts:139-140 (heads), web/src/lib/server/storage.ts:185 (`replaceOne`)
 - Repro: PUT a 20 MB snapshot to a Mongo-backed deployment.
@@ -695,7 +697,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Size limits on whole-body routes are unreachable on Vercel**
 
-- Status: open
+- Status: fixed in cb9a72b
 - Severity: P2 (wrong output: a 5-16 MB tag export, a >4.5 MB Vijeo backup or a >4.5 MB project for "import screens" fails on production with Vercel's own 413, not the app's message)
 - Where: web/src/app/api/tags/parse/route.ts:18,21-35; web/src/app/api/vijeo/migrate/route.ts:29-32; web/src/app/api/import/screens/route.ts:27; callers post whole files: web/src/components/tags/useTagImport.ts:239, web/src/components/shell/StartPane.tsx:224, web/src/components/canvas/ImportScreensDialog.tsx:43. Also `request.formData()` buffers the whole body before the size check (tags/parse:21, vijeo/migrate:29), so off Vercel the check protects nothing.
 - Repro: upload a 6 MB tag CSV on production.
@@ -710,7 +712,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Two clients adding objects at the same time get the same handle**
 
-- Status: open
+- Status: fixed in cb9a72b
 - Severity: P2 wrong output (a later op by handle resolves to the wrong object)
 - Where: web/src/store/internals.ts:63-66 and web/src/store/slices/objects.ts:67 (`o${++handleSeq}` from the local seq), synced verbatim by web/src/lib/collab/changes.ts:613-621. Nothing reconciles it in web/src/lib/server/repo-live.ts:99-135 or lib/collab/sync.ts rebase.
 - Repro: two editors on one shared project each add a part before seeing the other's.
@@ -725,7 +727,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Concurrent edits to different properties of one part: one is lost, and no base check reports it**
 
-- Status: open
+- Status: fixed in cb9a72b
 - Severity: P2 wrong output (documented design, real lost update)
 - Where: web/src/lib/server/repo-live.ts:99-135 (applies in arrival order; `change.base` is never compared) and web/src/lib/collab/changes.ts:637-643 (setPart replaces the whole part)
 - Repro: A renames a TextBox's text while B moves it, both from the same revision.
@@ -770,7 +772,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Sign-out does not end a session; a copied cookie works for 30 days**
 
-- Status: open
+- Status: fixed in efa4e86
 - Severity: P2 (security: a session cookie lifted from a shared plant PC stays valid after "Sign out"; there is no way to revoke it, change the password, or sign out everywhere)
 - Where: web/src/auth.ts:25 (`session: { strategy: "jwt" }`, no maxAge, no adapter); Auth.js default maxAge 30 days (node_modules/@auth/core/lib/init.js:38)
 - Repro: sign in, copy `authjs.session-token`, sign out, replay the cookie on GET /api/me.
@@ -785,7 +787,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **The token endpoint does not bind codes and refresh tokens to the client**
 
-- Status: part fixed in 86a0aec (refresh token bound to its client); requiring client_id on the code exchange changes the wire contract: needs Shaurya
+- Status: fixed: refresh token bound in 86a0aec, client_id required on both grants in efa4e86
 - Severity: P2 (a security weakening against OAuth 2.1 MUSTs. PKCE still protects the code, and the refresh token is a bearer secret, so the practical exposure is narrow.)
 - Where: web/src/lib/server/oauth.ts:540-543 (`if (clientId && clientId !== code.clientId)`) and oauth.ts:558-576 (refreshGrant never reads `client_id`).
 - Repro: exchange a code with no `client_id`; or refresh client A's refresh token sending client B's `client_id`.
@@ -819,7 +821,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **setColor and setText report success with no visible change on several types**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P2 wrong output
 - Where: web/src/core/ops/apply.ts:766-767 (setColor always writes the top-level `Fill.Color.Value`) and web/src/core/ops/apply.ts:730-731 (setText on a two-face part writes the On or Press face only)
 - Repro: setColor red on a Lamp, ToggleSwitch, Switch, CompoundObject, TextBox or AlarmSummary; setText on a Lamp or ToggleSwitch.
@@ -882,7 +884,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **The brief's "Alarms" screen is not built**
 
-- Status: open
+- Status: fixed in d0e4f00
 - Severity: P2 wrong output
 - Where: the generator path from requestFromBrief (lib/brief) to the pipeline. Not my file; hit in the flow.
 - Repro: brief with Overview, One per unit group and Alarms all on → Confirm and build.
@@ -897,7 +899,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **A level 2 card's equipment symbol overlaps its first analogue indicator**
 
-- Status: open
+- Status: fixed in d0e4f00
 - Severity: P2 wrong output
 - Where: web/src/lib/ote/layout.ts:454 (symbol at y+8, 52 px tall) vs web/src/lib/ote/layout.ts:511 (first indicator row at y+40 when the unit has no run or fault lamp)
 - Repro: `buildFromTags` on samples/tank-farm/tags.csv ("tank farm overview"), then `critiqueGeometry` on each screen. Needs the gitignored graphics index, so that units carry a symbol.
@@ -958,7 +960,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **A StringDisplay bound to a BOOL tag passes preflight, and OTE refuses to simulate it**
 
-- Status: open
+- Status: open · deferred (OTE file work is on hold, needs the bench)
 - Severity: P2. The engineer learns of it only in OTE, with no pointer to the binding.
 - Where: web/src/core/ops/apply.ts (`bindTag` does not look at the tag's type) and web/src/lib/ote/preflight.ts.
 - Repro: on auto&manua.eote, rebind the StringDisplay from its STRING tag to a BOOL tag, export, press Simulate in OTE.
@@ -972,7 +974,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **A stale local build breaks `tsc --noEmit`**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P3
 - Where: web/tsconfig.json:36 (`".next-build/types/**/*.ts"` in `include`)
 - Repro: build once with `NEXT_DIST_DIR=.next-build npx next build`, delete or rename a route (here `api/tags/draft` was removed after a build of 2026-10-22), then run `npx tsc --noEmit`.
@@ -987,7 +989,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Form labels are not tied to their inputs (sign-in, settings, share)**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P3 cosmetic (accessibility)
 - Where: web/src/components/ui/Field.tsx (label htmlFor={id}; the id is never given to the child)
 - Repro: open /signin with a screen reader, or read the accessibility tree.
@@ -1002,7 +1004,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **The Projects card loses "Opened <file>" on the first autosave**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P3
 - Where: web/src/components/shell/useProjectHydration.ts:275-287 (touchProject `intent` from chat), overwriting StartPane.tsx:297-309 and ProjectsScreen.tsx:147-167
 - Repro: open a file from the start pane, then look at its card.
@@ -1019,7 +1021,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **Inspector geometry fields commit on every keystroke, through 0**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P3 cosmetic
 - Where: web/src/components/inspector/Inspector.tsx:310-322; each call is a setBox with its own undo step (web/src/store/slices/objects.ts:111-122, `remember` at store/internals.ts:48-52); LocationEditor web/src/components/inspector/editors.tsx:144 same; Location repeated in the General group (schemaFields.ts:449)
 - Repro: select an object, clear X and type 320
@@ -1034,7 +1036,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **Every generated bar is drawn empty on the canvas and in the PNG**
 
-- Status: open
+- Status: fixed in 303101f
 - Severity: P3 cosmetic
 - Where: web/src/lib/ote/parts.ts:89,116 (writes 0), web/src/components/canvas/parts/BasicParts.tsx:45 (draws the 0)
 - Repro: generate any sample (`buildFromTags`) and render it.
@@ -1051,7 +1053,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **Resizing or deleting a ContentDisplay: the editor keeps the old layout of the content it shows**
 
-- Status: open
+- Status: open · deferred (OTE file work is on hold, needs the bench)
 - Severity: P3 cosmetic (the file is right, the canvas is not)
 - Where: web/src/lib/ote/reader.ts:192-197 and 434-435 (content laid out at the display's size only at read)
 - Repro: resize a ContentDisplay on HMICopilot_Panel1.eote, export, then reopen.
@@ -1066,7 +1068,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **HMIST6600 (1280x800), the panel of every engineer file, is not in the panel list**
 
-- Status: open
+- Status: fixed in 11d9848: listed, marked provisional because the installed OTE has no model list to check it against; Target.dat in the engineer files says 1280 x 800
 - Severity: P3 cosmetic
 - Where: web/src/lib/backend/panels.ts:207-213
 - Repro: open any engineer file and look at the target picker.
@@ -1081,7 +1083,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **The board scrolls a double-click zoom to the wrong place when screens differ in size**
 
-- Status: open
+- Status: fixed in 11d9848, proof in 8fde8d5
 - Severity: P3 cosmetic
 - Where: web/src/components/canvas/CanvasPane.tsx:185, 289-297, 364-376 vs web/src/components/canvas/ScreenBoard.tsx:227-239
 - Repro: a project whose screens differ in size (content screens); make a content screen live; double-click another frame
@@ -1096,7 +1098,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **Server PNG has a transparent background where no part covers the screen**
 
-- Status: open
+- Status: fixed in 13ac74a
 - Severity: P3 cosmetic
 - Where: web/src/components/canvas/StaticScreen.tsx:107 (`style={{ background: PAPER }}`)
 - Repro: `screenToSvg` of an empty screen, rendered by resvg; read the alpha of the centre pixel.
@@ -1113,7 +1115,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **Rectangle CornerRadius is carried but never drawn**
 
-- Status: open
+- Status: fixed in 13ac74a
 - Severity: P3 cosmetic
 - Where: web/src/components/canvas/parts/BasicParts.tsx:31-38 (plain `<rect>`, no rx/ry)
 - Repro: open any engineer project with a rounded rectangle, e.g. `HMICopilot_Panel1.eote`, which has 1 `CornerRadius`. Shipped sample: `reference/part_examples.json` Rectangle corpus, `CornerRadius {Style: 2, TopLeft..BottomRight: 5}`.
@@ -1128,7 +1130,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **Commenter and editor links get "Allow export" switched on by default**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P3
 - Where: web/src/components/shell/ShareDialog.tsx:391
 - Repro: Share → Role Commenter.
@@ -1143,7 +1145,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **History, Plant, Standards, Settings and Templates check no role**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P3
 - Where: HistoryScreen.tsx:326-335, PlantScreen.tsx (no useCanEdit), StandardsScreen.tsx, SettingsScreen.tsx, TemplatesScreen.tsx:198-207
 - Repro: as a commenter, open History.
@@ -1158,7 +1160,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **Two skip conditions hard-code Shaurya's home folder**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P3 cosmetic (lost coverage)
 - Where: web/tests/struct.test.ts:187 and web/tests/contents.test.ts:140 (`C:/Users/shaur/Downloads/EOTE_Template_v7`)
 - Repro: run them on any other machine.
@@ -1173,7 +1175,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **The per-IP sign-in limit trusts a client-supplied X-Forwarded-For**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P3 (off Vercel, any client picks its own bucket, so the 50-per-IP cap against password spraying is void; on Vercel the platform sets the header)
 - Where: web/src/lib/server/rate-limit.ts:78-81
 - Repro: two POST /api/signup to http://localhost:3000 with `X-Forwarded-For: 10.22.0.1`.
@@ -1188,7 +1190,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **Placing a template twice labels both blocks "PUMP 1"**
 
-- Status: open
+- Status: fixed in dd813d7, proof in 8fde8d5
 - Severity: P3 cosmetic
 - Where: web/src/components/templates/TemplatesScreen.tsx:115-117
 - Repro: Templates → Pump status block → Use template, twice.
@@ -1203,7 +1205,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **Server project card reads "Version 3 ? HMIST6500AWADI"**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P3 cosmetic
 - Where: web/src/components/projects/ProjectsScreen.tsx:212
 - Repro: sign in, upload a project, look at "Saved on the server".
@@ -1218,7 +1220,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **Opening a just-uploaded server project from the Projects page shows no Share button and no live session**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P3
 - Where: web/src/components/shell/useProjectHydration.ts:116-117 (hydratedFor skips the cloud load for an id already hydrated in this page load)
 - Repro: open a project, go to Projects, Upload to cloud, click its server card.
@@ -1233,7 +1235,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **Export claims too much: a "verified" badge on every export, and "Nothing in it was hand-drawn" in the README**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P3
 - Where: web/src/components/export/ExportScreen.tsx:286-295; web/src/components/export/useExport.ts:109-110
 - Repro: export an opened .eote.
@@ -1248,7 +1250,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **Landing says "699 tests"**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P3 cosmetic
 - Where: web/src/app/page.tsx:204
 - Repro: open /.
@@ -1263,7 +1265,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **The start pane shows a generic brief error instead of the server's**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P3
 - Where: web/src/components/shell/StartPane.tsx:151-153, 168-171 (reads `brief.error` from the render before the await)
 - Repro: make /api/brief/draft fail (e.g. a quota error).
@@ -1278,7 +1280,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **Regenerate "Back" leaves the ghosts on the canvas**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P3 cosmetic
 - Where: web/src/components/canvas/RegenerateDialog.tsx:86-93 (sets preview only in review, never clears it), :301 (Back)
 - Repro: Regenerate, then Compare, then Back
@@ -1293,7 +1295,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **Library drops ignore what is on the screen and the panel edge**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P3 cosmetic
 - Where: web/src/components/library/LibraryPanel.tsx:167-186, web/src/components/library/LibraryScreen.tsx:77-99 (duplicated logic)
 - Repro: on a 1024x600 screen holding 12 Path parts, place a symbol
@@ -1308,7 +1310,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **Signed-out callers can tell which project ids exist**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P3 (information leak; ids are client-chosen strings)
 - Where: web/src/lib/server/access.ts:68 (404 before the identity check in requireReader), used by GET /api/projects/[id], /stream, /changes, /realtime-token, /proposals
 - Repro: no cookie: GET /api/projects/<real id> -> 401; GET /api/projects/<missing> -> 404.
@@ -1323,7 +1325,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **The Realtime INSERT policy lets any token holder broadcast forged notices**
 
-- Status: open
+- Status: open · needs Shaurya (run the drop policy line in the Supabase SQL editor)
 - Severity: P3 (a viewer, or a member removed less than 15 minutes ago, can broadcast `revision` messages with any payload on the project topic; each listening browser then re-fetches /changes; no data is changed because clients never trust the payload)
 - Where: supabase/migrations/20261030170741_realtime_policies.sql:46-51; token TTL web/src/lib/realtime/token.ts:49
 - Repro: mint a token as a viewer, join `project:<id>` with supabase-js, `channel.send({type:"broadcast",event:"revision",payload:{rev:1e9}})` in a loop.
@@ -1338,7 +1340,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **The live change path skips the checks a whole-snapshot save makes**
 
-- Status: open
+- Status: fixed in cb9a72b
 - Severity: P3 (an editor can set `name` to a megabyte string, `target` to a non-object, or `source`/`sourceId` to another account's file id through POST /changes; the source id cannot be read through it (readSource re-checks), but later whole saves by other members then fail with 403 "You do not have access to this source", and exports break on a malformed target)
 - Where: web/src/lib/collab/changes.ts:948-949 (`setField` checks only the field name); compare web/src/lib/server/http.ts:40-55
 - Repro: POST /api/projects/<id>/changes `{changes:[{id:"x",base:N,ops:[{kind:"setField",field:"target",value:"oops"}]}]}` as an editor -> accepted.
@@ -1355,7 +1357,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **Top-bar Export link and chat "Import a tag export" link point at /project//… before the project loads**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P3 cosmetic
 - Where: web/src/components/shell/TopBar.tsx:137, 253; web/src/components/chat/ChatPanel.tsx:82, 258 (built from the store's `id`, "" until hydrate)
 - Repro: open a project on prod and watch the network.
@@ -1370,7 +1372,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **Ctrl+K opens the palette from inside a text field**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P3
 - Where: web/src/components/shell/CommandPalette.tsx:230-242
 - Repro: type in the chat box, press Ctrl+K.
@@ -1385,7 +1387,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **On a network failure, the generation log says "replaying the bundled demo screen", then nothing is built, and a fresh run leaves zero screens**
 
-- Status: open
+- Status: fixed in dd813d7
 - Severity: P3
 - Where: web/src/components/generation/useGeneration.ts:227-236; useChat.ts:212-224 (stopped is undefined for the local path)
 - Repro: /api/generate unreachable, non-demo tags, first build.
