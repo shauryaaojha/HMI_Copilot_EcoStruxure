@@ -28,6 +28,11 @@ import {
 } from "./project";
 import { runScript } from "./script";
 import { Shell, shellAvailable, type Box } from "./sandbox";
+import { sceneOf } from "@/lib/layout/scene";
+import { layoutFacts, printLayoutFacts } from "@/lib/layout/facts";
+import { solveLayout } from "@/lib/layout/solve";
+import { verifyPlan } from "@/lib/layout/verify";
+import type { Constraint, Edge } from "@/lib/layout/types";
 
 export interface ToolResult {
   text: string;
@@ -149,6 +154,32 @@ function readable(ws: Workspace, path: string): string {
   } catch {
     return text;
   }
+}
+
+/** One workspace path for every arrangement tool; none writes raw Locations. */
+async function solveWorkspace(ctx: AgentContext, screenRef: string, constraints: Constraint[], apply: boolean): Promise<ToolResult> {
+  const read = await ctx.read();
+  const info = screenByName(ctx.ws, screenRef);
+  const screens = structuredClone(read.screens);
+  const screen = screens.find((candidate) => candidate.UniqueId === info.id);
+  if (!screen) return { text: `${info.name} is carried whole and cannot be arranged`, isError: true };
+  const scene = sceneOf({ screen, panel: read.target, preserved: read.preserved.screens.get(screen.UniqueId), contentScreens: screens, opened: true });
+  const input = { scene, parts: screen.Children[0].Children, constraints };
+  const plan = solveLayout(input);
+  const verification = verifyPlan(input, plan);
+  const result = JSON.stringify({ plan, verification }, null, 1);
+  if (!apply) return ok(result);
+  if (plan.conflict || !verification.ok) return { text: result, isError: true };
+  const moved = new Map(plan.moves.flatMap((move) => move.ids.map((id) => [id, move] as const)));
+  for (const part of screen.Children[0].Children) {
+    const move = moved.get(part.UniqueId);
+    if (!move) continue;
+    part.Location.Left += move.to.left - move.from.left;
+    part.Location.Top += move.to.top - move.from.top;
+    if (move.ids.length === 1) { part.Width = move.to.width; part.Height = move.to.height; }
+  }
+  await ctx.ws.load(await packageProject({ ...read, screens }, undefined, read.preserved));
+  return ok(result + `\napplied ${plan.moves.length} verified unit${plan.moves.length === 1 ? "" : "s"}`);
 }
 
 export const TOOLS: AgentTool[] = [
@@ -415,12 +446,118 @@ export const TOOLS: AgentTool[] = [
     name: "screen_objects",
     description: "Every object on a screen at every depth (inside grids, groups and canvases): type, name, id, box, text, containers, what it is bound to, and its JSON pointer in the file.",
     params: { screen: { type: "string", description: "Screen name or id" } },
-    run({ ws }, i) {
+    async run(ctx, i) {
+      const { ws } = ctx;
+      const info = screenByName(ws, String(i.screen));
+      const read = await ctx.read();
+      const screen = read.screens.find((candidate) => candidate.UniqueId === info.id);
+      const scene = screen ? sceneOf({ screen, panel: read.target, preserved: read.preserved.screens.get(screen.UniqueId), contentScreens: read.screens, opened: true }) : undefined;
       return ok(objects(ws, String(i.screen)).map((o) => {
         const box = o.box ? ` @${o.box.left},${o.box.top} ${o.box.width}x${o.box.height}` : o.cell ? ` cell r${o.cell.row} c${o.cell.column} span ${o.cell.rowSpan}x${o.cell.columnSpan}` : "";
+        const sdu = scene?.nodes.get(o.id)?.box;
+        const resolved = sdu ? ` SDU @${sdu.left},${sdu.top} ${sdu.width}x${sdu.height}` : "";
         const bound = o.bound.length ? ` bound: ${o.bound.map((b) => `${b.property}<-${b.text} (mode ${b.mode})`).join("; ")}` : "";
-        return `${"  ".repeat(o.parents.length)}${o.type} "${o.name}" ${o.id}${box}${o.text ? ` text "${o.text}"` : ""}${bound}  ${o.pointer}`;
+        return `${"  ".repeat(o.parents.length)}${o.type} "${o.name}" ${o.id}${box}${resolved}${o.text ? ` text "${o.text}"` : ""}${bound}  ${o.pointer}`;
       }).join("\n") || "no objects");
+    },
+  },
+  {
+    name: "layout_facts",
+    description: "Numeric screen-layout facts in screen design units: resolved boxes for Grid children, rows, columns, near misses, overlaps, bounds and the detected grid. ViewBox panel scaling is an assumption pending an OTE bench.",
+    params: {
+      screen: { type: "string", description: "Screen name or id" },
+      scope: { type: "any", description: "Optional object ids to limit the facts to", optional: true },
+    },
+    async run(ctx, i) {
+      const read = await ctx.read();
+      const info = screenByName(ctx.ws, String(i.screen));
+      const screen = read.screens.find((candidate) => candidate.UniqueId === info.id);
+      if (!screen) return { text: `${info.name} is carried whole and has no editable layout scene`, isError: true };
+      const scope = Array.isArray(i.scope) && i.scope.every((id) => typeof id === "string") ? i.scope as string[] : "screen";
+      const scene = sceneOf({ screen, panel: read.target, preserved: read.preserved.screens.get(screen.UniqueId), contentScreens: read.screens, opened: true });
+      return ok(printLayoutFacts(layoutFacts(scene, screen.Children[0].Children, `${read.target.model} ${read.target.width}x${read.target.height}`, scope)));
+    },
+  },
+  {
+    name: "layout_solve",
+    description: "Solve named alignment, distribution, size, containment, overlap, snap and keep constraints deterministically. Pass apply=true only after inspecting the returned plan; it writes through the project reader and packager, never json_set on Location.",
+    writes: true,
+    params: {
+      screen: { type: "string", description: "Screen name or id" },
+      constraints: { type: "any", description: "Constraint list from layout_facts; each item needs id and kind" },
+      apply: { type: "boolean", description: "Write a verified plan (default false)", optional: true },
+    },
+    async run(ctx, i) {
+      if (!Array.isArray(i.constraints) || !i.constraints.every((item) => item && typeof item === "object" && typeof (item as { id?: unknown }).id === "string" && typeof (item as { kind?: unknown }).kind === "string"))
+        return { text: "constraints must be a list of named constraint objects", isError: true };
+      const forbidden = ["left", "top", "width", "height", "dx", "dy"];
+      if (i.constraints.some((item) => forbidden.some((key) => key in (item as object))))
+        return { text: "layout_solve accepts relationships, not coordinates", isError: true };
+      return solveWorkspace(ctx, String(i.screen), i.constraints as Constraint[], Boolean(i.apply));
+    },
+  },
+  {
+    name: "align_objects",
+    description: "Align named objects by an edge through the deterministic layout solver.",
+    writes: true,
+    params: { screen: { type: "string", description: "Screen name or id" }, objects: { type: "any", description: "Object ids or names" }, edge: { type: "string", description: "left, centre, right, top, middle, bottom or baseline" }, apply: { type: "boolean", description: "Write the verified plan", optional: true } },
+    run(ctx, i) {
+      if (!Array.isArray(i.objects) || !i.objects.every((x) => typeof x === "string")) return { text: "objects must be a list of object ids or names", isError: true };
+      const edge = String(i.edge);
+      if (!(["left", "centre", "right", "top", "middle", "bottom", "baseline"] as string[]).includes(edge)) return { text: "edge must be left, centre, right, top, middle, bottom or baseline", isError: true };
+      return solveWorkspace(ctx, String(i.screen), [{ id: "align", kind: "align", units: i.objects as string[], edge: edge as Edge }], Boolean(i.apply));
+    },
+  },
+  {
+    name: "distribute_objects",
+    description: "Distribute named objects with equal gaps, optionally an exact gap, through the layout solver.",
+    writes: true,
+    params: { screen: { type: "string", description: "Screen name or id" }, objects: { type: "any", description: "Object ids or names" }, axis: { type: "string", description: "x or y", enum: ["x", "y"] }, gap: { type: "number", description: "Exact gap in SDU", optional: true }, apply: { type: "boolean", description: "Write the verified plan", optional: true } },
+    run(ctx, i) {
+      if (!Array.isArray(i.objects) || !i.objects.every((x) => typeof x === "string")) return { text: "objects must be a list of object ids or names", isError: true };
+      return solveWorkspace(ctx, String(i.screen), [{ id: "distribute", kind: "distribute", units: i.objects as string[], axis: i.axis as "x" | "y", ...(typeof i.gap === "number" ? { gap: i.gap } : {}) }], Boolean(i.apply));
+    },
+  },
+  {
+    name: "match_size",
+    description: "Make named objects the median size, or match a named object, through the layout solver.",
+    writes: true,
+    params: { screen: { type: "string", description: "Screen name or id" }, objects: { type: "any", description: "Object ids or names" }, dimension: { type: "string", description: "width, height or both", enum: ["width", "height", "both"] }, to: { type: "string", description: "Optional object to match", optional: true }, apply: { type: "boolean", description: "Write the verified plan", optional: true } },
+    run(ctx, i) {
+      if (!Array.isArray(i.objects) || !i.objects.every((x) => typeof x === "string")) return { text: "objects must be a list of object ids or names", isError: true };
+      return solveWorkspace(ctx, String(i.screen), [{ id: "same-size", kind: "sameSize", units: i.objects as string[], dim: i.dimension as "width" | "height" | "both", ...(i.to ? { to: String(i.to) } : {}) }], Boolean(i.apply));
+    },
+  },
+  {
+    name: "snap_to_grid",
+    description: "Snap only the named objects to the opened screen's detected grid, or the 4 px new-layout grid.",
+    writes: true,
+    params: { screen: { type: "string", description: "Screen name or id" }, objects: { type: "any", description: "Object ids or names, omitted for the screen" , optional: true }, apply: { type: "boolean", description: "Write the verified plan", optional: true } },
+    run(ctx, i) {
+      if (i.objects !== undefined && (!Array.isArray(i.objects) || !i.objects.every((x) => typeof x === "string"))) return { text: "objects must be a list of object ids or names", isError: true };
+      return solveWorkspace(ctx, String(i.screen), [{ id: "snap", kind: "snap", scope: i.objects === undefined ? "screen" : i.objects as string[] }], Boolean(i.apply));
+    },
+  },
+  {
+    name: "find_overlaps",
+    description: "Return overlap facts for a screen without changing it.",
+    params: { screen: { type: "string", description: "Screen name or id" } },
+    async run(ctx, i) {
+      const read = await ctx.read();
+      const info = screenByName(ctx.ws, String(i.screen));
+      const screen = read.screens.find((candidate) => candidate.UniqueId === info.id);
+      if (!screen) return { text: `${info.name} is carried whole`, isError: true };
+      const scene = sceneOf({ screen, panel: read.target, preserved: read.preserved.screens.get(screen.UniqueId), opened: true });
+      return ok(printLayoutFacts(layoutFacts(scene, screen.Children[0].Children, `${read.target.width}x${read.target.height}`)).split("\n").filter((line) => line.startsWith("overlap ")).join("\n") || "no overlaps");
+    },
+  },
+  {
+    name: "tidy_screen",
+    description: "Clear existing overlaps only. It preserves unrelated engineer parts and snaps moved units to the scene grid.",
+    writes: true,
+    params: { screen: { type: "string", description: "Screen name or id" }, apply: { type: "boolean", description: "Write the verified plan", optional: true } },
+    run(ctx, i) {
+      return solveWorkspace(ctx, String(i.screen), [{ id: "tidy", kind: "noOverlap", scope: "screen" }, { id: "snap", kind: "snap", scope: "screen" }], Boolean(i.apply));
     },
   },
   {

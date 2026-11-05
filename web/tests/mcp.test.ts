@@ -156,7 +156,7 @@ describe("the transport", () => {
     const { body } = await rpc("tools/list");
     const tools = body.result.tools as { name: string; inputSchema: { properties?: Record<string, unknown> } }[];
     expect(tools.map(t => t.name).sort()).toEqual(
-      ["apply_ops", "find_tags", "generate", "generation_cancel", "generation_status", "get_screens", "list_projects", "propose", "render_screen", "validate"],
+      ["apply_ops", "find_tags", "generate", "generation_cancel", "generation_status", "get_layout", "get_screens", "list_projects", "propose", "render_screen", "validate"],
     );
     expect(tools.map(t => t.name).sort()).toEqual(TOOLS.map(t => t.name).sort());
     // apply_ops publishes the Op union itself: the op names come from
@@ -164,6 +164,7 @@ describe("the transport", () => {
     const ops = tools.find(t => t.name === "apply_ops")!.inputSchema.properties!.ops as { items: { properties: { op: { enum: string[] } } } };
     expect(ops.items.properties.op.enum).toContain("addEquipment");
     expect(ops.items.properties.op.enum).toContain("tidyLayout");
+    expect(ops.items.properties.op.enum).toContain("arrange");
   });
 
   it("answers 405 to GET and DELETE, and 401 to them with no caller", async () => {

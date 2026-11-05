@@ -82,11 +82,13 @@ describe("the volatile block", () => {
     expect(text).toMatch(/Room on it: body: /);
   });
 
-  it("never contains a coordinate", () => {
+  it("contains coordinates only in the resolved layout facts", () => {
     const text = volatileContext(source("put the flow at 300,200"));
-    // The request may say numbers; the description of the screen may not.
+    // Object prose stays semantic; arranging receives its separately labelled
+    // SDU facts so the model never has to infer geometry from a screenshot.
     const screenPart = text.split("Tags relevant")[0];
-    expect(screenPart).not.toMatch(/\b\d{2,4}x\d{2,4}\b|\bat \d+,\d+/);
+    expect(screenPart).toContain("Layout facts (resolved SDU):");
+    expect(screenPart).toMatch(/screen .+ \d+x\d+ SDU/);
   });
 
   it("shows the tags the request is about", () => {
