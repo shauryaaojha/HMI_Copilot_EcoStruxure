@@ -16,6 +16,7 @@
  * Phase 4 of docs/BUILD_PLAN.md.
  */
 
+import { signInSentence } from "@/lib/client/sign-in";
 import { useCallback, useRef, useState } from "react";
 import type { GenerationEvent, PipelineStep } from "@/types/events";
 import type { ExistingScreen } from "@/lib/ai/pipeline";
@@ -189,7 +190,11 @@ export function useGeneration() {
             }),
           });
 
-          if (response.ok && response.body) {
+          if (response.status === 401) {
+            // Drawing a made-up screen here would pass for the Copilot's answer.
+            pipelineError = await signInSentence(response);
+            applyFailure = new Error(pipelineError);
+          } else if (response.ok && response.body) {
             const events: GenerationEvent[] = [];
             let refused = false;
 

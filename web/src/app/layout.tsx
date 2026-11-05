@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SignInPrompt } from "@/components/shell/SignInPrompt";
 import { THEME_BOOTSTRAP } from "@/components/shell/theme";
 import "./globals.css";
 
@@ -14,7 +15,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Sets data-theme before first paint so the chrome never flashes. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
-      <body>{children}</body>
+      <body>
+        <SignInPrompt />
+        {children}
+      </body>
     </html>
   );
 }

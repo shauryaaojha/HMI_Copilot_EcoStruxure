@@ -12,6 +12,8 @@
  * before. The conversation lives in this pane only.
  */
 
+import { useSignedOut } from "@/components/shell/SignInNotice";
+import { holdDraft, openSignIn, takeDraft } from "@/lib/client/sign-in";
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Check, Square, Undo2, Wrench, X } from "lucide-react";
 import { useProject } from "@/store/project";
@@ -56,6 +58,7 @@ export function AgentPane() {
   const hydrate = useProject((s) => s.hydrate);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
+  const signedOut = useSignedOut();
   const [before, setBefore] = useState<Snapshot | null>(null);
   const abort = useRef<AbortController | null>(null);
   const thread = useRef<HTMLDivElement>(null);
@@ -138,9 +141,19 @@ export function AgentPane() {
     }
   }
 
+  useEffect(() => {
+    const waiting = takeDraft("agent");
+    if (waiting) setDraft(waiting);
+  }, []);
+
   function submit() {
     const text = draft.trim();
     if (!text || running) return;
+    if (signedOut) {
+      holdDraft("agent", text);
+      openSignIn({ mode: "in", reason: "Sign in to use the Copilot." });
+      return;
+    }
     setDraft("");
     void run(text);
   }

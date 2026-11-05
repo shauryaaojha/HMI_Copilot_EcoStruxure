@@ -10,6 +10,7 @@
  * Phase 9 of docs/BUILD_PLAN.md.
  */
 
+import { SignInNotice } from "@/components/shell/SignInNotice";
 import { AccountControl } from "@/components/shell/AccountControl";
 import type { Project } from "@/lib/server/repo";
 import { importFile } from "@/lib/client/upload";
@@ -251,6 +252,7 @@ export function ProjectsScreen() {
   return (
     <div className="space-y-6">
       <AccountControl />
+      <SignInNotice reason="Sign in to see the projects saved on the server. The ones listed here are stored in this browser." />
       {cloud && <section className="space-y-3" aria-label="Cloud projects">
         <h2 className="text-sm font-semibold">Saved on the server</h2>
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

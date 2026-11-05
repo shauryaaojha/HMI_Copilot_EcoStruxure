@@ -33,6 +33,7 @@
  * Both end at the same table, the same confirm button, and the same tags.
  */
 
+import { SignInNotice } from "./SignInNotice";
 import { fitsOneRequest, importFile, uploadParts } from "@/lib/client/upload";
 import { expectJson } from "@/lib/ingest/client";
 import { useGeneration } from "@/components/generation/useGeneration";
@@ -354,6 +355,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
       <div aria-hidden className="cursor-light pointer-events-none absolute inset-0 hidden md:block" />
 
       <div className="relative mx-auto flex min-h-full max-w-3xl flex-col justify-center px-6 py-12">
+        <SignInNotice className="mb-6" reason="Sign in so the Copilot can draft the brief and generate the screens." />
         {/* --- the question -------------------------------------------- */}
         <div className="reveal is-in text-center">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-line-subtle bg-surface-raised/70 px-3 py-1 text-[11px] text-text-muted">
