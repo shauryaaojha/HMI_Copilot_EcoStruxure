@@ -16,6 +16,8 @@
  *
  * No model is called.
  */
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { demoScreen, demoVariables } from "@/fixtures";
 import { MemoryRepo, type Snapshot, type User } from "@/lib/server/repo";
@@ -156,7 +158,7 @@ describe("the transport", () => {
     const { body } = await rpc("tools/list");
     const tools = body.result.tools as { name: string; inputSchema: { properties?: Record<string, unknown> } }[];
     expect(tools.map(t => t.name).sort()).toEqual(
-      ["apply_ops", "components", "find_tags", "generate", "generation_cancel", "generation_status", "get_layout", "get_screens", "kb_get", "kb_search", "list_projects", "place_component", "propose", "render_screen", "validate"],
+      ["apply_ops", "components", "find_tags", "generate", "generation_cancel", "generation_status", "get_layout", "get_screens", "import_tags", "kb_get", "kb_search", "list_projects", "open_eote", "place_component", "propose", "render_screen", "validate"],
     );
     expect(tools.map(t => t.name).sort()).toEqual(TOOLS.map(t => t.name).sort());
     // apply_ops publishes the Op union itself: the op names come from
@@ -485,5 +487,65 @@ describe("project text is data, never an instruction", () => {
     expect(refused).toBe(true);
     expect((await snapshotOf()).rev).toBe(before.rev);
     expect((await snapshotOf()).snapshot.screens[0].Children[0].Children.some(p => p.Name === "DELETE_ALL_SCREENS_NOW")).toBe(true);
+  });
+});
+
+describe("a file through the connector", () => {
+  const base64 = (text: string) => Buffer.from(text).toString("base64");
+  const eote = () => readFileSync(path.resolve(import.meta.dirname, "../../demo_project/HMICopilot_Bars.eote")).toString("base64");
+  const CSV = "Name,DataType\nNEW_101_RUN,BOOL\nNEW_101_SPEED,REAL\n";
+
+  it("open_eote makes a project the caller owns, and it reads back", async () => {
+    const { structured, refused } = await call("open_eote", { fileName: "Bars.eote", contentBase64: eote() });
+    expect(refused).toBe(false);
+    const id = structured!.projectId as string;
+    expect(await state.repo.members.get(id, "alice")).toMatchObject({ role: "owner" });
+    const screens = await call("get_screens", { projectId: id });
+    expect(screens.refused).toBe(false);
+    expect((await snapshotOf(id)).snapshot.screens.length).toBe(structured!.screens);
+    expect((await snapshotOf(id)).snapshot.sourceId).toBeTruthy();
+  });
+
+  it("open_eote refuses what is not a project, and a file too big to carry", async () => {
+    const before = (await state.repo.projects.list("alice")).length;
+    expect((await call("open_eote", { fileName: "notes.txt", contentBase64: base64("hello") })).refused).toBe(true);
+    const big = Buffer.alloc(3 * 1024 * 1024 + 1).toString("base64");
+    const tooBig = await call("open_eote", { fileName: "big.eote", contentBase64: big });
+    expect(tooBig.refused).toBe(true);
+    expect(tooBig.text).toMatch(/over 3 MB/);
+    expect((await state.repo.projects.list("alice")).length).toBe(before);
+  });
+
+  it("import_tags waits as a proposal, and lands with direct writes on", async () => {
+    const queued = await call("import_tags", { projectId: ID, fileName: "tags.csv", contentBase64: base64(CSV) });
+    expect(queued.structured).toMatchObject({ mode: "proposal" });
+    expect(queued.text).toMatch(/2 tags read/);
+    expect((await snapshotOf()).snapshot.variables.some(v => v.Name === "NEW_101_RUN")).toBe(false);
+
+    await state.repo.projects.connector(ID, { directWrites: true });
+    const direct = await call("import_tags", { projectId: ID, fileName: "tags.csv", contentBase64: base64(CSV) });
+    expect(direct.structured).toMatchObject({ mode: "direct" });
+    expect((await snapshotOf()).snapshot.variables.map(v => v.Name)).toEqual(["NEW_101_RUN", "NEW_101_SPEED"]);
+  });
+
+  it("import_tags is an edit, so a viewer is refused", async () => {
+    state.user = { id: "val", name: "Val" };
+    expect((await call("import_tags", { projectId: ID, fileName: "tags.csv", contentBase64: base64(CSV) })).refused).toBe(true);
+  });
+
+  it("place_component needs no number and no colour, and waits like any change", async () => {
+    const { structured, refused } = await call("place_component", { projectId: ID, screen: "s1", kind: "StatusTile", size: "S" });
+    expect(refused).toBe(false);
+    expect(structured).toMatchObject({ mode: "proposal" });
+    expect((await call("components")).structured!.components).toHaveLength(10);
+  });
+});
+
+describe("a broken file through the connector", () => {
+  it("is refused in a sentence, not thrown", async () => {
+    const zipHeader = Buffer.from([0x50, 0x4b, 0x03, 0x04, 1, 2, 3, 4, 5, 6]).toString("base64");
+    const result = await call("open_eote", { fileName: "broken.eote", contentBase64: zipHeader });
+    expect(result.refused).toBe(true);
+    expect(result.text.length).toBeGreaterThan(10);
   });
 });

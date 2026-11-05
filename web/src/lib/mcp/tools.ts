@@ -13,15 +13,17 @@
  * reach the user as a broken connector instead.
  */
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { IngestError } from "@/lib/ingest/errors";
 import { ServerError } from "@/lib/server/errors";
 import { GENERATE_TOOLS } from "./generate";
+import { INTAKE_TOOLS } from "./intake";
 import { KB_TOOLS } from "./kb";
 import { READ_TOOLS } from "./read";
 import { refusal, toolResult, type ToolOutput } from "./result";
 import type { McpTool, ToolContext } from "./spec";
 import { WRITE_TOOLS } from "./write";
 
-export const TOOLS: readonly McpTool[] = [...READ_TOOLS, ...KB_TOOLS, ...WRITE_TOOLS, ...GENERATE_TOOLS];
+export const TOOLS: readonly McpTool[] = [...READ_TOOLS, ...KB_TOOLS, ...WRITE_TOOLS, ...INTAKE_TOOLS, ...GENERATE_TOOLS];
 
 /**
  * The scope a narrowed credential needs for this tool, or null when it has it.
@@ -45,6 +47,8 @@ export async function runTool(spec: McpTool, args: Record<string, never>, ctx: T
     return await spec.run(args, ctx);
   } catch (error) {
     if (error instanceof ServerError) return refusal(error.message, error.code);
+    // A file that cannot be read is the file's fault, not a failure of the tool.
+    if (error instanceof IngestError) return refusal(error.message, error.code);
     // An unexpected failure must not carry infrastructure detail out to a
     // third party, which is the rule `lib/server/errors.ts` already keeps.
     return refusal(`${spec.name} could not be completed.`, "internal");

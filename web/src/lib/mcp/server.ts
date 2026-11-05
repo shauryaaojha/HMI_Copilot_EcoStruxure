@@ -30,6 +30,12 @@ import { registerCards } from "./cards";
 import { registerTools } from "./tools";
 
 /** What claude.ai shows as the connector's name. */
+/**
+ * A file through the connector travels as base64 inside one call. This sits above
+ * what Vercel lets through, so the host's ceiling is the one that applies there.
+ */
+export const MOST_MCP_BODY = 6 * 1024 * 1024;
+
 export const SERVER_INFO = { name: "hmi-copilot", title: "HMI Copilot", version: "0.1.0" } as const;
 
 /** An MCP server carrying this caller's tools, ready to be connected. */
@@ -53,7 +59,7 @@ export function buildServer(caller: Caller): McpServer {
 /** Answers one Streamable HTTP request for one caller. */
 export async function handleMcpRequest(request: Request, caller: Caller): Promise<Response> {
   const server = buildServer(caller);
-  const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
+  const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true, maxRequestBodySize: MOST_MCP_BODY });
   await server.connect(transport);
   try {
     return await transport.handleRequest(request);

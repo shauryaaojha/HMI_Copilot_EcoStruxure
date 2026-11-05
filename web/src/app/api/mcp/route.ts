@@ -20,11 +20,12 @@
  * because a client that probes the endpoint to discover how to authenticate
  * has to find the 401 whichever verb it probes with.
  */
+import { IngestError } from "@/lib/ingest/errors";
 import { errorResponse } from "@/lib/server/errors";
 import { resolveCaller } from "@/lib/mcp/caller";
 import { checkOrigin, insufficientScope, unauthorized } from "@/lib/mcp/http";
 import { missingScope, TOOLS } from "@/lib/mcp/tools";
-import { handleMcpRequest } from "@/lib/mcp/server";
+import { handleMcpRequest, MOST_MCP_BODY } from "@/lib/mcp/server";
 import { readBody } from "@/lib/ingest/body";
 
 export const runtime = "nodejs";
@@ -44,17 +45,21 @@ export async function POST(request: Request): Promise<Response> {
     if (!caller) return unauthorized(request);
     // A scope failure is an HTTP challenge so an OAuth client can ask the
     // engineer for the missing grant. The tool handler still checks it too.
-    const declared = Number(request.headers.get("content-length"));
-    if (!Number.isFinite(declared) || declared <= 1024 * 1024) {
-      const body = await readBody(request.clone(), 1024 * 1024).then(bytes => JSON.parse(new TextDecoder().decode(bytes))).catch(() => null);
+    // Read once and replayed: a clone abandoned part way never lets the original
+    // finish, so a large call with no declared length used to hang here.
+    const bytes = await readBody(request, MOST_MCP_BODY);
+    {
+      let body: { method?: string; params?: { name?: string } } | null = null;
+      try { body = JSON.parse(new TextDecoder().decode(bytes)); } catch { /* The transport answers that as a protocol error. */ };
       if (body?.method === "tools/call") {
         const spec = TOOLS.find(tool => tool.name === body.params?.name);
         const scope = spec && missingScope(spec, caller);
         if (scope) return insufficientScope(request, scope);
       }
     }
-    return await handleMcpRequest(request, caller);
+    return await handleMcpRequest(new Request(request.url, { method: "POST", headers: request.headers, body: bytes as BodyInit }), caller);
   } catch (error) {
+    if (error instanceof IngestError) return Response.json({ error: error.message }, { status: error.status });
     return errorResponse(error);
   }
 }

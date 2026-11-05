@@ -27,7 +27,7 @@ import {
   type ProjectRecord,
 } from "@/store/projects";
 import { forgetHydration } from "@/components/shell/useProjectHydration";
-import { clearProject, saveProject, getAccount, uploadProject } from "@/store/persist";
+import { clearProject, loadProject, saveProject, getAccount, uploadProject } from "@/store/persist";
 import { DEFAULT_STANDARDS, useProject } from "@/store/project";
 import { useNewProject } from "@/components/shell/useNewProject";
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
@@ -196,6 +196,50 @@ export function ProjectsScreen() {
     clearProject(id);
   }
 
+  /** The card, and the name inside the saved project, which is what an export writes. */
+  function renameLocal(id: string, current: string) {
+    const asked = window.prompt("Rename project", current)?.trim();
+    if (!asked || asked === current) return;
+    const name = asked.replace(/\s+/g, "_");
+    const saved = loadProject(id);
+    if (saved) saveProject({ ...saved, name });
+    touchProject(id, { name });
+    setProjects(loadProjects());
+  }
+
+  /** A second project from this one's current state. Its history and conversation stay behind. */
+  function duplicateLocal(id: string, current: string) {
+    const saved = loadProject(id);
+    if (!saved) {
+      setOpenError(`${current} has nothing saved in this browser to copy.`);
+      return;
+    }
+    const record = createProject(`${current}_copy`);
+    saveProject({ ...saved, id: record.id, name: record.name, versions: [], chat: [] });
+    touchProject(record.id, { screens: saved.screens.length, tags: saved.variables.length, alarms: saved.alarms.length, bindings: saved.bindings.length, intent: `Copied from ${current}` });
+    setProjects(loadProjects());
+  }
+
+  async function onServer(path: string, init: RequestInit, doing: string) {
+    setOpenError(null);
+    try {
+      const response = await fetch(path, init);
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? `Could not ${doing}`);
+      }
+      await refreshCloud();
+    } catch (e) {
+      setOpenError(e instanceof Error ? e.message : `Could not ${doing}`);
+    }
+  }
+
+  function renameCloud(id: string, current: string) {
+    const name = window.prompt("Rename project", current)?.trim();
+    if (!name || name === current) return;
+    void onServer(`/api/projects/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }, "rename that project");
+  }
+
   const all = projects.filter(p => !cloudProjects.some(c => c._id === p.id));
   const shown =
     filter === "starred"
@@ -213,6 +257,10 @@ export function ProjectsScreen() {
           {cloudProjects.map(p => <li key={p._id} className="rounded-panel border border-line-subtle bg-surface-raised p-4">
             <Link className="focus-ring text-sm font-semibold hover:text-brand-400" href={`/project/${p._id}`}>{p.name}</Link>
             <p className="mt-2 text-xs text-text-muted">Version {p.rev} · {p.target.model}</p>
+            <div className="mt-2 flex gap-3 text-xs">
+              <button type="button" className="focus-ring text-brand-400" onClick={() => renameCloud(p._id, p.name)}>Rename</button>
+              <button type="button" className="focus-ring text-brand-400" onClick={() => void onServer(`/api/projects/${p._id}/duplicate`, { method: "POST" }, "copy that project")}>Duplicate</button>
+            </div>
           </li>)}
         </ul>
       </section>}
@@ -353,6 +401,10 @@ export function ProjectsScreen() {
               )}
             </Link>
 
+            <div className="mt-2 flex gap-3 text-xs">
+              <button type="button" className="focus-ring text-brand-400" onClick={() => renameLocal(project.id, project.name)}>Rename</button>
+              <button type="button" className="focus-ring text-brand-400" onClick={() => duplicateLocal(project.id, project.name)}>Duplicate</button>
+            </div>
             {cloud && <button className="focus-ring mt-2 text-xs text-brand-400" onClick={() => {
               // The next open has to read the server's copy, role and all, even if this
               // page load already filled the store from the browser's.
