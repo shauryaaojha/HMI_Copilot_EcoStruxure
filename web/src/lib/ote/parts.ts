@@ -20,6 +20,7 @@ import {
 } from "./palette";
 import type { Part, Screen, ViewBox } from "./schema";
 import { DEFAULT_PACK } from "../standard/pack";
+import { DEFAULT_THEME } from "../components/theme";
 
 /** The Standard in force. Running is an outline change; colour is for alarms. */
 const T = DEFAULT_PACK.tokens;
@@ -64,7 +65,7 @@ export function textBox(
 export function rectangle(
   name: string,
   box: Box,
-  opts: { fill?: number; border?: number; fillLevel?: { back: number; vertical?: boolean } } = {},
+  opts: { fill?: number; border?: number; fillLevel?: { back: number; vertical?: boolean }; radius?: number } = {},
 ): Part {
   const { fill = PAPER, border = GREY, fillLevel } = opts;
   return {
@@ -74,6 +75,7 @@ export function rectangle(
     Fill: color(fill),
     Border: color(border),
     Thickness: 1,
+    ...(opts.radius !== undefined ? { CornerRadius: { Style: 2, TopLeft: opts.radius, TopRight: opts.radius, BottomLeft: opts.radius, BottomRight: opts.radius } } : {}),
     Location: { Left: box.left, Top: box.top },
     Width: box.width,
     Height: box.height,
@@ -86,7 +88,7 @@ export function rectangle(
             FillLevel: {
               Enable: true,
               BackColor: { Value: fillLevel.back },
-              ...(fillLevel.vertical === false ? { HorizontalFill: 0 } : { VerticalFill: 0 }),
+              ...(fillLevel.vertical === false ? { HorizontalFill: 50 } : { VerticalFill: 50 }),
             },
           },
         }
@@ -94,12 +96,54 @@ export function rectangle(
   };
 }
 
+/** A surface: the fill step says where it is, so it draws no outline (design B, V2). */
+export function surface(name: string, box: Box, fill: number = T.white): Part {
+  return { Type: "Rectangle", UniqueId: gid(), Name: name, Fill: color(fill), Border: { Type: 0 }, Thickness: 0,
+    Location: { Left: box.left, Top: box.top }, Width: box.width, Height: box.height };
+}
+
+/**
+ * A group that draws nothing: spacing and a heading say what belongs together
+ * (V1), and this is what a tidy, a move and a regeneration hold on to.
+ */
+export function groupBox(name: string, box: Box): Part {
+  return { Type: "Rectangle", UniqueId: gid(), Name: name, Fill: { Type: 0 }, Border: { Type: 0 }, Thickness: 0,
+    Location: { Left: box.left, Top: box.top }, Width: box.width, Height: box.height };
+}
+
+/** Factories for parts the reader and writer know, held out of generation until OTE is benched. */
+export function ellipse(name: string, box: Box, opts: { fill?: number; border?: number; thickness?: number } = {}): Part {
+  return { Type: "Ellipse", UniqueId: gid(), Name: name, Fill: color(opts.fill ?? PAPER), Border: color(opts.border ?? DARK_GREY), Thickness: opts.thickness ?? 2,
+    Location: { Left: box.left, Top: box.top }, Width: box.width, Height: box.height };
+}
+
+export function polygon(name: string, box: Box, points: readonly { x: number; y: number }[], opts: { fill?: number; border?: number; thickness?: number } = {}): Part {
+  if (points.length < 3) throw new Error("A polygon needs at least three points");
+  return { Type: "Polygon", UniqueId: gid(), Name: name, Fill: color(opts.fill ?? PAPER), Border: color(opts.border ?? DARK_GREY), Thickness: opts.thickness ?? 2,
+    Path: { Commands: "M" + "L".repeat(points.length - 1) + "z", Data: points.map((p) => `${Math.round(p.x * 3072)},${Math.round(p.y * 3072)}`).join(",") },
+    Location: { Left: box.left, Top: box.top }, Width: box.width, Height: box.height };
+}
+
+export function line(name: string, box: Box, opts: { stroke?: number; thickness?: number; points?: readonly { x: number; y: number }[] } = {}): Part {
+  const points = opts.points ?? [{ x: 0, y: 0 }, { x: 1, y: 1 }];
+  if (points.length < 2) throw new Error("A line needs at least two points");
+  return { Type: "Line", UniqueId: gid(), Name: name, Stroke: color(opts.stroke ?? DARK_GREY), Thickness: opts.thickness ?? 2,
+    Path: { Commands: "M" + "L".repeat(points.length - 1), Data: points.map((p) => `${Math.round(p.x * 3072)},${Math.round(p.y * 3072)}`).join(",") },
+    Location: { Left: box.left, Top: box.top }, Width: box.width, Height: box.height };
+}
+
+export function arch(name: string, box: Box, opts: { start?: number; end?: number; innerRadius?: number; fill?: number; border?: number; thickness?: number } = {}): Part {
+  return { Type: "Arch", UniqueId: gid(), Name: name, StartAngle: opts.start ?? 135, EndAngle: opts.end ?? 405,
+    InnerRadius: opts.innerRadius ?? 70, Fill: color(opts.fill ?? PAPER), Border: color(opts.border ?? DARK_GREY), Thickness: opts.thickness ?? 2,
+    Location: { Left: box.left, Top: box.top }, Width: box.width, Height: box.height };
+}
+
 /**
  * A live bar: a Rectangle whose FillLevel animation fills it from the bottom
  * (vertical) or the left (horizontal), the product's default start points.
- * Drawn empty at design time - the binding fills it at runtime.
+ * Drawn half full at design time - the binding fills it at runtime.
  */
-export function fillBar(name: string, box: Box, opts: { fill: number; back: number; border: number; vertical: boolean }): Part {
+export function fillBar(name: string, box: Box, opts: { fill: number; back: number; border: number; vertical: boolean; designValue?: number }): Part {
   return {
     Type: "Rectangle",
     UniqueId: gid(),
@@ -113,7 +157,7 @@ export function fillBar(name: string, box: Box, opts: { fill: number; back: numb
     Animation: {
       FillLevel: {
         Enable: true,
-        ...(opts.vertical ? { VerticalFill: 0 } : { HorizontalFill: 0 }),
+        ...(opts.vertical ? { VerticalFill: opts.designValue ?? 50 } : { HorizontalFill: opts.designValue ?? 50 }),
         BackColor: { Value: opts.back },
       },
     },
@@ -153,8 +197,9 @@ export function lamp(name: string, off: string, on: string, box: Box): Part {
     Type: "Lamp",
     UniqueId: gid(),
     Name: name,
-    Off: face(off, T.ink, T.equipmentFill, T.equipmentLine),
-    On: { ...face(on, T.ink, T.white, T.runningLine), Thickness: 2 },
+    // V5: running is a dark fill with white text, stopped an outline on the ground.
+    Off: face(off, T.ink, DEFAULT_THEME.tokens.equipmentStopped, DEFAULT_THEME.tokens.equipmentLine),
+    On: face(on, DEFAULT_THEME.tokens.onDark, DEFAULT_THEME.tokens.equipmentRunning, DEFAULT_THEME.tokens.equipmentRunning),
     Location: { Left: box.left, Top: box.top },
     Width: box.width,
     Height: box.height,
@@ -167,7 +212,7 @@ export function alarmLamp(name: string, off: string, on: string, box: Box): Part
     Type: "Lamp",
     UniqueId: gid(),
     Name: name,
-    Off: face(off, T.ink, T.equipmentFill, T.equipmentLine),
+    Off: face(off, T.ink, DEFAULT_THEME.tokens.equipmentStopped, DEFAULT_THEME.tokens.equipmentLine),
     On: face(on, T.onAlarm, T.alarmP1, T.alarmP1),
     Location: { Left: box.left, Top: box.top },
     Width: box.width,
@@ -418,7 +463,7 @@ export function dateTimeDisplay(name: string, box: Box): Part {
 }
 
 /** Channel colours, in the order an operator expects to tell them apart. */
-const CHANNEL_COLOURS = [GREEN, AMBER, BLUE, RED, TEAL, DARK_GREY];
+const CHANNEL_COLOURS = [DEFAULT_THEME.tokens.trend1, DEFAULT_THEME.tokens.trend2, DEFAULT_THEME.tokens.trend3, DEFAULT_THEME.tokens.trend4];
 
 function channels(tags: string[]) {
   const named = tags.length > 0 ? tags.slice(0, 16) : [""];

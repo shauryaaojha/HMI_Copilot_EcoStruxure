@@ -296,6 +296,13 @@ export const Rectangle = z.object({
   Fill: Paint.optional(),
   Border: Paint.optional(),
   Thickness: z.number().optional(),
+  CornerRadius: z.object({
+    Style: z.number().int(),
+    TopLeft: z.number().nonnegative(),
+    TopRight: z.number().nonnegative(),
+    BottomLeft: z.number().nonnegative(),
+    BottomRight: z.number().nonnegative(),
+  }).optional(),
   Animation: Animation.optional(),
 });
 

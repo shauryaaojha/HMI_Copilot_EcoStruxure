@@ -82,12 +82,12 @@ describe("the generator obeys the pack", () => {
     for (const s of input.screens) expect(s.Children[0].Children[0].Name).toMatch(/^Ground_/);
   });
 
-  it("puts running in the outline and keeps every resting face neutral", () => {
+  it("makes running a dark fill and keeps every resting face neutral", () => {
     const l = lamp("L", "STOPPED", "RUNNING", { left: 0, top: 0, width: 100, height: 40 });
     if (l.Type === "Lamp") {
       expect(l.Off.Fill).toEqual({ Color: { Value: ISA101.tokens.equipmentFill } });
-      expect(l.On.Border).toEqual({ Color: { Value: ISA101.tokens.runningLine } });
-      expect(l.On.Thickness).toBe(2);
+      expect(l.On.Fill).toEqual({ Color: { Value: ISA101.tokens.runningLine } });
+      expect(l.On.TextColor).toEqual({ Color: { Value: ISA101.tokens.white } });
       expect(signalSet(ISA101).has((l.On.Fill as { Color: { Value: number } }).Color.Value)).toBe(false);
     }
   });
@@ -174,9 +174,8 @@ describe("applying the pack to a screen drawn without it", () => {
     const run = parts.find((p) => p.Name === "Lamp_RUN")!;
     const fault = parts.find((p) => p.Name === "Lamp_FLT")!;
     if (run.Type === "Lamp" && fault.Type === "Lamp") {
-      expect(run.On.Fill).toEqual({ Color: { Value: ISA101.tokens.white } });
-      expect(run.On.Border).toEqual({ Color: { Value: ISA101.tokens.runningLine } });
-      expect(run.On.Thickness).toBe(2);
+      expect(run.On.Fill).toEqual({ Color: { Value: ISA101.tokens.runningLine } });
+      expect(run.On.TextColor).toEqual({ Color: { Value: ISA101.tokens.white } });
       expect(fault.On.Fill).toEqual({ Color: { Value: ISA101.tokens.alarmP1 } });
       expect(fault.On.TextColor).toEqual({ Color: { Value: ISA101.tokens.onAlarm } });
       // Resting faces untouched: they were neutral already.
