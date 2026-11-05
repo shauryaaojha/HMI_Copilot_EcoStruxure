@@ -17,6 +17,10 @@ const union = (boxes: Box[]): Box => {
 };
 export const transformPoint = (point: { x: number; y: number }, t: Transform) =>
   ({ x: point.x * t.sx + t.tx, y: point.y * t.sy + t.ty });
+const transformBox = (box: Box, t: Transform): Box => {
+  const origin = transformPoint({ x: box.left, y: box.top }, t);
+  return { left: origin.x, top: origin.y, width: box.width * t.sx, height: box.height * t.sy };
+};
 export const inverseTransform = (t: Transform): Transform =>
   ({ sx: 1 / t.sx, sy: 1 / t.sy, tx: -t.tx / t.sx, ty: -t.ty / t.sy });
 
@@ -63,7 +67,10 @@ export function sceneOf(input: SceneInput): Scene {
   const add = (raw: Raw, parent?: string): string | undefined => {
     const id = typeof raw.UniqueId === "string" ? raw.UniqueId : undefined;
     if (!id) return undefined;
-    const container = isContainer(raw);
+    // The ViewBox is the scene root even though it is not one of OTE's
+    // layout containers. Keeping it makes the read tree usable without a
+    // preserved source tree (for example in a live collaboration snapshot).
+    const container = isContainer(raw) || parent === undefined;
     const part = flat.get(id);
     if (!container && !part) return undefined;
     const childIds = container ? kids(raw).map((kid) => add(kid, id)).filter((value): value is string => !!value) : [];
@@ -87,9 +94,28 @@ export function sceneOf(input: SceneInput): Scene {
         const innerSize = rootBox(content.Children[0], box);
         node.inner = { sceneId: content.UniqueId, uniform: false,
           toHost: { sx: box.width / innerSize.width, sy: box.height / innerSize.height, tx: box.left, ty: box.top } };
+        // A content screen belongs beneath its display in the read tree. It is
+        // deliberately a leaf here: the host solver moves the display, never
+        // a child in a separately editable content scene.
+        const contentId = `${id}::content:${content.UniqueId}`;
+        node.children.push(contentId);
+        nodes.set(contentId, { id: contentId, kind: "content", type: "Content", name: content.Name,
+          box: { ...box }, parent: id, children: [], locked: true });
       }
     }
     nodes.set(id, node);
+    // CO definition leaves are facts only. Their ids are namespaced by the
+    // instance so two Switch definitions can appear on one screen without
+    // becoming writable siblings in the host scene.
+    if (part?.Type === "CompoundObject" && part.Look && node.inner) {
+      for (const item of (part.Look as Look).items) {
+        if (item.kind !== "part") continue;
+        const innerId = `${id}::${item.part.UniqueId}`;
+        node.children.push(innerId);
+        nodes.set(innerId, { id: innerId, kind: "part", type: item.part.Type, name: item.part.Name,
+          box: transformBox(boxOf(item.part), node.inner.toHost), parent: id, children: [], locked: true });
+      }
+    }
     return id;
   };
   const rootId = add(rawRoot);
@@ -97,4 +123,18 @@ export function sceneOf(input: SceneInput): Scene {
   const grid = input.opened ? detectGrid(parts) : { unit: 4 as const, origin: { x: 0, y: 0 }, detected: false, coverage: 1 };
   return { id: screen.UniqueId, kind: screen.Type === "Content" ? "content" : "screen", size, toPanel, grid, nodes,
     roots: rootId ? [rootId] : [], hash: JSON.stringify({ parts, meta, size }) };
+}
+
+/** A stable, read-only projection for layers panels and render tests. */
+export interface SceneTreeRow { id: string; depth: number; node: SceneNode }
+export function sceneTree(scene: Scene): SceneTreeRow[] {
+  const out: SceneTreeRow[] = [];
+  const visit = (id: string, depth: number) => {
+    const node = scene.nodes.get(id);
+    if (!node) return;
+    out.push({ id, depth, node });
+    node.children.forEach((child) => visit(child, depth + 1));
+  };
+  scene.roots.forEach((root) => visit(root, 0));
+  return out;
 }

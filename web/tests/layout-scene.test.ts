@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { readProject } from "@/lib/ote/reader";
-import { sceneOf, inverseTransform, transformPoint } from "@/lib/layout/scene";
+import { sceneOf, inverseTransform, sceneTree, transformPoint } from "@/lib/layout/scene";
 import { layoutFacts, nearMisses, printLayoutFacts } from "@/lib/layout/facts";
 import { layoutTree } from "@/lib/ote/containers";
 import type { Part, Screen } from "@/lib/ote/schema";
@@ -61,6 +61,7 @@ describe("read-only layout scenes", () => {
     expect(scene.nodes.get("co")?.slot).toMatchObject({ kind: "cell", row: 1, column: 1 });
     expect(scene.nodes.get("co")?.inner?.toHost.sx).toBe(2);
     expect(scene.nodes.get("display")?.inner).toMatchObject({ sceneId: "content", toHost: { sx: 0.5, sy: 0.5 } });
+    expect(sceneTree(scene).map((row) => row.id)).toContain("display::content:content");
     expect(scene.toPanel).toEqual({ sx: 2, sy: 2, tx: 0, ty: 100 });
     const inner = scene.nodes.get("co")!.inner!.toHost;
     expect(transformPoint(transformPoint({ x: 11, y: 7 }, inner), inverseTransform(inner))).toEqual({ x: 11, y: 7 });
@@ -74,5 +75,16 @@ describe("read-only layout scenes", () => {
     const screen = { Type: "Screen", UniqueId: "s", Name: "S", Children: [{ Type: "ViewBox", Width: 100, Height: 100, Children: [part("a", 10), part("b", 12)] }] } as Screen;
     expect(nearMisses(screen.Children[0].Children)).toHaveLength(1);
     expect(critiqueGeometry(screen).findings.some((finding) => finding.rule === "geom.nearMiss")).toBe(true);
+  });
+
+  it("projects a stable read-only tree with Compound Object instances", () => {
+    const co = { Type: "CompoundObject", UniqueId: "co", Name: "Start", Definition: "Switch", Location: { Left: 20, Top: 30 }, Width: 80, Height: 40,
+      Look: { width: 40, height: 20, uniform: false, items: [{ kind: "part", part: { Type: "TextBox", UniqueId: "inner", Name: "Inner", Location: { Left: 4, Top: 2 }, Width: 12, Height: 8 } }] } } as unknown as Part;
+    const leaf = { Type: "TextBox", UniqueId: "label", Name: "Label", Location: { Left: 10, Top: 10 }, Width: 40, Height: 16 } as Part;
+    const screen = { Type: "Screen", UniqueId: "s", Name: "S", Children: [{ Type: "ViewBox", UniqueId: "view", Width: 200, Height: 100, Children: [leaf, co] }] } as Screen;
+    const tree = sceneTree(sceneOf({ screen, panel: { width: 200, height: 100 } }));
+    expect(tree.map((row) => [row.id, row.depth, row.node.kind])).toEqual([
+      ["view", 0, "container"], ["label", 1, "part"], ["co", 1, "coInstance"], ["co::inner", 2, "part"],
+    ]);
   });
 });
