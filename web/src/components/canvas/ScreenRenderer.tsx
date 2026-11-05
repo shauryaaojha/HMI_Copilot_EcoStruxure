@@ -252,7 +252,7 @@ export function ScreenRenderer({
   contentForeign,
   scale = 1,
   showGrid = false,
-  gridSize = 8,
+  gridSize = 4,
   snap = false,
   smartGuides = false,
   interactive = true,

@@ -25,7 +25,7 @@ const TOLERANCE = 2;
 /** Where a moved unit is tried, in order: beside what it overlapped, then anywhere in the body. */
 const SIDES: Side[] = ["below", "rightOf", "leftOf", "above"];
 
-interface Unit {
+export interface TidyUnit {
   ids: string[];
   name: string;
   box: Box;
@@ -33,8 +33,8 @@ interface Unit {
 
 export interface Overlap {
   /** The smaller of the two: the one in the wrong place. */
-  mover: Unit;
-  other: Unit;
+  mover: TidyUnit;
+  other: TidyUnit;
   width: number;
   height: number;
 }
@@ -90,7 +90,7 @@ function containerOf(parts: Part[], panel?: { width: number; height: number }) {
   };
 }
 
-function unitsOf(parts: Part[], groupOf: (id: string) => string | undefined, panel?: { width: number; height: number }): Unit[] {
+export function unitsOf(parts: Part[], groupOf: (id: string) => string | undefined, panel?: { width: number; height: number }): TidyUnit[] {
   const movable = parts.filter((p) => !CHROME.test(p.Name) && p.Type !== "Pipe");
   const inner = containerOf(movable, panel);
   // Up the chain of innermost holders to the top: a value in a bar band on a

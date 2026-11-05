@@ -232,6 +232,19 @@ export function ScreenBoard({
     })), spots),
     [screens, target, spots],
   );
+  // Definitions are deliberately a board read, not an editor: changing one
+  // would require the separate .co writer path. An instance's Look is enough
+  // to name the definition even when the original definition tree is opaque.
+  const definitions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const screen of screens) for (const part of screen.Children[0].Children) {
+      if (part.Type !== "CompoundObject") continue;
+      const key = part.Definition ?? part.Name;
+      seen.set(key, key);
+    }
+    return [...seen.values()].sort((a, b) => a.localeCompare(b));
+  }, [screens]);
+  const definitionsHeight = definitions.length ? BOARD_LABEL + 112 : 0;
 
   /** The frame being dragged, and where the grab started. */
   const drag = useRef<{
@@ -246,7 +259,7 @@ export function ScreenBoard({
   return (
     <div
       className="relative shrink-0"
-      style={{ width: extent.width * scale, height: extent.height * scale }}
+      style={{ width: extent.width * scale, height: (extent.height + definitionsHeight) * scale }}
     >
       {screens.map((screen, index) => {
         const view = screen.Children[0];
@@ -393,6 +406,26 @@ export function ScreenBoard({
           </div>
         );
       })}
+      {definitions.length > 0 && (
+        <section
+          aria-label="Compound Object definitions"
+          className="absolute flex gap-3"
+          style={{ left: 0, top: extent.height * scale, height: definitionsHeight * scale }}
+        >
+          {definitions.map((definition) => (
+            <div
+              key={definition}
+              className="rounded border border-dashed border-line bg-surface px-3 py-2 text-text-muted"
+              style={{ width: 180 * scale, height: 92 * scale, fontSize: Math.max(9, 11 * scale) }}
+              title="Compound Object definition — read-only on the project canvas"
+            >
+              <p className="truncate font-medium text-text-secondary">{definition}</p>
+              <p className="mt-1 text-[0.9em]">Compound Object definition</p>
+              <p className="text-[0.9em]">read-only</p>
+            </div>
+          ))}
+        </section>
+      )}
     </div>
   );
 }
