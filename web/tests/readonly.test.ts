@@ -25,6 +25,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push() {}, replace() {}, prefetch() {} }),
   usePathname: () => "/project/p",
+  useParams: () => ({}),
 }));
 
 import { demoScreen } from "@/fixtures";

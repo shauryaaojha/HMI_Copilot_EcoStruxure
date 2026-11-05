@@ -4,6 +4,38 @@ const WASM = "./node_modules/sql.js/dist/sql-wasm.wasm";
 // The rasteriser's font (lib/critic/render.ts): a function has no system fonts.
 const FONT = "./fonts/*.ttf";
 
+function contentSecurityPolicy(formAction = "'self'"): string {
+  const connect = ["'self'"];
+  const realtime = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (realtime) {
+    try {
+      const url = new URL(realtime);
+      if (url.protocol === "https:" || url.protocol === "http:") {
+        connect.push(url.origin, `${url.protocol === "https:" ? "wss:" : "ws:"}//${url.host}`);
+      }
+    } catch { /* An invalid Realtime URL cannot authorize another origin. */ }
+  }
+  if (process.env.NODE_ENV === "development") connect.push("ws:");
+  return [
+    "default-src 'self'",
+    // Next emits inline hydration scripts. Nonces would make every static page
+    // dynamic, so production allows inline scripts; this weakens XSS defense.
+    `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    `connect-src ${connect.join(" ")}`,
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    `form-action ${formAction}`,
+    "frame-src 'none'",
+    // MCP Apps cards are ui:// resources rendered by the host in its own
+    // sandbox. Their empty connect/resource domains are in lib/mcp/cards.ts.
+    "frame-ancestors 'none'",
+  ].join("; ");
+}
+
 const config: NextConfig = {
   /**
    * Build somewhere else when asked to.
@@ -90,18 +122,23 @@ const config: NextConfig = {
 
   // No framework banner, and no page of this app inside another site's frame
   // or sniffed into another type (docs/audit/BUGS.md S2-08).
-  // shortcut: frame-ancestors only, not a full CSP; a script-src policy needs
-  // nonces for Next's inline scripts and a pass over every page first.
   poweredByHeader: false,
   async headers() {
     return [{
       source: "/:path*",
       headers: [
-        { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+        { key: "Content-Security-Policy", value: contentSecurityPolicy() },
         { key: "X-Frame-Options", value: "DENY" },
         { key: "X-Content-Type-Options", value: "nosniff" },
         { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
       ],
+    }, {
+      // The consent form posts here and the answer redirects to the connector's
+      // own callback. Chrome applies form-action to that redirect, so 'self'
+      // alone would stop claude.ai from ever receiving its code. These are the
+      // redirect URIs oauth.ts accepts. A later rule's value wins in Next.
+      source: "/oauth/:path*",
+      headers: [{ key: "Content-Security-Policy", value: contentSecurityPolicy("'self' https: http://localhost:* http://127.0.0.1:*") }],
     }];
   },
 };

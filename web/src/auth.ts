@@ -13,6 +13,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { verifyPassword } from "@/lib/server/credentials";
 import { checkAuthConfig, providers } from "@/lib/server/session";
+import { newSessionId, revokeSession, sessionId, SESSION_MAX_AGE, validSession } from "@/lib/server/sessions";
 export const { handlers, auth, signIn, signOut } = NextAuth(() => {
   checkAuthConfig();
   return {
@@ -22,10 +23,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
       // is what we want: the form must not learn whether the address exists.
       authorize: async (credentials, request) => await verifyPassword(credentials?.email, credentials?.password, request),
     })] : [],
-    session: { strategy: "jwt" },
+    session: { strategy: "jwt", maxAge: SESSION_MAX_AGE },
+    events: {
+      async signOut(message) {
+        if (!("token" in message) || !message.token?.sub) return;
+        const token = message.token;
+        await revokeSession(token.sub!, sessionId(token), typeof token.exp === "number" ? token.exp * 1000 : Date.now() + SESSION_MAX_AGE * 1000);
+      },
+    },
     callbacks: {
       async jwt({ token, user }) {
-        if (user?.id) token.sub = user.id;
+        if (user?.id) {
+          token.sub = user.id;
+          token.sid = newSessionId();
+          token.sessionVersion = (user as { sessionVersion?: number }).sessionVersion ?? 0;
+        }
+        if (!token.sub) return null;
+        const sid = sessionId(token);
+        if (!await validSession(token.sub, Number(token.sessionVersion ?? 0), sid)) return null;
+        token.sid = sid;
         return token;
       },
       session({ session, token }) { if (session.user && token.sub) session.user.id = token.sub; return session; },

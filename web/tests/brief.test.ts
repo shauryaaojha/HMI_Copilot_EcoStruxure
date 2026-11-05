@@ -517,9 +517,9 @@ describe("the knowledge base reaching a real brief", () => {
     vi.resetModules();
     vi.stubEnv("KNOWLEDGE_STORE", "off");
     const reads = vi.fn(async () => [] as ProjectKnowledge[]);
-    vi.doMock("@/lib/knowledge/store", () => ({ allKnowledge: reads, knowledgeStore: () => "off" }));
+    vi.doMock("@/lib/knowledge/store", () => ({ allKnowledge: reads, knowledgeStore: () => "off", ownedBy: () => true }));
     const { suggestionsFor } = await import("@/lib/brief/evidence");
-    expect(await suggestionsFor(thin)).toEqual([]);
+    expect(await suggestionsFor(thin, "local")).toEqual([]);
     vi.unstubAllEnvs();
     vi.doUnmock("@/lib/knowledge/store");
   });
@@ -527,9 +527,9 @@ describe("the knowledge base reaching a real brief", () => {
   it("asks the store nothing at all for a brief with no units", async () => {
     vi.resetModules();
     const reads = vi.fn(async () => [pumpProject("a", ["RUN", "FLT"])]);
-    vi.doMock("@/lib/knowledge/store", () => ({ allKnowledge: reads, knowledgeStore: () => "filesystem" }));
+    vi.doMock("@/lib/knowledge/store", () => ({ allKnowledge: reads, knowledgeStore: () => "filesystem", ownedBy: () => true }));
     const { suggestionsFor } = await import("@/lib/brief/evidence");
-    expect(await suggestionsFor(Brief.parse({}))).toEqual([]);
+    expect(await suggestionsFor(Brief.parse({}), "local")).toEqual([]);
     // An empty brief has nothing to suggest about, so the read is not made.
     expect(reads).not.toHaveBeenCalled();
     vi.doUnmock("@/lib/knowledge/store");
@@ -542,13 +542,27 @@ describe("the knowledge base reaching a real brief", () => {
       pumpProject("b", ["RUN", "FLT", "START", "STOP"]),
       pumpProject("c", ["RUN", "FLT"]),
     ];
-    vi.doMock("@/lib/knowledge/store", () => ({ allKnowledge: async () => records, knowledgeStore: () => "filesystem" }));
+    vi.doMock("@/lib/knowledge/store", () => ({ allKnowledge: async () => records, knowledgeStore: () => "filesystem", ownedBy: () => true }));
     const { suggestionsFor } = await import("@/lib/brief/evidence");
-    const found = await suggestionsFor(thin);
+    const found = await suggestionsFor(thin, "local");
     expect(found).toHaveLength(1);
     expect(found[0].unitId).toBe("pump-1");
     expect(found[0].add.sort()).toEqual(["FLT", "START", "STOP"]);
     expect(found[0].projects).toBe(3);
+    vi.doUnmock("@/lib/knowledge/store");
+  });
+
+  it("does not suggest from another account's scans", async () => {
+    vi.resetModules();
+    const records = [
+      { ...pumpProject("a", ["RUN", "FLT", "START", "STOP"]), ownerId: "owner-b" },
+      { ...pumpProject("b", ["RUN", "FLT", "START", "STOP"]), ownerId: "owner-b" },
+      { ...pumpProject("c", ["RUN", "FLT", "START", "STOP"]), ownerId: "owner-b" },
+    ];
+    vi.doMock("@/lib/knowledge/store", async (original) => ({ ...await original<typeof import("@/lib/knowledge/store")>(), allKnowledge: async () => records }));
+    const { suggestionsFor } = await import("@/lib/brief/evidence");
+    expect(await suggestionsFor(thin, "owner-a")).toEqual([]);
+    expect((await suggestionsFor(thin, "owner-b")).length).toBeGreaterThan(0);
     vi.doUnmock("@/lib/knowledge/store");
   });
 
@@ -560,7 +574,7 @@ describe("the knowledge base reaching a real brief", () => {
     }));
     const { suggestionsFor } = await import("@/lib/brief/evidence");
     // A draft is the engineer's work and does not fail over missing advice.
-    expect(await suggestionsFor(thin)).toEqual([]);
+    expect(await suggestionsFor(thin, "local")).toEqual([]);
     vi.doUnmock("@/lib/knowledge/store");
   });
 });

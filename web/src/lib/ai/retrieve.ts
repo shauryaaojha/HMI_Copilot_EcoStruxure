@@ -86,6 +86,9 @@ function wanted(request: string): Map<string, "said" | "implied"> {
   return out;
 }
 
+/** Search facets share the same words and synonyms as tag retrieval. */
+export const expandedTokens = (request: string): string[] => [...wanted(request).keys()];
+
 /** How rare each word is across a corpus: 1 for everywhere, larger for rare. */
 function rarity(corpus: Set<string>[]): (word: string) => number {
   const df = new Map<string, number>();

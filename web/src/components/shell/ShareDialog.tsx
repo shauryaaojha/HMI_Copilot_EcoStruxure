@@ -384,11 +384,8 @@ export function ShareDialog({ projectId, onClose }: { projectId: string; onClose
                       value={role}
                       aria-label="Link role"
                       onChange={(e) => {
-                        const next = e.target.value as GrantRole;
-                        setRole(next);
-                        // Export is off for a viewer link unless asked for, on
-                        // for the roles that could rebuild the file anyway.
-                        setAllowExport(next !== "viewer");
+                        // Export stays off whatever the role, until it is asked for.
+                        setRole(e.target.value as GrantRole);
                       }}
                       options={ROLE_OPTIONS}
                     />

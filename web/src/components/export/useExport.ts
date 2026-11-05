@@ -56,7 +56,7 @@ const safe = (name: string) => name.replace(/[^A-Za-z0-9._-]+/g, "_") || "projec
  * arrives by email with no context, and a project file whose provenance nobody
  * can explain is a project file nobody trusts.
  */
-function readme(project: string, made: Artifact[]): string {
+function readme(project: string, made: Artifact[], opened: boolean): string {
   const has = (kind: Artifact["kind"]) => made.some((a) => a.kind === kind);
   const eote = made.find((a) => a.kind === "eote")?.name ?? `${safe(project)}.eote`;
 
@@ -111,8 +111,9 @@ function readme(project: string, made: Artifact[]): string {
     "  malformed object would be. Report the screen name and the object name;",
     "  both are in that file.",
     "",
-    "This project was generated from a PLC tag export and a description of what",
-    "the screens should show. Nothing in it was hand-drawn.",
+    ...(opened
+      ? ["This project was opened from an existing file and edited here. What the", "editor does not model is carried across unchanged."]
+      : ["This project was started here from a description and any tags you gave it.", "Check the tags and the screens in OTE before you rely on it."]),
   ].join(NEWLINE);
 }
 
@@ -223,7 +224,7 @@ export function useExport() {
           for (const artifact of made) {
             zip.file(artifact.name, await (await fetch(artifact.url)).blob());
           }
-          zip.file("README.txt", readme(s.name, made));
+          zip.file("README.txt", readme(s.name, made, !!s.source));
 
           const bundle = await zip.generateAsync({ type: "blob" });
           made.unshift({

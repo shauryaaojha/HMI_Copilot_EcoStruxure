@@ -8,11 +8,11 @@
 
 import { scanProject, scanVijeo } from "./scan";
 import { sniff } from "@/lib/ingest/sniff";
-import { knowledgeStore, putKnowledge } from "./store";
+import { knowledgeStore, ownScan, putKnowledge } from "./store";
 
-export async function learnFromProject(bytes: Uint8Array, fileName: string): Promise<{ id: string; isNew: boolean } | null> {
+export async function learnFromProject(bytes: Uint8Array, fileName: string, ownerId: string): Promise<{ id: string; isNew: boolean } | null> {
   if (knowledgeStore() === "off") return null;
   const kind = await sniff(bytes, fileName);
   const knowledge = kind.kind === "vijeo-designer" && kind.variant === "vdz" ? await scanVijeo(bytes, fileName) : await scanProject(bytes, fileName);
-  return putKnowledge(knowledge);
+  return putKnowledge(await ownScan(knowledge, ownerId));
 }

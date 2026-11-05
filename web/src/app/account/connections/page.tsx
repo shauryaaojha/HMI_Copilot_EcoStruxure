@@ -1,3 +1,4 @@
+import { ConnectorSetup } from "@/components/account/ConnectorSetup";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/server/session";
 import { Connections } from "@/components/account/Connections";
@@ -24,6 +25,7 @@ export default async function ConnectionsPage() {
             What can reach {user.name}&apos;s projects through the HMI Copilot connector, and how to stop it.
           </p>
         </header>
+        <ConnectorSetup />
         <Connections />
       </div>
     </div>

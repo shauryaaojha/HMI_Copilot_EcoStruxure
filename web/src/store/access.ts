@@ -27,6 +27,8 @@ export interface ProjectAccess {
   actions: AccessAction[];
   /** "member" for a project member, "share" for a signed-out share-link visitor. */
   via: "member" | "share";
+  /** No second member and no share link: nobody else is working on it. */
+  alone?: boolean;
 }
 
 interface AccessState {

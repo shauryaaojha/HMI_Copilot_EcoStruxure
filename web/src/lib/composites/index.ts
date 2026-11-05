@@ -19,7 +19,7 @@ import type { Part } from "@/lib/ote/schema";
 import {
   alarmLamp,
   barScale,
-  fillBar,
+  fillBar, groupBox, surface,
   lamp,
   numericDisplay,
   outline,
@@ -31,6 +31,7 @@ import {
 } from "@/lib/ote/parts";
 import type { Scale } from "@/lib/ote/converters";
 import { DEFAULT_PACK } from "@/lib/standard/pack";
+import { DEFAULT_THEME } from "../components/theme";
 
 const T = DEFAULT_PACK.tokens;
 
@@ -62,9 +63,16 @@ export interface CompositeDef<P extends Record<string, unknown>> {
   expand: (props: P, box: Box, name: string) => Expanded;
 }
 
-const GRID = 8;
+/** The snap (design B, Q1): 4 px. Component sizes are in the 8 px module. */
+const GRID = 4;
 const GAP = 4;
 const snap = (n: number) => Math.round(n / GRID) * GRID;
+
+/** A 12 pt label cut to its box: a word running under the value reads as neither. */
+const fitted = (text: string, width: number) => {
+  const letters = Math.max(1, Math.floor(width / (12 * 0.55)));
+  return text.length > letters ? `${text.slice(0, Math.max(1, letters - 1))}…` : text;
+};
 
 /* ---------------------------------------------------------------------- */
 /* AnalogIndicator                                                         */
@@ -112,13 +120,13 @@ export const AnalogIndicator: CompositeDef<AnalogIndicatorProps> = {
     const span = Math.max(1e-9, p.max - p.min);
     const frac = (v: number) => Math.min(1, Math.max(0, (v - p.min) / span));
 
-    parts.push(rectangle(`${name}`, box, { fill: T.panel, border: T.line }));
+    parts.push(groupBox(`${name}`, box));
     // The label takes the row when the scale runs down; beside a horizontal
     // scale it shares the top row with the value and stops short of it.
     const valueWidth = vertical ? 0 : 80;
     const unitWidth = vertical ? 0 : 40;
     parts.push(
-      textBox(`${name}_Lbl`, p.label, { left: x + 8, top: y + 4, width: Math.max(GRID, w - 16 - (vertical ? 0 : valueWidth + unitWidth + 8)), height: 20 }, { size: 12, bold: true, colour: T.ink }),
+      textBox(`${name}_Lbl`, fitted(p.label, Math.max(GRID, w - 16 - (vertical ? 0 : valueWidth + unitWidth + 8))), { left: x + 8, top: y + 4, width: Math.max(GRID, w - 16 - (vertical ? 0 : valueWidth + unitWidth + 8)), height: 20 }, { size: 12, bold: true, colour: T.ink }),
     );
 
     // The rows are laid out from the box that was actually given, not pinned
@@ -144,10 +152,10 @@ export const AnalogIndicator: CompositeDef<AnalogIndicatorProps> = {
         parts.push(barScale(`${name}_Scale`, { left: x + 8, top: scaleTop, width: 40, height: scaleH }, p.max));
         if (w >= 80) {
           const column = { left: x + 56, top: scaleTop, width: 16, height: scaleH };
-          parts.push(fillBar(`${name}_Bar`, column, { fill: T.muted, back: T.white, border: T.line, vertical: true }));
+          parts.push(fillBar(`${name}_Bar`, column, { fill: DEFAULT_THEME.tokens.processValue, back: T.white, border: T.line, vertical: true, designValue: frac((p.normalLow + p.normalHigh) / 2) * 100 }));
           bar = { property: "Animation.FillLevel.VerticalFill" };
-          const bandTop = scaleTop + (1 - frac(p.normalHigh)) * scaleH;
-          const bandBottom = scaleTop + (1 - frac(p.normalLow)) * scaleH;
+          const bandTop = Math.ceil((scaleTop + (1 - frac(p.normalHigh)) * scaleH) / GRID) * GRID;
+          const bandBottom = Math.floor((scaleTop + (1 - frac(p.normalLow)) * scaleH) / GRID) * GRID;
           parts.push(outline(`${name}_Band`, { left: column.left, top: Math.round(bandTop), width: column.width, height: Math.max(2, Math.round(bandBottom - bandTop)) }, T.ink));
         }
       }
@@ -161,10 +169,11 @@ export const AnalogIndicator: CompositeDef<AnalogIndicatorProps> = {
       const width = Math.max(GRID, w - 16);
       const barTop = headerBottom + GAP;
       if (barTop + BAR <= bottom) {
-        parts.push(fillBar(`${name}_Bar`, { left, top: barTop, width, height: BAR }, { fill: T.muted, back: T.white, border: T.line, vertical: false }));
+        parts.push(fillBar(`${name}_Bar`, { left, top: barTop, width, height: BAR }, { fill: DEFAULT_THEME.tokens.processValue, back: T.white, border: T.line, vertical: false, designValue: frac((p.normalLow + p.normalHigh) / 2) * 100 }));
         bar = { property: "Animation.FillLevel.HorizontalFill" };
-        const bandLeft = left + frac(p.normalLow) * width;
-        const bandRight = left + frac(p.normalHigh) * width;
+        // Whole grid steps inward: a band that rounds past its bar's edge overlaps it.
+        const bandLeft = Math.min(left + width - GRID, Math.ceil((left + frac(p.normalLow) * width) / GRID) * GRID);
+        const bandRight = Math.max(bandLeft + GRID, Math.floor((left + frac(p.normalHigh) * width) / GRID) * GRID);
         parts.push(outline(`${name}_Band`, { left: Math.round(bandLeft), top: barTop, width: Math.max(2, Math.round(bandRight - bandLeft)), height: BAR }, T.ink));
         const scaleTop = barTop + BAR + GAP;
         if (scaleTop + SCALE <= bottom) {
@@ -172,7 +181,7 @@ export const AnalogIndicator: CompositeDef<AnalogIndicatorProps> = {
         }
       }
       parts.push(numericDisplay(`${name}_Val`, { left: x + w - 8 - valueWidth - unitWidth, top: y + 4, width: valueWidth, height: 24 }, p.decimals));
-      parts.push(textBox(`${name}_Unit`, p.units, { left: x + w - 8 - unitWidth + 4, top: y + 6, width: unitWidth - 4, height: 20 }, { size: 12, colour: T.muted }));
+      parts.push(textBox(`${name}_Unit`, p.units, { left: x + w - 8 - unitWidth + 4, top: y + 4, width: unitWidth - 4, height: 20 }, { size: 12, colour: T.muted }));
     }
 
     if (p.tag) {
@@ -210,7 +219,7 @@ export const KpiTile: CompositeDef<KpiTileProps> = {
     const parts: Part[] = [];
     const wires: Expanded["wires"] = [];
     const { left: x, top: y, width: w, height: h } = box;
-    parts.push(rectangle(`${name}`, box, { fill: T.panel, border: T.line }));
+    parts.push(surface(`${name}`, box));
     parts.push(textBox(`${name}_Lbl`, p.label, { left: x + 8, top: y + 4, width: w - 16, height: 20 }, { size: 12, bold: true, colour: T.ink }));
     const value = numericDisplay(`${name}_Val`, { left: x + 8, top: y + 28, width: Math.max(64, w - 16 - 48), height: 36 }, p.decimals);
     if (value.Type === "NumericDisplay") value.Font = { ...value.Font!, Size: 24 };

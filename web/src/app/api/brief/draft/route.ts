@@ -21,8 +21,9 @@ const LONGEST = 2000;
 
 /** Body `{ intent, answers? }`; answers `{ brief, by, questions?, suggestions }`. */
 export async function POST(request: Request) {
+  let caller: Awaited<ReturnType<typeof modelCaller>>;
   try {
-    await modelCaller();
+    caller = await modelCaller();
   } catch (e) {
     return errorResponse(e);
   }
@@ -40,6 +41,6 @@ export async function POST(request: Request) {
   // What other projects did with these kinds, for the engineer to weigh beside
   // the draft. Advice, never applied here: a suggestion the engineer has not
   // taken must not reach the brief they are about to confirm.
-  const suggestions = await suggestionsFor(drafted.brief);
+  const suggestions = await suggestionsFor(drafted.brief, caller.id);
   return Response.json({ ...drafted, suggestions });
 }

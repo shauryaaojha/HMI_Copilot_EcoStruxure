@@ -28,13 +28,18 @@ import { rootBox } from "@/lib/ote/schema";
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
 import { regionOf, regionsOf, roomReport } from "@/lib/ote/regions";
 import { overlapsOn } from "@/lib/ote/tidy";
+import { sceneOf } from "@/lib/layout/scene";
+import { layoutFacts, printLayoutFacts } from "@/lib/layout/facts";
 import { ALIGN_MODES, COLOR_NAMES, OP_NAMES, coerceTurn, type Op, type Turn } from "./ops";
 import { PART_TYPES } from "@/lib/ote/schema";
+import { COMPONENT_KINDS } from "@/lib/components/types";
+import { TOKEN_NAMES } from "@/lib/components/theme";
 import { REGIONS, SIDES } from "@/lib/ote/regions";
 import { inferEquipment, type StructureHint } from "./infer";
 import { relevantTags, type ObjectEntry } from "./retrieve";
 import { TOOLS, TOOL_GUIDE, describeTool, prepare, routedContext, runTool, type PreparedContext } from "./tools";
 import type { ProjectKnowledge } from "@/lib/knowledge/scan";
+import type { Kb } from "@/lib/kb";
 import { resolveProvider, type Provider } from "./provider";
 import { isUnnamed } from "./name";
 
@@ -70,6 +75,8 @@ export interface ScreenDigest {
   room?: string;
   /** Only for the active screen: objects that share pixels, by handle. */
   overlaps?: string[];
+  /** Resolved, coordinate-free layout evidence for an arrange request. */
+  layout?: string;
   /** A content screen: not navigated to, drawn inside a ContentDisplay. Says which screens show it. */
   content?: string;
   /** Only for the active screen: the engineer's Compound Objects and other carried objects, with what they read. */
@@ -214,6 +221,8 @@ export function digestOf(project: DigestSource, request = ""): ProjectDigest {
         });
       }
       digest.room = roomReport(parts, panel);
+      const scene = sceneOf({ screen, panel: project.target, handles: project.handles, opened: true, contentScreens: project.screens });
+      digest.layout = printLayoutFacts(layoutFacts(scene, parts, `${project.target.model} ${project.target.width}x${project.target.height}`));
       const found = overlapsOn(parts, (id) => project.objectMeta?.[id]?.groupId, panel);
       if (found.length > 0) {
         digest.overlaps = found
@@ -432,10 +441,18 @@ Scope - one op can reach many screens and many objects:
   "PMP_101 lamps amber everywhere"      -> setColor select Lamp, selectText PMP_101, screens ["all"], color amber
   "title font 20 on every screen"       -> setText select title, screens ["all"], fontSize 20
   "add a 'Line 1' label to every screen" -> addObject type TextBox, text "Line 1", place region header, screens ["all"]
+  "add a pump for PMP_101 next to the tank" -> addObject type Pump, equipment PMP_101, place anchor <the tank's handle> side rightOf. A component takes its size, colours and tags from the catalogue, the theme and the equipment: name none of them. Use a component (${COMPONENT_KINDS.join(", ")}) for a machine, a level or a status, and a plain part for anything else.
 - One op per kind of change. Twelve screens is one op with screens ["all"],
   never twelve ops.
 
 Overlaps and alignment:
+- The active screen has resolved Layout facts in SDU: use their unit handles and
+  relationships, never invent coordinates. ViewBox panel scale is an explicitly
+  labelled renderer assumption, not an OTE bench result.
+- Use arrange with constraints for new layout edits. Its constraints name
+  relationships such as align, distribute, sameSize, inside, noOverlap, snap,
+  keep, row and column; they never carry left, top, width, height, dx or dy.
+  alignObjects and tidyLayout remain accepted aliases for recorded transcripts.
 - The active screen's overlaps are listed for you, by handle. "Fix the
   overlapping", "things are on top of each other", "tidy this screen" is
   tidyLayout: the layout engine moves each overlapping object (a faceplate
@@ -443,7 +460,12 @@ Overlaps and alignment:
   Never guess handles for this.
 - "Line these up", "align the lamps" is alignObjects with mode, and either
   targets (handles from the objects list) or select (a part type), with
-  screens when it is more than the active screen.
+  screens when it is more than the active screen. Modes spreadHorizontal and
+  spreadVertical are "space these evenly".
+- "Same size", "make these match" is matchSize with targets: the first target
+  is the reference, the rest take its size. dimension is width, height or both.
+- "Put it on the grid", "snap these" is snapToGrid, with targets, or none for
+  the whole screen. grid is the spacing in pixels, 8 unless they say another.
 
 reply is one or two sentences, in the register an engineer uses with another
 engineer. Never describe your own reasoning process.`;
@@ -460,10 +482,13 @@ const D = {
   op: `One of: ${OP_NAMES.join(", ")}. applyPack brings a screen onto the Standard pack: colour only for alarms, fonts at the floor`,
   screen: "Screen handle (s2) the op applies to. Omit for the active screen",
   target: "Object handle (o12) the op acts on",
-  targets: "Object handles, for alignObjects, groupObjects and ungroupObjects",
+  targets: "Object handles, for alignObjects, matchSize, snapToGrid, groupObjects and ungroupObjects",
   name: "New name, for addScreen / renameScreen / addObject",
   equipment: "For addEquipment: the unit id from the equipment list - PMP_101",
-  type: `Part type, one of: ${PART_TYPES.join(", ")}`,
+  type: `Part type, one of: ${PART_TYPES.join(", ")}; or a component, one of: ${COMPONENT_KINDS.join(", ")}`,
+  variant: "For addObject of a component: which drawing of it, when it matters",
+  size: "For addObject of a component: S, M or L. Absent means M",
+  token: `For setColor: a colour by meaning, one of: ${TOKEN_NAMES.join(", ")}`,
   place: "Where it goes: a region, or an anchor handle and a side",
   region: `One of: ${REGIONS.join(", ")}`,
   anchor: "Object handle to place relative to",
@@ -521,7 +546,10 @@ function geminiSchema() {
             targets: { type: "ARRAY", items: { type: "STRING" }, description: D.targets },
             name: S(D.name),
             equipment: S(D.equipment),
-            type: { type: "STRING", enum: [...PART_TYPES], description: D.type },
+            type: { type: "STRING", enum: [...PART_TYPES, ...COMPONENT_KINDS], description: D.type },
+            variant: S(D.variant),
+            size: { type: "STRING", enum: ["S", "M", "L"], description: D.size },
+            token: { type: "STRING", enum: [...TOKEN_NAMES], description: D.token },
             place: {
               type: "OBJECT",
               description: D.place,
@@ -589,7 +617,10 @@ const JSON_SCHEMA = {
           targets: { type: "array", items: { type: "string" } },
           name: { type: "string" },
           equipment: { type: "string", description: D.equipment },
-          type: { type: "string", enum: [...PART_TYPES] },
+          type: { type: "string", enum: [...PART_TYPES, ...COMPONENT_KINDS] },
+          variant: { type: "string", description: D.variant },
+          size: { type: "string", enum: ["S", "M", "L"], description: D.size },
+          token: { type: "string", enum: [...TOKEN_NAMES], description: D.token },
           place: {
             type: "object",
             description: D.place,
@@ -662,6 +693,7 @@ export interface ConverseInput {
   structure?: StructureHint[];
   /** Finished projects, handed in by the server route (lib/knowledge). */
   knowledge?: ProjectKnowledge[];
+  kb?: Kb;
   /** What the target format can write, for target_capabilities. */
   target?: { name: string; parts: readonly string[] };
   /** How the opened project draws its objects, for project_style (lib/ote/exemplars.ts). */
@@ -676,6 +708,7 @@ function toolContext(input: ConverseInput): PreparedContext {
     alarms: input.catalog?.alarms,
     structure: input.structure,
     knowledge: input.knowledge,
+    kb: input.kb,
     targetParts: input.target?.parts,
     targetName: input.target?.name,
     own: input.own,
@@ -734,6 +767,7 @@ export function volatileContext(digest: ProjectDigest): string {
   return [
     active ? `Active screen: ${active.handle} ${active.name}` : "No active screen.",
     active ? `Room on it: ${active.room}` : "",
+    active?.layout ? `Layout facts (resolved SDU):\n${active.layout}` : "",
     active ? `Overlaps on it:${active.overlaps?.length ? `\n${active.overlaps.join("\n")}` : " none"}` : "",
     active ? `Objects on it:\n${objects || "- none"}` : "",
     active?.carried?.length

@@ -26,8 +26,20 @@ import { CORE, deletion, JSON_FILE, Workspace, WorkspaceError } from "./workspac
 import {
   bind, bindings, cloneObject, duplicateScreen, findObject, get, objects, screenByName, screens, set, unbind, walk,
 } from "./project";
+import { alignObjects, distributeObjects, findOverlaps, matchSize, snapToGrid, tidyScreen } from "./arrange";
 import { runScript } from "./script";
 import { Shell, shellAvailable, type Box } from "./sandbox";
+import { loadKb, type Kb } from "@/lib/kb";
+import { canServe, getEntry, searchEntries } from "@/lib/kb/serve";
+import { applyOps, type Op } from "@/core/ops";
+import { COMPONENT_KINDS } from "@/lib/components/types";
+import { componentCatalogue } from "@/lib/components/place";
+import { inputOf, storeOf } from "./store-input";
+import { sceneOf } from "@/lib/layout/scene";
+import { layoutFacts, printLayoutFacts } from "@/lib/layout/facts";
+import { solveLayout } from "@/lib/layout/solve";
+import { verifyPlan } from "@/lib/layout/verify";
+import type { Constraint, Edge } from "@/lib/layout/types";
 
 export interface ToolResult {
   text: string;
@@ -56,6 +68,7 @@ export interface AgentTool {
 
 export interface AgentContext {
   ws: Workspace;
+  kb?: Kb;
   /** The project as read from the workspace, cached per workspace version. */
   read(): Promise<ReadProject>;
 }
@@ -64,6 +77,7 @@ export function contextFor(ws: Workspace): AgentContext {
   let cached: { version: number; read: Promise<ReadProject> } | undefined;
   return {
     ws,
+    kb: loadKb(),
     read() {
       if (!cached || cached.version !== ws.version) {
         const version = ws.version;
@@ -81,6 +95,8 @@ const MAX_CHARS = 14_000;
 const ok = (text: string): ToolResult => ({ text: text.length > MAX_CHARS ? `${text.slice(0, MAX_CHARS)}\n... cut at ${MAX_CHARS} characters; narrow the request` : text });
 const str = (v: unknown) => (v === undefined || v === null ? undefined : String(v));
 const json = (v: unknown) => JSON.stringify(v, null, 1);
+/** A list of object names or ids: a JSON array, or one string with commas. */
+const names = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : v === undefined || v === null ? [] : String(v).split(",")).map((s) => s.trim()).filter(Boolean);
 
 function lines(text: string, offset = 1, limit = 400): string {
   const all = text.split(/\r?\n/);
@@ -149,6 +165,32 @@ function readable(ws: Workspace, path: string): string {
   } catch {
     return text;
   }
+}
+
+/** One workspace path for every arrangement tool; none writes raw Locations. */
+async function solveWorkspace(ctx: AgentContext, screenRef: string, constraints: Constraint[], apply: boolean): Promise<ToolResult> {
+  const read = await ctx.read();
+  const info = screenByName(ctx.ws, screenRef);
+  const screens = structuredClone(read.screens);
+  const screen = screens.find((candidate) => candidate.UniqueId === info.id);
+  if (!screen) return { text: `${info.name} is carried whole and cannot be arranged`, isError: true };
+  const scene = sceneOf({ screen, panel: read.target, preserved: read.preserved.screens.get(screen.UniqueId), contentScreens: screens, opened: true });
+  const input = { scene, parts: screen.Children[0].Children, constraints };
+  const plan = solveLayout(input);
+  const verification = verifyPlan(input, plan);
+  const result = JSON.stringify({ plan, verification }, null, 1);
+  if (!apply) return ok(result);
+  if (plan.conflict || !verification.ok) return { text: result, isError: true };
+  const moved = new Map(plan.moves.flatMap((move) => move.ids.map((id) => [id, move] as const)));
+  for (const part of screen.Children[0].Children) {
+    const move = moved.get(part.UniqueId);
+    if (!move) continue;
+    part.Location.Left += move.to.left - move.from.left;
+    part.Location.Top += move.to.top - move.from.top;
+    if (move.ids.length === 1) { part.Width = move.to.width; part.Height = move.to.height; }
+  }
+  await ctx.ws.load(await packageProject({ ...read, screens }, undefined, read.preserved));
+  return ok(result + `\napplied ${plan.moves.length} verified unit${plan.moves.length === 1 ? "" : "s"}`);
 }
 
 export const TOOLS: AgentTool[] = [
@@ -415,12 +457,96 @@ export const TOOLS: AgentTool[] = [
     name: "screen_objects",
     description: "Every object on a screen at every depth (inside grids, groups and canvases): type, name, id, box, text, containers, what it is bound to, and its JSON pointer in the file.",
     params: { screen: { type: "string", description: "Screen name or id" } },
-    run({ ws }, i) {
+    async run(ctx, i) {
+      const { ws } = ctx;
+      const info = screenByName(ws, String(i.screen));
+      const read = await ctx.read();
+      const screen = read.screens.find((candidate) => candidate.UniqueId === info.id);
+      const scene = screen ? sceneOf({ screen, panel: read.target, preserved: read.preserved.screens.get(screen.UniqueId), contentScreens: read.screens, opened: true }) : undefined;
       return ok(objects(ws, String(i.screen)).map((o) => {
         const box = o.box ? ` @${o.box.left},${o.box.top} ${o.box.width}x${o.box.height}` : o.cell ? ` cell r${o.cell.row} c${o.cell.column} span ${o.cell.rowSpan}x${o.cell.columnSpan}` : "";
+        const sdu = scene?.nodes.get(o.id)?.box;
+        const resolved = sdu ? ` SDU @${sdu.left},${sdu.top} ${sdu.width}x${sdu.height}` : "";
         const bound = o.bound.length ? ` bound: ${o.bound.map((b) => `${b.property}<-${b.text} (mode ${b.mode})`).join("; ")}` : "";
-        return `${"  ".repeat(o.parents.length)}${o.type} "${o.name}" ${o.id}${box}${o.text ? ` text "${o.text}"` : ""}${bound}  ${o.pointer}`;
+        return `${"  ".repeat(o.parents.length)}${o.type} "${o.name}" ${o.id}${box}${resolved}${o.text ? ` text "${o.text}"` : ""}${bound}  ${o.pointer}`;
       }).join("\n") || "no objects");
+    },
+  },
+  {
+    name: "layout_facts",
+    description: "Numeric screen-layout facts in screen design units: resolved boxes for Grid children, rows, columns, near misses, overlaps, bounds and the detected grid. ViewBox panel scaling is an assumption pending an OTE bench.",
+    params: {
+      screen: { type: "string", description: "Screen name or id" },
+      scope: { type: "any", description: "Optional object ids to limit the facts to", optional: true },
+    },
+    async run(ctx, i) {
+      const read = await ctx.read();
+      const info = screenByName(ctx.ws, String(i.screen));
+      const screen = read.screens.find((candidate) => candidate.UniqueId === info.id);
+      if (!screen) return { text: `${info.name} is carried whole and has no editable layout scene`, isError: true };
+      const scope = Array.isArray(i.scope) && i.scope.every((id) => typeof id === "string") ? i.scope as string[] : "screen";
+      const scene = sceneOf({ screen, panel: read.target, preserved: read.preserved.screens.get(screen.UniqueId), contentScreens: read.screens, opened: true });
+      return ok(printLayoutFacts(layoutFacts(scene, screen.Children[0].Children, `${read.target.model} ${read.target.width}x${read.target.height}`, scope)));
+    },
+  },
+  {
+    name: "layout_solve",
+    description: "Solve named alignment, distribution, size, containment, overlap, snap and keep constraints deterministically. Pass apply=true only after inspecting the returned plan; it writes through the project reader and packager, never json_set on Location.",
+    writes: true,
+    params: {
+      screen: { type: "string", description: "Screen name or id" },
+      constraints: { type: "any", description: "Constraint list from layout_facts; each item needs id and kind" },
+      apply: { type: "boolean", description: "Write a verified plan (default false)", optional: true },
+    },
+    async run(ctx, i) {
+      if (!Array.isArray(i.constraints) || !i.constraints.every((item) => item && typeof item === "object" && typeof (item as { id?: unknown }).id === "string" && typeof (item as { kind?: unknown }).kind === "string"))
+        return { text: "constraints must be a list of named constraint objects", isError: true };
+      const forbidden = ["left", "top", "width", "height", "dx", "dy"];
+      if (i.constraints.some((item) => forbidden.some((key) => key in (item as object))))
+        return { text: "layout_solve accepts relationships, not coordinates", isError: true };
+      return solveWorkspace(ctx, String(i.screen), i.constraints as Constraint[], Boolean(i.apply));
+    },
+  },
+  {
+    name: "components",
+    description: "The component catalogue: every kind you can place with place_component, its variants, sizes and the tag roles it takes.",
+    params: {},
+    run() {
+      return ok(JSON.stringify(componentCatalogue(), null, 1));
+    },
+  },
+  {
+    name: "place_component",
+    description: `Draw a component on a screen: ${COMPONENT_KINDS.join(", ")}. Give no coordinates and no colours: the size comes from the catalogue, the colours from the theme, the tags from the equipment, and the place from a region or an object it goes beside. Refused rather than guessed if it does not fit.`,
+    writes: true,
+    params: {
+      screen: { type: "string", description: "Screen name or id" },
+      kind: { type: "string", description: "One of the kinds in the components tool" },
+      equipment: { type: "string", description: "The unit it draws, e.g. PMP_101: its tags are bound by role", optional: true },
+      variant: { type: "string", description: "Which drawing; the kind's first if left out", optional: true },
+      size: { type: "string", description: "S, M or L; M if left out", optional: true },
+      tags: { type: "any", description: "Tags by role, beyond what the equipment offers", optional: true },
+      name: { type: "string", description: "Object name", optional: true },
+      label: { type: "string", description: "The label it shows", optional: true },
+      region: { type: "string", description: "A region of the screen, e.g. body", optional: true },
+      anchor: { type: "string", description: "An object it goes beside", optional: true },
+      side: { type: "string", description: "Which side of the anchor: rightOf, leftOf, above or below", optional: true },
+    },
+    async run(ctx, i) {
+      const read = await ctx.read();
+      const info = screenByName(ctx.ws, String(i.screen));
+      if (!read.screens.some((candidate) => candidate.UniqueId === info.id)) return { text: `${info.name} is carried whole, so nothing can be drawn on it`, isError: true };
+      const store = storeOf(read);
+      const place = i.anchor ? { anchor: String(i.anchor), side: str(i.side) ?? "rightOf" } : i.region ? { region: String(i.region) } : undefined;
+      const op = { op: "addObject", screen: info.name, type: String(i.kind), ...(str(i.equipment) ? { equipment: str(i.equipment) } : {}),
+        ...(str(i.variant) ? { variant: str(i.variant) } : {}), ...(str(i.size) ? { size: str(i.size) } : {}),
+        ...(i.tags && typeof i.tags === "object" ? { tags: i.tags } : {}), ...(str(i.name) ? { name: str(i.name) } : {}),
+        ...(str(i.label) ? { text: str(i.label) } : {}), ...(place ? { place } : {}) } as Op;
+      if (!(COMPONENT_KINDS as readonly string[]).includes(String(i.kind))) return { text: `${String(i.kind)} is not a component; they are ${COMPONENT_KINDS.join(", ")}`, isError: true };
+      const outcome = applyOps([op], store);
+      if (outcome.rejected.length > 0) return { text: outcome.rejected.map((r) => r.reason).join("; "), isError: true };
+      await ctx.ws.load(await packageProject({ ...read, ...inputOf(store) }, undefined, read.preserved));
+      return ok(outcome.applied.join("\n"));
     },
   },
   {
@@ -520,7 +646,7 @@ export const TOOLS: AgentTool[] = [
         row: i.row === undefined ? undefined : Number(i.row), column: i.column === undefined ? undefined : Number(i.column),
       });
       const at = o.cell ? `grid cell row ${o.cell.row}, column ${o.cell.column}` : o.box ? `${o.box.left},${o.box.top}` : "its container";
-      const over = o.overlaps.length ? `\nIt covers ${o.overlaps.join(", ")}; move it with json_set on Location if that is not meant.` : "";
+      const over = o.overlaps.length ? `\nIt covers ${o.overlaps.join(", ")}; use tidy_screen or align_objects if that is not meant.` : "";
       return ok(`copied as ${o.type} "${o.name}" ${o.id} on ${o.screen}, ${at}; JSON pointer ${o.pointer} in ${o.file}${over}`);
     },
   },
@@ -549,6 +675,75 @@ export const TOOLS: AgentTool[] = [
     run({ ws }, i) {
       const n = unbind(ws, String(i.object), str(i.property));
       return ok(n ? `removed ${n} binding${n === 1 ? "" : "s"}` : "it had no such binding");
+    },
+  },
+  {
+    name: "align_objects",
+    description: "Line objects up by their edges or centres. One object is aligned to its container. A card takes what is drawn on it along. Prefer this to working out Location with json_set.",
+    writes: true,
+    params: {
+      objects: { type: "any", description: "Object names or ids: a JSON array" },
+      mode: { type: "string", description: "Which edge or centre", enum: ["left", "centre", "right", "top", "middle", "bottom"] },
+      screen: { type: "string", description: "Screen name or id, when a name is on several screens", optional: true },
+    },
+    async run(ctx, i) {
+      return ok(alignObjects(ctx.ws, names(i.objects), String(i.mode) as "left", (await ctx.read()).target, str(i.screen)));
+    },
+  },
+  {
+    name: "distribute_objects",
+    description: "Space three or more objects evenly between the outermost two, across or down. A card takes what is drawn on it along.",
+    writes: true,
+    params: {
+      objects: { type: "any", description: "Object names or ids: a JSON array" },
+      axis: { type: "string", description: "horizontal spaces them across, vertical down", enum: ["horizontal", "vertical"] },
+      screen: { type: "string", description: "Screen name or id, when a name is on several screens", optional: true },
+    },
+    async run(ctx, i) {
+      return ok(distributeObjects(ctx.ws, names(i.objects), String(i.axis) as "horizontal", (await ctx.read()).target, str(i.screen)));
+    },
+  },
+  {
+    name: "match_size",
+    description: "Give objects the size of the first one named.",
+    writes: true,
+    params: {
+      objects: { type: "any", description: "Object names or ids: a JSON array; the first is the size to copy" },
+      dimension: { type: "string", description: "Which side to copy; both if left out", optional: true, enum: ["width", "height", "both"] },
+      screen: { type: "string", description: "Screen name or id, when a name is on several screens", optional: true },
+    },
+    async run(ctx, i) {
+      return ok(matchSize(ctx.ws, names(i.objects), (str(i.dimension) ?? "both") as "both", (await ctx.read()).target, str(i.screen)));
+    },
+  },
+  {
+    name: "snap_to_grid",
+    description: "Move objects to the nearest grid position. Name them, or name none for every faceplate in the screen's main container; a card keeps what is drawn on it in place.",
+    writes: true,
+    params: {
+      screen: { type: "string", description: "Screen name or id" },
+      objects: { type: "any", description: "Object names or ids: a JSON array", optional: true },
+      grid: { type: "integer", description: "Spacing in pixels; 4 if left out", optional: true },
+    },
+    async run(ctx, i) {
+      return ok(snapToGrid(ctx.ws, String(i.screen), (await ctx.read()).target, names(i.objects), i.grid === undefined ? undefined : Number(i.grid)));
+    },
+  },
+  {
+    name: "find_overlaps",
+    description: "Every overlap on a screen, in pixels: between faceplates, and between the things on one card. A label on a card or a part of a composite is not an overlap.",
+    params: { screen: { type: "string", description: "Screen name or id" } },
+    async run(ctx, i) {
+      return ok(findOverlaps(ctx.ws, String(i.screen), (await ctx.read()).target));
+    },
+  },
+  {
+    name: "tidy_screen",
+    description: "Clear every overlap on a screen: each faceplate moves whole to the nearest clear spot, and something covered on its own card moves within that card. Says what it could not clear.",
+    writes: true,
+    params: { screen: { type: "string", description: "Screen name or id" } },
+    async run(ctx, i) {
+      return ok(tidyScreen(ctx.ws, String(i.screen), (await ctx.read()).target));
     },
   },
   {
@@ -666,6 +861,33 @@ export const TOOLS: AgentTool[] = [
       if (!shellAvailable()) return { text: "No sandbox here (it needs Vercel, or VERCEL_OIDC_TOKEN locally). Use run_script or the file tools.", isError: true };
       const r = await shellFor(ws).run(String(i.command), i.timeout_s === undefined ? undefined : Number(i.timeout_s));
       return { text: ok(r.text).text, isError: r.isError };
+    },
+  },
+  {
+    name: "kb_search",
+    description: "Search repository parts, panels, layout patterns, machine classes and enforced rules. Returns up to eight short entries with ids.",
+    params: { query: { type: "string", description: "Search words" } },
+    run(ctx, input) {
+      const kb = ctx.kb ?? loadKb();
+      return ok(kb ? json(searchEntries(kb, String(input.query), "agent")) : "the indexed knowledge base is unavailable");
+    },
+  },
+  {
+    name: "kb_get",
+    description: "Read one indexed knowledge entry by id, including its bounded body and source.",
+    params: { id: { type: "string", description: "Entry id from kb_search" } },
+    run(ctx, input) {
+      const kb = ctx.kb ?? loadKb();
+      return ok(kb ? json(getEntry(kb, String(input.id), "agent") ?? { error: "no such entry" }) : "the indexed knowledge base is unavailable");
+    },
+  },
+  {
+    name: "kb_related",
+    description: "List entries directly related to an indexed knowledge entry.",
+    params: { id: { type: "string", description: "Knowledge entry id" } },
+    run(ctx, input) {
+      const kb = ctx.kb ?? loadKb();
+      return ok(kb ? json(kb.related(String(input.id)).filter((entry) => canServe(entry, "agent")).slice(0, 8).map((entry) => ({ id: entry.id, title: entry.title, summary: entry.summary }))) : "the indexed knowledge base is unavailable");
     },
   },
 ];

@@ -13,8 +13,8 @@ import path from "node:path";
 import { randomBytes } from "node:crypto";
 import type { PersistedProject } from "@/store/persist";
 import { hasMongo } from "@/lib/db/mongo";
-import { DEFAULT_LIMITS } from "@/lib/ingest/zip";
 import { ServerError } from "./errors";
+import { quotas, refuseBytes, refuseCount } from "./quotas";
 import { FileStorage, MemoryStorage, MongoStorage, asBytes, validId, type Storage, type Row, type Data } from "./storage";
 import { OBJECTS, loadStored, sweepObjects, writeSnapshot, type Manifest } from "./snapshots";
 import { sharesRepo, commentsRepo, putMember, ROLE_RANK, type SharesRepo, type CommentsRepo } from "./repo-collab";
@@ -34,7 +34,7 @@ export const HISTORY_LIMIT = 50;
 /** What listings read from a version row: everything but the snapshot and its manifest. */
 export const VERSION_INFO = { snapshot: 0, manifest: 0 } as const;
 
-export interface User { id: string; email?: string | null; name: string; image?: string | null; createdAt?: number }
+export interface User { id: string; email?: string | null; name: string; image?: string | null; createdAt?: number; sessionVersion?: number }
 /**
  * What creating an account needs. `emailKey` is the address folded to one
  * canonical form so that two spellings of the same mailbox cannot both sign
@@ -76,7 +76,7 @@ export type Version = VersionInfo & { snapshot: Snapshot };
 export type StoredVersion = VersionInfo & { manifest?: Manifest; snapshot?: Snapshot };
 /** `exportDenied` is set when someone joined through a link that withheld export. */
 export type Member = Row & { projectId: string; userId: string; role: Role; addedAt: number; exportDenied?: boolean };
-export type Source = Row & { ownerId: string | null; fileName: string; createdAt: number; expiresAt?: number };
+export type Source = Row & { ownerId: string | null; fileName: string; size?: number; createdAt: number; expiresAt?: number };
 export type Upload = Row & { ownerId: string | null; fileName: string; size: number; expiresAt: number; sourceId?: string };
 /** `data` is bytes since v2; base64 text in parts written before it. */
 type Part = Row & { uploadId: string; part: number; size: number; data: Uint8Array | string; expiresAt?: number };
@@ -98,6 +98,13 @@ type UserRow = Row & User & { emailKey?: string; passwordHash?: string };
  * are dropped here, in the one place every read goes through, rather than left
  * to each caller to remember - a route that forgets would serve the hash.
  */
+/**
+ * The implicit identity on a laptop with no sign-in (session.ts), which a
+ * deployment can never have. One engineer on their own machine is not who the
+ * account quotas are for, and an installation can hold more than ten projects.
+ */
+const LOCAL_ENGINEER = "local";
+
 function profile(row: UserRow): User {
   const { _id, emailKey, passwordHash, ...user } = row;
   void _id; void emailKey; void passwordHash;
@@ -112,12 +119,20 @@ export interface Repo {
     get(id: string): Promise<User | null>;
     create(user: NewUser): Promise<User>;
     credential(emailKey: string): Promise<Credential | null>;
+    sessionValid(id: string, version: number, sid: string): Promise<boolean>;
+    revokeSession(id: string, sid: string, expiresAt: number): Promise<void>;
+    bumpSessionVersion(id: string): Promise<number>;
+    replacePassword(id: string, passwordHash: string): Promise<void>;
+    deleteAccount(id: string): Promise<{ retainedSources: string[] }>;
+    issueReset(emailKey: string, tokenHash: string, expiresAt: number): Promise<boolean>;
+    consumeReset(tokenHash: string, passwordHash: string): Promise<string | null>;
   };
   attempts: { hit(key: string, windowMs: number): Promise<{ count: number; resetAt: number }>; clear(key: string): Promise<void> };
   projects: {
     create(ownerId: string, snapshot: Snapshot, layout?: "typed" | "struct"): Promise<Project>;
     get(id: string): Promise<Project | null>;
     list(userId: string): Promise<Project[]>;
+    owned(userId: string): Promise<Project[]>;
     /** The projects that refer to a stored source, whoever their members are. */
     referencing(sourceId: string): Promise<Project[]>;
     /** A project and one user's membership of it, in one read: what every access check needs. */
@@ -125,7 +140,7 @@ export interface Repo {
     save(id: string, rev: number, snapshot: Snapshot, authorId: string, label?: string): Promise<Version>;
     /** Connector settings, which are project metadata and not part of the synced document. */
     connector(id: string, settings: ConnectorSettings): Promise<Project>;
-    delete(id: string): Promise<void>;
+    delete(id: string, soleMemberOwnerId?: string): Promise<void>;
   };
   versions: { list(projectId: string): Promise<VersionInfo[]>; get(projectId: string, rev: number): Promise<Version | null>; current(projectId: string): Promise<Version | null>; restore(projectId: string, rev: number, authorId: string): Promise<Version> };
   members: {
@@ -142,8 +157,8 @@ export interface Repo {
   proposals: ProposalsRepo;
   locks: LocksRepo;
   jobs: JobsRepo;
-  sources: { info(id: string): Promise<Source | null>; put(bytes: Uint8Array, fileName: string, ownerId: string | null, expiresAt?: number): Promise<string>; get(id: string): Promise<{ meta: Source; bytes: Uint8Array } | null> };
-  uploads: { create(fileName: string, size: number, ownerId: string | null): Promise<Upload>; get(id: string): Promise<Upload | null>; part(id: string, part: number, bytes: Uint8Array, ownerId: string | null): Promise<void>; complete(id: string, ownerId: string | null): Promise<string>; sweep(): Promise<void> };
+  sources: { info(id: string): Promise<Source | null>; put(bytes: Uint8Array, fileName: string, ownerId: string | null, expiresAt?: number, creditUploadId?: string): Promise<string>; get(id: string): Promise<{ meta: Source; bytes: Uint8Array } | null>; remove(id: string): Promise<void> };
+  uploads: { create(fileName: string, size: number, ownerId: string | null): Promise<Upload>; get(id: string): Promise<Upload | null>; part(id: string, part: number, bytes: Uint8Array, ownerId: string | null): Promise<void>; complete(id: string, ownerId: string | null): Promise<string>; sweep(): Promise<void>; removeOwned(ownerId: string): Promise<void> };
 }
 /** Apply domain invariants inside the storage transaction. */
 export class BaseRepo implements Repo {
@@ -163,6 +178,19 @@ export class BaseRepo implements Repo {
       if (error instanceof ServerError && error.code === "corrupt") return this.tx(fn);
       throw error;
     }
+  }
+  private async storedBytes(d: Data, ownerId: string): Promise<number> {
+    let total = 0;
+    for (const source of await d.list<Source>("sources", { ownerId })) {
+      if (source.size !== undefined) { total += source.size; continue; }
+      // Rows written before quotas have no size. Read their bytes rather than
+      // undercounting an existing account, and backfill on the next write.
+      const bytes = await this.storage.bytes.get(source._id);
+      if (!bytes) throw new ServerError(500, "storage", `Could not measure stored source ${source.fileName}`);
+      total += bytes.length;
+      await d.put("sources", { ...source, size: bytes.length });
+    }
+    return total;
   }
   users: Repo["users"] = {
     upsert: user => this.tx(async d => {
@@ -193,6 +221,77 @@ export class BaseRepo implements Repo {
     credential: emailKey => this.read(async d => {
       const [row] = await d.list<UserRow>("users", { emailKey }, { limit: 1 });
       return row?.passwordHash ? { user: profile(row), passwordHash: row.passwordHash } : null;
+    }),
+    sessionValid: (id, version, sid) => this.read(async d => {
+      const [user, revoked] = await Promise.all([d.get<UserRow>("users", id), d.get("revokedSessions", sid)]);
+      return !!user && (user.sessionVersion ?? 0) <= version && !revoked;
+    }),
+    revokeSession: (id, sid, expiresAt) => this.tx(async d => {
+      await d.put("revokedSessions", { _id: sid, userId: id, expiresAt });
+    }),
+    bumpSessionVersion: id => this.tx(async d => {
+      const user = await d.get<UserRow>("users", id);
+      if (!user) throw missing();
+      const version = (user.sessionVersion ?? 0) + 1;
+      await d.put("users", { ...user, sessionVersion: version });
+      return version;
+    }),
+    replacePassword: (id, passwordHash) => this.tx(async d => {
+      const user = await d.get<UserRow>("users", id);
+      if (!user) throw missing();
+      await d.put("users", { ...user, passwordHash, sessionVersion: (user.sessionVersion ?? 0) + 1 });
+      for (const table of ["connectorGrants", "connectorTokens", "oauthCodes"]) {
+        await d.removeMany(table, (await d.list(table, { userId: id }, { projection: { _id: 1 } })).map(row => row._id));
+      }
+    }),
+    deleteAccount: async id => {
+      const owned = await this.projects.owned(id);
+      const shared: string[] = [];
+      for (const project of owned) if ((await this.members.list(project._id)).some(member => member.userId !== id)) shared.push(project.name);
+      if (shared.length) throw new ServerError(409, "shared-projects", `Remove members or transfer ownership first: ${shared.join(", ")}`, { projects: shared });
+      const step = async (name: string, action: () => Promise<unknown>) => {
+        try { await action(); }
+        catch (error) {
+          if (error instanceof ServerError && error.code === "shared-projects") throw error;
+          throw new ServerError(500, "cleanup-failed", `Could not remove ${name}. The account remains so you can retry.`, { item: name });
+        }
+      };
+      for (const project of owned) await step(`project ${project.name}`, () => this.projects.delete(project._id, id));
+      for (const project of await this.projects.list(id)) await step(`membership in ${project.name}`, () => this.members.remove(project._id, id));
+      await step("uploads", () => this.uploads.removeOwned(id));
+      const sources = await this.read(d => d.list<Source>("sources", { ownerId: id }));
+      const retainedSources: string[] = [];
+      for (const source of sources) {
+        const referencing = await this.projects.referencing(source._id);
+        if (referencing.length) { retainedSources.push(`${source.fileName} (used by ${referencing.map(p => p.name).join(", ")})`); continue; }
+        await step(`source ${source.fileName}`, () => this.sources.remove(source._id));
+      }
+      await step("connector access, sessions and account", () => this.tx(async d => {
+        for (const table of ["connectorGrants", "connectorTokens", "oauthCodes", "revokedSessions", "passwordResets"]) {
+          await d.removeMany(table, (await d.list(table, { userId: id }, { projection: { _id: 1 } })).map(row => row._id));
+        }
+        await d.remove("users", id);
+      }));
+      return { retainedSources };
+    },
+    issueReset: (emailKey, tokenHash, expiresAt) => this.tx(async d => {
+      const [user] = await d.list<UserRow>("users", { emailKey }, { limit: 1 });
+      if (!user) return false;
+      await d.removeMany("passwordResets", (await d.list("passwordResets", { userId: user.id }, { projection: { _id: 1 } })).map(row => row._id));
+      await d.put("passwordResets", { _id: tokenHash, userId: user.id, expiresAt });
+      return true;
+    }),
+    consumeReset: (tokenHash, passwordHash) => this.tx(async d => {
+      const reset = await d.get<Row & { userId: string; expiresAt: number }>("passwordResets", tokenHash);
+      if (!reset || reset.expiresAt <= this.now()) return null;
+      const user = await d.get<UserRow>("users", reset.userId);
+      if (!user) return null;
+      await d.remove("passwordResets", tokenHash);
+      await d.put("users", { ...user, passwordHash, sessionVersion: (user.sessionVersion ?? 0) + 1 });
+      for (const table of ["connectorGrants", "connectorTokens", "oauthCodes"]) {
+        await d.removeMany(table, (await d.list(table, { userId: user.id }, { projection: { _id: 1 } })).map(row => row._id));
+      }
+      return user.id;
     }),
   };
   /** Fixed-window attempt counters. The policy - which key, how many, how long - is lib/server/rate-limit.ts. */
@@ -242,6 +341,8 @@ export class BaseRepo implements Repo {
     create: (ownerId, snapshot, layout) => this.tx(async d => {
       if (!validId(snapshot.id)) throw new ServerError(400, "invalid", "Invalid project id");
       if (await d.get("projects", snapshot.id)) throw new ServerError(409, "exists", "Project already exists");
+      const limit = quotas().projects;
+      if (ownerId !== LOCAL_ENGINEER && (await d.list("projects", { ownerId }, { projection: { _id: 1 }, limit })).length >= limit) refuseCount("Projects per account", limit);
       const p: Project = { _id: snapshot.id, ownerId, name: snapshot.name, target: snapshot.target, createdAt: this.now(), updatedAt: this.now(), rev: 0, ...(layout ? { layout } : {}) };
       await d.put("members", { _id: `${p._id}:${ownerId}`, projectId: p._id, userId: ownerId, role: "owner", addedAt: this.now() });
       await this.save(d, p, 0, snapshot, ownerId, "Created");
@@ -263,6 +364,7 @@ export class BaseRepo implements Repo {
       const projects = await d.list<Project>("projects", { _id: { $in: members.map(m => m.projectId) } });
       return projects.sort((a, b) => b.updatedAt - a.updatedAt);
     }),
+    owned: userId => this.read(d => d.list<Project>("projects", { ownerId: userId })),
     referencing: sourceId => this.read(async d => {
       const [listed, primary] = await Promise.all([d.list<Project>("projects", { sources: sourceId }), d.list<Project>("projects", { sourceId })]);
       return [...new Map([...listed, ...primary].map(p => [p._id, p])).values()];
@@ -280,7 +382,14 @@ export class BaseRepo implements Repo {
       await d.put("projects", next);
       return next;
     }),
-    delete: id => this.tx(async d => {
+    delete: (id, soleMemberOwnerId) => this.tx(async d => {
+      if (soleMemberOwnerId) {
+        const project = await d.get<Project>("projects", id);
+        const members = await d.list<Member>("members", { projectId: id });
+        if (project?.ownerId !== soleMemberOwnerId || members.some(member => member.userId !== soleMemberOwnerId)) {
+          throw new ServerError(409, "shared-projects", `Remove members or transfer ownership first: ${project?.name ?? id}`);
+        }
+      }
       await d.remove("projects", id);
       for (const table of PROJECT_TABLES) {
         await d.removeMany(table, (await d.list(table, { projectId: id }, { projection: { _id: 1 } })).map(row => row._id));
@@ -332,12 +441,25 @@ export class BaseRepo implements Repo {
   jobs = jobsRepo(fn => this.tx(fn), () => this.now(), fn => this.read(fn));
   connector = connectorRepo(fn => this.tx(fn), () => this.now(), fn => this.read(fn));
   sources: Repo["sources"] = {
-    put: async (bytes, fileName, ownerId, expiresAt) => {
-      if (bytes.length > DEFAULT_LIMITS.maxBytes) throw new ServerError(413, "too-large", "File exceeds 100 MB");
+    remove: async id => {
+      await this.storage.bytes.remove(id);
+      await this.tx(d => d.remove("sources", id));
+    },
+    put: async (bytes, fileName, ownerId, expiresAt, creditUploadId) => {
+      const limits = quotas();
+      const maximum = ownerId ? limits.sourceBytes : Math.min(limits.sourceBytes, limits.anonymousUploadBytes);
+      if (bytes.length > maximum) refuseBytes(ownerId ? "Stored source" : "Anonymous source", maximum);
       const id = crypto.randomUUID();
-      await this.storage.bytes.put(id, bytes);
-      try { await this.tx(d => d.put("sources", { _id: id, ownerId, fileName, createdAt: this.now(), ...(expiresAt ? { expiresAt } : {}) })); }
-      catch (error) { await this.storage.bytes.remove(id); throw error; }
+      await this.tx(async d => {
+        if (ownerId) {
+          const stored = await this.storedBytes(d, ownerId);
+          const pending = (await d.list<Upload>("uploads", { ownerId })).filter(upload => upload.expiresAt > this.now() && !upload.sourceId && upload._id !== creditUploadId).reduce((sum, upload) => sum + upload.size, 0);
+          if (ownerId !== LOCAL_ENGINEER && stored + pending + bytes.length > limits.accountSourceBytes) refuseBytes("Stored and pending sources per account", limits.accountSourceBytes);
+        }
+        await d.put("sources", { _id: id, ownerId, fileName, size: bytes.length, createdAt: this.now(), ...(expiresAt ? { expiresAt } : {}) });
+      });
+      try { await this.storage.bytes.put(id, bytes); }
+      catch (error) { await this.tx(d => d.remove("sources", id)); throw error; }
       return id;
     },
     info: async id => {
@@ -359,12 +481,33 @@ export class BaseRepo implements Repo {
     return u;
   }
   uploads: Repo["uploads"] = {
+    removeOwned: ownerId => this.tx(async d => {
+      for (const upload of await d.list<Upload>("uploads", { ownerId })) {
+        await d.removeMany("uploadParts", (await d.list<Part>("uploadParts", { uploadId: upload._id }, { projection: { _id: 1 } })).map(part => part._id));
+        await d.remove("uploads", upload._id);
+      }
+    }),
     create: async (fileName, size, ownerId) => {
       if (!Number.isSafeInteger(size) || size <= 0) throw new ServerError(400, "invalid", "Expected a positive file size");
-      if (size > DEFAULT_LIMITS.maxBytes) throw new ServerError(413, "too-large", "File exceeds 100 MB");
+      const limits = quotas();
+      const maximum = ownerId ? limits.uploadBytes : Math.min(limits.uploadBytes, limits.anonymousUploadBytes);
+      if (size > maximum) refuseBytes(ownerId ? "Upload" : "Anonymous upload", maximum);
       await this.uploads.sweep();
       const u: Upload = { _id: crypto.randomUUID(), fileName, size, ownerId, expiresAt: this.now() + TTL_MS };
-      await this.tx(d => d.put("uploads", u)); return u;
+      await this.tx(async d => {
+        if (ownerId) {
+          const stored = await this.storedBytes(d, ownerId);
+          const pending = (await d.list<Upload>("uploads", { ownerId })).filter(upload => upload.expiresAt > this.now() && !upload.sourceId).reduce((sum, upload) => sum + upload.size, 0);
+          if (ownerId !== LOCAL_ENGINEER && stored + pending + size > limits.accountSourceBytes) refuseBytes("Stored and pending sources per account", limits.accountSourceBytes);
+        } else {
+          // Completion turns an upload into an expiring source; only handles
+          // still receiving parts belong to the anonymous in-flight budget.
+          const pending = (await d.list<Upload>("uploads", { ownerId: null })).filter(upload => upload.expiresAt > this.now() && !upload.sourceId).reduce((sum, upload) => sum + upload.size, 0);
+          if (pending + size > limits.anonymousUploadTotalBytes) refuseBytes("Anonymous uploads in flight", limits.anonymousUploadTotalBytes);
+        }
+        await d.put("uploads", u);
+      });
+      return u;
     },
     get: id => this.read(async d => { const u = await d.get<Upload>("uploads", id); return u && u.expiresAt > this.now() ? u : null; }),
     part: (id, part, bytes, ownerId) => this.tx(async d => {
@@ -375,7 +518,7 @@ export class BaseRepo implements Repo {
       if (bytes.length > PART_BYTES) throw new ServerError(413, "too-large", "Part exceeds 4 MB");
       const parts = await d.list<Part>("uploadParts", { uploadId: id });
       const total = parts.filter(p => p.part !== part).reduce((sum, p) => sum + p.size, bytes.length);
-      if (total > u.size || total > DEFAULT_LIMITS.maxBytes) throw new ServerError(413, "too-large", "Parts exceed declared file size");
+      if (total > u.size) throw new ServerError(413, "too-large", `Parts exceed the declared ${u.size} bytes`);
       // Writing the shared upload row serializes competing part transactions,
       // including different part numbers, before either can exceed the cap.
       await d.put("uploads", { ...u, receivedBytes: total });
@@ -388,8 +531,8 @@ export class BaseRepo implements Repo {
       parts.sort((a, b) => a.part - b.part);
       if (!parts.length || parts.some((p, i) => p.part !== i) || parts.reduce((sum, p) => sum + p.size, 0) !== u.size) throw new ServerError(400, "incomplete", "Upload is missing parts");
       const bytes = Buffer.concat(parts.map(p => asBytes(p.data)));
-      if (bytes.length !== u.size || bytes.length > DEFAULT_LIMITS.maxBytes) throw new ServerError(413, "too-large", "Upload size mismatch");
-      const sourceId = await this.sources.put(bytes, u.fileName, ownerId, ownerId ? undefined : this.now() + TTL_MS);
+      if (bytes.length !== u.size) throw new ServerError(413, "too-large", `Upload does not match the declared ${u.size} bytes`);
+      const sourceId = await this.sources.put(bytes, u.fileName, ownerId, ownerId ? undefined : this.now() + TTL_MS, id);
       const chosen = await this.tx(async d => {
         const current = await this.upload(d, id, ownerId);
         if (current.sourceId) return current.sourceId;

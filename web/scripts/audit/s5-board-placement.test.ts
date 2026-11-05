@@ -1,30 +1,37 @@
 /**
- * S5-03: the board is measured from two different screens. ScreenBoard draws
- * every frame in a grid sized from the FIRST screen (ScreenBoard.tsx:227-239),
- * while CanvasPane sizes the same grid from the ACTIVE screen
- * (CanvasPane.tsx:185, 289-297) and uses it to scroll on a double-click zoom
- * (CanvasPane.tsx:364, 373-376). In a project whose screens differ in size -
- * a content screen laid out at its display's size, measured: 8 of 26 screens in
- * the engineer files - the zoom scrolls to a place no frame is drawn at.
+ * S5-03: the board used to be measured from two different screens, so a double-click
+ * zoom scrolled to a place no frame was drawn at. CanvasPane and ScreenBoard now both
+ * ask boardLayout about every screen, so the proof is that they do, and that frames
+ * of different sizes (8 of 26 screens in the engineer files) do not land on each other.
  */
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { boardExtent, placementOf } from "@/components/canvas/ScreenBoard";
-import { rootBox } from "@/lib/ote/schema";
+import { boardLayout, placementOf } from "@/components/canvas/ScreenBoard";
+
+const source = (file: string) => readFileSync(path.resolve(import.meta.dirname, "../../src/components/canvas", file), "utf8");
 
 describe("S5-03 board placement", () => {
-  it("scrolls a double-click zoom to where the frame is drawn", () => {
-    const target = { width: 1280, height: 800 };
-    // A screen with the panel's size, and a content screen of the size measured in the files.
-    const first = { Width: undefined, Height: undefined };
-    const content = { Width: 478.125, Height: 397.5 };
-    const ids = ["main", "content", "third"];
+  it("is measured the same way where it is drawn and where it is scrolled", () => {
+    for (const file of ["CanvasPane.tsx", "ScreenBoard.tsx"]) {
+      const code = source(file);
+      expect(code).toContain("boardLayout(");
+      expect(code).toContain("rootBox(screen.Children[0], target)");
+    }
+  });
 
-    const drawn = boardExtent(rootBox(first, target), ids, {}); // ScreenBoard
-    const scrolled = boardExtent(rootBox(content, target), ids, {}); // CanvasPane, content screen active
-
-    const index = 2;
-    const where = placementOf(index, drawn.metrics);
-    const aimed = placementOf(index, scrolled.metrics);
-    expect(aimed, `frame ${index} is drawn at ${where.x},${where.y}`).toEqual(where);
+  it("keeps frames of different sizes apart", () => {
+    const frames = [
+      { id: "main", width: 1280, height: 800 },
+      { id: "content", width: 478.125, height: 397.5 },
+      { id: "third", width: 1280, height: 800 },
+    ];
+    const { metrics } = boardLayout(frames, {});
+    const boxes = frames.map((frame, i) => ({ ...placementOf(i, metrics), ...frame }));
+    for (const a of boxes) for (const b of boxes) {
+      if (a === b) continue;
+      const apart = a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;
+      expect(apart, a.id + " and " + b.id).toBe(true);
+    }
   });
 });

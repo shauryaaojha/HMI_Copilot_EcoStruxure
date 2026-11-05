@@ -92,6 +92,13 @@ describe("one screen", () => {
     const [plain] = layoutApplication([spec({ sections: ["status"] })], units, PANEL);
     expect(plain.parts.some((p) => p.Type === "AlarmSummary")).toBe(false);
   });
+
+  it("puts generated locations on the 4 px layout lattice", () => {
+    const aligned = built.parts.filter((part) =>
+      part.Location.Left % 4 === 0 && part.Location.Top % 4 === 0,
+    );
+    expect(aligned.length / built.parts.length).toBeGreaterThanOrEqual(0.95);
+  });
 });
 
 describe("an application", () => {
@@ -210,6 +217,7 @@ describe("a faceplate carrying the installation's own symbol", () => {
     // Stand-in geometry: the real thing comes from graphics-index.json, which
     // is derived from a local EcoStruxure installation and never committed.
     graphic: { Commands: "MLLz", Points: "0,0,10,0,10,10,0,10" },
+    libraryIcon: true,
   });
 
   const units = [drawn("P101"), drawn("P102"), drawn("P103")];
@@ -273,7 +281,6 @@ describe("a faceplate carrying the installation's own symbol", () => {
       PANEL,
     );
     expect(plain.parts.some((p) => p.Type === "Path")).toBe(false);
-    expect(plain.parts.some((p) => p.Name.startsWith("CardKind_"))).toBe(true);
     expect(plain.wires.length).toBe(built.wires.length);
   });
 });

@@ -43,7 +43,7 @@ export function StartButtons({ compact = false }: { compact?: boolean }) {
       </button>
       <button
         type="button"
-        onClick={() => newProject()}
+        onClick={() => newProject(undefined, { open: true })}
         className="focus-ring inline-flex h-11 items-center gap-2 rounded-md border border-line px-6 text-sm font-medium text-text-secondary transition hover:border-line-strong hover:text-text-primary"
       >
         <FolderOpen size={15} aria-hidden />

@@ -14,12 +14,13 @@
  */
 
 import { isSizedByParent } from "@/lib/ote/schema";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Eye, EyeOff, Layers, Lock, PackageOpen, Unlock } from "lucide-react";
 import { TOOL_ICON } from "@/components/canvas/toolIcons";
 import { useProject } from "@/store/project";
 import { useCanEdit } from "@/store/access";
 import { cn, EmptyState } from "@/components/ui";
+import { sceneOf, sceneTree } from "@/lib/layout/scene";
 
 export function LayersPanel() {
   const screens = useProject((s) => s.screens);
@@ -28,6 +29,7 @@ export function LayersPanel() {
   const objectMeta = useProject((s) => s.objectMeta);
   const bindings = useProject((s) => s.bindings);
   const foreign = useProject((s) => s.foreign);
+  const target = useProject((s) => s.target);
   const select = useProject((s) => s.select);
   const hover = useProject((s) => s.hover);
   const setMeta = useProject((s) => s.setMeta);
@@ -59,6 +61,8 @@ export function LayersPanel() {
   const selected = new Set(selectedIds);
   // Front-to-back, because that is how a layers panel reads.
   const rows = [...parts].reverse();
+  const tree = useMemo(() => sceneTree(sceneOf({ screen, panel: target, meta: objectMeta })), [screen, target, objectMeta]);
+  const treeRow = new Map(tree.map((row) => [row.id, row]));
 
   /**
    * Dragging is expressed as repeated single steps rather than as a splice,
@@ -78,16 +82,17 @@ export function LayersPanel() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <p className="shrink-0 px-3 pb-1 pt-3 text-[10px] uppercase tracking-wide text-text-faint">
-        {screen.Name} · {parts.length} object{parts.length === 1 ? "" : "s"} · front to back
+        {screen.Name} · {parts.length} object{parts.length === 1 ? "" : "s"} · scene tree, front to back
       </p>
 
       <ul className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
         {rows.map((part, row) => {
           const meta = objectMeta[part.UniqueId] ?? {};
+          const node = treeRow.get(part.UniqueId);
           const Icon = TOOL_ICON[part.Type];
           const isSelected = selected.has(part.UniqueId);
           return (
-            <li key={part.UniqueId}>
+            <li key={part.UniqueId} style={{ paddingLeft: `${Math.max(0, (node?.depth ?? 1) - 1) * 10}px` }}>
               <div
                 draggable={canEdit}
                 onDragStart={() => {
@@ -121,6 +126,10 @@ export function LayersPanel() {
                 >
                   {part.Name}
                 </button>
+
+                {node?.node.kind === "coInstance" && (
+                  <span title="Its Compound Object definition is read-only here; this instance can still be moved or resized." className="shrink-0 text-[9px] text-text-faint">CO</span>
+                )}
 
                 {/* A part placed in a grid cell carries no size of its own.
                     Saying so is the point: the inspector would otherwise show
@@ -209,6 +218,27 @@ export function LayersPanel() {
           </li>
         )}
       </ul>
+
+      {tree.some((row) => row.node.kind === "container" || row.node.kind === "content") && (
+        <div className="shrink-0 border-t border-line px-3 py-2">
+          <p className="label-eyebrow pb-1">Scene structure — read-only</p>
+          <ul className="space-y-0.5">
+            {tree.filter((row) => row.node.kind === "container" || row.node.kind === "content").map((row) => (
+              <li
+                key={row.id}
+                style={{ paddingLeft: `${row.depth * 10}px` }}
+                title={row.node.kind === "content"
+                  ? "This content screen is shown through its display and is edited in its own scene."
+                  : "This layout container resolves its children; its structure is preserved on export."}
+                className="flex items-center gap-1.5 rounded px-1.5 py-0.5 text-[10px] text-text-faint"
+              >
+                <PackageOpen size={11} aria-hidden className="shrink-0" />
+                <span className="truncate">{row.node.kind === "content" ? `Content: ${row.node.name}` : `${row.node.type}: ${row.node.name}`}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Carried objects: in the file, on the screen, not in the editor. Listed
           so the engineer knows they are there, without a control that would

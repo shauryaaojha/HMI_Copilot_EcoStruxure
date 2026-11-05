@@ -3,6 +3,7 @@
  *
  *   POST multipart/form-data
  *     vdz        the project backup (File > Backup project)        required
+ *     uploadId   in place of vdz, for a backup sent by the upload parts
  *     variables  the Vijeo variable export (.csv), for real types   optional
  *     width, height  the OTE panel the screens are designed for     optional
  *
@@ -14,6 +15,10 @@
  * Node runtime: the compound file and the tag export are read server-side.
  */
 
+import { errorResponse, sameOrigin } from "@/lib/server/http";
+import { ServerError } from "@/lib/server/errors";
+import { currentUser } from "@/lib/server/session";
+import { uploadedSource } from "@/lib/server/uploads";
 import { IngestError, ingestResponse } from "@/lib/ingest/errors";
 import { sniff } from "@/lib/ingest/sniff";
 import { DEFAULT_LIMITS } from "@/lib/ingest/zip";
@@ -28,12 +33,21 @@ export async function POST(request: Request) {
   try {
     const form = await request.formData().catch(() => null);
     const vdz = form?.get("vdz");
-    if (!(vdz instanceof File)) throw new IngestError("empty", "No Vijeo Designer backup (.vdz) was sent.", "Make one in Vijeo Designer with File > Backup project.");
-    if (vdz.size > DEFAULT_LIMITS.maxBytes) throw new IngestError("too-large", `${vdz.name} is over the ${DEFAULT_LIMITS.maxBytes / 1048576} MB limit.`);
-    const bytes = new Uint8Array(await vdz.arrayBuffer());
-    const kind = await sniff(bytes, vdz.name);
+    const uploadId = form?.get("uploadId");
+    let backup: { bytes: Uint8Array; name: string };
+    if (typeof uploadId === "string" && uploadId) {
+      sameOrigin(request);
+      const source = await uploadedSource(uploadId, await currentUser());
+      backup = { bytes: source.bytes, name: source.meta.fileName };
+    } else {
+      if (!(vdz instanceof File)) throw new IngestError("empty", "No Vijeo Designer backup (.vdz) was sent.", "Make one in Vijeo Designer with File > Backup project.");
+      backup = { bytes: new Uint8Array(await vdz.arrayBuffer()), name: vdz.name };
+    }
+    if (backup.bytes.length > DEFAULT_LIMITS.maxBytes) throw new IngestError("too-large", `${backup.name} is over the ${DEFAULT_LIMITS.maxBytes / 1048576} MB limit.`);
+    const bytes = backup.bytes;
+    const kind = await sniff(bytes, backup.name);
     if (kind.kind !== "vijeo-designer" || kind.variant !== "vdz") {
-      throw new IngestError("unsupported-format", `${vdz.name} is not a Vijeo Designer backup.`, "A backup is a .vdz made with File > Backup project.");
+      throw new IngestError("unsupported-format", `${backup.name} is not a Vijeo Designer backup.`, "A backup is a .vdz made with File > Backup project.");
     }
     const inventory = await inventoryVdz(bytes);
 
@@ -51,6 +65,7 @@ export async function POST(request: Request) {
       source: { container: inventory.container, panels: inventory.panels.length, targets: inventory.targets, withVariableExport: !!exported },
     });
   } catch (error) {
+    if (error instanceof ServerError) return errorResponse(error);
     return ingestResponse(error, "could not plan the migration");
   }
 }

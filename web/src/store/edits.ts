@@ -17,6 +17,11 @@ export interface Box {
   height: number;
 }
 
+/** Snap the resulting position, so a part starting off-grid can land on it. */
+export function snapPositionDelta(start: number, delta: number, unit: number): number {
+  return Math.round((start + delta) / unit) * unit - start;
+}
+
 export const boxOf = (part: Part): Box => ({
   left: part.Location.Left,
   top: part.Location.Top,
@@ -125,6 +130,42 @@ export function distribute(
     cursor += (horizontal ? sizeOf(part).width : sizeOf(part).height) + gap;
   }
   return moves;
+}
+
+/**
+ * Give every part the first part's width, height or both. The first is the
+ * reference because that is what an engineer means by "make these the same
+ * size as this one".
+ */
+export function matchSizes(
+  parts: Part[],
+  dimension: "width" | "height" | "both",
+): Map<string, { width: number; height: number }> {
+  const sizes = new Map<string, { width: number; height: number }>();
+  const [reference, ...rest] = parts;
+  if (!reference) return sizes;
+  const to = sizeOf(reference);
+  for (const part of rest) {
+    const size = sizeOf(part);
+    sizes.set(part.UniqueId, {
+      width: dimension === "height" ? size.width : to.width,
+      height: dimension === "width" ? size.height : to.height,
+    });
+  }
+  return sizes;
+}
+
+/** The nearest grid position that keeps the box on the panel. */
+export function snapPosition(
+  box: { left: number; top: number; width: number; height: number },
+  grid: number,
+  panel?: { width: number; height: number },
+): { left: number; top: number } {
+  const on = (at: number, size: number, limit?: number) => {
+    const near = Math.round(at / grid) * grid;
+    return limit !== undefined && near + size > limit ? Math.max(0, near - grid) : Math.max(0, near);
+  };
+  return { left: on(box.left, box.width, panel?.width), top: on(box.top, box.height, panel?.height) };
 }
 
 export type ZMove = "front" | "forward" | "backward" | "back";

@@ -16,10 +16,9 @@
  * the one rule in docs/BUILD_PLAN.md, enforced at the point of temptation.
  */
 
-import { rootBox } from "@/lib/ote/schema";
+import { placeSymbol } from "./placeSymbol";
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import { pathPart } from "@/lib/ote/parts";
 import { useProject } from "@/store/project";
 import { useCanEdit } from "@/store/access";
 import { Input, Select, cn } from "@/components/ui";
@@ -61,20 +60,12 @@ export function LibraryPanel() {
 
   function place(symbol: Symbol) {
     if (!screen || !isPlaceable(symbol)) return;
-    const view = screen.Children[0];
-    const size = Math.min(160, rootBox(view).width / 6);
-    // Nudge each placement so a second symbol does not land under the first.
-    const placed = view.Children.filter((p) => p.Type === "Path").length;
-    const part = pathPart(
-      `Sym_${symbol.name.replace(/[^A-Za-z0-9_]/g, "")}`,
-      { Commands: symbol.Commands!, Points: symbol.Points! },
-      {
-        left: Math.round(40 + (placed % 4) * (size + 20)),
-        top: Math.round(96 + Math.floor(placed / 4) * (size + 20)),
-        width: Math.round(size),
-        height: Math.round(size),
-      },
-    );
+    const placed = placeSymbol(screen, { name: symbol.name, Commands: symbol.Commands!, Points: symbol.Points! });
+    if (!placed.ok) {
+      logLine(placed.reason);
+      return;
+    }
+    const part = placed.part;
     appendObject(screen.UniqueId, part);
     select([part.UniqueId]);
     logLine(`Placed ${symbol.name} on ${screen.Name}`);

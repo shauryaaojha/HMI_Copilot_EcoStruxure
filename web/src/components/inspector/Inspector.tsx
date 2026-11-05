@@ -14,7 +14,7 @@
  * the export carries it.
  */
 
-import { useState } from "react";
+import { useState, type InputHTMLAttributes } from "react";
 import { BoxSelect, Lock, MousePointerSquareDashed, Trash2, Unlock } from "lucide-react";
 import { isSizedByParent } from "@/lib/ote/schema";
 import { useProject } from "@/store/project";
@@ -300,16 +300,13 @@ export function Inspector() {
                       <span aria-hidden className="shrink-0 text-[11px] font-medium text-text-faint">
                         {axis}
                       </span>
-                      <input
-                        type="number"
-                        value={value}
+                      <CommittedNumber
+                        value={value ?? 0}
                         disabled={locked}
                         aria-label={
                           { left: "X position", top: "Y position", width: "Width", height: "Height" }[key]
                         }
-                        onChange={(e) => {
-                          const next = Number(e.target.value);
-                          if (!Number.isFinite(next)) return;
+                        onCommit={(next) => {
                           setBox(part.UniqueId, {
                             left: part.Location.Left,
                             top: part.Location.Top,
@@ -367,5 +364,33 @@ export function Inspector() {
         )}
       </div>
     </aside>
+  );
+}
+
+
+/**
+ * A number field that commits on Enter or on leaving it. Typing "120" over "40"
+ * is one change, not a resize through 1, 12 and 120 with an undo step for each.
+ */
+function CommittedNumber({ value, onCommit, ...rest }: { value: number; onCommit: (next: number) => void } & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "type">) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = () => {
+    if (draft === null) return;
+    setDraft(null);
+    const next = Number(draft);
+    if (draft.trim() !== "" && Number.isFinite(next) && next !== value) onCommit(next);
+  };
+  return (
+    <input
+      {...rest}
+      type="number"
+      value={draft ?? value}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") commit();
+        if (e.key === "Escape") setDraft(null);
+      }}
+    />
   );
 }

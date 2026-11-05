@@ -54,7 +54,9 @@ export function AlarmSummaryPart({
   const { Left: x, Top: y } = part.Location;
   const { width: w, height: h } = sizeOf(part);
 
-  const visible = Math.max(0, Math.floor((h - HEADER_HEIGHT) / ROW_HEIGHT));
+  // One line high is the banner: its top row, no heading.
+  const headingHeight = h <= HEADER_HEIGHT + 10 ? 0 : HEADER_HEIGHT;
+  const visible = Math.max(headingHeight === 0 ? 1 : 0, Math.floor((h - headingHeight) / ROW_HEIGHT));
   const shown = rows.slice(0, visible);
 
   return (
@@ -71,8 +73,8 @@ export function AlarmSummaryPart({
       </clipPath>
 
       <g clipPath={`url(#${clipId})`}>
-        <rect x={x} y={y} width={w} height={HEADER_HEIGHT} fill={CHROME} />
-        {COLUMNS.map((column) => (
+        {headingHeight > 0 && <rect x={x} y={y} width={w} height={HEADER_HEIGHT} fill={CHROME} />}
+        {headingHeight > 0 && COLUMNS.map((column) => (
           <PlacedText
             key={column.key}
             text={column.label}
@@ -90,7 +92,7 @@ export function AlarmSummaryPart({
         ))}
 
         {shown.map((row, i) => {
-          const top = y + HEADER_HEIGHT + i * ROW_HEIGHT;
+          const top = y + headingHeight + i * ROW_HEIGHT;
           return (
             <g key={`${row.time}-${row.variable}-${i}`}>
               <rect
@@ -124,9 +126,9 @@ export function AlarmSummaryPart({
           <PlacedText
             text="No active alarms"
             left={x}
-            top={y + HEADER_HEIGHT}
+            top={y + headingHeight}
             width={w}
-            height={h - HEADER_HEIGHT}
+            height={h - headingHeight}
             color={CHROME}
             align={2}
             fontSize={12}

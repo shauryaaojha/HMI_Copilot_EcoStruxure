@@ -160,10 +160,11 @@ export function applyPack(
         } else {
           const role = signalRole(c, pack);
           if (role === "running") {
+            // Running is a dark fill with white text (design B, V5).
             if (key === "Fill") {
-              next = t.white;
+              next = t.runningLine;
               runningFace = true;
-            } else if (key === "TextColor") next = t.ink;
+            } else if (key === "TextColor") next = t.white;
             else next = t.runningLine;
           } else {
             const tone = role === "p1" ? t.alarmP1 : role === "p2" ? t.alarmP2 : t.alarmP4;
@@ -179,10 +180,6 @@ export function applyPack(
       if (runningFace) {
         if (colourIndex(face, "Border") === undefined || neutral.has(colourIndex(face, "Border")!)) {
           setColour(face, "Border", t.runningLine);
-        }
-        if ((face.Thickness as number | undefined) !== 2) {
-          face.Thickness = 2;
-          changes.push(`${where}: running shown by the outline`);
         }
       }
 

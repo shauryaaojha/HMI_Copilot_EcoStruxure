@@ -14,7 +14,10 @@ export async function GET(request: Request, context: Context) {
     // the editor which affordances to offer.
     const { access, project } = await requireReader(await currentUser(), id, request);
     const version = await repo().versions.current(id);
-    return Response.json({ project, rev: version?.rev, snapshot: version?.snapshot, access }, { headers: { "Cache-Control": "no-store" } });
+    // Alone means no second member and no link out: there is nobody to propose to.
+    const [members, shares] = await Promise.all([repo().members.list(id), repo().shares.list(id)]);
+    const alone = members.length <= 1 && shares.length === 0;
+    return Response.json({ project, rev: version?.rev, snapshot: version?.snapshot, access: access && { ...access, alone } }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) { return errorResponse(e); }
 }
 export async function PUT(request: Request, context: Context) {
@@ -38,6 +41,17 @@ export async function PATCH(request: Request, context: Context) {
   try {
     const { id } = await context.params;
     const body = await json(request);
+    if (typeof body.name === "string") {
+      // A rename is an edit of the document, so it travels as one and reaches an open tab.
+      const user = await requireAccess(await currentUser(), id, "edit");
+      const name = body.name.trim();
+      if (!name || name.length > 255) throw new ServerError(400, "invalid", "A project name is 1 to 255 characters");
+      const version = await repo().versions.current(id);
+      const result = await repo().live.append(id, [{ id: crypto.randomUUID(), base: version?.rev ?? 0, author: user.id, ops: [{ kind: "setField", field: "name", value: name }] }]);
+      if (result.rejected.length > 0) throw new ServerError(409, "stale", "The project changed; try the rename again");
+      announceRevision({ projectId: id, rev: result.rev, author: user.id });
+      return Response.json({ project: await repo().projects.get(id), rev: result.rev });
+    }
     await requireAccess(await currentUser(), id, "manage");
     const connector = body.connector;
     if (!connector || typeof connector !== "object" || typeof (connector as { directWrites?: unknown }).directWrites !== "boolean") {

@@ -77,14 +77,18 @@ export type LimitScope = "email" | "email-ip" | "ip" | "connector" | "generate-u
 export type Scope = LimitScope;
 
 /**
- * The address a request came from. Vercel sets `x-forwarded-for`, and the
- * client's own address is its first entry; the rest are proxies. Nothing here
- * trusts the header for authority, only for grouping attempts, so a forged
- * value divides an attacker's own allowance rather than anyone else's.
+ * The address a request came from. A client can write what it likes into the
+ * start of `x-forwarded-for`, so that entry is not an address: on Vercel the
+ * platform's own `x-real-ip` is, and elsewhere the last hop, the one the nearest
+ * proxy added. A limit keyed on a forged value would give a fresh allowance per lie.
  */
 export function clientIp(request?: Request | null): string {
-  const header = request?.headers.get("x-forwarded-for") ?? request?.headers.get("x-real-ip") ?? "";
-  return header.split(",")[0].trim() || "unknown";
+  const headers = request?.headers;
+  if (process.env.VERCEL) {
+    const platform = headers?.get("x-vercel-forwarded-for") ?? headers?.get("x-real-ip");
+    if (platform) return platform.split(",")[0].trim();
+  }
+  return headers?.get("x-forwarded-for")?.split(",").at(-1)?.trim() || headers?.get("x-real-ip")?.trim() || "unknown";
 }
 
 /**

@@ -6,10 +6,13 @@
  */
 import { expectJson } from "@/lib/ingest/client";
 const PART = 4 * 1024 * 1024;
-export async function importFile(file: File): Promise<Response> {
+
+/** Over this a file cannot be one request body on the host. */
+export const fitsOneRequest = (file: File) => file.size <= PART;
+
+/** Sends a large file in parts and answers the id the route then reads it by. */
+export async function uploadParts(file: File): Promise<string> {
   if (file.size > 100 * 1024 * 1024) throw new Error("The file exceeds the 100 MB limit.");
-  const headers = { "X-File-Name": encodeURIComponent(file.name) };
-  if (file.size <= PART) return fetch("/api/import", { method: "POST", headers: { ...headers, "Content-Type": "application/octet-stream" }, body: file });
   const { uploadId } = await expectJson<{ uploadId: string }>(await fetch("/api/upload", {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fileName: file.name, size: file.size }),
   }), "Starting upload");
@@ -17,5 +20,13 @@ export async function importFile(file: File): Promise<Response> {
     await expectJson(await fetch(`/api/upload/${uploadId}?part=${part}`, { method: "PUT", headers: { "Content-Type": "application/octet-stream" }, body: file.slice(start, start + PART) }), "Uploading file");
   }
   await expectJson(await fetch(`/api/upload/${uploadId}/complete`, { method: "POST" }), "Completing upload");
+  return uploadId;
+}
+
+export async function importFile(file: File): Promise<Response> {
+  if (file.size > 100 * 1024 * 1024) throw new Error("The file exceeds the 100 MB limit.");
+  const headers = { "X-File-Name": encodeURIComponent(file.name) };
+  if (fitsOneRequest(file)) return fetch("/api/import", { method: "POST", headers: { ...headers, "Content-Type": "application/octet-stream" }, body: file });
+  const uploadId = await uploadParts(file);
   return fetch("/api/import", { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify({ uploadId }) });
 }

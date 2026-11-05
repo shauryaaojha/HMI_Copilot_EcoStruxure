@@ -89,7 +89,6 @@ export interface Standards {
   smartGuides: boolean;
   showRulers: boolean;
   colorSet: number;
-  enforceNaming: boolean;
   /**
    * Every edit asked for in the conversation becomes a proposal the engineer
    * accepts, never a direct commit - for sites under management of change.
@@ -99,13 +98,12 @@ export interface Standards {
 }
 
 export const DEFAULT_STANDARDS: Standards = {
-  gridSize: 8,
+  gridSize: 4,
   showGrid: false,
   snap: true,
   smartGuides: true,
   showRulers: false,
   colorSet: 4,
-  enforceNaming: true,
 };
 
 /**
@@ -248,6 +246,12 @@ export interface CompositeInstance {
   /** Also the group id its parts carry in objectMeta. */
   id: string;
   kind: string;
+  variant?: string;
+  size?: "S" | "M" | "L";
+  backend?: "parts" | "co" | "exemplar";
+  use?: import("@/lib/components/types").ComponentUse;
+  /** A component's box corner from its parts' corner, so a re-expansion lands where it was. */
+  offset?: { x: number; y: number };
   name: string;
   props: Record<string, unknown>;
   screenId: string;

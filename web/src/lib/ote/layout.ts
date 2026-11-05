@@ -24,7 +24,9 @@ import {
   lamp,
   numericDisplay,
   pathPart,
+  groupBox,
   rectangle,
+  surface,
   screenOf,
   screenSwitch,
   stringDisplay,
@@ -36,7 +38,9 @@ import {
 } from "./parts";
 import { DARK_GREY, GREY } from "./palette";
 import { DEFAULT_PACK } from "../standard/pack";
-import { expandComposite, type CompositeKind } from "../composites";
+import { expandComposite, type CompositeKind, type Expanded } from "../composites";
+import { COMPONENTS, expandComponent } from "../components";
+import { componentForClass } from "../library/machines";
 import { rangeFor, unitOf, type Range } from "../plant/units";
 import { orderReadings } from "../plant/classes";
 import type { CompositeInstance } from "@/store/types";
@@ -67,6 +71,8 @@ export interface LayoutUnit {
    * same faceplate with no picture on it.
    */
   graphic?: { Commands: string; Points: string };
+  /** Draw the product's pictorial icon instead of the simplified body (opt-in). */
+  libraryIcon?: boolean;
   /** The Plant Model's range per reading tag, when the model has one. */
   ranges?: Record<string, Range>;
 }
@@ -106,21 +112,27 @@ export interface LaidOutScreen {
 
 /* --- the fixed zones, in screen units -------------------------------- */
 
-export const HEADER = 44;
-export const NAV = 32;
-export const FOOTER = 28;
-export const MARGIN = 12;
+export const HEADER = 32;
+export const NAV = 40;
+export const FOOTER = 16;
+export const MARGIN = 8;
 export const GAP = 16;
 
 /** Level 2: three cards across on a 1024-wide panel. */
-const CARD = { width: 320, height: 162, columns: 3 };
+const CARD = { width: 320, height: 176, columns: 3 };
 /** Level 1: four tiles across on a 1024-wide panel. Status only, no readings. */
-const TILE = { width: 238, height: 100, columns: 4 };
+const TILE = { width: 240, height: 96, columns: 4 };
 /** Level 3: one unit's detail, two across on a 1024-wide panel. */
 const DETAIL = { width: 496, height: 0, columns: 2 };
 
+/** The alarm screen the banner opens, when the application has one. */
+export const ALARM_SCREEN = "Alarms";
+/** A screen with no equipment of its own and nothing but the alarm table on it. */
+export const isAlarmScreen = (spec: Pick<ScreenSpec, "include" | "sections">) =>
+  spec.include.length === 0 && spec.sections.length === 1 && spec.sections[0] === "alarms";
+
 /** The alarm banner's share of the body, when a screen has one. */
-const ALARM_BAND = 148;
+const ALARM_BAND = 32;
 
 /**
  * The grid a level lays out on, measured against the panel it is for.
@@ -145,7 +157,7 @@ export function gridFor(
   const width = Math.min(design.width, usable);
   const columns = Math.max(1, Math.min(design.columns, Math.floor((usable + GAP) / (width + GAP))));
   // A detail panel takes the whole body height: one row of them.
-  const height = level === 3 ? Math.max(CARD.height, bottom - top) : design.height;
+  const height = level === 3 ? Math.max(0, bottom - top) : Math.min(design.height, Math.max(0, bottom - top));
   const rows = level === 3 ? 1 : Math.max(1, Math.floor((bottom - top + GAP) / (height + GAP)));
   return { width, height, columns, rows, capacity: rows * columns, top, bottom };
 }
@@ -175,7 +187,7 @@ const SYMBOL = 52;
 /** A tile's, which has a third of the room. */
 const TILE_SYMBOL = 26;
 
-const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const titleCase = (s: string) => s.replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
 
 /** Only what a person reads as a number belongs in a numeric display. */
 const isReading = (dataType: string) => dataType !== "BOOL" && dataType !== "STRING";
@@ -236,6 +248,18 @@ export class Placer {
     return instance;
   }
 
+  /**
+   * The parts of an expanded component, on this screen. Their names come from
+   * the stem they were expanded with, so a regeneration finds them again.
+   */
+  expanded({ parts, wires }: Expanded): void {
+    for (const part of parts) this.add(part);
+    for (const wire of wires) {
+      const part = parts[wire.index];
+      if (part) this.wires.push({ part, tag: wire.tag, property: wire.property, ...(wire.converter ? { converter: wire.converter } : {}) });
+    }
+  }
+
   private unique(wanted: string): string {
     const safe = wanted.replace(/[^A-Za-z0-9_]/g, "_").replace(/^(\d)/, "N$1");
     if (!this.taken.has(safe)) {
@@ -253,12 +277,24 @@ export class Placer {
 
   /** Renames the part before placing it, then records the wire if there is one. */
   add(part: Part, tag?: string, key?: string): Part {
+    snapPart(part);
     this.keyFor(part.UniqueId, key ?? part.Name.replace(/[^A-Za-z0-9_]/g, "_").replace(/^(\d)/, "N$1"));
     part.Name = this.unique(part.Name);
     this.parts.push(part);
     if (tag) this.wires.push({ part, tag, property: "CurrentValue" });
     return part;
   }
+}
+
+/**
+ * Everything generated sits on the 4 px grid (design B, V11). A pipe is left
+ * alone: its box is measured from the run it draws.
+ */
+function snapPart(part: Part): void {
+  if (part.Type === "Pipe") return;
+  part.Location = { ...part.Location, Left: Math.round(part.Location.Left / 4) * 4, Top: Math.round(part.Location.Top / 4) * 4 };
+  if (part.Width !== undefined) part.Width = Math.max(4, Math.round(part.Width / 4) * 4);
+  if (part.Height !== undefined) part.Height = Math.max(4, Math.round(part.Height / 4) * 4);
 }
 
 /* --- the chrome every screen shares ---------------------------------- */
@@ -276,52 +312,45 @@ export function chrome(
   // and every alarm colour is read against it.
   place.add(rectangle(`Ground_${key}`, { left: 0, top: 0, width: panel.width, height: panel.height }, { fill: T.ground, border: T.ground }));
 
-  // Header band. A lighter panel with the title in ink. It used to be brand
-  // green, "the one place colour is decoration" - and that is exactly the
-  // exception a high-performance screen does not make.
-  place.add(rectangle(`Hdr_${key}`, { left: 0, top: 0, width: panel.width, height: HEADER }, { fill: T.panel, border: T.line }));
+  // The title, in Title Case, on a white band. Where the screen sits in the
+  // hierarchy goes beside it when the panel has the room.
+  place.add(surface(`Hdr_${key}`, { left: 0, top: 0, width: panel.width, height: HEADER }));
+  const wide = panel.width >= 640;
   place.add(
-    textBox(`HdrTitle_${key}`, spec.title, { left: MARGIN + 4, top: 10, width: 620, height: 26 }, { size: 18, colour: T.ink, bold: true }),
+    textBox(`HdrTitle_${key}`, titleCase(spec.title), { left: MARGIN, top: 4, width: panel.width - MARGIN * 2 - (wide ? 208 : 0), height: 24 }, { size: 18, colour: T.ink }),
   );
-  place.add(
-    textBox(
-      `HdrLevel_${key}`,
-      `LEVEL ${spec.level} · ${spec.level === 1 ? "PLANT OVERVIEW" : spec.level === 2 ? "UNIT OVERVIEW" : "UNIT DETAIL"}`,
-      { left: panel.width - 320, top: 13, width: 300, height: 20 },
-      { size: 12, colour: T.muted },
-    ),
-  );
-
-  // Navigation strip: every screen in the application, in the same order and
-  // the same place on all of them. The one you are on is filled.
-  place.add(rectangle(`Nav_${key}`, { left: 0, top: HEADER, width: panel.width, height: NAV }, { fill: T.ground, border: T.line }));
-  const chipWidth = Math.min(150, Math.floor((panel.width - MARGIN * 2) / Math.max(all.length, 1)) - 6);
-  all.forEach((other, i) => {
-    const here = other.screenName === spec.screenName;
-    const left = MARGIN + i * (chipWidth + 6);
-    if (left + chipWidth > panel.width - MARGIN) return; // more screens than fit
+  if (wide) {
     place.add(
-      rectangle(`NavChip_${key}_${i}`, { left, top: HEADER + 4, width: chipWidth, height: NAV - 8 },
-        { fill: here ? T.white : T.panel, border: here ? T.ink : T.line }),
+      textBox(
+        `HdrLevel_${key}`,
+        `LEVEL ${spec.level} · ${spec.level === 1 ? "PLANT OVERVIEW" : spec.level === 2 ? "UNIT OVERVIEW" : "UNIT DETAIL"}`,
+        { left: panel.width - 200, top: 8, width: 192, height: 16 },
+        { size: 12, colour: T.muted },
+      ),
     );
-    place.add(
-      textBox(`NavLbl_${key}_${i}`, other.screenName, { left: left + 8, top: HEADER + 8, width: chipWidth - 16, height: 16 },
-        { size: 12, colour: T.ink }),
-    );
-    // The chip is drawn; the touch over it is what changes screen on the panel.
-    if (!here) place.add(screenSwitch(`NavGo_${key}_${i}`, other.screenName, { left, top: HEADER + 4, width: chipWidth, height: NAV - 8 }));
-  });
+  }
 
-  // Footer: what you are looking at, and where it came from.
+  // Navigation: every screen in the application, in the same order and the
+  // same place on all of them. The one you are on is filled.
+  place.expanded(navigationStrip(key, all.map((other) => other.screenName), spec.screenName, { left: 0, top: HEADER, width: gridWidth(panel), height: NAV }));
+
+  // What is on this screen. No band: a line of small type needs none.
   const footTop = panel.height - FOOTER;
-  place.add(rectangle(`Foot_${key}`, { left: 0, top: footTop, width: panel.width, height: FOOTER }, { fill: T.panel, border: T.line }));
   place.add(
     textBox(`FootLbl_${key}`, `${spec.screenName} — ${spec.include.length} unit${spec.include.length === 1 ? "" : "s"}`,
-      { left: MARGIN + 4, top: footTop + 6, width: 500, height: 16 }, { size: 12, colour: T.muted }),
+      { left: MARGIN, top: footTop, width: Math.min(500, panel.width - MARGIN * 2), height: FOOTER }, { size: 12, colour: T.muted }),
   );
-  place.add(
-    textBox(`FootMark_${key}`, "Generated by HMI Copilot", { left: panel.width - 260, top: footTop + 6, width: 240, height: 16 },
-      { size: 12, colour: T.muted }),
+}
+
+/** A component's box is on the 4 px grid, and a panel's width need not be. */
+const gridWidth = (panel: { width: number }) => Math.floor(panel.width / 4) * 4;
+
+/** The strip as the NavBar component draws it: the band first, then the tabs. */
+function navigationStrip(key: string, screens: string[], current: string, box: Box): Expanded {
+  return expandComponent(
+    { kind: "NavBar", variant: "tabs", size: "L", tags: {}, name: key,
+      props: { screens: screens.map((name) => ({ name, title: name.replace(/_/g, " ") })), current } },
+    box,
   );
 }
 
@@ -342,30 +371,20 @@ export function refreshNavigation(
   const isChip = (name: string) => /^NavChip_|^NavLbl_|^NavGo_/.test(name);
   // A content screen is embedded, not navigated to: it is never a chip.
   const listed = screens.filter((s) => s.Type !== "Content");
-  const chipWidth = Math.min(150, Math.floor((panel.width - MARGIN * 2) / Math.max(listed.length, 1)) - 6);
   let changed = false;
 
   const out = screens.map((screen) => {
     const view = screen.Children[0];
-    const stripAt = view.Children.findIndex(
-      (p) => p.Type === "Rectangle" && p.Name.startsWith("Nav_") && p.Location.Top === HEADER,
-    );
+    // Found by name and read for its place, not by HEADER: a project generated
+    // before the zones moved keeps its strip where it was.
+    const stripAt = view.Children.findIndex((p) => p.Type === "Rectangle" && p.Name.startsWith("Nav_"));
     if (stripAt === -1) return screen;
+    const strip = view.Children[stripAt];
 
     const key = screen.Name.replace(/[^A-Za-z0-9_]/g, "_");
-    const chips: Part[] = [];
-    listed.forEach((other, i) => {
-      const here = other.UniqueId === screen.UniqueId;
-      const left = MARGIN + i * (chipWidth + 6);
-      if (left + chipWidth > panel.width - MARGIN) return;
-      chips.push(
-        rectangle(`NavChip_${key}_${i}`, { left, top: HEADER + 4, width: chipWidth, height: NAV - 8 },
-          { fill: here ? T.white : T.panel, border: here ? T.ink : T.line }),
-        textBox(`NavLbl_${key}_${i}`, other.Name, { left: left + 8, top: HEADER + 8, width: chipWidth - 16, height: 16 },
-          { size: 12, colour: T.ink }),
-      );
-      if (!here) chips.push(screenSwitch(`NavGo_${key}_${i}`, other.Name, { left, top: HEADER + 4, width: chipWidth, height: NAV - 8 }));
-    });
+    const chips = navigationStrip(key, listed.map((other) => other.Name), screen.Name, {
+      left: 0, top: Math.round(strip.Location.Top / 4) * 4, width: gridWidth(panel), height: Math.round((strip.Height ?? NAV) / 4) * 4,
+    }).parts.filter((p) => isChip(p.Name));
 
     const kept = view.Children.filter((p) => !isChip(p.Name));
     const before = view.Children.filter((p) => isChip(p.Name)).map((p) => p.Type === "TextBox" ? p.Text : p.Name);
@@ -408,9 +427,17 @@ export function equipmentCard(unit: LayoutUnit, box: Box): BuiltCard {
   const built: BuiltCard = { parts: [], wires: [] };
   const place = {
     add(part: Part, tag?: string) {
+      snapPart(part);
       built.parts.push(part);
       if (tag) built.wires.push({ part, tag, property: "CurrentValue" });
       return part;
+    },
+    expanded({ parts, wires }: Expanded) {
+      for (const part of parts) this.add(part);
+      for (const wire of wires) {
+        const part = parts[wire.index];
+        if (part) built.wires.push({ part, tag: wire.tag, property: wire.property });
+      }
     },
   };
   drawCard(place, unit, box);
@@ -420,6 +447,7 @@ export function equipmentCard(unit: LayoutUnit, box: Box): BuiltCard {
 /** What `add` has to provide, so the Placer and the standalone builder share it. */
 interface Adds {
   add(part: Part, tag?: string): Part;
+  expanded(component: Expanded): void;
 }
 
 /** Which of a card's two halves a screen asked for: the state lamps, the readings. */
@@ -432,110 +460,74 @@ function card(place: Placer, unit: LayoutUnit, box: Box, show: Show = ALL, prefe
 
 function drawCard(place: Adds, unit: LayoutUnit, box: Box, show: Show = ALL, preferred: string[] = []) {
   const key = unit.id.replace(/[^A-Za-z0-9]/g, "");
-  const { left: x, top: y } = box;
+  const { left: x, top: y, width: w } = box;
 
-  place.add(rectangle(`Card_${key}`, box, { fill: T.panel, border: T.line }));
+  // No card: a heading and spacing say what belongs together (V1). The box
+  // draws nothing and is what a move or a tidy takes the rest with.
+  place.add(groupBox(`Card_${key}`, box));
+  place.add(textBox(`CardName_${key}`, unit.label, { left: x, top: y, width: w, height: 24 }, { size: 14, bold: true }));
 
-  /**
-   * The product's own drawing of this machine, at the top right of its card.
-   *
-   * It is a real Path part with the geometry out of the installation's .path
-   * file - the same object an engineer would drag off the library palette, not
-   * a picture of one - so it exports into the .eote like anything else. When
-   * the library is not indexed there is no symbol, the kind is spelled out in
-   * words instead, and the lamps take the width back.
-   */
-  const symbolSize = unit.graphic ? SYMBOL : 0;
-  if (unit.graphic) {
-    place.add(
-      pathPart(
-        `Sym_${key}`,
-        unit.graphic,
-        { left: x + box.width - symbolSize - 12, top: y + 8, width: symbolSize, height: symbolSize },
-        { fill: GREY, border: DARK_GREY },
-      ),
-    );
-  } else {
-    place.add(
-      textBox(`CardKind_${key}`, unit.kind.toUpperCase(), { left: x + box.width - 96, top: y + 9, width: 84, height: 18 }, { size: 12, colour: T.muted }),
-    );
-  }
-
-  place.add(
-    textBox(
-      `CardName_${key}`,
-      unit.label,
-      { left: x + 12, top: y + 8, width: box.width - (symbolSize || 96) - 26, height: 20 },
-      { size: 13, bold: true },
-    ),
-  );
-
-  const run = show.status ? unit.roles.find((r) => r.role === "running") : undefined;
-  const fault = show.status ? unit.roles.find((r) => r.role === "fault") : undefined;
-  const lampsTop = y + 34;
-  // The symbol occupies the top right down to y+8+SYMBOL, which the lamps row
-  // runs through - so they give up its width rather than run under it.
-  const lampsWidth = box.width - 24 - symbolSize - (symbolSize ? 12 : 0);
-  const halfWidth = Math.floor((lampsWidth - 8) / 2);
-
-  if (run) {
-    place.add(
-      lamp(`Lamp_${key}_RUN`, "STOPPED", "RUNNING", { left: x + 12, top: lampsTop, width: fault ? halfWidth : lampsWidth, height: 44 }),
-      run.tag,
-    );
-  }
-  if (fault) {
-    place.add(
-      alarmLamp(`Lamp_${key}_FLT`, "NO FAULT", "FAULT", {
-        left: run ? x + 12 + halfWidth + 8 : x + 12,
-        top: lampsTop,
-        width: run ? halfWidth : lampsWidth,
-        height: 44,
-      }),
-      fault.tag,
-    );
-  }
-
-  // A reading is an analogue indicator - scale, normal band, value, unit -
-  // not a number in a box. One fits under the lamps, two on a card without
-  // them; a unit with more earns a detail screen, which is what the plan is
-  // for. The range and the normal band are the class defaults until the tag
-  // export or the engineer says otherwise, and the inspector shows them.
-  // Which readings: the ones the engineer named first, then the ones the
-  // class leads with - the same order the process view and the overview use.
+  // The machine, by its class: a simplified body and the state it is in. The
+  // product's pictorial icon is the opt-in `libraryIcon` variant, not the default.
+  const picture = componentForClass(unit.kind);
+  const roles = (names: string[]) => Object.fromEntries(names.flatMap((name) => {
+    const role = unit.roles.find((r) => r.role === name && r.dataType === "BOOL");
+    return role ? [[name, role.tag]] : [];
+  }));
   const readings = show.process
-    ? orderReadings(unit.roles.filter((r) => isReading(r.dataType)), unit.kind, preferred).slice(0, run || fault ? 1 : 2)
+    ? orderReadings(unit.roles.filter((r) => isReading(r.dataType)), unit.kind, preferred)
     : [];
+  const left = { left: x, top: y + 28, width: 88, height: 112 };
+  let used = 0;
+  if (picture.kind === "Tank" && readings[0]) {
+    const level = readings[0];
+    const range = unit.ranges?.[level.tag] ?? rangeFor(level.comment, level.role);
+    place.expanded(expandComponent({
+      kind: "Tank", variant: "vertical", size: "M", name: `Sym_${key}`,
+      tags: { level: level.tag, ...(show.status ? roles(["high", "low"]) : {}) },
+      props: { label: "", min: range.min, max: range.max, normalLow: range.normalLow, normalHigh: range.normalHigh, units: range.units },
+    }, { ...left, height: 144 }));
+    used = 1;
+  } else if (picture.kind === "Pump" || picture.kind === "Valve" || picture.kind === "Motor") {
+    const state = picture.kind === "Valve" ? "open" : "running";
+    const icon = unit.libraryIcon ? unit.graphic : undefined;
+    place.expanded(expandComponent({
+      kind: picture.kind, variant: icon ? "libraryIcon" : "plain" === picture.variant ? picture.variant : COMPONENTS[picture.kind].variants[0], size: "L", name: `Sym_${key}`,
+      tags: show.status ? roles([state, "fault"]) : {},
+      props: { label: "", ...(icon ? { icon } : {}) },
+    }, left));
+  } else if (show.status) {
+    // An instrument or a machine with no picture of its own: its state in a row.
+    const run = unit.roles.find((r) => r.role === "running");
+    const fault = unit.roles.find((r) => r.role === "fault");
+    if (run) place.add(lamp(`Lamp_${key}_RUN`, "STOPPED", "RUNNING", { left: x, top: y + 28, width: 88, height: 32 }), run.tag);
+    if (fault) place.add(alarmLamp(`Lamp_${key}_FLT`, "NO FAULT", "FAULT", { left: x, top: y + (run ? 64 : 28), width: 88, height: 32 }), fault.tag);
+  }
+
+  // Readings beside it: a bar with its normal band, value and unit.
+  const rx = x + 96;
+  const rw = w - 96;
+  const shown = readings.slice(used, used + 2);
   if ("composite" in place) {
-    readings.forEach((role, i) => {
-      const rowTop = y + (run || fault ? 86 : 40) + i * 60;
+    shown.forEach((role, i) => {
       const tag = role.tag.replace(/[^A-Za-z0-9]/g, "");
       const range = unit.ranges?.[role.tag] ?? rangeFor(role.comment, role.role);
       (place as Placer).composite(
         "AnalogIndicator",
         { label: titleCase(role.role), tag: role.tag, units: range.units, min: range.min, max: range.max, normalLow: range.normalLow, normalHigh: range.normalHigh, decimals: 1 },
-        { left: x + 12, top: rowTop, width: box.width - 24, height: 56 },
+        { left: rx, top: y + 28 + i * 60, width: rw, height: 56 },
         `Ind_${tag}`,
       );
     });
     return;
   }
-  readings.forEach((role, i) => {
-    const rowTop = y + (run || fault ? 86 : 40) + i * 34;
+  shown.forEach((role, i) => {
+    const rowTop = y + 28 + i * 36;
     const tag = role.tag.replace(/[^A-Za-z0-9]/g, "");
-    place.add(
-      textBox(`Lbl_${tag}`, titleCase(role.role), { left: x + 12, top: rowTop + 6, width: 104, height: 20 }, { size: 12 }),
-    );
-    place.add(
-      numericDisplay(`Num_${tag}`, { left: x + 120, top: rowTop, width: 124, height: 30 }),
-      role.tag,
-    );
     const unitLabel = unitOf(role.comment, role.role);
-    if (unitLabel) {
-      place.add(
-        textBox(`Unit_${tag}`, unitLabel, { left: x + 250, top: rowTop + 6, width: box.width - 262, height: 20 }, { size: 12, colour: T.muted }),
-      );
-    }
+    place.add(textBox(`Lbl_${tag}`, titleCase(role.role), { left: rx, top: rowTop + 8, width: 76, height: 20 }, { size: 12 }));
+    place.add(numericDisplay(`Num_${tag}`, { left: rx + 80, top: rowTop, width: rw - 80 - (unitLabel ? 40 : 0), height: 32 }), role.tag);
+    if (unitLabel) place.add(textBox(`Unit_${tag}`, unitLabel, { left: rx + rw - 36, top: rowTop + 8, width: 36, height: 20 }, { size: 12, colour: T.muted }));
   });
 }
 
@@ -583,13 +575,14 @@ function detail(place: Placer, unit: LayoutUnit, box: Box, preferred: string[] =
   // buttons beside their gauges.
   const wide = w >= 900;
   const inner = wide ? 456 : w - 24;
-  place.add(rectangle(`Detail_${key}`, box, { fill: T.panel, border: T.line }));
+  place.add(groupBox(`Detail_${key}`, box));
 
-  const symbolSize = unit.graphic ? SYMBOL : 0;
-  if (unit.graphic) {
-    place.add(pathPart(`DetailSym_${key}`, unit.graphic, { left: x + w - symbolSize - 12, top: y + 8, width: symbolSize, height: symbolSize }, { fill: GREY, border: DARK_GREY }));
+  const icon = unit.libraryIcon ? unit.graphic : undefined;
+  const symbolSize = icon ? SYMBOL : 0;
+  if (icon) {
+    place.add(pathPart(`DetailSym_${key}`, icon, { left: x + w - symbolSize - 12, top: y + 8, width: symbolSize, height: symbolSize }, { fill: GREY, border: DARK_GREY }));
   }
-  place.add(textBox(`DetailName_${key}`, unit.label, { left: x + 12, top: y + 8, width: w - (symbolSize || 0) - 36, height: 22 }, { size: 14, bold: true }));
+  place.add(textBox(`DetailName_${key}`, unit.label, { left: x + 12, top: y + 8, width: w - (symbolSize || 0) - 36, height: 24 }, { size: 18, bold: true }));
   place.add(textBox(`DetailKind_${key}`, unit.kind.toUpperCase(), { left: x + 12, top: y + 32, width: 160, height: 18 }, { size: 12, colour: T.muted }));
   const head = y + Math.max(56, symbolSize + 16);
   let top = head;
@@ -724,56 +717,21 @@ function detail(place: Placer, unit: LayoutUnit, box: Box, preferred: string[] =
   return notes;
 }
 
-/** A plant-overview tile: the unit's name and one state. Deviation only. */
+/**
+ * A plant-overview tile: the unit's name and one state, an alarm in its corner
+ * only while there is one, and the headline reading when there is room.
+ */
 function tile(place: Placer, unit: LayoutUnit, box: Box) {
   const key = unit.id.replace(/[^A-Za-z0-9]/g, "");
-  const { left: x, top: y } = box;
-
-  place.add(rectangle(`Tile_${key}`, box, { fill: T.panel, border: T.line }));
-
-  const symbolSize = unit.graphic ? TILE_SYMBOL : 0;
-  if (unit.graphic) {
-    place.add(
-      pathPart(
-        `TileSym_${key}`,
-        unit.graphic,
-        { left: x + box.width - symbolSize - 10, top: y + 6, width: symbolSize, height: symbolSize },
-        { fill: GREY, border: DARK_GREY },
-      ),
-    );
-  }
-
-  place.add(
-    textBox(
-      `TileName_${key}`,
-      unit.label,
-      { left: x + 10, top: y + 8, width: box.width - 20 - (symbolSize ? symbolSize + 8 : 0), height: 18 },
-      { size: 12, bold: true },
-    ),
-  );
-
-  const fault = unit.roles.find((r) => r.role === "fault");
-  const run = unit.roles.find((r) => r.role === "running");
-  const reading = unit.roles.find((r) => isReading(r.dataType));
-
-  // A Level 1 tile shows the one thing that would make an operator look
-  // closer: a fault if there is one, otherwise running state, otherwise the
-  // headline reading.
-  if (fault) {
-    place.add(alarmLamp(`Tile_${key}_FLT`, "OK", "FAULT", { left: x + 10, top: y + 30, width: box.width - 20, height: 30 }), fault.tag);
-  } else if (run) {
-    place.add(lamp(`Tile_${key}_RUN`, "STOPPED", "RUNNING", { left: x + 10, top: y + 30, width: box.width - 20, height: 30 }), run.tag);
-  } else if (reading) {
-    place.add(numericDisplay(`Tile_${key}_VAL`, { left: x + 10, top: y + 30, width: box.width - 20, height: 30 }), reading.tag);
-  }
-
-  if (reading && (fault || run)) {
-    const tag = reading.tag.replace(/[^A-Za-z0-9]/g, "");
-    place.add(
-      textBox(`TileLbl_${tag}`, titleCase(reading.role), { left: x + 10, top: y + 66, width: 96, height: 18 }, { size: 12, colour: T.muted }),
-    );
-    place.add(numericDisplay(`TileNum_${tag}`, { left: x + 108, top: y + 64, width: box.width - 118, height: 24 }), reading.tag);
-  }
+  const fault = unit.roles.find((r) => r.role === "fault" && r.dataType === "BOOL");
+  const run = unit.roles.find((r) => (r.role === "running" || r.role === "open") && r.dataType === "BOOL");
+  const reading = orderReadings(unit.roles.filter((r) => isReading(r.dataType)), unit.kind)[0];
+  const range = reading ? unit.ranges?.[reading.tag] ?? rangeFor(reading.comment, reading.role) : undefined;
+  place.expanded(expandComponent({
+    kind: "StatusTile", variant: run ? "state" : "kpi", size: "L", name: `Tile_${key}`,
+    tags: { ...(run ? { running: run.tag } : {}), ...(fault ? { fault: fault.tag } : {}), ...(reading ? { value: reading.tag } : {}) },
+    props: { label: unit.label, units: range?.units ?? "", ...(run?.role === "open" ? { words: ["CLOSED", "OPEN"] as [string, string] } : {}) },
+  }, box));
 }
 
 /**
@@ -788,12 +746,18 @@ export function faceplateBand(
   equipment: LayoutUnit[],
   panel: { width: number; height: number },
   from = HEADER + NAV + 8,
+  /** Every screen in the application: where the banner opens the alarm table. */
+  navigation: ScreenSpec[] = [],
 ): string[] {
+  if (isAlarmScreen(spec)) {
+    place.add(alarmSummary(`AlarmTable_${spec.screenName}`, { left: MARGIN, top: from, width: panel.width - MARGIN * 2, height: panel.height - FOOTER - 8 - from }));
+    return [];
+  }
   const byId = new Map(equipment.map((e) => [e.id, e]));
   const wantsAlarms = spec.sections.includes("alarms");
   const footerTop = panel.height - FOOTER;
-  // The alarm banner sits in the same place on every screen that has one, so
-  // an operator's eye does not have to search for it after a screen change.
+  // The banner sits in the same place on every screen that has one, so an
+  // operator's eye does not have to search for it after a screen change.
   const alarmTop = footerTop - ALARM_BAND;
   const grid = gridFor(spec.level, panel, wantsAlarms, from);
 
@@ -828,23 +792,18 @@ export function faceplateBand(
   if (units.length === 0) {
     place.add(
       textBox(`Empty_${spec.screenName}`, "No equipment on this screen yet.",
-        { left: MARGIN, top: grid.top + 8, width: 400, height: 24 }, { size: 13, colour: T.muted }),
+        { left: MARGIN, top: grid.top + 8, width: 400, height: 24 }, { size: 14, colour: T.muted }),
     );
   }
 
   if (wantsAlarms) {
-    place.add(
-      textBox(`AlarmsLbl_${spec.screenName}`, "ACTIVE ALARMS",
-        { left: MARGIN, top: alarmTop, width: 300, height: 20 }, { size: 12, colour: T.muted }),
-    );
-    place.add(
-      alarmSummary(`AlarmBanner_${spec.screenName}`, {
-        left: MARGIN,
-        top: alarmTop + 24,
-        width: panel.width - MARGIN * 2,
-        height: footerTop - alarmTop - 32,
-      }),
-    );
+    // One line: the top alarm. The full table has a screen of its own, and the
+    // line opens it (V10).
+    const destination = navigation.find((other) => isAlarmScreen(other))?.screenName;
+    place.expanded(expandComponent(
+      { kind: "AlarmBanner", variant: "line", size: "L", tags: {}, name: `AlarmBanner_${spec.screenName.replace(/[^A-Za-z0-9_]/g, "_")}`, props: destination ? { destination } : {} },
+      { left: MARGIN, top: alarmTop, width: Math.floor((panel.width - MARGIN * 2) / 4) * 4, height: ALARM_BAND },
+    ));
   }
 
   return notes;
@@ -867,7 +826,7 @@ export function layoutApplication(
   return specs.map((spec) => {
     place.begin();
     chrome(place, spec, navigation, panel);
-    const notes = faceplateBand(place, spec, equipment, panel);
+    const notes = faceplateBand(place, spec, equipment, panel, undefined, navigation);
     const screen = screenOf(spec.screenName, place.parts, panel);
     // Every wire now knows its screen, which is what keeps a Target's ScreenId
     // right in an application with more than one.

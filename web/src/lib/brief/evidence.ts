@@ -18,7 +18,7 @@
  * kind's own catalogue allows; this function adds no path around it.
  */
 
-import { allKnowledge } from "@/lib/knowledge/store";
+import { allKnowledge, ownedBy } from "@/lib/knowledge/store";
 import type { Brief } from "./brief";
 import { suggestSignals, type SignalSuggestion } from "./suggest";
 
@@ -30,10 +30,11 @@ import { suggestSignals, type SignalSuggestion } from "./suggest";
 const MOST = 40;
 
 /** Suggestions for this brief, or none. Never throws: a draft outranks advice. */
-export async function suggestionsFor(brief: Brief): Promise<SignalSuggestion[]> {
+export async function suggestionsFor(brief: Brief, ownerId: string): Promise<SignalSuggestion[]> {
   if (brief.units.length === 0) return [];
   try {
-    const records = await allKnowledge();
+    // One engineer's tag conventions are not advice for another's customer.
+    const records = (await allKnowledge()).filter((record) => ownedBy(record, ownerId));
     if (records.length === 0) return [];
     // The newest, because a convention that changed is better evidence than
     // the one it replaced; allKnowledge sorts oldest first.

@@ -11,7 +11,7 @@
  * from the same index, so what is browsed is what is placed.
  */
 
-import { boundsOf, toPathData, type PathGeometry } from "@/lib/ote/graphics";
+import { boundsOf, pathInBox, type PathGeometry } from "@/lib/ote/graphics";
 import { pathGeometry } from "@/lib/ote/schema";
 import { fill, type PartOf } from "./geometry";
 
@@ -44,8 +44,16 @@ export function GraphicObject({
   let d: string;
   let natural: { width: number; height: number };
   try {
-    d = toPathData(source);
     natural = boundsOf(source);
+    const extent = stretch ? { width: 3072, height: 3072 } : natural;
+    const scale = stretch ? 1 : Math.min(width / Math.max(1, extent.width), height / Math.max(1, extent.height));
+    const drawn = stretch ? { x, y, width, height } : {
+      x: x + (width - extent.width * scale) / 2,
+      y: y + (height - extent.height * scale) / 2,
+      width: extent.width * scale,
+      height: extent.height * scale,
+    };
+    d = pathInBox(source, drawn, extent);
   } catch {
     return (
       <rect
@@ -61,24 +69,7 @@ export function GraphicObject({
     );
   }
 
-  return (
-    <svg
-      x={x}
-      y={y}
-      width={width}
-      height={height}
-      viewBox={stretch ? "0 0 3072 3072" : `0 0 ${natural.width || 1} ${natural.height || 1}`}
-      preserveAspectRatio={stretch ? "none" : "xMidYMid meet"}
-      overflow="visible"
-    >
-      {/* The path is in the product's 3072-unit space; a 2-unit stroke
-          scaled to a 120px symbol is a hairline nobody sees. Non-scaling
-          keeps the outline at its Thickness in screen pixels, which is what
-          the product draws and what makes a grey symbol read on a grey
-          ground. */}
-      <path d={d} fill={fillColor} fillRule="evenodd" stroke={strokeColor} strokeWidth={strokeWidth} vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
+  return <path d={d} fill={fillColor} fillRule="evenodd" stroke={strokeColor} strokeWidth={strokeWidth} />;
 }
 
 export function PathPartNode({ part }: { part: PartOf<"Path"> }) {

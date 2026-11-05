@@ -37,6 +37,13 @@ export function AccountControl({ projectId = "" }: { projectId?: string }) {
       }
     } catch (e) { setError(e instanceof Error ? e.message : "Could not resolve conflict"); }
   }
+  async function endEverySession() {
+    try {
+      const response = await fetch("/api/account/sessions", { method: "DELETE" });
+      if (!response.ok) throw new Error((await response.json().catch(() => null))?.error ?? "Could not end sessions");
+      await signOut();
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not end sessions"); }
+  }
   return <div className="flex items-center gap-2 text-[11px] text-text-muted">
     {projectId && (account?.user || savedAt) && <span role="status" title={cloudError(projectId)}>{status}</span>}
     {status === "Changed elsewhere" && <span className="flex items-center gap-2 text-status-warn">
@@ -46,10 +53,12 @@ export function AccountControl({ projectId = "" }: { projectId?: string }) {
     </span>}
     {account?.user ? <>
       <span>{account.user.name}</span>
+      {account.providers.length > 0 && <a className="focus-ring rounded-md px-2 py-1 hover:bg-surface-hover" href="/account">Account</a>}
       {/* The only way an engineer finds out what the connector has been granted
           is a link from where their name already is. */}
       {account.providers.length > 0 && <a className="focus-ring rounded-md px-2 py-1 hover:bg-surface-hover" href="/account/connections">Connections</a>}
       {account.providers.length > 0 && <button className="focus-ring rounded-md px-2 py-1 hover:bg-surface-hover" onClick={() => void signOut()}>Sign out</button>}
+      {account.providers.length > 0 && <button className="focus-ring rounded-md px-2 py-1 hover:bg-surface-hover" onClick={() => void endEverySession()}>Sign out everywhere</button>}
     </> : account?.providers.length ? <span className="relative">
       <button className="focus-ring rounded-md px-2 py-1 hover:bg-surface-hover" aria-expanded={signingIn} onClick={() => setSigningIn(!signingIn)}>Sign in</button>
       {signingIn && <div className="absolute right-0 top-full z-30 mt-1 w-72 rounded-xl border border-line bg-surface-float p-4 text-left" style={{ boxShadow: "var(--elev-2)" }}>

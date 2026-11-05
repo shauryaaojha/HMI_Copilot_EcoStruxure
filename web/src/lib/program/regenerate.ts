@@ -363,7 +363,11 @@ export function applyRegeneration(
       composites = composites.filter((c) => c !== old);
       const cid = old?.id ?? newId();
       const stemName = parts.find((p) => p.UniqueId === partIds[0])?.Name ?? comp.name;
-      composites.push({ id: cid, kind: comp.kind, name: stemName, props: structuredClone(comp.props), screenId, partIds });
+      // An instance the engineer placed as a component keeps saying so.
+      const placed = old?.use && old.kind === comp.kind
+        ? { use: old.use, variant: old.variant, size: old.size, backend: old.backend, offset: old.offset }
+        : {};
+      composites.push({ id: cid, kind: comp.kind, name: stemName, props: structuredClone(comp.props), screenId, partIds, ...placed });
       for (const id of partIds) meta[id] = { ...meta[id], groupId: cid };
     }
     if (unit.kind === "add") summary.added++;

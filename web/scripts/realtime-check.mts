@@ -6,7 +6,7 @@
  * This is the phase 2 checkpoint in docs/REALTIME_SETUP.md, the part the test
  * suite cannot reach: the suite runs on a machine with no Supabase project, so
  * it can prove what the server signs and what the client does with it, but
- * never that Supabase agrees. Four things are proved here, one line each:
+ * never that Supabase agrees. Five things are proved here, one line each:
  *
  *   1. a member's minted token joins the project channel and receives a
  *      revision broadcast - the policy lets the right token in;
@@ -17,13 +17,15 @@
  *   4. a broadcast sent with the public key alone does not reach a member -
  *      the publishable key is in every browser, so if it could publish, any
  *      visitor could ring every project's bell. Realtime's REST endpoint
- *      answers 202 to it either way, so only a listener can tell.
+ *      answers 202 to it either way, so only a listener can tell;
+ *   5. a member's own token cannot send on its topic - a viewer, or someone
+ *      removed in the last 15 minutes, must not be able to ring the bell.
  *
  * It needs no project in MongoDB: a token's topic claim is signed by us and
  * checked by the policy, so a made-up project id exercises exactly the same
  * path a real one does.
  *
- * Exits 0 only when all four pass, so it can be the last step of a setup
+ * Exits 0 only when all five pass, so it can be the last step of a setup
  * script. When the environment is incomplete it says which variables are
  * missing and exits 1 - never a stack trace.
  */
@@ -169,6 +171,42 @@ async function publicKeyCannotPublish(projectId: string, userId: string): Promis
   }
 }
 
+/** 5. A token can receive and cannot send: a member hears the server and not a fellow member. */
+async function tokenCannotSend(projectId: string, userId: string): Promise<CheckResult> {
+  const name = "a member's token cannot send on its topic";
+  const minted = await mintRealtimeToken(userId, projectId);
+  const forger = await mintRealtimeToken("realtime-check-forger", projectId);
+  if (!minted || !forger) return { name, ok: false, detail: "the server would not mint a token; check SUPABASE_JWT_PRIVATE_KEY" };
+  const listener = await clientFor(minted.token);
+  const sender = await clientFor(forger.token);
+  const hearing = listener.channel(minted.topic, { config: { private: true } });
+  const sending = sender.channel(forger.topic, { config: { private: true } });
+  const heard: unknown[] = [];
+  hearing.on("broadcast", { event: REVISION_EVENT }, (message) => {
+    heard.push((message.payload as { rev?: unknown })?.rev);
+  });
+  try {
+    for (const channel of [hearing, sending]) {
+      const outcome = await joinOutcome(channel, WAIT_MS);
+      if (outcome !== "joined") return { name, ok: false, detail: `a join was ${outcome}; nothing was proved` };
+    }
+    await sending.send({ type: "broadcast", event: REVISION_EVENT, payload: { projectId, rev: 777, author: "forger" } });
+    // Then the real one, so a silent listener is told apart from a refused send.
+    if (!(await publishRevision({ projectId, rev: 43, author: userId }))) {
+      return { name, ok: false, detail: "the real publish was not accepted; nothing was proved" };
+    }
+    const deadline = Date.now() + WAIT_MS;
+    while (!heard.includes(43) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 1_000));
+    if (!heard.includes(43)) return { name, ok: false, detail: "the real notice never arrived; nothing was proved" };
+    if (heard.includes(777)) return { name, ok: false, detail: "the member's notice arrived: an insert policy is letting tokens send" };
+    return { name, ok: true, detail: "the server's notice arrived and the member's did not" };
+  } finally {
+    await hangUp(listener, hearing);
+    await hangUp(sender, sending);
+  }
+}
+
 async function main() {
   await loadEnv();
   const missing = missingEnv();
@@ -184,7 +222,7 @@ async function main() {
   console.log(`Checking ${process.env.NEXT_PUBLIC_SUPABASE_URL} on ${topicFor(projectId)}\n`);
 
   const results: CheckResult[] = [];
-  const checks = [memberHearsRevision, otherProjectRefused, expiredRefused, publicKeyCannotPublish];
+  const checks = [memberHearsRevision, otherProjectRefused, expiredRefused, publicKeyCannotPublish, tokenCannotSend];
   for (const check of checks) {
     const result = await check(projectId, userId).catch((error: unknown) => ({
       name: check.name,

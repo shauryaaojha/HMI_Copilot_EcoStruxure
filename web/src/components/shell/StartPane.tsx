@@ -33,7 +33,7 @@
  * Both end at the same table, the same confirm button, and the same tags.
  */
 
-import { importFile } from "@/lib/client/upload";
+import { fitsOneRequest, importFile, uploadParts } from "@/lib/client/upload";
 import { expectJson } from "@/lib/ingest/client";
 import { useGeneration } from "@/components/generation/useGeneration";
 import type { MigrationPlan } from "@/lib/vijeo/migrate";
@@ -88,6 +88,15 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
   const box = useRef<HTMLTextAreaElement>(null);
   const tagPicker = useRef<HTMLInputElement>(null);
   const filePicker = useRef<HTMLInputElement>(null);
+
+  // "Open an existing .eote" on the landing page lands here asking for the picker.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("open") !== "1") return;
+    url.searchParams.delete("open");
+    window.history.replaceState(null, "", url);
+    filePicker.current?.click();
+  }, []);
 
   const variables = useProject((s) => s.variables);
   const hydrate = useProject((s) => s.hydrate);
@@ -149,10 +158,8 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
     setError(null);
     try {
       const drafted = await brief.draft(text);
-      if (!drafted) {
-        setError(brief.error ?? "the brief could not be drafted from that description");
-        return;
-      }
+      // A failure is the brief's own error, shown below: this render's copy is from before the await.
+      if (!drafted) return;
       // `from` is not used yet: nothing is revealed until the brief is confirmed.
       void from;
     } finally {
@@ -166,10 +173,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
     setError(null);
     try {
       const drafted = await brief.answer(text);
-      if (!drafted) {
-        setError(brief.error ?? "the brief could not be drafted from that answer");
-        return;
-      }
+      if (!drafted) return;
       // The answer has been read into the brief, so the box is free for the
       // next one - or for nothing, if the table is now right.
       setDraft("");
@@ -217,7 +221,8 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
     try {
       const s = useProject.getState();
       const form = new FormData();
-      form.append("vdz", vdz);
+      if (fitsOneRequest(vdz)) form.append("vdz", vdz);
+      else form.append("uploadId", await uploadParts(vdz));
       if (variables) form.append("variables", variables);
       form.append("width", String(s.target.width));
       form.append("height", String(s.target.height));
@@ -509,9 +514,9 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
         )}
 
         {busy && <p className="pt-3 text-center text-xs text-text-muted">Reading {busy}…</p>}
-        {error && (
+        {(error ?? brief.error) && (
           <p className="mt-3 rounded-lg border border-status-alarm/40 bg-status-alarm/10 p-2.5 text-center text-xs text-status-alarm">
-            {error}
+            {error ?? brief.error}
           </p>
         )}
 

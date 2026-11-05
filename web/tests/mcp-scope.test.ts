@@ -40,7 +40,7 @@ async function callWith(token: string, name: string, args: Record<string, unknow
   );
   const text = await response.text();
   const body = text ? JSON.parse(text) : null;
-  return { status: response.status, result: body?.result as { isError?: boolean; content: { text?: string }[]; structuredContent?: Record<string, unknown> } | undefined };
+  return { status: response.status, challenge: response.headers.get("WWW-Authenticate"), result: body?.result as { isError?: boolean; content: { text?: string }[]; structuredContent?: Record<string, unknown> } | undefined };
 }
 
 beforeEach(async () => {
@@ -71,6 +71,12 @@ beforeEach(async () => {
 });
 
 describe("S3-01 scope enforcement", () => {
+  it("challenges an invalid token with invalid_token", async () => {
+    const r = await callWith("not-a-token", "list_projects", {});
+    expect(r.status).toBe(401);
+    expect(r.challenge).toContain('error="invalid_token"');
+    expect(r.challenge).toContain("resource_metadata=");
+  });
   it("a token granted only mcp:read can read", async () => {
     const r = await callWith(READ_ONLY_TOKEN, "list_projects", {});
     expect(r.status).toBe(200);
@@ -88,6 +94,9 @@ describe("S3-01 scope enforcement", () => {
       r.status === 403 || r.result?.isError === true,
       `read-only token (scopes ["mcp:read"]) was NOT refused: HTTP ${r.status}, isError=${r.result?.isError}, proposals queued=${queued}, structured=${JSON.stringify(r.result?.structuredContent)}`,
     ).toBe(true);
+    expect(r.status).toBe(403);
+    expect(r.challenge).toContain('error="insufficient_scope"');
+    expect(r.challenge).toContain('scope="mcp:write"');
   });
 
   it("a token granted mcp:write still queues a proposal", async () => {

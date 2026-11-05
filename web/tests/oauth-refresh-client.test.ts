@@ -1,6 +1,6 @@
 /**
  * S3-05 (docs/audit/BUGS.md), refresh half, moved from web/scripts/audit/ with the fix.
- * The code half (client_id required) changes the wire contract and waits for Shaurya.
+ * Both grant types require client_id after the wire contract decision.
  * S3-05: the token endpoint does not tie codes and refresh tokens to the client.
  *
  * OAuth 2.1 (draft-ietf-oauth-v2-1-13) section 4.1.3: "if the client is public, ensure that the code
@@ -37,6 +37,14 @@ async function failure(p: Promise<unknown>): Promise<string | null> {
 beforeEach(() => { storage = new MemoryRepo(); });
 
 describe("S3-05 codes and refresh tokens are bound to their client", () => {
+  it("requires client_id on code exchange and refresh", async () => {
+    const a = await registerClient({ client_name: "A", redirect_uris: ["https://claude.ai/api/mcp/auth_callback"] }, null, storage);
+    const verifier = randomBytes(40).toString("base64url");
+    const code = await codeFor(a.client_id as string, verifier);
+    expect(await failure(exchangeToken(new URLSearchParams({ grant_type: "authorization_code", code, code_verifier: verifier }), req(), storage))).toBe("invalid_request");
+    const tokens = await exchangeToken(new URLSearchParams({ grant_type: "authorization_code", code, code_verifier: verifier, client_id: a.client_id as string }), req(), storage);
+    expect(await failure(exchangeToken(new URLSearchParams({ grant_type: "refresh_token", refresh_token: tokens.refresh_token! }), req(), storage))).toBe("invalid_request");
+  });
   it("a refresh token presented with another client's id is refused", async () => {
     const a = await registerClient({ client_name: "A", redirect_uris: ["https://claude.ai/api/mcp/auth_callback"] }, null, storage);
     const b = await registerClient({ client_name: "B", redirect_uris: ["https://claude.ai/api/mcp/auth_callback"] }, null, storage);

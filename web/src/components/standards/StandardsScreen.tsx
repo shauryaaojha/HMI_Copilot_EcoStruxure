@@ -15,6 +15,7 @@
  * Phase 9 of docs/BUILD_PLAN.md.
  */
 
+import { useCanEdit } from "@/store/access";
 import { useState } from "react";
 import { COLOR_SETS, resolveColor } from "@/lib/ote/palette";
 import { DEFAULT_PACK, fontFloor } from "@/lib/standard/pack";
@@ -55,6 +56,7 @@ export function StandardsScreen() {
   const standards = useProject((s) => s.standards);
   const setStandards = useProject((s) => s.setStandards);
   const target = useProject((s) => s.target);
+  const canEdit = useCanEdit();
 
   const set = COLOR_SETS[standards.colorSet as keyof typeof COLOR_SETS] ?? COLOR_SETS[4];
 
@@ -69,6 +71,7 @@ export function StandardsScreen() {
         <Tabs items={TABS} value={tab} onChange={setTab} aria-label="Standards" />
       </div>
 
+      <fieldset disabled={!canEdit} className="contents">
       {tab === "general" && (
         <div className="grid gap-5 lg:grid-cols-2">
           <Panel title="Screen defaults" bordered>
@@ -177,11 +180,6 @@ export function StandardsScreen() {
       {tab === "naming" && (
         <Panel title="Naming conventions" bordered className="max-w-2xl">
           <div className="space-y-3">
-            <Toggle
-              checked={standards.enforceNaming}
-              onChange={(on) => setStandards({ enforceNaming: on })}
-              label="Correct tag names on import"
-            />
             <p className="text-xs text-text-muted">
               Names are checked against what OTE accepts: letters, digits and
               underscore, never leading with a digit, never a reserved word. A name
@@ -230,6 +228,7 @@ export function StandardsScreen() {
           </div>
         </Panel>
       )}
+      </fieldset>
     </div>
   );
 }

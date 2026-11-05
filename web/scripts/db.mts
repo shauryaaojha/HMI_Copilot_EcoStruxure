@@ -28,6 +28,8 @@ await loadEnv();
 
 const { mongoClient, mongoDb, hasMongo, DB_NAME } = await import("@/lib/db/mongo");
 const { MemoryStorage, MongoStorage, ensureSchema, SCHEMA_VERSION } = await import("@/lib/server/storage");
+const { MongoRepo } = await import("@/lib/server/repo");
+const { createPasswordReset } = await import("@/lib/server/credentials");
 const { readSnapshot, sweepObjects, writeSnapshot } = await import("@/lib/server/snapshots");
 
 const FREE_TIER_BYTES = 512 * 1024 * 1024;
@@ -142,12 +144,21 @@ async function gc(only?: string[]) {
   console.log(`swept ${ids.length} projects, removed ${removed} unreferenced pieces`);
 }
 
+async function resetPasswordCommand(email: string | undefined) {
+  if (!email) throw new Error("Usage: npm run db -- reset-password <email>");
+  const token = await createPasswordReset(email, new MongoRepo());
+  const base = process.env.AUTH_URL || process.env.NEXTAUTH_URL;
+  console.log(base ? `${base.replace(/\/$/, "")}/reset/${token}` : `/reset/${token}`);
+  console.log("This link expires in 30 minutes and works once. Give it to the account owner securely.");
+}
+
 try {
   if (command === "stats") await stats();
   else if (command === "verify") await verify();
   else if (command === "migrate") await migrate();
   else if (command === "gc") await gc();
-  else { console.error(`Unknown command ${command}. Use stats, verify, migrate [--apply] or gc.`); process.exitCode = 1; }
+  else if (command === "reset-password") await resetPasswordCommand(flags[0]);
+  else { console.error(`Unknown command ${command}. Use stats, verify, migrate [--apply], gc or reset-password <email>.`); process.exitCode = 1; }
 } finally {
   await (await mongoClient()).close();
 }

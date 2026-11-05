@@ -17,7 +17,7 @@ import { useProject } from "@/store/project";
 export function sharedTurn(): { projectId: string; screenId?: string } | null {
   const s = useProject.getState();
   const access = useAccess.getState();
-  if (!access.access || access.projectId !== s.id) return null;
+  if (!access.access || access.projectId !== s.id || access.access.alone) return null;
   return { projectId: s.id, screenId: s.activeScreenId ?? s.screens[0]?.UniqueId };
 }
 

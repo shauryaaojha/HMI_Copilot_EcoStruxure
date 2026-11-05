@@ -84,7 +84,11 @@ export function RegenerateDialog({ screenId, onClose }: { screenId: string; onCl
 
   // Ghosts for what is ticked: the new versions drawn, the replaced ones struck.
   useEffect(() => {
-    if (!plan || !result || stage !== "review") return;
+    if (!plan || !result) return;
+    if (stage !== "review") {
+      setPreview(undefined);
+      return;
+    }
     const chosen = plan.units.filter((u) => ticked.has(u.id));
     const freshByKey = new Map(result.fresh.parts.map((p) => [result.fresh.keys[p.UniqueId] ?? p.Name, p]));
     const added: Part[] = chosen.flatMap((u) => u.fresh.map((k) => freshByKey.get(k)).filter((p): p is Part => !!p));

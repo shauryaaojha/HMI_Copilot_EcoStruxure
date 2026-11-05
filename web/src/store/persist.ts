@@ -13,9 +13,10 @@
  * project arrives.
  */
 
+
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
 import { snapshotRequest } from "@/lib/client/snapshot";
-import { useAccess } from "./access";
+import { allowed, useAccess } from "./access";
 import type { PlantModel } from "@/lib/plant/model";
 import type {
   Binding,
@@ -198,6 +199,9 @@ export function cloudRev(id: string): number | undefined {
 function scheduleCloud(project: PersistedProject, delay = 1500) {
   // A live project's edits are already on their way as changes.
   if (live.has(project.id)) return;
+  // Someone who may only read has nothing to save, and the refusal would read as "Offline".
+  const held = useAccess.getState();
+  if (held.projectId === project.id && !allowed("edit", held)) return;
   const e = entry(project.id);
   e.latest = project;
   const m = meta(project.id);
@@ -280,8 +284,14 @@ export function loadCloudProject(id: string): Promise<PersistedProject | null> {
       }
       if (e.latest) { e.conflict = current; announce(id, "Changed elsewhere"); return null; }
       writeMeta(id, { userId: me.user.id, rev: current.rev, dirty: false });
-      cache(current.snapshot);
-      return current.snapshot as PersistedProject;
+      // The conversation does not travel as changes, so while a project is live
+      // the server's copy falls behind this browser's. Reloading must not lose it.
+      const mine = m?.userId === me.user.id ? loadProject(id) : null;
+      const snapshot = current.snapshot && (mine?.chat?.length ?? 0) > (current.snapshot.chat?.length ?? 0)
+        ? { ...current.snapshot, chat: mine!.chat }
+        : current.snapshot;
+      cache(snapshot);
+      return snapshot as PersistedProject;
     } catch (error) {
       e.error = error instanceof Error ? error.message : "Could not load project";
       announce(id, "Offline - saved on this device"); return null;

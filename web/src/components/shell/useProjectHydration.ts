@@ -272,6 +272,7 @@ export function useProjectHydration(projectId: string) {
         // keep claiming "0 screens" over a project with four. Everything here
         // is a count the project already knows - the card never has to load a
         // project to describe one.
+        const said = s.chat.find((m) => m.role === "user")?.text.slice(0, 120);
         touchProject(s.id, {
           name: s.name,
           screens: s.screens.length,
@@ -283,7 +284,8 @@ export function useProjectHydration(projectId: string) {
           alarms: s.alarms.length,
           bindings: s.bindings.length,
           target: `${s.target.model} · ${s.target.width} × ${s.target.height}`,
-          intent: s.chat.find((m) => m.role === "user")?.text.slice(0, 120),
+          // A card says "Opened Plant.eote" until someone has said something better.
+          ...(said ? { intent: said } : {}),
         });
       };
       timer.current = setTimeout(() => { const write = pending; pending = undefined; write?.(); }, AUTOSAVE_MS);

@@ -113,7 +113,9 @@ export interface NamingStats {
 
 export interface ProjectKnowledge {
   v: typeof KNOWLEDGE_VERSION;
-  /** sha256 of the file: the same project scanned twice is one record. */
+  /** The account that may read the raw scan. Legacy local scans have no owner. */
+  ownerId?: string;
+  /** sha256 of the file, per owner: the same project scanned twice is one record. */
   id: string;
   fileName: string;
   scannedAt: string;

@@ -11,6 +11,7 @@
  * Phase 9 of docs/BUILD_PLAN.md.
  */
 
+import { useCanEdit } from "@/store/access";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search } from "lucide-react";
@@ -18,7 +19,7 @@ import type { Part, Screen } from "@/lib/ote/schema";
 import { useProject } from "@/store/project";
 import { ScreenRenderer } from "@/components/canvas/ScreenRenderer";
 import { Badge, Button, Input, Tabs, cn, type TabItem } from "@/components/ui";
-import { CATEGORIES, TEMPLATES, type Template } from "./templates";
+import { CATEGORIES, TEMPLATES, nextBlockNumber, type Template } from "./templates";
 
 /**
  * A preview part's id, fixed by where it sits rather than drawn at random.
@@ -86,6 +87,7 @@ export function TemplatesScreen({ projectId }: { projectId: string }) {
   const activeScreenId = useProject((s) => s.activeScreenId);
   const standards = useProject((s) => s.standards);
   const appendObject = useProject((s) => s.appendObject);
+  const canEdit = useCanEdit();
   const select = useProject((s) => s.select);
   const snapshot = useProject((s) => s.snapshot);
   const log = useProject((s) => s.log);
@@ -112,9 +114,7 @@ export function TemplatesScreen({ projectId }: { projectId: string }) {
     const at = freeSpotBelow(existing, standards.gridSize);
     // Numbering continues from what is already on the screen, so a second pump
     // block is PUMP 2 rather than a second PUMP 1.
-    const n =
-      existing.filter((p) => p.Name.startsWith(template.id.split("-")[0].toUpperCase()))
-        .length + 1;
+    const n = nextBlockNumber(template, at, existing);
 
     const parts = template.build(at, n);
     for (const part of parts) appendObject(screen.UniqueId, part);
@@ -200,7 +200,7 @@ export function TemplatesScreen({ projectId }: { projectId: string }) {
                   size="sm"
                   block
                   className={cn("mt-auto")}
-                  disabled={!screen}
+                  disabled={!screen || !canEdit}
                   onClick={() => use(template)}
                   icon={<Plus size={14} />}
                 >

@@ -36,7 +36,7 @@ import { ScreenRenderer, type Box, type CommentPin } from "./ScreenRenderer";
 import { useAccess, useCan, useCanEdit } from "@/store/access";
 import { threadsOf, useComments } from "@/components/comments/useComments";
 import { CommentComposer, CommentsPanel, type NumberedThread } from "@/components/comments/CommentsPanel";
-import { ScreenBoard, boardExtent, placementOf } from "./ScreenBoard";
+import { ScreenBoard, boardLayout, placementOf } from "./ScreenBoard";
 import { ScreenStrip } from "./ScreenStrip";
 import { RunOverlay } from "@/components/timeline/RunOverlay";
 import { CanvasToolbar } from "./CanvasToolbar";
@@ -288,12 +288,11 @@ export function CanvasPane({ defaultCommenting = false }: CanvasPaneProps = {}) 
 
   const board = useMemo(
     () =>
-      boardExtent(
-        { width: panel.width, height: panel.height },
-        screens.map((x) => x.UniqueId),
+      boardLayout(
+        screens.map((screen) => ({ id: screen.UniqueId, ...rootBox(screen.Children[0], target) })),
         screenPlacement,
       ),
-    [screens, panel.width, panel.height, screenPlacement],
+    [screens, target, screenPlacement],
   );
 
   const fit = useCallback(() => {

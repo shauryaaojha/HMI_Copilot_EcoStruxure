@@ -17,6 +17,7 @@
 
 import { z } from "zod";
 import { COLOR_SETS, DEFAULT_COLOR_SET, resolveColor } from "@/lib/ote/palette";
+import { DEFAULT_THEME, TOKEN_NAMES, type Theme } from "@/lib/components/theme";
 
 const index = z.number().int().min(1).max(60);
 
@@ -36,7 +37,7 @@ export const Tokens = z.object({
   /** A symbol or a lamp at rest. */
   equipmentFill: index,
   equipmentLine: index,
-  /** Running or open is an outline change, never a fill. */
+  /** Running or open uses a dark fill; stopped stays open. */
   runningLine: index,
   /** Alarm priority 1 to 4, ISA-18.2 order: highest first. */
   alarmP1: index,
@@ -52,7 +53,7 @@ export const Tokens = z.object({
 export type Tokens = z.infer<typeof Tokens>;
 
 export const Rules = z.object({
-  /** Everything sits on this grid; the product's own template rule is 8. */
+  /** Component sizing module; positions snap to theme.grid.unit (4 px). */
   grid: z.number().int().positive(),
   /** Smallest readable size by where the panel is. */
   fontMin: z.object({ touch: z.number().positive(), controlRoom: z.number().positive() }),
@@ -94,6 +95,15 @@ export const StandardPack = z.object({
   basis: z.string(),
   colorSet: z.number().int(),
   tokens: Tokens,
+  theme: z.object({
+    colorSet: z.number().int(),
+    tokens: z.record(z.enum(TOKEN_NAMES), index),
+    type: z.record(z.enum(["compact", "regular", "large"]), z.object({ label: z.number(), value: z.number(), title: z.number(), small: z.number() })),
+    radii: z.object({ panel: z.number(), field: z.number(), button: z.number(), indicator: z.number() }),
+    stroke: z.object({ hairline: z.number(), equipment: z.number(), focus: z.number() }),
+    touchMin: z.record(z.enum(["compact", "regular", "large"]), z.number()),
+    grid: z.object({ unit: z.number(), module: z.number() }),
+  }).default(DEFAULT_THEME) as z.ZodType<Theme>,
   rules: Rules,
 });
 export type StandardPack = z.infer<typeof StandardPack>;
@@ -118,7 +128,7 @@ export const ISA101: StandardPack = {
     ink: 1, // #030303
     muted: 52, // #474747
     white: 21, // #ffffff
-    equipmentFill: 2,
+    equipmentFill: 11,
     equipmentLine: 22,
     runningLine: 12, // #303030
     alarmP1: 55, // #971a24
@@ -129,6 +139,7 @@ export const ISA101: StandardPack = {
     pressedFill: 12,
     pressedInk: 21,
   },
+  theme: DEFAULT_THEME,
   rules: {
     grid: 8,
     fontMin: { touch: 12, controlRoom: 11 },

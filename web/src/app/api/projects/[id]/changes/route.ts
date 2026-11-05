@@ -5,15 +5,26 @@
  * editor: a client cannot write in someone else's name, or the Copilot's.
  */
 import { repo } from "@/lib/server/repo";
-import { requireAccess, requireReader } from "@/lib/server/access";
+import { requireAccess, requireReader, sourceInfo } from "@/lib/server/access";
 import { currentUser } from "@/lib/server/session";
 import { BATCH_LIMIT } from "@/lib/server/repo-live";
 import { errorResponse, json, type Context } from "@/lib/server/http";
 import { ServerError } from "@/lib/server/errors";
 import { announceRevision } from "@/lib/realtime/announce";
-import type { Change } from "@/lib/collab/types";
+import type { Change, ChangesResult } from "@/lib/collab/types";
+import type { User } from "@/lib/server/repo";
 export const runtime = "nodejs";
 
+
+/** Whether a change points the project at a stored file its author cannot read. */
+async function namesOthersFile(change: Change, user: User): Promise<boolean> {
+  for (const op of Array.isArray(change.ops) ? change.ops : []) {
+    if (op?.kind !== "setField" || (op.field !== "source" && op.field !== "sourceId") || typeof op.value !== "string") continue;
+    const readable = await sourceInfo(op.value, user).catch(() => null);
+    if (!readable) return true;
+  }
+  return false;
+}
 
 /** Body `{ base, changes: Change[] }`; answers `{ rev, accepted, rejected }`. */
 export async function POST(request: Request, context: Context) {
@@ -27,7 +38,16 @@ export async function POST(request: Request, context: Context) {
       const base = Number.isSafeInteger(change?.base) ? change.base : body.base;
       return { id: change?.id, base, ops: change?.ops, author: user.id } as Change;
     });
-    const result = await repo().live.append(id, changes);
+    // A field's shape is checked where the change lands; whose file it names needs
+    // the person asking. Refused one by one, so the rest of the queue still lands.
+    const refused: ChangesResult["rejected"] = [];
+    const allowed: Change[] = [];
+    for (const change of changes) {
+      if (await namesOthersFile(change, user)) refused.push({ id: typeof change.id === "string" ? change.id : "", reason: "names a source file you have no access to" });
+      else allowed.push(change);
+    }
+    const result = await repo().live.append(id, allowed);
+    result.rejected.push(...refused);
     // After the transaction, never before it: the broadcast says a revision
     // landed, and the revision it names is the one Mongo assigned.
     if (result.accepted.length > 0) announceRevision({ projectId: id, rev: result.rev, author: user.id });

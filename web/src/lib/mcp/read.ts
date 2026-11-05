@@ -12,10 +12,13 @@
  * return is somebody's plant: tag comments, screen names and object names are
  * strings out of a customer's file and are reported, never obeyed.
  */
+import { componentCatalogue } from "@/lib/components/place";
 import { z } from "zod";
 import { findTags } from "@/lib/ai/retrieve";
 import { screenToPng } from "@/lib/critic/render";
 import { rootBox, type Variable } from "@/lib/ote/schema";
+import { sceneOf } from "@/lib/layout/scene";
+import { layoutFacts, printLayoutFacts } from "@/lib/layout/facts";
 import { repo } from "@/lib/server/repo";
 import { validateInput } from "@/lib/server/validate";
 import type { Finding, Severity } from "@/lib/validation/rules";
@@ -111,6 +114,27 @@ const getScreens = tool({
     return {
       text: projectData("screens", limited(lines, RESULT_LIMIT - 1_000)),
       structured: { screens: screens.length, objects: screens.reduce((n, s) => n + s.objects.length, 0) },
+    };
+  },
+});
+
+const getLayout = tool({
+  name: "get_layout",
+  title: "Get layout facts",
+  description: "Resolved numeric layout facts for one screen: screen-design-unit boxes, rows, columns, grid, overlaps and near misses. ViewBox panel scaling is explicitly labelled as an unconfirmed renderer assumption.",
+  annotations: { readOnlyHint: true, openWorldHint: false },
+  input: {
+    projectId: z.string().describe("The project id, from list_projects."),
+    screenId: z.string().describe("Screen handle, name, or UniqueId, from get_screens."),
+  },
+  async run({ projectId, screenId }, { caller }) {
+    const { doc } = await openProject(caller, projectId, "read");
+    const screen = findScreen(doc, screenId);
+    const scene = sceneOf({ screen, panel: doc.target, meta: doc.objectMeta, handles: doc.handles, contentScreens: doc.screens, opened: true });
+    const facts = layoutFacts(scene, screen.Children[0].Children, `${doc.target.model} ${doc.target.width}x${doc.target.height}`);
+    return {
+      text: projectData("layout", limited(printLayoutFacts(facts).split("\n"), RESULT_LIMIT - 1_000)),
+      structured: { facts },
     };
   },
 });
@@ -232,4 +256,16 @@ const renderScreen = tool({
   },
 });
 
-export const READ_TOOLS: readonly McpTool[] = [listProjects, getScreens, findTagsTool, validate, renderScreen];
+const components = tool({
+  name: "components",
+  title: "Component catalogue",
+  description: "Lists every component place_component can draw, with its variants, sizes and the tag roles it takes.",
+  annotations: { readOnlyHint: true, openWorldHint: false },
+  input: {},
+  async run() {
+    const catalogue = componentCatalogue();
+    return { text: JSON.stringify(catalogue), structured: { components: catalogue } };
+  },
+});
+
+export const READ_TOOLS: readonly McpTool[] = [components, listProjects, getScreens, getLayout, findTagsTool, validate, renderScreen];

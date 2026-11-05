@@ -13,6 +13,8 @@ import {
 } from "../edits";
 import { isEmptyMeta } from "../types";
 import { expandComposite, propsFor, unionBox, type CompositeKind } from "@/lib/composites";
+import { expandComponent } from "@/lib/components";
+import { sizeOfUse } from "@/lib/components/place";
 import type { ProjectState, SliceOf } from "../state";
 import {
   ensureHandles,
@@ -25,6 +27,7 @@ import {
 export type AlarmsSlice = Pick<
   ProjectState,
   | "addComposite"
+  | "addComponent"
   | "setCompositeProps"
   | "registerComposite"
   | "setProgram"
@@ -62,7 +65,39 @@ export const createAlarmsSlice: SliceOf<AlarmsSlice> = (set, get) => ({
       return id;
     },
 
-    setCompositeProps: (id, patch) =>
+    addComponent: (screenId, use, box, name) => {
+      const id = crypto.randomUUID();
+      set((s) => {
+        const screen = s.screens.find((x) => x.UniqueId === screenId);
+        if (!screen) return;
+        remember(s, `Add ${use.kind}`);
+        const stem = uniqueName(takenNames(s), name ?? use.kind);
+        const stemmed = { ...use, name: stem };
+        const { parts, wires } = expandComponent(stemmed, box);
+        const taken = takenNames(s);
+        for (const part of parts) {
+          part.Name = uniqueName(taken, part.Name);
+          taken.add(part.Name);
+        }
+        viewOf(screen).Children.push(...parts);
+        for (const part of parts) Object.assign((s.objectMeta[part.UniqueId] ??= {}), { groupId: id, origin: "manual" });
+        for (const w of wires) {
+          const part = parts[w.index];
+          if (part) s.bindings.push({ tag: w.tag, targetId: part.UniqueId, targetName: part.Name, property: w.property, ...(w.converter ? { converter: w.converter } : {}) });
+        }
+        const corner = unionBox(parts)!;
+        s.composites[id] = {
+          id, kind: use.kind, variant: use.variant, size: use.size, backend: "parts", use: stemmed, name: stem,
+          props: stemmed.props, screenId, partIds: parts.map((p) => p.UniqueId),
+          offset: { x: box.left - corner.left, y: box.top - corner.top },
+        };
+        s.selectedIds = parts.map((p) => p.UniqueId);
+        ensureHandles(s);
+      });
+      return id;
+    },
+
+    setCompositeProps: (id, patch, usePatch) =>
       set((s) => {
         const instance = s.composites[id];
         if (!instance) return;
@@ -74,14 +109,29 @@ export const createAlarmsSlice: SliceOf<AlarmsSlice> = (set, get) => ({
         const box = unionBox(oldParts);
         if (!box) return;
         const first = children.findIndex((p) => own.has(p.UniqueId));
-        remember(s, `Edit ${instance.kind}`);
 
-        const props = propsFor(instance.kind as CompositeKind, { ...instance.props, ...patch });
+        const was = instance.use ? current(instance.use) : undefined;
+        const use = was ? { ...was, ...usePatch, tags: { ...was.tags, ...usePatch?.tags }, props: { ...was.props, ...patch } } : undefined;
+        if (use) for (const role of Object.keys(use.tags)) if (!use.tags[role]) delete use.tags[role];
+        const props = use ? use.props : propsFor(instance.kind as CompositeKind, { ...instance.props, ...patch });
         // Names are freed before the new parts claim them, so a re-expansion
         // keeps its own names rather than gaining a _2.
         const others = new Set(takenNames(s));
         for (const p of oldParts) others.delete(p.Name);
-        const { parts, wires } = expandComposite(instance.kind as CompositeKind, props, box, instance.name);
+        // A component draws inside its box, not to the edge of it, so the box is not
+        // what its parts add up to: it is where it was put, at the size it was asked.
+        let drawn: ReturnType<typeof expandComposite>;
+        try {
+          drawn = use
+            ? expandComponent(use, { left: box.left + (instance.offset?.x ?? 0), top: box.top + (instance.offset?.y ?? 0), ...sizeOfUse(use) })
+            : expandComposite(instance.kind as CompositeKind, props, box, instance.name);
+        } catch (error) {
+          // A component refuses what it cannot draw. The one on screen stays.
+          if (use) return;
+          throw error;
+        }
+        const { parts, wires } = drawn;
+        remember(s, `Edit ${instance.kind}`);
         for (const part of parts) {
           part.Name = uniqueName(others, part.Name);
           others.add(part.Name);
@@ -109,7 +159,7 @@ export const createAlarmsSlice: SliceOf<AlarmsSlice> = (set, get) => ({
           const part = parts[w.index];
           if (part) s.bindings.push({ tag: w.tag, targetId: part.UniqueId, targetName: part.Name, property: w.property, ...(w.converter ? { converter: w.converter } : {}) });
         }
-        s.composites[id] = { ...instance, props, partIds: parts.map((p) => p.UniqueId) };
+        s.composites[id] = { ...instance, ...(use ? { use, variant: use.variant, size: use.size } : {}), props, partIds: parts.map((p) => p.UniqueId) };
         s.selectedIds = parts.map((p) => p.UniqueId);
         ensureHandles(s);
       }),

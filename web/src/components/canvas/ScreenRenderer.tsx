@@ -27,10 +27,11 @@
 
 import { useCallback, useRef, useState } from "react";
 import { rootBox, type Part, type Screen } from "@/lib/ote/schema";
+import { partDefaultSize } from "@/lib/ote/default-size";
 import { COMPOSITES, isCompositeKind } from "@/lib/composites";
 import type { ToolType } from "./newPart";
 import type { ForeignPart, ObjectMeta, ScreenPreview } from "@/store/types";
-import { snapDelta, snapTargets, unionOf, type Box } from "@/store/edits";
+import { snapDelta, snapPositionDelta, snapTargets, unionOf, type Box } from "@/store/edits";
 import { contentsById, PartNode, type AlarmRow, type DrawEnv } from "./parts";
 import { FALLBACK_PANEL, ForeignLayer, PAPER, ScreenFrame } from "./StaticScreen";
 import { useProject } from "@/store/project";
@@ -252,7 +253,7 @@ export function ScreenRenderer({
   contentForeign,
   scale = 1,
   showGrid = false,
-  gridSize = 8,
+  gridSize = 4,
   snap = false,
   smartGuides = false,
   interactive = true,
@@ -351,8 +352,9 @@ export function ScreenRenderer({
     if (drag.kind === "move") {
       // Commit whole units as they accumulate so Location stays integral, the
       // way every Location in a real Screen.dat is.
-      let wantX = round(dx);
-      let wantY = round(dy);
+      const start = drag.startUnion;
+      let wantX = start && snap ? snapPositionDelta(start.left, dx, gridSize) : Math.round(dx);
+      let wantY = start && snap ? snapPositionDelta(start.top, dy, gridSize) : Math.round(dy);
 
       // Smart guides run after the grid, so an object that is near both lands
       // on the object - which is the one the engineer was aiming at.
@@ -378,8 +380,10 @@ export function ScreenRenderer({
           caught.h = h.line;
         }
       }
-      wantX = Math.round(wantX);
-      wantY = Math.round(wantY);
+      if (!snap) {
+        wantX = Math.round(wantX);
+        wantY = Math.round(wantY);
+      }
 
       const stepX = wantX - drag.appliedX;
       const stepY = wantY - drag.appliedY;
@@ -720,38 +724,7 @@ export function ScreenRenderer({
 /** What a click with a tool armed places, when there is no drag to size it. */
 function defaultSize(type: ToolType): { width: number; height: number } {
   if (isCompositeKind(type)) return COMPOSITES[type].size;
-  switch (type) {
-    case "TextBox":
-      return { width: 160, height: 28 };
-    case "Lamp":
-      return { width: 160, height: 64 };
-    case "NumericDisplay":
-      return { width: 160, height: 48 };
-    case "AlarmSummary":
-      return { width: 480, height: 200 };
-    case "Path":
-      return { width: 96, height: 96 };
-    case "Switch":
-      return { width: 120, height: 48 };
-    case "N-StateLamp":
-      return { width: 160, height: 48 };
-    case "StringDisplay":
-      return { width: 200, height: 36 };
-    case "ToggleSwitch":
-      return { width: 140, height: 56 };
-    case "BarScale":
-      return { width: 40, height: 160 };
-    case "Pipe":
-      return { width: 160, height: 12 };
-    case "DateTimeDisplay":
-      return { width: 180, height: 32 };
-    case "TrendGraph":
-    case "BlockTrend":
-      return { width: 420, height: 220 };
-    case "Rectangle":
-    default:
-      return { width: 200, height: 120 };
-  }
+  return partDefaultSize(type);
 }
 
 function dragBox(drag: Drag): Box {

@@ -225,13 +225,12 @@ export function useGeneration() {
         setSource(used);
 
         if (used === "local") {
-          store
-            .getState()
-            .log("/api/generate did not answer — replaying the bundled demo screen, which needs the demo tags.");
+          store.getState().log("/api/generate did not answer.");
           for await (const event of mockGeneration({
             intent,
             variables: store.getState().variables,
           })) {
+            if (event.type === "error") pipelineError = event.message;
             apply(event);
           }
         }

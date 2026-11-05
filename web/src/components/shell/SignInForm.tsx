@@ -97,6 +97,7 @@ export function SignInForm({ next, compact = false }: { next?: string; compact?:
       >
         {mode === "in" ? "No account yet? Create one" : "Already have an account? Sign in"}
       </button>
+      {mode === "in" && <p className="text-center text-xs text-text-muted">Forgot your password? Ask whoever runs this installation.</p>}
     </form>
   );
 }

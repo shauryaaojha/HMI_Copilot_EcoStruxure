@@ -3,6 +3,7 @@
  * read back exactly, stored once, swept when nothing refers to them, and
  * still readable when they were written by v1 as whole snapshots.
  */
+import { randomBytes } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -258,4 +259,19 @@ describe("reads without a transaction", () => {
     const again = await repo.live.append(ID, [change]);
     expect(again).toEqual({ rev: 2, accepted: [change.id], rejected: [] });
   });
+});
+
+describe("a project past Mongo's 16 MB document limit", () => {
+  it("is stored in pieces, none near the limit, and reads back", async () => {
+    const storage = new MemoryStorage();
+    const big = project();
+    const filler = randomBytes(10 * 1024 * 1024).toString("hex");
+    big.screens = [{ ...big.screens[0], UniqueId: "large", Name: filler }];
+    const manifest = await storage.transaction(d => writeSnapshot(d, ID, big, 0));
+    expect(manifest.n).toBeGreaterThan(20 * 1024 * 1024);
+    expect(JSON.stringify(manifest).length).toBeLessThan(64 * 1024);
+    const rows = await storage.transaction(d => d.list<{ _id: string; z: Uint8Array }>("objects", { projectId: ID }));
+    for (const row of rows) expect(row.z.length).toBeLessThan(16 * 1024 * 1024);
+    expect((await storage.transaction(d => readSnapshot(d, ID, manifest))).screens[0].Name).toBe(filler);
+  }, 60_000);
 });
