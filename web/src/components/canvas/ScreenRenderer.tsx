@@ -27,6 +27,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { rootBox, type Part, type Screen } from "@/lib/ote/schema";
+import { partDefaultSize } from "@/lib/ote/default-size";
 import { COMPOSITES, isCompositeKind } from "@/lib/composites";
 import type { ToolType } from "./newPart";
 import type { ForeignPart, ObjectMeta, ScreenPreview } from "@/store/types";
@@ -720,38 +721,7 @@ export function ScreenRenderer({
 /** What a click with a tool armed places, when there is no drag to size it. */
 function defaultSize(type: ToolType): { width: number; height: number } {
   if (isCompositeKind(type)) return COMPOSITES[type].size;
-  switch (type) {
-    case "TextBox":
-      return { width: 160, height: 28 };
-    case "Lamp":
-      return { width: 160, height: 64 };
-    case "NumericDisplay":
-      return { width: 160, height: 48 };
-    case "AlarmSummary":
-      return { width: 480, height: 200 };
-    case "Path":
-      return { width: 96, height: 96 };
-    case "Switch":
-      return { width: 120, height: 48 };
-    case "N-StateLamp":
-      return { width: 160, height: 48 };
-    case "StringDisplay":
-      return { width: 200, height: 36 };
-    case "ToggleSwitch":
-      return { width: 140, height: 56 };
-    case "BarScale":
-      return { width: 40, height: 160 };
-    case "Pipe":
-      return { width: 160, height: 12 };
-    case "DateTimeDisplay":
-      return { width: 180, height: 32 };
-    case "TrendGraph":
-    case "BlockTrend":
-      return { width: 420, height: 220 };
-    case "Rectangle":
-    default:
-      return { width: 200, height: 120 };
-  }
+  return partDefaultSize(type);
 }
 
 function dragBox(drag: Drag): Box {
