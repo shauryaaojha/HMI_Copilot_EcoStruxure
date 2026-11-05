@@ -116,6 +116,18 @@ export function toPathData(raw: PathGeometry): string {
   return out.join(" ");
 }
 
+/** Map the product's point box before drawing, so the SVG stroke stays in screen pixels. */
+export function pathInBox(raw: PathGeometry, box: { x: number; y: number; width: number; height: number }, extent: { width: number; height: number }): string {
+  const data = raw.Points.split(",").map((value, index) => {
+    const n = Number(value.trim());
+    const scaled = index % 2 === 0
+      ? box.x + n * box.width / Math.max(1, extent.width)
+      : box.y + n * box.height / Math.max(1, extent.height);
+    return String(scaled);
+  }).join(",");
+  return toPathData({ ...raw, Points: data });
+}
+
 /** Natural bounds of the geometry, so the symbol can be scaled into any box. */
 export function boundsOf(raw: PathGeometry): { width: number; height: number } {
   const nums = raw.Points.split(",").map(Number);

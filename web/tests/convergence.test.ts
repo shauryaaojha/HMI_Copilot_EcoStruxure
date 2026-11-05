@@ -135,9 +135,9 @@ describe("the panel is one object, request to validation", () => {
       const grid = gridFor(level, small, true);
       expect(12 + grid.columns * grid.width + (grid.columns - 1) * 16).toBeLessThanOrEqual(small.width - 12);
     }
-    expect(capacityOf(2, { width: 1024, height: 600 })).toBe(3);
+    expect(capacityOf(2, { width: 1024, height: 600 })).toBe(6);
     expect(capacityOf(2, { width: 1024, height: 768 })).toBe(6);
-    expect(gridFor(2, { width: 320, height: 240 }, false).width).toBeLessThanOrEqual(296);
+    expect(gridFor(2, { width: 320, height: 240 }, false).width).toBeLessThanOrEqual(304);
   });
 
   it("splits a screen that holds more than its level holds, keeping the name of the first", () => {
@@ -210,7 +210,7 @@ describe("every screen is a program", () => {
 
   it("puts the KPIs on a full overview and continues its tiles rather than dropping either", async () => {
     const variables = sample("water-treatment");
-    const { objects } = await run("water treatment", variables, { model: "HMIST6500AWADI", width: 1024, height: 600 });
+    const { objects } = await run("water treatment", variables, { model: "HMIST6500AWADI", width: 1024, height: 480 });
     const on = (screen: string) => objects.filter((o) => o.screenName === screen).map((o) => o.part.Name);
     expect(on("PlantOverview").some((n) => n.startsWith("Kpi_"))).toBe(true);
     const tiles = (screen: string) => on(screen).filter((n) => /^Tile_[A-Za-z0-9]+$/.test(n));

@@ -67,7 +67,7 @@ describe("expandOps", () => {
   });
 
   it("finds a handle's copy on every screen, by name stem", () => {
-    const first = partOf(screens, `Foot_${screens[0].Name}`);
+    const first = partOf(screens, `FootLbl_${screens[0].Name}`);
     const { ops } = expandOps([{ op: "deleteObject", target: state.handles[first.UniqueId], screens: ["all"] } as Op], state);
     expect(ops).toHaveLength(screens.length);
   });

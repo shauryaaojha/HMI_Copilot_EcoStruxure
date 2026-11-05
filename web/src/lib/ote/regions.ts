@@ -80,7 +80,8 @@ const snap = (n: number) => Math.round(n / GRID) * GRID;
 export function regionsOf(parts: Part[], panel: Panel): Record<Region, Box | null> {
   const footerTop = panel.height - FOOTER;
   const banner = parts.find((p) => p.Type === "AlarmSummary");
-  const alarmTop = banner ? Math.max(HEADER + NAV, banner.Location.Top - 24) : null;
+  // A generated banner is one line with no caption; an older one had a caption above it.
+  const alarmTop = banner ? Math.max(HEADER + NAV, banner.Location.Top - ((banner.Height ?? 0) > 40 ? 24 : 0)) : null;
   const bodyTop = HEADER + NAV + 8;
   const bodyBottom = (alarmTop ?? footerTop) - 8;
 

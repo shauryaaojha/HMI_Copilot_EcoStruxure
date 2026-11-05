@@ -32,11 +32,11 @@ async function entry(zip: Uint8Array, name: string) {
 }
 
 describe("the indicator's bar", () => {
-  it("is a Rectangle with FillLevel, empty at design time, with the band framed on it", () => {
+  it("is a Rectangle with FillLevel, half full at design time, with the band framed on it", () => {
     const { parts } = indicator();
     const bar = parts.find((p) => p.Name === "Ind_TNK_Bar")!;
     expect(bar.Type).toBe("Rectangle");
-    expect(Part.parse(bar)).toMatchObject({ Animation: { FillLevel: { Enable: true, HorizontalFill: 0 } } });
+    expect(Part.parse(bar)).toMatchObject({ Animation: { FillLevel: { Enable: true, HorizontalFill: 50 } } });
     const band = parts.find((p) => p.Name === "Ind_TNK_Band")!;
     expect(band.Type === "Rectangle" && band.Fill).toEqual({ Type: 0 });
     // The band sits on the bar, from normalLow to normalHigh of its width.

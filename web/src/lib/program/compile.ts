@@ -148,7 +148,8 @@ export function compileProgram(
       const box = boxOf.get(p.id)!;
       const runTag = e?.roles.find((r) => r.role === "running")?.tag;
       const faultTag = e?.roles.find((r) => r.role === "fault")?.tag;
-      const graphic = e?.symbol ? graphics.get(e.symbol) : undefined;
+      // The pictorial icon is opt-in (design B, Q11): an outlined body otherwise.
+      const graphic = e?.symbol && units.find((u) => u.id === p.id)?.libraryIcon ? graphics.get(e.symbol) : undefined;
       place.composite(
         "EquipmentSymbol",
         { label: e?.label ?? p.id, runTag, faultTag, graphic },
@@ -161,7 +162,10 @@ export function compileProgram(
         place.composite(
           "AnalogIndicator",
           {
-            label: callout.label,
+            // It sits under the symbol's name: "Tank 101 level" says the name twice.
+            label: callout.label.toLowerCase().startsWith(`${e.label.toLowerCase()} `)
+              ? callout.label.slice(e.label.length + 1).replace(/^[a-z]/, (letter) => letter.toUpperCase())
+              : callout.label,
             tag: callout.tag,
             units: range?.units ?? "",
             min: range?.min ?? 0,
@@ -181,7 +185,7 @@ export function compileProgram(
   // Tiles, cards or detail panels below whatever the KPI band took, with the
   // alarm banner along the bottom when the program asks for one.
   if ((program.faceplates?.length ?? 0) > 0 || program.sections?.includes("alarms")) {
-    notes.push(...faceplateBand(place, spec, units, panel, program.kpis.length > 0 ? top : undefined));
+    notes.push(...faceplateBand(place, spec, units, panel, program.kpis.length > 0 ? top : undefined, navigation));
   }
 
   const screen = screenOf(program.name, place.parts, panel);

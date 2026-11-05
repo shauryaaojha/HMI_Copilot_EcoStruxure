@@ -248,6 +248,10 @@ export interface CompositeInstance {
   /** Also the group id its parts carry in objectMeta. */
   id: string;
   kind: string;
+  variant?: string;
+  size?: "S" | "M" | "L";
+  backend?: "parts" | "co" | "exemplar";
+  use?: import("@/lib/components/types").ComponentUse;
   name: string;
   props: Record<string, unknown>;
   screenId: string;
