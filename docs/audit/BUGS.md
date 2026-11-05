@@ -26,7 +26,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 | [S3-10](#s3-10) | P1 | Rendering a screen of height 50 px or less crashes the whole Node process (resvg panic) | web/src/lib/critic/render.ts:`screenToPng` (resvg `render()`). Reached from web/src/app/a… | web/scripts/audit/s3-model-routes-open.test.ts test 4 (fails: "one an… | anyone (critique is anonymous). Connector and agent users w… | fixed in 480e4c1 |
 | [S4-01](#s4-01) | P1 | Reopening a project shows the "New project" start pane over it, with no way out | web/src/components/shell/Workspace.tsx:52-63 (with useProjectHydration.ts:121-126, which … | live: reload of /project/pmw1gbxb0 (1 screen, 19 objects, 7 tags) sho… | every user who reloads or reopens a project, every time. | fixed in c664057 |
 | [S4-22](#s4-22) | P1 | With Supabase Realtime on, server proposals and agent steps never reach the open tab | web/src/lib/collab/realtime.ts (no `proposal` or `agent` handler; only lib/collab/browser… | live: flow 2 step 7; `grep -n "proposal\\|agent" lib/collab/realtime.… | every signed-in user who uses the Copilot. | fixed in 538ba50 |
-| [S1-02](#s1-02) | P1 | A binding rebuild rewrites bindings the engineer did not touch (CO target SubType, source PropertyFullName) | web/src/lib/ote/bindings.ts:150-158 (`SubType: part.Type` writes "CompoundObject" for "Co… | web/scripts/audit/s1-eote-writer.test.ts (fails with "the untouched C… | importers whose project uses COs or carries PropertyFullNam… | part fixed in 0a90291 (CO SubType kept); PropertyFullName still dropped: needs a field on the store's bindings, needs Shaurya |
+| [S1-02](#s1-02) | P1 | A binding rebuild rewrites bindings the engineer did not touch (CO target SubType, source PropertyFullName) | web/src/lib/ote/bindings.ts:150-158 (`SubType: part.Type` writes "CompoundObject" for "Co… | web/scripts/audit/s1-eote-writer.test.ts (fails with "the untouched C… | importers whose project uses COs or carries PropertyFullNam… | fixed |
 | [S2-03](#s2-03) | P1 | The laptop store silently drops generation jobs | web/src/lib/server/storage.ts:132-143 (table allow-list without "generationJobs"); writes… | web/scripts/audit/s2-filerepo-jobs.test.ts (fails with `FileRepo drop… | connector users testing locally (MCP Inspector), the shared… | fixed in 345a564 |
 | [S2-06](#s2-06) | P1 | /api/knowledge reads, adds and deletes with no identity and no Origin check | web/src/app/api/knowledge/route.ts:26-77; related: web/src/lib/knowledge/privacy.ts:6-9 l… | web/scripts/audit/s2-knowledge-unguarded.test.ts (fails with `a forei… | laptop users browsing other sites while the app runs; any d… | fixed in 0f4c173 |
 | [S1-09](#s1-09) | P2 | An op that names a screen edits the same-named object on another screen | web/src/core/ops/apply.ts:153-160 (`findPartByName` scans every screen and takes the firs… | web/scripts/audit/s1-ops-concurrency.test.ts (fails with "Banner on s… | chat, agent and MCP users who address by name on multi-scre… | fixed in 35a1d13 (rejecting a name ambiguous across screens is left out) |
@@ -61,6 +61,8 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 | [S3-05](#s3-05) | P2 | The token endpoint does not bind codes and refresh tokens to the client | web/src/lib/server/oauth.ts:540-543 (`if (clientId && clientId !== code.clientId)`) and o… | web/scripts/audit/s3-oauth-client-binding.test.ts (fails with "a publ… | connector users (none affected in normal use). | part fixed in 86a0aec (refresh token bound to its client); requiring client_id on the code exchange changes the wire contract: needs Shaurya |
 | [S3-06](#s3-06) | P2 | MCP generate takes a brief with an unbounded unit count | - web/src/lib/mcp/generate.ts:111 `count: z.number().int().optional()`; | web/scripts/audit/s3-brief-count.test.ts (fails: "problemsWith accept… | connector users, rarely. Only a client that sends the brief… | fixed in bcdb85d |
 | [S1-11](#s1-11) | P2 | setColor and setText report success with no visible change on several types | web/src/core/ops/apply.ts:766-767 (setColor always writes the top-level `Fill.Color.Value… | measured by fidelity.mts. Applied but not visible: setColor TextBox 1… | chat, agent and MCP users restyling objects. | open |
+| [S1-16](#s1-16) | P1 | A new STRING tag makes a project OTE refuses to simulate | web/src/lib/ote/databases.ts (`shapeOf`) | licensed OTE, auto&manua.eote; web/tests/eote-writer-audit.test.ts | anyone who adds a STRING tag | fixed |
+| [S1-17](#s1-17) | P2 | A StringDisplay bound to a BOOL tag passes preflight, and OTE refuses to simulate it | web/src/core/ops/apply.ts (`bindTag`), web/src/lib/ote/preflight.ts | licensed OTE, auto&manua.eote | anyone who rebinds a StringDisplay | open |
 | [S3-03](#s3-03) | P2 | alignObjects silently drops targets it cannot find, and reports a no-op spread as done | web/src/core/ops/apply.ts:879-881 drops unresolved names without a word; it rejects only … | web/scripts/audit/s3-align-partial.test.ts (2 of 2 fail with the mess… | chat and MCP users who ask to align, whenever the model mis… | fixed in ed0bb1c |
 | [S4-06](#s4-06) | P2 | Variables.csv exports placeholder tags that the .eote leaves out | web/src/components/export/useExport.ts:129-131 | web/scripts/audit/s4-variables-csv-placeholders.test.ts (fails with "… | screens-first users who hand the CSV to the PLC programmer. | fixed in 2b7483a |
 | [S4-08](#s4-08) | P2 | Restoring a version drops locks, groups, provenance keys and bind intents | web/src/store/types.ts:117-125 (Version), web/src/store/slices/collab.ts:364-401 | web/scripts/audit/s4-restore-drops-meta.test.ts (fails with "the rest… | History and "revert to here" users. Regeneration then treat… | fixed in 1b693cf |
@@ -937,6 +939,31 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 - Proof: web/scripts/audit/s3-agent-redos.test.ts (fails with "one search call blocked the event loop for 7096 ms").
 - Users hit: Agent-tab users, rarely. The pattern can come from a confused model or from project text it read.
 - Fix: escape the pattern into a literal unless it passes a safe-regex check, or run the match with a time budget (for example in the QuickJS sandbox, which already has a deadline).
+- Last audit: new
+
+### S1-16
+
+**A new STRING tag makes a project OTE refuses to simulate**
+
+- Status: fixed on branch fix/audit-2026-11-review
+- Severity: P1 broken flow. preflight and selfCheck both pass.
+- Where: web/src/lib/ote/databases.ts. The writer gave every new variable row Type 1 and Size 0.
+- Repro: open auto&manua.eote, add one STRING tag with no binding, export, press Simulate in OTE.
+- Expected: it simulates. Actual: "There are errors that need to be resolved".
+- Proof: benched one column at a time on that export. Size 32 alone simulates, Type 2048 alone does not. The product's own STRING rows hold Type 2048 and Size 32, so the writer now writes both. Test: web/tests/eote-writer-audit.test.ts.
+- Users hit: anyone who adds a STRING tag or changes a tag to STRING.
+- Fix: done. A change of data type also sets the row's Type and Size; a row whose type did not change keeps its own.
+
+### S1-17
+
+**A StringDisplay bound to a BOOL tag passes preflight, and OTE refuses to simulate it**
+
+- Status: open
+- Severity: P2. The engineer learns of it only in OTE, with no pointer to the binding.
+- Where: web/src/core/ops/apply.ts (`bindTag` does not look at the tag's type) and web/src/lib/ote/preflight.ts.
+- Repro: on auto&manua.eote, rebind the StringDisplay from its STRING tag to a BOOL tag, export, press Simulate in OTE.
+- Proof: licensed OTE 4.4.20.31. The same StringDisplay on a new STRING tag simulates. A NumericDisplay on a BOOL tag and a ToggleSwitch on a WORD tag both simulate, so this is not a general type check. Only this one mismatch was benched.
+- Fix: refuse or warn in `bindTag` and preflight when a StringDisplay's tag is not STRING. Which other pairs OTE refuses is not known; bench them before adding more rules.
 - Last audit: new
 
 ## P3

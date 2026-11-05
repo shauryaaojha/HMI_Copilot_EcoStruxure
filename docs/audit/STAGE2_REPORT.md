@@ -7,8 +7,8 @@ code before its fix and passes after it. The status of every bug is in
 
 ## In one paragraph
 
-All 3 P0 bugs are fixed. Of the 12 P1 bugs, 10 are fixed and 1 is part fixed;
-the last P1 (S2-07, storage quotas) waits for a product decision. 15 P2 bugs
+All 3 P0 bugs are fixed. Of the 12 P1 bugs, 11 are fixed;
+the last P1 (S2-07, storage quotas) waits for a product decision. 14 P2 bugs
 are fixed and 1 is part fixed. No P3 bug was started. The full suite and
 `tsc` passed after every commit.
 
@@ -48,7 +48,6 @@ are fixed and 1 is part fixed. No P3 bug was started. The full suite and
 
 | Bug | Sev | Fixed | Left, and why |
 |---|---|---|---|
-| S1-02 | P1 | A Compound Object target keeps its own SubType on save (0a90291) | A source's `PropertyFullName` is still dropped. Keeping it needs a new field on the store's bindings, which changes the .eote writer: needs Shaurya. |
 | S3-05 | P2 | A refresh token presented with another client's id is refused (86a0aec) | Requiring `client_id` on the code exchange changes the OAuth wire contract for clients that leave it out: needs Shaurya. Claude sends it. |
 
 ## Needs Shaurya
@@ -57,8 +56,14 @@ are fixed and 1 is part fixed. No P3 bug was started. The full suite and
 - **S3-01, the 403 shape.** Scopes are enforced. Whether a refusal should also
   carry a `WWW-Authenticate` challenge is a connector-contract choice.
 - **Writer output.** S1-03, S1-05, S1-01 and S1-02 change what the .eote writer
-  writes. Each is tested against our reader. Whether OTE Expert opens the
-  result is **not verified**: OTE Expert is not installed on this machine.
+  writes. Benched afterwards in licensed OTE 4.4.20.31 (branch
+  fix/audit-2026-11-review): on auto&manua.eote, the only project whose original
+  simulates, the original and 15 edited exports all simulate (comment, tag add,
+  STRING tag, rebind, new wires, bound-part and Compound Object delete, alarm
+  add, data type change). The other three originals carry OTE errors of their
+  own, so for them OTE can show only that an export opens: 24 of 24 exports for
+  Panel1 and Drive_4.1, 2 of its 10 for Motor_Drive_Control_4.1, the rest not benched. What causes
+  those errors is not known.
 - **S2-08, CSP.** Only `frame-ancestors` is set. A full `script-src` policy
   needs nonces for Next's inline scripts and a check of every page.
 

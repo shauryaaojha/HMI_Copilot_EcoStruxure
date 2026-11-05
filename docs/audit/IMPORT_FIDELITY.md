@@ -354,6 +354,6 @@ The 24 baseline skips are these:
 
 The jump in the last column is S1-01: the export route no longer refuses a
 project that holds Compound Objects. The writer gains (+5 ops) are S1-03,
-S1-05 and S1-02's SubType half. Whether OTE Expert opens the output is still
-**not verified**: OTE Expert is not installed on this machine. Same command,
+S1-05 and S1-02's SubType half. The result in licensed OTE is in STAGE2_REPORT.md
+under "Writer output". Same command,
 same corpus; the full result is in the audit scratchpad, not the repository.
