@@ -811,8 +811,9 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
             const [off, on] = faces;
             if (op.offText !== undefined) s.setProperty(part.UniqueId, [...off, "Text"], op.offText);
             if (op.onText !== undefined) s.setProperty(part.UniqueId, [...on, "Text"], op.onText);
+            // One wording for the part reads on every face: the off face is the one on the canvas.
             if (op.text !== undefined && op.offText === undefined && op.onText === undefined) {
-              s.setProperty(part.UniqueId, [...on, "Text"], op.text);
+              for (const face of faces) s.setProperty(part.UniqueId, [...face, "Text"], op.text);
             }
           } else {
             reject(op, `${part.Name} is a ${part.Type}; its text comes from the bound tag`);
@@ -848,10 +849,28 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
           reject(op, `${op.token ?? op.color ?? "That"} is not a colour in the palette.`);
           break;
         }
-        const key = op.colorRole === "border" ? "Border" : op.colorRole === "text" ? "TextColor" : "Fill";
-        s.setProperty(found.part.UniqueId, [key, "Color", "Value"], value);
+        const type = found.part.Type;
+        if (type === "CompoundObject" || type === "AlarmSummary") {
+          reject(op, `${found.part.Name} is a ${type === "CompoundObject" ? "Compound Object" : "alarm summary"}; its colours come from its definition, so setColor would not show.`);
+          break;
+        }
+        // A text box draws only its words.
+        if (type === "TextBox" && op.colorRole && op.colorRole !== "text") {
+          reject(op, `${found.part.Name} is a text box and draws no ${op.colorRole}; put a rectangle behind it, or colour its text.`);
+          break;
+        }
+        const role = op.colorRole ?? (type === "TextBox" ? "text" : "fill");
+        const key = role === "border" ? "Border" : role === "text" ? "TextColor" : "Fill";
+        // Parts with states draw a face, not the part. A lamp's colour says it is on,
+        // so that is the face painted, and the report says which it was.
+        const faces: { path: string[]; said: string }[] =
+          type === "Lamp" || type === "ToggleSwitch" ? [{ path: ["On"], said: "on-state " }]
+          : type === "Switch" ? [{ path: ["Release"], said: "" }, { path: ["Press"], said: "" }]
+          : type === "N-StateLamp" ? found.part.States.map((_, i) => ({ path: ["States", String(i)], said: "" }))
+          : [{ path: [], said: "" }];
+        for (const face of faces) s.setProperty(found.part.UniqueId, [...face.path, key, "Color", "Value"], value);
         touch(s, found.part.UniqueId);
-        ok(note || `Set ${found.part.Name} ${op.colorRole ?? "fill"} to ${op.token ?? op.color}`);
+        ok(note || `Set ${found.part.Name} ${faces[0].said}${role} to ${op.token ?? op.color}`);
         break;
       }
 

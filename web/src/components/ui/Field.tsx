@@ -8,7 +8,7 @@
  * and the hint are data, not markup.
  */
 
-import { useId, type ReactNode } from "react";
+import { Children, cloneElement, isValidElement, useId, type ReactElement, type ReactNode } from "react";
 import { cn } from "./cn";
 
 export interface FieldProps {
@@ -33,6 +33,9 @@ export function Field({
 }: FieldProps) {
   const generated = useId();
   const id = htmlFor ?? generated;
+  // The label names its control only if the control carries the id it points at.
+  const only = Children.count(children) === 1 && isValidElement(children) ? (children as ReactElement<{ id?: string }>) : null;
+  const control = only && !htmlFor && only.props.id === undefined ? cloneElement(only, { id }) : children;
 
   return (
     <div
@@ -53,7 +56,7 @@ export function Field({
         {label}
       </label>
       <div className="min-w-0">
-        {children}
+        {control}
         {error ? (
           <p className="mt-1 text-[11px] text-status-alarm">{error}</p>
         ) : (

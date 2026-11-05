@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { useProject } from "@/store/project";
 import { summarise, useValidation } from "@/components/validation/useValidation";
-import { Badge, Button, Panel, Toggle, cn } from "@/components/ui";
+import { Button, Panel, Toggle, cn } from "@/components/ui";
 import { useExport } from "./useExport";
 
 const kb = (bytes: number) =>
@@ -285,11 +285,10 @@ export function ExportScreen() {
 
         {artifacts.some((a) => a.kind === "eote") && (
           <p className="mt-3 flex items-start gap-2 text-xs text-text-muted">
-            <Badge tone="ok">verified</Badge>
             <span>
               Written by the same packager that produced
               demo_project/HMICopilot_TS.eote, which opens in Operator Terminal
-              Expert 4.4.
+              Expert 4.4. Open this one there before you rely on it.
             </span>
           </p>
         )}

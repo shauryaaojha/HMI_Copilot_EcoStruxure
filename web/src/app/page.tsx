@@ -98,7 +98,7 @@ export default function Landing() {
               <StartButtons />
 
               <p className="mt-6 font-mono text-[11px] text-text-faint">
-                Runs with no model key · 699 tests · nothing exported until you say so
+                Runs with no model key · nothing exported until you say so
               </p>
             </div>
 

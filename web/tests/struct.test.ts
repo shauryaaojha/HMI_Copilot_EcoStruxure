@@ -7,6 +7,7 @@
  * against them where they are on disk.
  */
 
+import os from "node:os";
 import fs from "node:fs";
 import path from "node:path";
 import JSZip from "jszip";
@@ -184,7 +185,7 @@ describe("a 3.1 project", () => {
 });
 
 /** The real corpus, where it is on disk; skipped everywhere else. */
-const CORPUS = "C:/Users/shaur/Downloads/EOTE_Template_v7";
+const CORPUS = process.env.OTE_TEMPLATES ?? path.join(os.homedir(), "Downloads", "EOTE_Template_v7");
 const corpus = fs.existsSync(CORPUS) ? describe : describe.skip;
 
 corpus("the struct half of the template corpus", () => {

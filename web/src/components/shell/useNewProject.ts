@@ -23,10 +23,10 @@ export function useNewProject() {
   const reset = useProject((s) => s.reset);
 
   return useCallback(
-    (name?: string): ProjectRecord => {
+    (name?: string, ask?: { open?: boolean }): ProjectRecord => {
       const record = createProject(name);
       reset();
-      router.push(`/project/${record.id}`);
+      router.push(`/project/${record.id}${ask?.open ? "?open=1" : ""}`);
       return record;
     },
     [reset, router],

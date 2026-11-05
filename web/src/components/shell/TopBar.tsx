@@ -17,6 +17,7 @@
  * recedes and the work sits on top of it rather than beside it.
  */
 
+import { useParams } from "next/navigation";
 import { AccountControl } from "./AccountControl";
 import { PresenceAvatars } from "@/components/collab/PresenceAvatars";
 import { useEffect, useRef, useState } from "react";
@@ -134,7 +135,9 @@ export interface TopBarProps {
 }
 
 export function TopBar({ onExport, className }: TopBarProps) {
-  const projectId = useProject((s) => s.id);
+  // From the route: the store's id is empty until the project has loaded.
+  const storeId = useProject((s) => s.id);
+  const projectId = useParams<{ id?: string }>()?.id ?? storeId;
   const target = useProject((s) => s.target);
   const actual = useActualPanel();
   const newProject = useNewProject();

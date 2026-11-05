@@ -76,6 +76,8 @@ export async function requireAccess(user: User | null, id: string, action: Actio
  */
 export async function requireReader(user: User | null, id: string, request: Request | undefined, action: "read" | "export" = "read") {
   const tokens = shareTokens(request);
+  // Nobody and no link: the same answer whether the project exists or not.
+  if (!user && tokens.length === 0) throw new ServerError(401, "unauthorized", "Sign in to access projects");
   const found = await resolve(user, id, repo(), tokens);
   if (!found) throw new ServerError(404, "not-found", "Project not found");
   if (!user && tokens.length === 0) throw new ServerError(401, "unauthorized", "Sign in to access projects");

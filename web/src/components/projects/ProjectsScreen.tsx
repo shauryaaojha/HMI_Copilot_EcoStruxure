@@ -26,6 +26,7 @@ import {
   touchProject,
   type ProjectRecord,
 } from "@/store/projects";
+import { forgetHydration } from "@/components/shell/useProjectHydration";
 import { clearProject, saveProject, getAccount, uploadProject } from "@/store/persist";
 import { DEFAULT_STANDARDS, useProject } from "@/store/project";
 import { useNewProject } from "@/components/shell/useNewProject";
@@ -189,6 +190,8 @@ export function ProjectsScreen() {
 
   /** Deleting takes the contents too, not only the card that pointed at them. */
   function remove(id: string) {
+    const doomed = projects.find((p) => p.id === id);
+    if (!window.confirm(`Delete ${doomed?.name ?? "this project"}? It is removed from this browser and cannot be brought back.`)) return;
     write(projects.filter((p) => p.id !== id));
     clearProject(id);
   }
@@ -209,7 +212,7 @@ export function ProjectsScreen() {
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {cloudProjects.map(p => <li key={p._id} className="rounded-panel border border-line-subtle bg-surface-raised p-4">
             <Link className="focus-ring text-sm font-semibold hover:text-brand-400" href={`/project/${p._id}`}>{p.name}</Link>
-            <p className="mt-2 text-xs text-text-muted">Version {p.rev} ? {p.target.model}</p>
+            <p className="mt-2 text-xs text-text-muted">Version {p.rev} · {p.target.model}</p>
           </li>)}
         </ul>
       </section>}
@@ -351,7 +354,9 @@ export function ProjectsScreen() {
             </Link>
 
             {cloud && <button className="focus-ring mt-2 text-xs text-brand-400" onClick={() => {
-              void uploadProject(project.id).then(refreshCloud).catch(e => setOpenError(e.message));
+              // The next open has to read the server's copy, role and all, even if this
+              // page load already filled the store from the browser's.
+              void uploadProject(project.id).then(() => { forgetHydration(); return refreshCloud(); }).catch(e => setOpenError(e.message));
             }}>Upload to cloud</button>}
             {(
               <button

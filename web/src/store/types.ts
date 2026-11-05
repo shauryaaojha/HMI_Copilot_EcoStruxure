@@ -89,7 +89,6 @@ export interface Standards {
   smartGuides: boolean;
   showRulers: boolean;
   colorSet: number;
-  enforceNaming: boolean;
   /**
    * Every edit asked for in the conversation becomes a proposal the engineer
    * accepts, never a direct commit - for sites under management of change.
@@ -105,7 +104,6 @@ export const DEFAULT_STANDARDS: Standards = {
   smartGuides: true,
   showRulers: false,
   colorSet: 4,
-  enforceNaming: true,
 };
 
 /**

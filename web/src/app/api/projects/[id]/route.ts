@@ -14,7 +14,10 @@ export async function GET(request: Request, context: Context) {
     // the editor which affordances to offer.
     const { access, project } = await requireReader(await currentUser(), id, request);
     const version = await repo().versions.current(id);
-    return Response.json({ project, rev: version?.rev, snapshot: version?.snapshot, access }, { headers: { "Cache-Control": "no-store" } });
+    // Alone means no second member and no link out: there is nobody to propose to.
+    const [members, shares] = await Promise.all([repo().members.list(id), repo().shares.list(id)]);
+    const alone = members.length <= 1 && shares.length === 0;
+    return Response.json({ project, rev: version?.rev, snapshot: version?.snapshot, access: access && { ...access, alone } }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) { return errorResponse(e); }
 }
 export async function PUT(request: Request, context: Context) {

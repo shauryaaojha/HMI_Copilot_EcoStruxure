@@ -10,6 +10,7 @@
  * marked, because that is where an engineer should look first.
  */
 
+import { useCanEdit } from "@/store/access";
 import { useMemo, useState } from "react";
 import { AlertTriangle, ArrowRight, Check, HelpCircle, Link2, RefreshCw, Trash2 } from "lucide-react";
 import { useProject } from "@/store/project";
@@ -67,7 +68,17 @@ function RangeRow({ equipment, tag }: { equipment: PlantEquipment; tag: string }
   );
 }
 
+/** Someone who may only read sees the model, and every control in it is off. */
 export function PlantScreen() {
+  const canEdit = useCanEdit();
+  return (
+    <fieldset disabled={!canEdit} className="contents">
+      <PlantBody />
+    </fieldset>
+  );
+}
+
+function PlantBody() {
   const plant = useProject((s) => s.plant);
   const variables = useProject((s) => s.variables);
   const setPlant = useProject((s) => s.setPlant);

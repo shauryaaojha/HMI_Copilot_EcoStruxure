@@ -12,6 +12,7 @@
 
 import { useState } from "react";
 import { KnowledgePanel } from "./KnowledgePanel";
+import { useAccess, useCanEdit } from "@/store/access";
 import { useProject } from "@/store/project";
 import { useTheme } from "@/components/shell/theme";
 import {
@@ -52,6 +53,8 @@ export function SettingsScreen() {
   const standards = useProject((s) => s.standards);
   const setStandards = useProject((s) => s.setStandards);
   const reset = useProject((s) => s.reset);
+  const canEdit = useCanEdit();
+  const onServer = useAccess((s) => s.access !== null);
 
   return (
     <div className="space-y-5">
@@ -110,10 +113,13 @@ export function SettingsScreen() {
           <Panel title="This session" bordered>
             <div className="space-y-3">
               <p className="text-xs text-text-muted">
-                The project lives in this browser tab. Nothing is uploaded; the only
-                way out is the Export screen, which writes an .eote.
+                {onServer
+                  ? "This project is saved on the server, with a working copy in this browser."
+                  : "This project is saved in this browser."}{" "}
+                Files you upload go to the server to be read, and what you ask the Copilot
+                goes to the model that answers. The Export screen writes the .eote.
               </p>
-              <Button variant="danger" size="sm" onClick={() => reset()}>
+              <Button variant="danger" size="sm" disabled={!canEdit} onClick={() => reset()}>
                 Clear the project
               </Button>
             </div>

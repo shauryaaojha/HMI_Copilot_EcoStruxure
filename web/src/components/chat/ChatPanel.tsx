@@ -26,6 +26,7 @@
  * lands. Nothing here animates for decoration.
  */
 
+import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
@@ -79,7 +80,8 @@ export function ChatPanel() {
   const clearChat = useProject((s) => s.clearChat);
   const tagImport = useProject((s) => s.tagImport);
   const restore = useProject((s) => s.restore);
-  const projectId = useProject((s) => s.id);
+  const storeId = useProject((s) => s.id);
+  const projectId = useParams<{ id?: string }>()?.id ?? storeId;
   // Every turn edits the project, so a viewer or commenter reads the
   // conversation but cannot add to it, apply what it proposed, revert to a
   // turn or clear it.

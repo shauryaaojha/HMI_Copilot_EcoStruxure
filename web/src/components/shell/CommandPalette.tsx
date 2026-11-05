@@ -157,6 +157,7 @@ export function CommandPalette({
   return (
     <div
       role="dialog"
+      data-command-palette
       aria-modal="true"
       aria-label="Commands"
       className="fixed inset-0 z-[60] flex items-start justify-center bg-black/40 pt-[12vh] backdrop-blur-sm"
@@ -234,6 +235,10 @@ export function useCommandPalette() {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "k") return;
+      const target = event.target as HTMLElement | null;
+      // The palette's own box still closes it: that is the one text field it owns.
+      const typing = target?.matches?.("input, textarea, select, [contenteditable='true']") && !target.closest("[data-command-palette]");
+      if (typing) return;
       event.preventDefault();
       setOpen((o) => !o);
     }

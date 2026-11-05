@@ -11,6 +11,7 @@
  * Phase 9 of docs/BUILD_PLAN.md.
  */
 
+import { useCanEdit } from "@/store/access";
 import { useRouter } from "next/navigation";
 import { History, RotateCcw } from "lucide-react";
 import { useProject } from "@/store/project";
@@ -30,6 +31,7 @@ export function HistoryScreen({ projectId }: { projectId: string }) {
   const router = useRouter();
   const versions = useProject((s) => s.versions);
   const restore = useProject((s) => s.restore);
+  const canEdit = useCanEdit();
   const snapshot = useProject((s) => s.snapshot);
   const log = useProject((s) => s.log);
   const screens = useProject((s) => s.screens);
@@ -108,6 +110,7 @@ export function HistoryScreen({ projectId }: { projectId: string }) {
                       <Button
                         variant="ghost"
                         size="sm"
+                        disabled={!canEdit}
                         onClick={() => goBackTo(version.at, version.description)}
                         icon={<RotateCcw size={13} />}
                       >
