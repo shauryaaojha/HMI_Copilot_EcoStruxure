@@ -24,8 +24,24 @@ import { Button, Field, Input } from "@/components/ui";
 
 const REFUSED = "That email and password do not match an account. Sign-in pauses for a while after repeated attempts.";
 
-export function SignInForm({ next, compact = false }: { next?: string; compact?: boolean }) {
-  const [mode, setMode] = useState<"in" | "up">("in");
+interface SignInFormProps {
+  next?: string;
+  compact?: boolean;
+  initialMode?: "in" | "up";
+  /** The level of the title this form shows. Without it, no title. */
+  heading?: "h1" | "h2";
+  /** The sentence under the title: what the account is needed for. */
+  lead?: string;
+  autoFocus?: boolean;
+}
+
+const WAYS = [
+  { id: "in", label: "Sign in" },
+  { id: "up", label: "Sign up" },
+] as const;
+
+export function SignInForm({ next, compact = false, initialMode = "in", heading: Heading, lead, autoFocus = false }: SignInFormProps) {
+  const [mode, setMode] = useState<"in" | "up">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -65,8 +81,30 @@ export function SignInForm({ next, compact = false }: { next?: string; compact?:
 
   return (
     <form className="space-y-3" onSubmit={submit}>
+      {Heading && (
+        <Heading className="text-base font-semibold text-text-primary">
+          {mode === "in" ? "Sign in to HMI Copilot" : "Create your account"}
+        </Heading>
+      )}
+      {lead && <p className="text-sm text-text-secondary">{lead}</p>}
+      <div className="grid grid-cols-2 gap-1 rounded-lg border border-line-subtle bg-surface-base p-1">
+        {WAYS.map((way) => (
+          <button
+            key={way.id}
+            type="button"
+            aria-pressed={mode === way.id}
+            onClick={() => { setMode(way.id); setError(undefined); }}
+            className={
+              "focus-ring rounded-md py-1.5 text-sm font-medium transition " +
+              (mode === way.id ? "bg-brand-500 text-text-onbrand" : "text-text-muted hover:text-text-primary")
+            }
+          >
+            {way.label}
+          </button>
+        ))}
+      </div>
       <Field layout="stack" label="Email">
-        <Input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} />
+        <Input type="email" autoComplete="email" autoFocus={autoFocus} required value={email} onChange={e => setEmail(e.target.value)} />
       </Field>
       <Field layout="stack" label="Password" hint={mode === "up" ? "At least 10 characters." : undefined}>
         <Input
@@ -90,13 +128,6 @@ export function SignInForm({ next, compact = false }: { next?: string; compact?:
       <Button type="submit" variant="primary" block size={compact ? "sm" : "md"} disabled={busy}>
         {busy ? "Working…" : mode === "in" ? "Sign in" : "Create account"}
       </Button>
-      <button
-        type="button"
-        className="focus-ring w-full rounded-md py-1 text-xs text-text-muted hover:text-text-primary"
-        onClick={() => { setMode(mode === "in" ? "up" : "in"); setError(undefined); }}
-      >
-        {mode === "in" ? "No account yet? Create one" : "Already have an account? Sign in"}
-      </button>
       {mode === "in" && <p className="text-center text-xs text-text-muted">Forgot your password? Ask whoever runs this installation.</p>}
     </form>
   );

@@ -10,6 +10,7 @@
  * names and alarm text. Read from /api/knowledge; nothing here edits a scan.
  */
 
+import { SignInNotice, useSignedOut } from "@/components/shell/SignInNotice";
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, Trash2 } from "lucide-react";
 import { Panel } from "@/components/ui";
@@ -32,6 +33,7 @@ const STORE: Record<Listing["store"], string> = {
 export function KnowledgePanel() {
   const [data, setData] = useState<Listing | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const signedOut = useSignedOut();
 
   const load = useCallback(async () => {
     try {
@@ -60,13 +62,14 @@ export function KnowledgePanel() {
   return (
     <Panel title="What the tool has learned" bordered>
       <div className="space-y-3 text-xs">
-        {error && (
+        <SignInNotice reason="Sign in to see what the tool has learned." />
+        {error && !signedOut && (
           <p className="flex gap-2 text-status-warn">
             <AlertTriangle size={12} aria-hidden className="mt-0.5 shrink-0" />
             {error}
           </p>
         )}
-        {!data && !error && <p className="text-text-muted">Reading the knowledge base…</p>}
+        {!data && !error && !signedOut && <p className="text-text-muted">Reading the knowledge base…</p>}
         {data && (
           <>
             <p className="text-text-muted">

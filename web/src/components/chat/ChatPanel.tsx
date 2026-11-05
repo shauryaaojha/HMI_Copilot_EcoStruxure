@@ -26,6 +26,8 @@
  * lands. Nothing here animates for decoration.
  */
 
+import { takeDraft } from "@/lib/client/sign-in";
+import { SignInNotice } from "@/components/shell/SignInNotice";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -142,12 +144,19 @@ export function ChatPanel() {
     el.scrollTop = el.scrollHeight;
   }, [chat, working]);
 
+  useEffect(() => {
+    const waiting = takeDraft("chat");
+    if (waiting) setDraft(waiting);
+  }, []);
+
   function submit() {
     const text = draft.trim();
     if (!text || working) return;
     setDraft("");
     pinned.current = true;
-    void send(text);
+    void send(text).then((sent) => {
+      if (sent === false) setDraft(text);
+    });
   }
 
   return (
@@ -224,6 +233,7 @@ export function ChatPanel() {
         </div>
       </header>
 
+      <SignInNotice className="relative mx-3 mt-2 shrink-0" reason="Sign in to use the Copilot." />
       {mode === "agent" && canEdit ? <AgentPane /> : (<>
       {/* The thread. Takes whatever height is left and scrolls on its own. */}
       <div

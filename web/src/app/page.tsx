@@ -7,6 +7,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { SchneiderMark } from "@/components/shell/SchneiderMark";
+import { AuthLinks } from "@/components/landing/AuthLinks";
 import { StartButtons } from "@/components/landing/StartButtons";
 import { ScreenBuild } from "@/components/landing/ScreenBuild";
 import { Flow, Routes } from "@/components/landing/Sections";
@@ -67,11 +68,14 @@ export default function Landing() {
       <CursorLight />
 
       <div className="relative">
-        <header className="mx-auto flex max-w-6xl items-center gap-4 px-8 py-5">
+        <header className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-8 py-5">
           <SchneiderMark className="text-text-primary" />
           <span aria-hidden className="h-6 w-px bg-line" />
           <span className="text-lg font-semibold tracking-tight">HMI Copilot</span>
-          <StartButtons compact />
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+            <AuthLinks />
+            <StartButtons compact />
+          </div>
         </header>
 
         <main>

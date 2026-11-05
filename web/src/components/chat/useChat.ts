@@ -17,6 +17,8 @@
  * what exists (F5).
  */
 
+import { holdDraft, openSignIn } from "@/lib/client/sign-in";
+import { getAccount } from "@/store/persist";
 import { commitsWithoutReview, labelOp, selectedOps } from "@/lib/ai/review";
 import { useCallback, useRef } from "react";
 import { describeOp, digestOf, type HistoryItem } from "@/lib/ai/converse";
@@ -164,6 +166,14 @@ export function useChat() {
       const request = text.trim();
       if (!request || busy.current) return;
       busy.current = true;
+
+      const me = await getAccount().catch(() => null);
+      if (me && !me.user && me.providers.length > 0) {
+        busy.current = false;
+        holdDraft("chat", request);
+        openSignIn({ mode: "in", reason: "Sign in to use the Copilot." });
+        return false;
+      }
 
       const store = useProject.getState();
       // A new request supersedes any proposal still waiting; its dry run was

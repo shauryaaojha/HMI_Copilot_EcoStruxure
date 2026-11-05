@@ -10,6 +10,7 @@
  * shows, so the engineer sees what the critic would have seen.
  */
 
+import { SignInNotice } from "@/components/shell/SignInNotice";
 import { useState } from "react";
 import { Eye, Sparkles } from "lucide-react";
 import Link from "next/link";
@@ -74,6 +75,7 @@ export function CriticPanel({ projectId }: { projectId?: string }) {
 
   return (
     <div className="space-y-3">
+      <SignInNotice reason="Sign in to have the Copilot review a screen." />
       <div className="flex flex-wrap items-center gap-2">
         <div className="w-56">
           <Select
