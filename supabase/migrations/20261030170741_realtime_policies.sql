@@ -15,20 +15,19 @@
 --   sub           = the user id
 --   project_topic = project:<id>    the one topic this token may use
 --
--- These two policies are the other half of that: the topic being joined must
+-- This policy is the other half of that: the topic being joined must
 -- be the topic the token names. A non-member never gets a token, so they never
 -- get a claim, so they never match. Someone holding a token for project A
 -- cannot use it on project B's topic, which is the case the route cannot
 -- refuse and only the policy can - and the case `npm run realtime:check`
 -- exercises (web/scripts/realtime-check.mts).
 --
--- SELECT is receiving a broadcast; INSERT is sending one. Both are needed: a
--- client that may only receive cannot broadcast its own notices, and the
--- server publishes with the secret key (the service role), which is not
--- subject to RLS.
+-- SELECT is receiving a broadcast; INSERT is sending one. Browsers only receive:
+-- the server publishes with the secret key (the service role), which is not
+-- subject to RLS. There is deliberately no INSERT policy, because with one any
+-- token holder could send notices on the topic (audit S2-11, dropped 2026-11-06).
 --
--- Safe to run twice: each policy is dropped if it is there before it is
--- created, so re-running this file leaves exactly the two policies below.
+-- Safe to run twice: re-running this file leaves exactly the one policy below.
 --
 -- No `alter table ... enable row level security`: realtime.messages belongs
 -- to Supabase's realtime admin role, so on a hosted project that statement
@@ -44,8 +43,3 @@ to authenticated
 using ( realtime.topic() = (auth.jwt() ->> 'project_topic') );
 
 drop policy if exists "a token may only broadcast on the topic it names" on realtime.messages;
-create policy "a token may only broadcast on the topic it names"
-on realtime.messages
-for insert
-to authenticated
-with check ( realtime.topic() = (auth.jwt() ->> 'project_topic') );

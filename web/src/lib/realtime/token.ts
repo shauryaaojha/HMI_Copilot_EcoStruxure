@@ -20,11 +20,10 @@
  * create policy "a token may only join the topic it names"
  * on realtime.messages for select to authenticated
  * using ( realtime.topic() = (auth.jwt() ->> 'project_topic') );
- *
- * create policy "a token may only broadcast on the topic it names"
- * on realtime.messages for insert to authenticated
- * with check ( realtime.topic() = (auth.jwt() ->> 'project_topic') );
  * ```
+ *
+ * There is no insert policy: a token can receive and cannot send. Only the
+ * server publishes, with the secret key.
  *
  * A non-member never gets a token, so they never get a topic claim, so the
  * policy refuses the join. That is the property to test with a second account

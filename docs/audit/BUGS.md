@@ -10,7 +10,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Totals:** 82 bugs: P0 3, P1 12, P2 39, P3 28. (4 duplicates merged into the bug they repeat.)
 
-**Status on `feat/build-remaining`, 2026-11-06:** 78 of 84 rows closed, 6 open: S1-04, S1-10, S1-12, S1-17, S1-13, S2-11. The open ones wait on OTE file work or on Shaurya. Every status names its commit. The audit proofs run with the command above and only S1-04 still fails.
+**Status on `main`, 2026-11-06:** 79 of 84 rows closed, 5 open: S1-04, S1-10, S1-12, S1-17, S1-13. All five wait on OTE file work. Every status names its commit. The audit proofs run with the command above and only S1-04 still fails.
 
 ## Summary
 
@@ -95,7 +95,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 | [S5-08](#s5-08) | P3 | Regenerate "Back" leaves the ghosts on the canvas | web/src/components/canvas/RegenerateDialog.tsx:86-93 (sets preview only in review, never … | code path; no DOM test environment | users of regenerate | fixed in dd813d7 |
 | [S5-09](#s5-09) | P3 | Library drops ignore what is on the screen and the panel edge | web/src/components/library/LibraryPanel.tsx:167-186, web/src/components/library/LibrarySc… | arithmetic from the code. Measured on the real files: 0 screens curre… | users of the library | fixed in dd813d7 |
 | [S2-09](#s2-09) | P3 | Signed-out callers can tell which project ids exist | web/src/lib/server/access.ts:68 (404 before the identity check in requireReader), used by… | web/scripts/audit/s2-access-leaks.test.ts (fails with `the status tel… | rare. | fixed in dd813d7 |
-| [S2-11](#s2-11) | P3 | The Realtime INSERT policy lets any token holder broadcast forged notices | supabase/migrations/20261030170741_realtime_policies.sql:46-51; token TTL web/src/lib/rea… | code (policy lines above); not run (no Supabase credentials used by t… | rare. | open · needs Shaurya (run the drop policy line in the Supabase SQL editor) |
+| [S2-11](#s2-11) | P3 | The Realtime INSERT policy lets any token holder broadcast forged notices | supabase/migrations/20261030170741_realtime_policies.sql:46-51; token TTL web/src/lib/rea… | code (policy lines above); not run (no Supabase credentials used by t… | rare. | fixed: policy dropped on Supabase 2026-11-06, proved by realtime:check |
 | [S2-16](#s2-16) | P3 | The live change path skips the checks a whole-snapshot save makes | web/src/lib/collab/changes.ts:948-949 (`setField` checks only the field name); compare we… | code (no test written: time). | rare (needs an editor). | fixed in cb9a72b |
 | [S4-11](#s4-11) | P3 | Top-bar Export link and chat "Import a tag export" link point at /project//… before the project loads | web/src/components/shell/TopBar.tsx:137, 253; web/src/components/chat/ChatPanel.tsx:82, 2… | live prod network log: `GET /project//export?_rsc=… => 308`, `GET /pr… | rare (first second after load). | fixed in dd813d7 |
 | [S4-27](#s4-27) | P3 | Ctrl+K opens the palette from inside a text field | web/src/components/shell/CommandPalette.tsx:230-242 | code: no target check in onKeyDown. | rare. | fixed in dd813d7 |
@@ -1325,7 +1325,7 @@ Bug count: P0 0, P1 3 (S4-01, S4-22, S4-24), P2 14 (S4-02, 03, 05, 06, 07, 08, 1
 
 **The Realtime INSERT policy lets any token holder broadcast forged notices**
 
-- Status: open · needs Shaurya (run the drop policy line in the Supabase SQL editor)
+- Status: fixed: policy dropped on Supabase 2026-11-06, proved by realtime:check
 - Severity: P3 (a viewer, or a member removed less than 15 minutes ago, can broadcast `revision` messages with any payload on the project topic; each listening browser then re-fetches /changes; no data is changed because clients never trust the payload)
 - Where: supabase/migrations/20261030170741_realtime_policies.sql:46-51; token TTL web/src/lib/realtime/token.ts:49
 - Repro: mint a token as a viewer, join `project:<id>` with supabase-js, `channel.send({type:"broadcast",event:"revision",payload:{rev:1e9}})` in a loop.

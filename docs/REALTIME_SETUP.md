@@ -136,13 +136,10 @@ policy checks the topic being joined against that claim.
 create policy "a token may only join the topic it names"
 on realtime.messages for select to authenticated
 using ( realtime.topic() = (auth.jwt() ->> 'project_topic') );
-
-create policy "a token may only broadcast on the topic it names"
-on realtime.messages for insert to authenticated
-with check ( realtime.topic() = (auth.jwt() ->> 'project_topic') );
 ```
 
-`select` is receiving a broadcast; `insert` is sending one. A non-member never
+`select` is receiving a broadcast. There is no `insert` policy, so a token cannot
+send: only the server publishes, with the secret key. A non-member never
 gets a token, so never a claim, so never a match. `aud` and `role` are both
 `authenticated` in the minted token because Realtime reads them to assume a
 database role *before* any policy is evaluated: a token without them is
