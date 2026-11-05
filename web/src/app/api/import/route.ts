@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     if (uploaded) fileName = uploaded.meta.fileName;
     const bytes = uploaded?.bytes ?? await readBody(request);
     // Private account imports must not enter the shared retrieval corpus.
-    const learn = () => mayLearnImport(user) ? learnFromProject(bytes, fileName).catch(() => null) : Promise.resolve(null);
+    const learn = () => mayLearnImport(user) && user ? learnFromProject(bytes, fileName, user.id).catch(() => null) : Promise.resolve(null);
     const kind = await sniff(bytes, fileName);
     const refused = refuse(kind, fileName);
     if (refused) {

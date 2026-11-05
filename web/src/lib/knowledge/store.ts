@@ -56,6 +56,21 @@ export const summarise = (k: ProjectKnowledge): KnowledgeSummary => ({
   problems: k.problems.length,
 });
 
+/**
+ * The same file opened by two accounts is two records, so neither can learn the
+ * other has it. On a laptop the id stays the file's own hash, as older scans have.
+ */
+export async function ownScan(k: ProjectKnowledge, ownerId: string): Promise<ProjectKnowledge> {
+  if (ownerId === "local") return { ...k, ownerId };
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${ownerId}:${k.id}`));
+  return { ...k, ownerId, id: Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("") };
+}
+
+/** Legacy scans predate accounts and belong only to the implicit local engineer. */
+export function ownedBy(k: ProjectKnowledge, ownerId: string): boolean {
+  return k.ownerId === ownerId || (k.ownerId === undefined && ownerId === "local");
+}
+
 const validId = (id: string) => /^[0-9a-f]{64}$/.test(id);
 
 async function dir() {
@@ -77,6 +92,10 @@ async function collection() {
 export async function putKnowledge(k: ProjectKnowledge): Promise<{ id: string; isNew: boolean }> {
   const store = knowledgeStore();
   if (store === "off") throw new Error("the knowledge store is off (KNOWLEDGE_STORE)");
+  const previous = await getKnowledge(k.id);
+  if (previous && (previous.ownerId ?? "local") !== (k.ownerId ?? "local")) {
+    throw new Error("this project hash already belongs to another knowledge owner");
+  }
   if (store === "filesystem") {
     const { fs, path, d } = await dir();
     const file = path.join(d, `${k.id}.json`);
