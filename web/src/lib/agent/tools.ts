@@ -26,6 +26,7 @@ import { CORE, deletion, JSON_FILE, Workspace, WorkspaceError } from "./workspac
 import {
   bind, bindings, cloneObject, duplicateScreen, findObject, get, objects, screenByName, screens, set, unbind, walk,
 } from "./project";
+import { alignObjects, distributeObjects, findOverlaps, matchSize, snapToGrid, tidyScreen } from "./arrange";
 import { runScript } from "./script";
 import { Shell, shellAvailable, type Box } from "./sandbox";
 
@@ -81,6 +82,8 @@ const MAX_CHARS = 14_000;
 const ok = (text: string): ToolResult => ({ text: text.length > MAX_CHARS ? `${text.slice(0, MAX_CHARS)}\n... cut at ${MAX_CHARS} characters; narrow the request` : text });
 const str = (v: unknown) => (v === undefined || v === null ? undefined : String(v));
 const json = (v: unknown) => JSON.stringify(v, null, 1);
+/** A list of object names or ids: a JSON array, or one string with commas. */
+const names = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : v === undefined || v === null ? [] : String(v).split(",")).map((s) => s.trim()).filter(Boolean);
 
 function lines(text: string, offset = 1, limit = 400): string {
   const all = text.split(/\r?\n/);
@@ -520,7 +523,7 @@ export const TOOLS: AgentTool[] = [
         row: i.row === undefined ? undefined : Number(i.row), column: i.column === undefined ? undefined : Number(i.column),
       });
       const at = o.cell ? `grid cell row ${o.cell.row}, column ${o.cell.column}` : o.box ? `${o.box.left},${o.box.top}` : "its container";
-      const over = o.overlaps.length ? `\nIt covers ${o.overlaps.join(", ")}; move it with json_set on Location if that is not meant.` : "";
+      const over = o.overlaps.length ? `\nIt covers ${o.overlaps.join(", ")}; use tidy_screen or align_objects if that is not meant.` : "";
       return ok(`copied as ${o.type} "${o.name}" ${o.id} on ${o.screen}, ${at}; JSON pointer ${o.pointer} in ${o.file}${over}`);
     },
   },
@@ -549,6 +552,75 @@ export const TOOLS: AgentTool[] = [
     run({ ws }, i) {
       const n = unbind(ws, String(i.object), str(i.property));
       return ok(n ? `removed ${n} binding${n === 1 ? "" : "s"}` : "it had no such binding");
+    },
+  },
+  {
+    name: "align_objects",
+    description: "Line objects up by their edges or centres. One object is aligned to its container. A card takes what is drawn on it along. Prefer this to working out Location with json_set.",
+    writes: true,
+    params: {
+      objects: { type: "any", description: "Object names or ids: a JSON array" },
+      mode: { type: "string", description: "Which edge or centre", enum: ["left", "centre", "right", "top", "middle", "bottom"] },
+      screen: { type: "string", description: "Screen name or id, when a name is on several screens", optional: true },
+    },
+    async run(ctx, i) {
+      return ok(alignObjects(ctx.ws, names(i.objects), String(i.mode) as "left", (await ctx.read()).target, str(i.screen)));
+    },
+  },
+  {
+    name: "distribute_objects",
+    description: "Space three or more objects evenly between the outermost two, across or down. A card takes what is drawn on it along.",
+    writes: true,
+    params: {
+      objects: { type: "any", description: "Object names or ids: a JSON array" },
+      axis: { type: "string", description: "horizontal spaces them across, vertical down", enum: ["horizontal", "vertical"] },
+      screen: { type: "string", description: "Screen name or id, when a name is on several screens", optional: true },
+    },
+    async run(ctx, i) {
+      return ok(distributeObjects(ctx.ws, names(i.objects), String(i.axis) as "horizontal", (await ctx.read()).target, str(i.screen)));
+    },
+  },
+  {
+    name: "match_size",
+    description: "Give objects the size of the first one named.",
+    writes: true,
+    params: {
+      objects: { type: "any", description: "Object names or ids: a JSON array; the first is the size to copy" },
+      dimension: { type: "string", description: "Which side to copy; both if left out", optional: true, enum: ["width", "height", "both"] },
+      screen: { type: "string", description: "Screen name or id, when a name is on several screens", optional: true },
+    },
+    async run(ctx, i) {
+      return ok(matchSize(ctx.ws, names(i.objects), (str(i.dimension) ?? "both") as "both", (await ctx.read()).target, str(i.screen)));
+    },
+  },
+  {
+    name: "snap_to_grid",
+    description: "Move objects to the nearest grid position. Name them, or name none for every faceplate in the screen's main container; a card keeps what is drawn on it in place.",
+    writes: true,
+    params: {
+      screen: { type: "string", description: "Screen name or id" },
+      objects: { type: "any", description: "Object names or ids: a JSON array", optional: true },
+      grid: { type: "integer", description: "Spacing in pixels; 8 if left out", optional: true },
+    },
+    async run(ctx, i) {
+      return ok(snapToGrid(ctx.ws, String(i.screen), (await ctx.read()).target, names(i.objects), i.grid === undefined ? undefined : Number(i.grid)));
+    },
+  },
+  {
+    name: "find_overlaps",
+    description: "Every overlap on a screen, in pixels: between faceplates, and between the things on one card. A label on a card or a part of a composite is not an overlap.",
+    params: { screen: { type: "string", description: "Screen name or id" } },
+    async run(ctx, i) {
+      return ok(findOverlaps(ctx.ws, String(i.screen), (await ctx.read()).target));
+    },
+  },
+  {
+    name: "tidy_screen",
+    description: "Clear every overlap on a screen: each faceplate moves whole to the nearest clear spot, and something covered on its own card moves within that card. Says what it could not clear.",
+    writes: true,
+    params: { screen: { type: "string", description: "Screen name or id" } },
+    async run(ctx, i) {
+      return ok(tidyScreen(ctx.ws, String(i.screen), (await ctx.read()).target));
     },
   },
   {

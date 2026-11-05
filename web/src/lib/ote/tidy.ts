@@ -24,6 +24,9 @@ const CHROME = /^(Ground|Hdr|HdrTitle|HdrLevel|Nav|NavChip|NavLbl|NavGo|Foot|Foo
 const TOLERANCE = 2;
 /** Where a moved unit is tried, in order: beside what it overlapped, then anywhere in the body. */
 const SIDES: Side[] = ["below", "rightOf", "leftOf", "above"];
+/** How finely a part is walked across its card looking for a clear spot. */
+const INNER_STEP = 4;
+const INNER_PASSES = 40;
 
 interface Unit {
   ids: string[];
@@ -37,6 +40,8 @@ export interface Overlap {
   other: Unit;
   width: number;
   height: number;
+  /** Set when both sit on one card: the card's name. They move within it, not off it. */
+  inside?: string;
 }
 
 export interface TidyPlan {
@@ -90,7 +95,7 @@ function containerOf(parts: Part[], panel?: { width: number; height: number }) {
   };
 }
 
-function unitsOf(parts: Part[], groupOf: (id: string) => string | undefined, panel?: { width: number; height: number }): Unit[] {
+export function unitsOf(parts: Part[], groupOf: (id: string) => string | undefined, panel?: { width: number; height: number }): Unit[] {
   const movable = parts.filter((p) => !CHROME.test(p.Name) && p.Type !== "Pipe");
   const inner = containerOf(movable, panel);
   // Up the chain of innermost holders to the top: a value in a bar band on a
@@ -155,8 +160,60 @@ export function moveSetOf(
   return g ? parts.filter((p) => groupOf(p.UniqueId) === g).map((p) => p.UniqueId) : [id];
 }
 
-/** Every pair of units that share pixels and are not one inside the other. */
+/** The pixels two boxes share, when that is more than a touch and neither holds the other. */
+function shared(a: Box, b: Box): { width: number; height: number } | undefined {
+  // A label sitting on a card is on it, not over it.
+  if (holds(a, b) || holds(b, a)) return undefined;
+  const width = Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left);
+  const height = Math.min(a.top + a.height, b.top + b.height) - Math.max(a.top, b.top);
+  return width <= TOLERANCE || height <= TOLERANCE ? undefined : { width, height };
+}
+
+/**
+ * What a card holds, as things that can each be moved: a composite whole,
+ * anything else alone. A rectangle holding another member is a band or a card
+ * of its own, a background rather than something in the way.
+ */
+function contentsOf(unit: Unit, parts: Part[], groupOf: (id: string) => string | undefined): Unit[] {
+  const members = parts.filter((p) => unit.ids.includes(p.UniqueId));
+  const background = (p: Part) => p.Type === "Rectangle" && members.some((m) => m !== p && holds(boxOf(p), boxOf(m)));
+  const byKey = new Map<string, Part[]>();
+  for (const m of members) {
+    if (background(m)) continue;
+    const key = groupOf(m.UniqueId) ?? m.UniqueId;
+    (byKey.get(key) ?? byKey.set(key, []).get(key)!).push(m);
+  }
+  return [...byKey.values()].map((list) => ({ ids: list.map((p) => p.UniqueId), name: list[0].Name, box: union(list.map(boxOf)) }));
+}
+
+/** Two things on one card covering each other: one faceplate, so unit overlaps never see it (S3-09). */
+function overlapsInside(parts: Part[], groupOf: (id: string) => string | undefined, panel?: { width: number; height: number }): Overlap[] {
+  const out: Overlap[] = [];
+  for (const unit of unitsOf(parts, groupOf, panel)) {
+    const contents = contentsOf(unit, parts, groupOf);
+    for (let i = 0; i < contents.length; i++) {
+      for (let j = i + 1; j < contents.length; j++) {
+        const pixels = shared(contents[i].box, contents[j].box);
+        if (!pixels) continue;
+        const [mover, other] = areaOf(contents[i].box) <= areaOf(contents[j].box) ? [contents[i], contents[j]] : [contents[j], contents[i]];
+        out.push({ mover, other, ...pixels, inside: unit.name });
+      }
+    }
+  }
+  return out;
+}
+
+/** Every overlap on the screen: between units, and between the things on one card. */
 export function overlapsOn(
+  parts: Part[],
+  groupOf: (id: string) => string | undefined = () => undefined,
+  panel?: { width: number; height: number },
+): Overlap[] {
+  return [...overlapsBetween(parts, groupOf, panel), ...overlapsInside(parts, groupOf, panel)];
+}
+
+/** Every pair of units that share pixels and are not one inside the other. */
+function overlapsBetween(
   parts: Part[],
   groupOf: (id: string) => string | undefined = () => undefined,
   panel?: { width: number; height: number },
@@ -167,13 +224,10 @@ export function overlapsOn(
     for (let j = i + 1; j < units.length; j++) {
       const a = units[i].box;
       const b = units[j].box;
-      // A label sitting on a card is on it, not over it.
-      if (holds(a, b) || holds(b, a)) continue;
-      const width = Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left);
-      const height = Math.min(a.top + a.height, b.top + b.height) - Math.max(a.top, b.top);
-      if (width <= TOLERANCE || height <= TOLERANCE) continue;
+      const pixels = shared(a, b);
+      if (!pixels) continue;
       const [mover, other] = areaOf(a) <= areaOf(b) ? [units[i], units[j]] : [units[j], units[i]];
-      out.push({ mover, other, width, height });
+      out.push({ mover, other, ...pixels });
     }
   }
   return out;
@@ -195,7 +249,7 @@ export function planTidy(
   const stuck = new Set<string>();
 
   for (let pass = 0; pass < 3; pass++) {
-    const overlaps = overlapsOn(work, groupOf, panel);
+    const overlaps = overlapsBetween(work, groupOf, panel);
     if (overlaps.length === 0) break;
     let moved = false;
     const done = new Set<string>();
@@ -214,7 +268,7 @@ export function planTidy(
         const dx = box.left - mover.box.left;
         const dy = box.top - mover.box.top;
         const trial = work.map((p) => (mine.has(p.UniqueId) ? { ...p, Location: { ...p.Location, Left: p.Location.Left + dx, Top: p.Location.Top + dy } } : p));
-        return !overlapsOn(trial, groupOf, panel).some((o) => o.mover.ids.some((id) => mine.has(id)) || o.other.ids.some((id) => mine.has(id)));
+        return !overlapsBetween(trial, groupOf, panel).some((o) => o.mover.ids.some((id) => mine.has(id)) || o.other.ids.some((id) => mine.has(id)));
       };
       let to: Box | undefined;
       for (const side of SIDES) {
@@ -243,6 +297,53 @@ export function planTidy(
       moves.set(key, { ids: mover.ids, name: mover.name, dx: (prior?.dx ?? 0) + dx, dy: (prior?.dy ?? 0) + dy });
       stuck.delete(mover.name);
       moved = true;
+    }
+    if (!moved) break;
+  }
+
+  // Then what covers something on its own card: moved within the card, to the
+  // nearest clear position, because a lamp that leaves its card is a new defect.
+  for (let pass = 0; pass < INNER_PASSES; pass++) {
+    const overlaps = overlapsInside(work, groupOf, panel);
+    if (overlaps.length === 0) break;
+    let moved = false;
+    for (const { mover, inside } of overlaps) {
+      const unit = unitsOf(work, groupOf, panel).find((u) => u.name === inside);
+      const contents = unit ? contentsOf(unit, work, groupOf) : [];
+      const here = contents.find((c) => c.ids[0] === mover.ids[0]);
+      if (!unit || !here) continue;
+      const others = contents.filter((c) => c !== here);
+      const clear = (box: Box) => others.every((o) => {
+        const w = Math.min(box.left + box.width, o.box.left + o.box.width) - Math.max(box.left, o.box.left);
+        const h = Math.min(box.top + box.height, o.box.top + o.box.height) - Math.max(box.top, o.box.top);
+        return w <= TOLERANCE || h <= TOLERANCE;
+      });
+      let best: { left: number; top: number; cost: number } | undefined;
+      for (let top = unit.box.top; top + here.box.height <= unit.box.top + unit.box.height; top += INNER_STEP) {
+        for (let left = unit.box.left; left + here.box.width <= unit.box.left + unit.box.width; left += INNER_STEP) {
+          if (!clear({ left, top, width: here.box.width, height: here.box.height })) continue;
+          const cost = Math.abs(left - here.box.left) + Math.abs(top - here.box.top);
+          if (!best || cost < best.cost) best = { left, top, cost };
+        }
+      }
+      const label = `${here.name} (on ${inside})`;
+      if (!best) {
+        stuck.add(label);
+        continue;
+      }
+      const dx = best.left - here.box.left;
+      const dy = best.top - here.box.top;
+      for (const p of work) {
+        if (!here.ids.includes(p.UniqueId)) continue;
+        p.Location.Left += dx;
+        p.Location.Top += dy;
+      }
+      const key = here.ids.join(",");
+      const prior = moves.get(key);
+      moves.set(key, { ids: here.ids, name: here.name, dx: (prior?.dx ?? 0) + dx, dy: (prior?.dy ?? 0) + dy });
+      stuck.delete(label);
+      moved = true;
+      break; // One move changes what the next one sees, so everything is measured again.
     }
     if (!moved) break;
   }

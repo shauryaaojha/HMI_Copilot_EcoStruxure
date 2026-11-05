@@ -38,6 +38,8 @@ export const OP_NAMES = [
   "addAlarm",
   "applyPack",
   "tidyLayout",
+  "matchSize",
+  "snapToGrid",
 ] as const;
 
 export type OpName = (typeof OP_NAMES)[number];
@@ -136,6 +138,10 @@ export const Op = z.object({
   selectText: z.string().optional(),
   color: z.enum(COLOR_NAMES).optional(),
   mode: z.enum(ALIGN_MODES).optional(),
+  /** matchSize: which side to copy from the first target. Absent means both. */
+  dimension: z.enum(["width", "height", "both"]).optional(),
+  /** snapToGrid: the spacing in pixels. Absent means the layout's own 8. */
+  grid: z.number().optional(),
   message: z.string().optional(),
   severity: z.number().optional(),
   alarmType: z.number().optional(),

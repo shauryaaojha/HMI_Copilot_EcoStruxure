@@ -70,7 +70,8 @@ import { inferEquipment } from "@/lib/ai/infer";
 import type { Op } from "./ops";
 import { valuePropertyOf } from "@/lib/tags/binder";
 import { expandOps } from "@/lib/ai/expand";
-import { moveSetOf, planTidy } from "@/lib/ote/tidy";
+import { moveSetOf, planTidy, unitsOf } from "@/lib/ote/tidy";
+import { matchSizes, snapPosition } from "@/store/edits";
 import { createProjectStore, sameCondition, useProject, type BatchPatch, type ProjectStore } from "@/store/project";
 import type { ScreenPreview } from "@/store/types";
 
@@ -920,11 +921,98 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
           reject(op, `Spreading needs at least three objects; ${ids.length} given. To move one, use moveObject.`);
           break;
         }
+        // Aligning cards moves what is on them: the same rule as moveObject,
+        // or the lamps stay behind on the old spot.
+        const home = resolve(s, op.targets![0])!.screen;
+        const followers = new Map(ids.map((id) => [
+          id,
+          moveSetOf(viewOf(home).Children, id, (x) => s.objectMeta[x]?.groupId, panelOf(home)).filter((m) => !ids.includes(m)),
+        ]));
+        const before = new Map(viewOf(home).Children.map((p) => [p.UniqueId, { left: p.Location.Left, top: p.Location.Top }]));
         if (mode === "spreadHorizontal") s.spread(ids, "horizontal");
         else if (mode === "spreadVertical") s.spread(ids, "vertical");
         else s.align(ids, mode as "left");
-        for (const id of ids) touch(s, id);
+        const moved = viewOf(store.getState().screens.find((x) => x.UniqueId === home.UniqueId)!).Children;
+        for (const id of ids) {
+          touch(s, id);
+          const was = before.get(id);
+          const now = moved.find((p) => p.UniqueId === id);
+          const rest = followers.get(id) ?? [];
+          if (!was || !now || rest.length === 0) continue;
+          const dx = now.Location.Left - was.left;
+          const dy = now.Location.Top - was.top;
+          if (dx === 0 && dy === 0) continue;
+          s.nudge(rest, dx, dy);
+          for (const m of rest) touch(s, m);
+        }
         ok(note || `Aligned ${ids.length} objects`);
+        break;
+      }
+
+      case "matchSize": {
+        const found = (op.targets ?? []).map((name) => resolve(s, name));
+        const missing = (op.targets ?? []).filter((_, i) => !found[i]);
+        if (missing.length > 0) {
+          reject(op, `Nothing was resized: ${missing.map((name) => unresolved(s, name)).join("; ")}`);
+          break;
+        }
+        if (found.length < 2) {
+          reject(op, `matchSize needs at least two objects, the first being the size to copy; ${found.length} given.`);
+          break;
+        }
+        const sizes = matchSizes(found.map((f) => f!.part), op.dimension ?? "both");
+        for (const f of found.slice(1)) {
+          const size = sizes.get(f!.part.UniqueId)!;
+          s.setBox(f!.part.UniqueId, clampToPanel({ left: f!.part.Location.Left, top: f!.part.Location.Top, ...size }, panelOf(f!.screen)));
+          touch(s, f!.part.UniqueId);
+        }
+        ok(note || `Matched ${found.length - 1} objects to the size of ${found[0]!.part.Name}`);
+        break;
+      }
+
+      case "snapToGrid": {
+        const grid = op.grid ?? 8;
+        if (!(grid >= 1)) {
+          reject(op, `A grid of ${grid} pixels cannot be snapped to.`);
+          break;
+        }
+        const found = (op.targets ?? []).map((name) => resolve(s, name));
+        const missing = (op.targets ?? []).filter((_, i) => !found[i]);
+        if (missing.length > 0) {
+          reject(op, `Nothing was snapped: ${missing.map((name) => unresolved(s, name)).join("; ")}`);
+          break;
+        }
+        const screen = found[0]?.screen ?? findScreen(s, op.screen);
+        if (!screen) {
+          reject(op, `No screen called ${op.screen}`);
+          break;
+        }
+        const groupOf = (id: string) => s.objectMeta[id]?.groupId;
+        const parts = viewOf(screen).Children;
+        const panel = panelOf(screen);
+        // Each faceplate snaps as one, so its lamps keep their place on the card.
+        const asked = found.length > 0
+          ? found.map((f) => moveSetOf(parts, f!.part.UniqueId, groupOf, panel))
+          : unitsOf(parts, groupOf, panel).map((u) => u.ids);
+        const seen = new Set<string>();
+        let snapped = 0;
+        for (const ids of asked) {
+          if (ids.some((id) => seen.has(id))) continue;
+          for (const id of ids) seen.add(id);
+          const members = parts.filter((p) => ids.includes(p.UniqueId));
+          if (members.length === 0) continue;
+          const left = Math.min(...members.map((p) => p.Location.Left));
+          const top = Math.min(...members.map((p) => p.Location.Top));
+          const right = Math.max(...members.map((p) => p.Location.Left + (p.Width ?? 0)));
+          const bottom = Math.max(...members.map((p) => p.Location.Top + (p.Height ?? 0)));
+          const to = snapPosition({ left, top, width: right - left, height: bottom - top }, grid, panel);
+          if (to.left === left && to.top === top) continue;
+          s.nudge(ids, to.left - left, to.top - top);
+          for (const id of ids) touch(s, id);
+          snapped++;
+        }
+        if (snapped > 0) ok(note || `Snapped ${snapped} objects to the ${grid} px grid on ${screen.Name}`);
+        else ok(`Everything asked for was already on the ${grid} px grid on ${screen.Name}`);
         break;
       }
 

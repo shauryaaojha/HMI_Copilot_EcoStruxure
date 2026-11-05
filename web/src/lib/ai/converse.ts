@@ -443,7 +443,12 @@ Overlaps and alignment:
   Never guess handles for this.
 - "Line these up", "align the lamps" is alignObjects with mode, and either
   targets (handles from the objects list) or select (a part type), with
-  screens when it is more than the active screen.
+  screens when it is more than the active screen. Modes spreadHorizontal and
+  spreadVertical are "space these evenly".
+- "Same size", "make these match" is matchSize with targets: the first target
+  is the reference, the rest take its size. dimension is width, height or both.
+- "Put it on the grid", "snap these" is snapToGrid, with targets, or none for
+  the whole screen. grid is the spacing in pixels, 8 unless they say another.
 
 reply is one or two sentences, in the register an engineer uses with another
 engineer. Never describe your own reasoning process.`;
@@ -460,7 +465,7 @@ const D = {
   op: `One of: ${OP_NAMES.join(", ")}. applyPack brings a screen onto the Standard pack: colour only for alarms, fonts at the floor`,
   screen: "Screen handle (s2) the op applies to. Omit for the active screen",
   target: "Object handle (o12) the op acts on",
-  targets: "Object handles, for alignObjects, groupObjects and ungroupObjects",
+  targets: "Object handles, for alignObjects, matchSize, snapToGrid, groupObjects and ungroupObjects",
   name: "New name, for addScreen / renameScreen / addObject",
   equipment: "For addEquipment: the unit id from the equipment list - PMP_101",
   type: `Part type, one of: ${PART_TYPES.join(", ")}`,
