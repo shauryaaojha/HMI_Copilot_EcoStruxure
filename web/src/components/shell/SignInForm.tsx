@@ -19,6 +19,7 @@
  */
 
 import { useState, type FormEvent } from "react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { Button, Field, Input } from "@/components/ui";
 
@@ -82,12 +83,22 @@ export function SignInForm({ next, compact = false, initialMode = "in", heading:
   return (
     <form className="space-y-3" onSubmit={submit}>
       {Heading && (
-        <Heading className="text-base font-semibold text-text-primary">
-          {mode === "in" ? "Sign in to HMI Copilot" : "Create your account"}
-        </Heading>
+        <div key={mode} className="reveal is-in">
+          <Heading className="text-xl font-semibold tracking-tight text-text-primary">
+            {mode === "in" ? "Sign in to HMI Copilot" : "Create your account"}
+          </Heading>
+          <p className="mt-1 text-sm text-text-secondary">
+            {lead ?? (mode === "in" ? "Welcome back. Your projects are where you left them." : "Use the Copilot and keep your projects on the server.")}
+          </p>
+        </div>
       )}
-      {lead && <p className="text-sm text-text-secondary">{lead}</p>}
-      <div className="grid grid-cols-2 gap-1 rounded-lg border border-line-subtle bg-surface-base p-1">
+      {!Heading && lead && <p className="text-sm text-text-secondary">{lead}</p>}
+      <div className="relative grid grid-cols-2 gap-1 rounded-lg border border-line-subtle bg-surface-base p-1">
+        <span
+          aria-hidden
+          className="absolute inset-y-1 left-1 w-[calc(50%-0.375rem)] rounded-md bg-brand-500 shadow-lg shadow-brand-500/30 transition-transform duration-300 ease-out motion-reduce:transition-none"
+          style={{ transform: mode === "up" ? "translateX(calc(100% + 0.25rem))" : "none" }}
+        />
         {WAYS.map((way) => (
           <button
             key={way.id}
@@ -95,8 +106,8 @@ export function SignInForm({ next, compact = false, initialMode = "in", heading:
             aria-pressed={mode === way.id}
             onClick={() => { setMode(way.id); setError(undefined); }}
             className={
-              "focus-ring rounded-md py-1.5 text-sm font-medium transition " +
-              (mode === way.id ? "bg-brand-500 text-text-onbrand" : "text-text-muted hover:text-text-primary")
+              "focus-ring relative rounded-md py-1.5 text-sm font-medium transition-colors duration-300 " +
+              (mode === way.id ? "text-text-onbrand" : "text-text-muted hover:text-text-primary")
             }
           >
             {way.label}
@@ -116,17 +127,29 @@ export function SignInForm({ next, compact = false, initialMode = "in", heading:
         />
       </Field>
       {mode === "up" && (
-        <Field layout="stack" label="Name" hint="What other members of a project see.">
-          <Input autoComplete="name" value={name} onChange={e => setName(e.target.value)} />
-        </Field>
+        <div className="reveal is-in">
+          <Field layout="stack" label="Name" hint="What other members of a project see.">
+            <Input autoComplete="name" value={name} onChange={e => setName(e.target.value)} />
+          </Field>
+        </div>
       )}
       {error && (
         <p role="alert" className="text-xs text-status-warn">
           {error}
         </p>
       )}
-      <Button type="submit" variant="primary" block size={compact ? "sm" : "md"} disabled={busy}>
+      <Button
+        type="submit"
+        variant="primary"
+        block
+        size={compact ? "sm" : "md"}
+        disabled={busy}
+        className="group gap-2 shadow-lg shadow-brand-500/25 hover:shadow-brand-500/40"
+      >
         {busy ? "Working…" : mode === "in" ? "Sign in" : "Create account"}
+        {busy
+          ? <Loader2 size={15} aria-hidden className="animate-spin" />
+          : <ArrowRight size={15} aria-hidden className="transition-transform group-hover:translate-x-0.5" />}
       </Button>
       {mode === "in" && <p className="text-center text-xs text-text-muted">Forgot your password? Ask whoever runs this installation.</p>}
     </form>

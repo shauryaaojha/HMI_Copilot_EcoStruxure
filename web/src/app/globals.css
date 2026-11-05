@@ -177,7 +177,10 @@ body {
   background: var(--color-surface-base);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
-  overflow: hidden; /* the workspace manages its own scrolling regions */
+  /* A page taller than the window scrolls. The workspace, which manages its own
+     scrolling regions, opts out in its layout. */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* The canvas backdrop grid, as in the reference renders. */
@@ -356,6 +359,14 @@ body {
   animation-direction: reverse;
   opacity: 0.1;
   background: radial-gradient(closest-side, var(--color-status-info), transparent 70%);
+}
+
+/* On a page with little else on it, the blooms can carry the colour. */
+.copilot-aurora.vivid::before {
+  opacity: 0.32;
+}
+.copilot-aurora.vivid::after {
+  opacity: 0.22;
 }
 
 /* The same blooms read as smudges on a light ground; they want half as much. */
