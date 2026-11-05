@@ -14,6 +14,15 @@ import { PlacedText } from "./Text";
 /** Half full, when nothing is driving it. A bar drawn empty reads as broken. */
 export const DESIGN_TIME_FILL = 50;
 
+function rectangleShape(part: PartOf<"Rectangle">, box: { x: number; y: number; width: number; height: number }) {
+  const corners = part.CornerRadius;
+  if (!corners) return null;
+  const max = Math.min(box.width, box.height) / 2;
+  const [tl, tr, br, bl] = [corners.TopLeft, corners.TopRight, corners.BottomRight, corners.BottomLeft].map((n) => Math.min(max, n));
+  const { x, y, width: w, height: h } = box;
+  return `M ${x + tl} ${y} H ${x + w - tr} Q ${x + w} ${y} ${x + w} ${y + tr} V ${y + h - br} Q ${x + w} ${y + h} ${x + w - br} ${y + h} H ${x + bl} Q ${x} ${y + h} ${x} ${y + h - bl} V ${y + tl} Q ${x} ${y} ${x + tl} ${y} Z`;
+}
+
 export function RectanglePart({
   part,
   value,
@@ -25,16 +34,14 @@ export function RectanglePart({
   const stroke = part.Thickness ?? 1;
   const box = insetStroke(part.Location.Left, part.Location.Top, part.Width ?? 0, part.Height ?? 0, stroke);
   const level = part.Animation?.FillLevel;
+  const rounded = rectangleShape(part, box);
 
   // A plain rectangle, which is all but 120 of them in the corpus.
   if (!level?.Enable) {
     return (
-      <rect
-        {...box}
-        fill={fill(part, "Fill", "#ffffff")}
-        stroke={fill(part, "Border", "#515151")}
-        strokeWidth={stroke}
-      />
+      rounded
+        ? <path d={rounded} fill={fill(part, "Fill", "#ffffff")} stroke={fill(part, "Border", "#515151")} strokeWidth={stroke} />
+        : <rect {...box} fill={fill(part, "Fill", "#ffffff")} stroke={fill(part, "Border", "#515151")} strokeWidth={stroke} />
     );
   }
 
@@ -48,6 +55,8 @@ export function RectanglePart({
 
   return (
     <>
+      {rounded && <clipPath id={`round-${part.UniqueId}`}><path d={rounded} /></clipPath>}
+      <g clipPath={rounded ? `url(#round-${part.UniqueId})` : undefined}>
       {/* The remainder first, so the fill is drawn over it. */}
       <rect {...box} fill={back} />
       <rect
@@ -57,7 +66,8 @@ export function RectanglePart({
         height={horizontal ? box.height : filled}
         fill={fill(part, "Fill", "#ffffff")}
       />
-      <rect {...box} fill="none" stroke={fill(part, "Border", "#515151")} strokeWidth={stroke} />
+      </g>
+      {rounded ? <path d={rounded} fill="none" stroke={fill(part, "Border", "#515151")} strokeWidth={stroke} /> : <rect {...box} fill="none" stroke={fill(part, "Border", "#515151")} strokeWidth={stroke} />}
     </>
   );
 }

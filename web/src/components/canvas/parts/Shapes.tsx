@@ -10,20 +10,22 @@
  * Thickness of 2 stays 2 pixels whatever the stretch.
  */
 
-import { toPathData } from "@/lib/ote/graphics";
+import { pathInBox } from "@/lib/ote/graphics";
 import { fill, insetStroke, type PartOf } from "./geometry";
 import { DEFAULT_ENV, type DrawEnv } from "./env";
 
 const UNITS = 3072;
 
 /** The SVG path of a 3072-unit point list, or null when it cannot be drawn. */
-function vector(path: { Commands?: string; Data?: string } | undefined, closed: boolean, fallback: string): string | null {
+function vector(path: { Commands?: string; Data?: string } | undefined, closed: boolean, fallback: string, box: { Location: { Left: number; Top: number }; Width?: number; Height?: number }): string | null {
   const data = path?.Data ?? fallback;
   const n = data.split(",").filter((x) => x.trim() !== "").length / 2;
   if (n < 2) return null;
   const commands = path?.Commands ?? "M" + "L".repeat(n - 1) + (closed ? "z" : "");
   try {
-    return toPathData({ Commands: commands, Points: data });
+    return pathInBox({ Commands: commands, Points: data }, {
+      x: box.Location.Left, y: box.Location.Top, width: box.Width ?? 0, height: box.Height ?? 0,
+    }, { width: UNITS, height: UNITS });
   } catch {
     return null;
   }
@@ -42,23 +44,7 @@ function Stretched({
   strokeColor: string;
   strokeWidth: number;
 }) {
-  // A zero-wide line is still a line: give its box a hair of width so the
-  // viewport exists, and let the stroke do the drawing.
-  const width = Math.max(part.Width ?? 0, 0.01);
-  const height = Math.max(part.Height ?? 0, 0.01);
-  return (
-    <svg
-      x={part.Location.Left}
-      y={part.Location.Top}
-      width={width}
-      height={height}
-      viewBox={`0 0 ${UNITS} ${UNITS}`}
-      preserveAspectRatio="none"
-      overflow="visible"
-    >
-      <path d={d} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
+  return <path d={d} fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} />;
 }
 
 export function EllipsePart({ part }: { part: PartOf<"Ellipse"> }) {
@@ -79,7 +65,7 @@ export function EllipsePart({ part }: { part: PartOf<"Ellipse"> }) {
 
 export function LinePart({ part }: { part: PartOf<"Line"> | PartOf<"PolyLine"> | PartOf<"Bezier"> }) {
   // A line the product never bent runs corner to corner of its box.
-  const d = vector(part.Path, false, `0,0,${UNITS},${UNITS}`);
+  const d = vector(part.Path, false, `0,0,${UNITS},${UNITS}`, part);
   if (!d) return null;
   return (
     <Stretched part={part} d={d} fillColor="none" strokeColor={fill(part, "Stroke", "#000000")} strokeWidth={part.Thickness ?? 1} />
@@ -87,7 +73,7 @@ export function LinePart({ part }: { part: PartOf<"Line"> | PartOf<"PolyLine"> |
 }
 
 export function PolygonPart({ part }: { part: PartOf<"Polygon"> }) {
-  const d = vector(part.Path, true, `0,0,${UNITS},0,${UNITS},${UNITS},0,${UNITS}`);
+  const d = vector(part.Path, true, `0,0,${UNITS},0,${UNITS},${UNITS},0,${UNITS}`, part);
   if (!d) return null;
   return (
     <Stretched

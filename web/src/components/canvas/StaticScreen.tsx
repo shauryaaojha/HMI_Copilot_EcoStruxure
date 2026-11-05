@@ -106,6 +106,7 @@ export function StaticScreen({ screen, foreign, alarms = [], values, env = DEFAU
       aria-label={`HMI screen ${screen.Name}`}
       style={{ background: PAPER }}
     >
+      <rect x={0} y={0} width={box.width} height={box.height} fill={PAPER} pointerEvents="none" />
       <ForeignLayer foreign={foreign} alarms={alarms} env={env} />
       {view.Children.map((part) => (
         <g key={part.UniqueId} data-object-id={part.UniqueId} data-object-name={part.Name} data-object-type={part.Type}>
