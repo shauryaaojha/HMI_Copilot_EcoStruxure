@@ -375,7 +375,9 @@ function diffScreens(before: Doc, after: Doc): StoreChange[] {
     partsOf(screen).forEach((part, index) => {
       const was = beforeHolder.get(part.UniqueId);
       const unchanged = was !== undefined && was.screenId === screen.UniqueId && same(was.part, part);
-      if (!unchanged) structural.push({ kind: "setPart", screenId: screen.UniqueId, part, index });
+      if (unchanged) return;
+      const changed = was?.screenId === screen.UniqueId ? changedPaths(was.part, part) : undefined;
+      structural.push({ kind: "setPart", screenId: screen.UniqueId, part, index, ...(changed ? { changed } : {}) });
     });
   }
 
@@ -398,6 +400,28 @@ function diffScreens(before: Doc, after: Doc): StoreChange[] {
     }
   }
   return [...structural, ...reorders];
+}
+
+/** More than this and an edit is a replacement, and names nothing. */
+const MOST_CHANGED_PATHS = 64;
+
+/**
+ * The properties that differ between two versions of a part, as paths. Objects
+ * are walked and an array counts as one value, because its items have no identity
+ * to merge by. Undefined when the two are not the same kind of part.
+ */
+function changedPaths(before: Part, after: Part): string[][] | undefined {
+  if (before.Type !== after.Type) return undefined;
+  const paths: string[][] = [];
+  const walk = (a: unknown, b: unknown, path: string[]) => {
+    if (isObject(a) && isObject(b)) {
+      for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) walk(a[key], b[key], [...path, key]);
+    } else if (!same(a, b)) {
+      paths.push(path);
+    }
+  };
+  walk(before, after, []);
+  return paths.length <= MOST_CHANGED_PATHS ? paths : undefined;
 }
 
 interface RecordOps<T> {
@@ -473,11 +497,12 @@ function diffEntries(before: Doc, after: Doc): StoreChange[] {
     const was = entryMap(before, field);
     const now = entryMap(after, field);
     if (was === now) continue;
-    for (const [key, value] of Object.entries(now)) {
-      if (!(key in was) || !same(was[key], value)) ops.push({ kind: "setEntry", field, key, value });
-    }
+    // Removals first: a handle given up in this edit is free for the one taking it.
     for (const key of Object.keys(was)) {
       if (!(key in now)) ops.push({ kind: "removeEntry", field, key });
+    }
+    for (const [key, value] of Object.entries(now)) {
+      if (!(key in was) || !same(was[key], value)) ops.push({ kind: "setEntry", field, key, value });
     }
   }
   return ops;
@@ -503,6 +528,24 @@ function diffFields(before: Doc, after: Doc, entryOps: StoreChange[]): StoreChan
     }
   }
   return ops;
+}
+
+/**
+ * The handle an entry gets. Two people adding an object at once both take the
+ * next number, so whichever lands second moves on to the next free one. Every
+ * copy applies the log in the same order, so every copy settles on the same
+ * handle, and a second application keeps what the first one gave.
+ */
+function freeHandle(map: Record<string, unknown>, key: string, wanted: unknown, seq: unknown): unknown {
+  if (typeof wanted !== "string") return wanted;
+  const held = Object.entries(map).some(([holder, handle]) => holder !== key && handle === wanted);
+  if (!held) return wanted;
+  if (key in map) return map[key];
+  const prefix = /^[A-Za-z]*/.exec(wanted)![0];
+  const taken = new Set(Object.values(map));
+  let n = Math.max(typeof seq === "number" ? seq : 0, handleNumber(wanted) ?? 0) + 1;
+  while (taken.has(`${prefix}${n}`)) n++;
+  return `${prefix}${n}`;
 }
 
 /** What `handleSeq` becomes once this handle is set: never below its number. */
@@ -558,7 +601,7 @@ export function apply(doc: Doc, ops: StoreChange[]): Doc {
 function applyToDraft(d: DraftDoc, op: StoreChange): void {
   switch (op.kind) {
     case "setPart":
-      return setPartIn(d, op.screenId, op.part, op.index);
+      return setPartIn(d, op.screenId, op.part, op.index, op.changed);
     case "removePart":
       for (const screen of d.screens) removeById(rootOf(screen).Children, op.partId);
       return;
@@ -613,9 +656,10 @@ function applyToDraft(d: DraftDoc, op: StoreChange): void {
     case "setEntry": {
       const target = d as unknown as Record<string, Record<string, unknown> | undefined>;
       const map = (target[op.field] ??= {});
-      map[op.key] = op.value;
+      const value = op.field === "handles" ? freeHandle(map, op.key, op.value, d.handleSeq) : op.value;
+      map[op.key] = value;
       if (op.field === "handles") {
-        const raised = raisedSeq(d.handleSeq, op.value);
+        const raised = raisedSeq(d.handleSeq, value);
         if (raised !== d.handleSeq) d.handleSeq = raised as number;
       }
       return;
@@ -634,12 +678,32 @@ function applyToDraft(d: DraftDoc, op: StoreChange): void {
   }
 }
 
-function setPartIn(d: DraftDoc, screenId: string, part: Part, index: number | undefined): void {
+/** One edit's properties written onto the part as it now stands. */
+function landPaths(target: Record<string, unknown>, source: Record<string, unknown>, paths: string[][]): void {
+  for (const path of paths) {
+    if (path.length === 0) continue;
+    let into = target;
+    let from: unknown = source;
+    for (const key of path.slice(0, -1)) {
+      if (!isObject(into[key])) into[key] = {};
+      into = into[key] as Record<string, unknown>;
+      from = isObject(from) ? from[key] : undefined;
+    }
+    const last = path[path.length - 1];
+    const value = isObject(from) ? from[last] : undefined;
+    if (value === undefined) delete into[last];
+    else into[last] = value;
+  }
+}
+
+function setPartIn(d: DraftDoc, screenId: string, part: Part, index: number | undefined, changed?: string[][]): void {
   const screen = d.screens.find((s) => s.UniqueId === screenId)!;
   const here = rootOf(screen).Children as Part[];
   const at = here.findIndex((p) => p.UniqueId === part.UniqueId);
   if (at >= 0) {
-    here[at] = part;
+    // A part someone turned into another kind has no properties in common to merge.
+    if (changed && here[at].Type === part.Type) landPaths(here[at] as unknown as Record<string, unknown>, part as unknown as Record<string, unknown>, changed);
+    else here[at] = part;
     return;
   }
   for (const other of d.screens) {
@@ -888,6 +952,39 @@ function isScreenShaped(value: unknown): boolean {
   return screen.Children.every((root) => isObject(root) && Array.isArray(root.Children) && root.Children.every(hasUniqueId));
 }
 
+const OFF_LIMITS = new Set(["__proto__", "constructor", "prototype"]);
+
+function validPaths(value: unknown): boolean {
+  if (!Array.isArray(value) || value.length > MOST_CHANGED_PATHS) return false;
+  return value.every((path) => isStringArray(path) && path.length > 0 && path[0] !== "UniqueId" && path.every((key) => !OFF_LIMITS.has(key)));
+}
+
+/**
+ * What a whole-value field may hold, by the rules a whole save keeps
+ * (lib/server/http.ts). A field that may be empty is cleared by leaving its value out.
+ */
+function validFieldValue(field: ValueField, value: unknown): boolean {
+  switch (field) {
+    case "name":
+      return isString(value) && value.trim().length > 0 && value.length <= 255;
+    case "target":
+      return isObject(value) && isString(value.model) && Number.isFinite(value.width) && Number.isFinite(value.height);
+    case "standards":
+      return isObject(value);
+    case "plant":
+    case "tagImport":
+      return value === undefined || isObject(value);
+    case "source":
+    case "sourceId":
+    case "layout":
+      return value === undefined || isString(value);
+    case "handleSeq":
+      return value === undefined || (Number.isSafeInteger(value) && (value as number) >= 0);
+    default:
+      return false;
+  }
+}
+
 /**
  * The server's structural guard on a record from the network.
  *
@@ -902,7 +999,7 @@ export function validStoreChange(value: unknown): value is StoreChange {
   const v = value;
   switch (v.kind) {
     case "setPart":
-      return isString(v.screenId) && hasUniqueId(v.part) && isIndex(v.index);
+      return isString(v.screenId) && hasUniqueId(v.part) && isIndex(v.index) && (v.changed === undefined || validPaths(v.changed));
     case "removePart":
       return isString(v.screenId) && isString(v.partId);
     case "reorderParts":
@@ -946,7 +1043,7 @@ export function validStoreChange(value: unknown): value is StoreChange {
     case "removeEntry":
       return isEntryField(v.field) && isString(v.key);
     case "setField":
-      return isValueField(v.field);
+      return isValueField(v.field) && validFieldValue(v.field, v.value);
     default:
       return false;
   }
@@ -986,17 +1083,36 @@ const PART_OR_SCREEN_KINDS = new Set<StoreChange["kind"]>([
  * Applying the compacted list always gives the same document as the original.
  */
 export function compact(ops: StoreChange[]): StoreChange[] {
-  return ops.filter((op, i) => !supersededLater(op, ops, i));
+  const kept = [...ops];
+  const dropped = new Set<number>();
+  ops.forEach((_, i) => {
+    const by = supersededBy(kept[i], ops, i);
+    if (by < 0) return;
+    dropped.add(i);
+    kept[by] = carryChanged(kept[i], kept[by]);
+  });
+  return kept.filter((_, i) => !dropped.has(i));
 }
 
-function supersededLater(op: StoreChange, ops: StoreChange[], at: number): boolean {
-  for (let j = at + 1; j < ops.length; j++) {
-    const later = ops[j];
-    const verdict = compare(op, later);
-    if (verdict === "superseded") return true;
-    if (verdict === "blocked") return false;
+/** The later record once it stands for the earlier one too: what either touched, or the whole part. */
+function carryChanged(earlier: StoreChange, later: StoreChange): StoreChange {
+  if (earlier.kind !== "setPart" || later.kind !== "setPart") return later;
+  if (!earlier.changed || !later.changed) {
+    const { changed: _whole, ...whole } = later;
+    return whole;
   }
-  return false;
+  const seen = new Set(later.changed.map((path) => JSON.stringify(path)));
+  const extra = earlier.changed.filter((path) => !seen.has(JSON.stringify(path)));
+  return { ...later, changed: [...extra, ...later.changed] };
+}
+
+function supersededBy(op: StoreChange, ops: StoreChange[], at: number): number {
+  for (let j = at + 1; j < ops.length; j++) {
+    const verdict = compare(op, ops[j]);
+    if (verdict === "superseded") return j;
+    if (verdict === "blocked") return -1;
+  }
+  return -1;
 }
 
 type Verdict = "superseded" | "blocked" | "independent";

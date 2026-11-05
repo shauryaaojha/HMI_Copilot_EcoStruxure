@@ -13,6 +13,9 @@
  * Node runtime: sql.js reads the databases. docs/PLAN_PHASE2.md item 2.
  */
 
+import { errorResponse } from "@/lib/server/http";
+import { ServerError } from "@/lib/server/errors";
+import { uploadedFile } from "@/lib/server/uploads";
 import { readProject } from "@/lib/ote/reader";
 import { IngestError, fileNameFrom, ingestResponse } from "@/lib/ingest/errors";
 import { readBody } from "@/lib/ingest/body";
@@ -22,9 +25,11 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
-  const fileName = fileNameFrom(request, "project.eote");
+  let fileName = fileNameFrom(request, "project.eote");
   try {
-    const bytes = await readBody(request);
+    const uploaded = await uploadedFile(request);
+    if (uploaded) fileName = uploaded.fileName;
+    const bytes = uploaded?.bytes ?? await readBody(request);
     const kind = await sniff(bytes, fileName);
     const refused = refuse(kind, fileName);
     if (refused) throw refused;
@@ -49,6 +54,7 @@ export async function POST(request: Request) {
       warnings: read.warnings,
     });
   } catch (error) {
+    if (error instanceof ServerError) return errorResponse(error);
     return ingestResponse(error, "could not read the project");
   }
 }

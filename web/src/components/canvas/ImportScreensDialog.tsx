@@ -12,6 +12,7 @@
  * on site. docs/PLAN_PHASE2.md item 2.
  */
 
+import { fitsOneRequest, uploadParts } from "@/lib/client/upload";
 import { expectJson } from "@/lib/ingest/client";
 import { useEffect, useState } from "react";
 import { AlertTriangle, Check, X } from "lucide-react";
@@ -40,14 +41,20 @@ export function ImportScreensDialog({ file, onClose }: { file: File; onClose: ()
     let live = true;
     (async () => {
       try {
-        const response = await fetch("/api/import/screens", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/octet-stream",
-            "X-File-Name": encodeURIComponent(file.name),
-          },
-          body: await file.arrayBuffer(),
-        });
+        const response = fitsOneRequest(file)
+          ? await fetch("/api/import/screens", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/octet-stream",
+                "X-File-Name": encodeURIComponent(file.name),
+              },
+              body: await file.arrayBuffer(),
+            })
+          : await fetch("/api/import/screens", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ uploadId: await uploadParts(file) }),
+            });
         const data = await expectJson<Read>(response, "Reading that project");
         if (!live) return;
         setRead(data);

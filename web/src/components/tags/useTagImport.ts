@@ -18,6 +18,7 @@
  * rebinds the screens, reporting what it could not match.
  */
 
+import { fitsOneRequest, uploadParts } from "@/lib/client/upload";
 import { useCallback, useState } from "react";
 import type { Variable } from "@/lib/ote/schema";
 import { useProject, type TagImport } from "@/store/project";
@@ -232,11 +233,19 @@ export function useTagImport() {
     async (file: File) => {
       setState({ status: "parsing", fileName: file.name });
 
-      const body = new FormData();
-      body.append("file", file);
-
       try {
-        const response = await fetch("/api/tags/parse", { method: "POST", body });
+        let response: Response;
+        if (fitsOneRequest(file)) {
+          const body = new FormData();
+          body.append("file", file);
+          response = await fetch("/api/tags/parse", { method: "POST", body });
+        } else {
+          response = await fetch("/api/tags/parse", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ uploadId: await uploadParts(file) }),
+          });
+        }
         const parsed = await jsonOrNull<ParseResponse>(response);
 
         if (!response.ok || !parsed) {

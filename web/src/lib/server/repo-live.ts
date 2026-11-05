@@ -11,7 +11,8 @@
  *
  * Conflicts resolve as last writer wins per part or record: changes are
  * applied in the order they reach the server, whatever revision their author
- * had seen. A whole-part `setPart` replaces the part; a `removePart` therefore
+ * had seen. A `setPart` lands the properties it names, or the whole part when it
+ * names none, so same-property edits go to the later one; a `removePart` therefore
  * beats a concurrent `setPart` only when it arrived later (has the higher rev),
  * and a later `setPart` brings a removed part back.
  *

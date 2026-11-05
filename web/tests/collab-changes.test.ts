@@ -116,7 +116,7 @@ const edits: Edit[] = [
   ["set objectMeta", (d) => { d.objectMeta[lamp("Lamp_PUMP1_RUN").UniqueId] = { locked: true }; }],
   ["remove objectMeta", (d) => { delete d.objectMeta[parts(demoScreen)[0].UniqueId]; }],
   ["set a handle", (d) => { d.handles!["x"] = "o99"; d.handleSeq = 99; }],
-  ["set a handle below the sequence", (d) => { d.handles!["y"] = "o3"; }],
+  ["set a handle below the sequence", (d) => { d.handles!["y"] = "o1"; }],
   ["place a screen", (d) => { d.screenPlacement[demoScreen.UniqueId] = { x: 10, y: 20 }; }],
   ["rename the project", (d) => { d.name = "Renamed"; }],
   ["set an optional field", (d) => { d.layout = "struct"; }],
@@ -178,7 +178,7 @@ describe("diff and apply on the demo fixture", () => {
     const before = baseDoc();
     const after = produce(before, (d) => { p(d)[5].Location.Left += 16; });
     const ops = diff(before, after);
-    expect(ops).toEqual([{ kind: "setPart", screenId: demoScreen.UniqueId, part: parts(after.screens[0])[5], index: 5 }]);
+    expect(ops).toEqual([{ kind: "setPart", screenId: demoScreen.UniqueId, part: parts(after.screens[0])[5], index: 5, changed: [["Location", "Left"]] }]);
   });
 
   it("removes a screen and moves its part to another", () => {
@@ -466,5 +466,85 @@ describe("compact", () => {
       expect(apply(doc, short)).toEqual(apply(doc, ops));
     }
     expect(compact(sequences[0])).toHaveLength(1);
+  });
+});
+
+describe("two people on one part, or one handle", () => {
+  const text = () => parts(demoScreen).find((part) => part.Type === "TextBox")! as unknown as { UniqueId: string; Text: string; Location: { Left: number } };
+  const edited = (before: Doc, edit: (part: { Text: string; Location: { Left: number } }) => void) =>
+    produce(before, (d) => edit(parts(d.screens[0] as never).find((part) => part.UniqueId === text().UniqueId) as never));
+
+  it("keeps both edits to different properties, in either order", () => {
+    const base = baseDoc();
+    const renamed = diff(base, edited(base, (part) => { part.Text = "RENAMED"; }));
+    const moved = diff(base, edited(base, (part) => { part.Location.Left += 24; }));
+    for (const head of [apply(apply(base, renamed), moved), apply(apply(base, moved), renamed)]) {
+      const got = parts(head.screens[0]).find((part) => part.UniqueId === text().UniqueId) as unknown as { Text: string; Location: { Left: number } };
+      expect(got.Text).toBe("RENAMED");
+      expect(got.Location.Left).toBe(text().Location.Left + 24);
+    }
+  });
+
+  it("gives one property to the later edit", () => {
+    const base = baseDoc();
+    const first = diff(base, edited(base, (part) => { part.Location.Left = 100; }));
+    const second = diff(base, edited(base, (part) => { part.Location.Left = 200; }));
+    const got = parts(apply(apply(base, first), second).screens[0]).find((part) => part.UniqueId === text().UniqueId) as unknown as { Location: { Left: number } };
+    expect(got.Location.Left).toBe(200);
+  });
+
+  it("compacting a drag keeps what any step touched", () => {
+    const base = baseDoc();
+    const step1 = edited(base, (part) => { part.Text = "RENAMED"; });
+    const step2 = edited(step1, (part) => { part.Location.Left += 8; });
+    const ops = [...diff(base, step1), ...diff(step1, step2)];
+    const short = compact(ops);
+    expect(short).toHaveLength(1);
+    expect(apply(base, short)).toEqual(apply(base, ops));
+    const other = apply(base, diff(base, edited(base, (part) => { (part as unknown as { Name: string }).Name = "Other"; })));
+    expect(apply(other, short)).toEqual(apply(other, ops));
+  });
+
+  it("refuses paths that are not a part's to change", () => {
+    const part = parts(demoScreen)[0];
+    for (const changed of [[["__proto__", "x"]], [["UniqueId"]], [[]], "Text", [["a", 1]]]) {
+      expect(validStoreChange({ kind: "setPart", screenId: "s", part, changed })).toBe(false);
+    }
+    expect(validStoreChange({ kind: "setPart", screenId: "s", part, changed: [["Location", "Left"]] })).toBe(true);
+  });
+
+  it("settles a handle two people took on the same next free one, and keeps it", () => {
+    const base = baseDoc();
+    const a = { kind: "setEntry", field: "handles", key: "fromA", value: "o900" } as const;
+    const b = { kind: "setEntry", field: "handles", key: "fromB", value: "o900" } as const;
+    const head = apply(base, [a, b]);
+    expect(head.handles!.fromA).toBe("o900");
+    expect(head.handles!.fromB).toBe("o901");
+    expect(head.handleSeq).toBe(901);
+    expect(apply(head, [b]).handles!.fromB).toBe("o901");
+  });
+
+  it("frees a handle given up in the same edit", () => {
+    const base = baseDoc();
+    const holder = Object.keys(base.handles!).find((key) => base.handles![key] === "o3")!;
+    const after = produce(base, (d) => { delete d.handles![holder]; d.handles!.fresh = "o3"; });
+    expect(apply(base, diff(base, after)).handles!.fresh).toBe("o3");
+  });
+});
+
+describe("a whole-value field from the network", () => {
+  const set = (field: string, value?: unknown) => validStoreChange({ kind: "setField", field, value });
+  it("keeps the rules a whole save keeps", () => {
+    expect(set("name", "Plant")).toBe(true);
+    for (const name of ["", "   ", "x".repeat(256), 5, undefined]) expect(set("name", name)).toBe(false);
+    expect(set("target", { model: "HMIST6600", width: 1280, height: 800 })).toBe(true);
+    for (const target of ["oops", {}, { model: "x", width: "1", height: 2 }, undefined]) expect(set("target", target)).toBe(false);
+    expect(set("source", "abc")).toBe(true);
+    expect(set("source")).toBe(true);
+    expect(set("source", 7)).toBe(false);
+    expect(set("handleSeq", 4)).toBe(true);
+    expect(set("handleSeq", -1)).toBe(false);
+    expect(set("standards", "nope")).toBe(false);
+    expect(set("plant", "nope")).toBe(false);
   });
 });

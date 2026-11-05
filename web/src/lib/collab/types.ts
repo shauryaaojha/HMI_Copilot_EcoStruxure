@@ -61,8 +61,13 @@ export type ValueField = "name" | "target" | "standards" | "plant" | "tagImport"
  * keeps its place unless a reorder says otherwise.
  */
 export type StoreChange =
-  /** The whole part as it is after the edit, on the screen that holds it. */
-  | { kind: "setPart"; screenId: string; part: Part; index?: number }
+  /**
+   * The whole part as it is after the edit, on the screen that holds it.
+   * `changed` names the properties the edit touched: on a part that already
+   * exists only those land, so two people editing different properties of one
+   * part both keep their edit. Without it the whole part replaces what is there.
+   */
+  | { kind: "setPart"; screenId: string; part: Part; index?: number; changed?: string[][] }
   | { kind: "removePart"; screenId: string; partId: string }
   /** Paint order of a screen's parts, by UniqueId. */
   | { kind: "reorderParts"; screenId: string; order: string[] }

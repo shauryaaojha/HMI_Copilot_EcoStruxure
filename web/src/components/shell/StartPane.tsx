@@ -33,7 +33,7 @@
  * Both end at the same table, the same confirm button, and the same tags.
  */
 
-import { importFile } from "@/lib/client/upload";
+import { fitsOneRequest, importFile, uploadParts } from "@/lib/client/upload";
 import { expectJson } from "@/lib/ingest/client";
 import { useGeneration } from "@/components/generation/useGeneration";
 import type { MigrationPlan } from "@/lib/vijeo/migrate";
@@ -221,7 +221,8 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
     try {
       const s = useProject.getState();
       const form = new FormData();
-      form.append("vdz", vdz);
+      if (fitsOneRequest(vdz)) form.append("vdz", vdz);
+      else form.append("uploadId", await uploadParts(vdz));
       if (variables) form.append("variables", variables);
       form.append("width", String(s.target.width));
       form.append("height", String(s.target.height));
