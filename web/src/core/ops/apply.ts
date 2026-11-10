@@ -61,8 +61,10 @@ import {
   WHITE,
   YELLOW,
 } from "@/lib/ote/palette";
-import { sizeOf } from "@/lib/ote/schema";
+import { Variable, isMainScreen, sizeOf } from "@/lib/ote/schema";
 import type { Alarm, Part, Screen } from "@/lib/ote/schema";
+import { BIT_OPERATION } from "@/lib/ote/parts";
+import type { TagImport } from "@/store/types";
 import { clampToPanel } from "@/lib/ote/place";
 import { boxOf, panelOf, resolveSlot, type Box, type Slot } from "@/lib/ote/regions";
 import { CARD_SIZE, equipmentCard, type LayoutUnit } from "@/lib/ote/layout";
@@ -80,6 +82,10 @@ import { verifyPlan } from "@/lib/layout/verify";
 import type { Constraint } from "@/lib/layout/types";
 import { createProjectStore, sameCondition, useProject, type BatchPatch, type ProjectStore } from "@/store/project";
 import type { ScreenPreview } from "@/store/types";
+
+/** The record a tag list carries of where it came from; one made by hand says so. */
+const tagRecord = (s: { tagImport?: TagImport; variables: unknown[] }): TagImport =>
+  s.tagImport ?? { fileName: "Added in the editor", at: Date.now(), corrections: [], skipped: [], summary: { total: s.variables.length } };
 
 const COLOR: Record<string, number> = {
   ink: INK,
@@ -786,10 +792,10 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
           break;
         }
         const { part } = found;
-        const styling = op.bold !== undefined || op.fontSize !== undefined;
+        const styling = op.bold !== undefined || op.fontSize !== undefined || op.italic !== undefined;
         const wording = op.text !== undefined || op.offText !== undefined || op.onText !== undefined;
         if (!styling && !wording) {
-          reject(op, `setText on ${part.Name} carries no text, bold or fontSize`);
+          reject(op, `setText on ${part.Name} carries no text, bold, italic or fontSize`);
           break;
         }
         // Where the faces live: one Font on a display, one per state on a
@@ -827,7 +833,12 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
               part as unknown as Record<string, unknown>,
             );
             const font: Record<string, unknown> = { ...((holder.Font as Record<string, unknown> | undefined) ?? FONT) };
-            if (op.bold !== undefined) font.Bold = op.bold;
+            if (op.bold !== undefined) {
+              font.Bold = op.bold;
+              // The key the product itself writes and reads (Font.Attribute.Bold), beside ours.
+              font.Attribute = { ...((font.Attribute as Record<string, unknown> | undefined) ?? {}), Bold: op.bold };
+            }
+            if (op.italic !== undefined) font.Italic = op.italic;
             if (op.fontSize !== undefined) font.Size = op.fontSize;
             s.setProperty(part.UniqueId, [...face, "Font"], font);
           }
@@ -1154,6 +1165,172 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
         }
         if (snapped > 0) ok(note || `Snapped ${snapped} objects to the ${grid} px grid on ${screen.Name}`);
         else ok(`Everything asked for was already on the ${grid} px grid on ${screen.Name}`);
+        break;
+      }
+
+      case "setStyle": {
+        const found = resolve(s, op.target!);
+        if (!found) {
+          reject(op, unresolved(s, op.target!));
+          break;
+        }
+        const { part } = found;
+        const type = part.Type;
+        if (op.radius === undefined && op.transparency === undefined && op.borderWidth === undefined) {
+          reject(op, `setStyle on ${part.Name} carries no radius, transparency or borderWidth`);
+          break;
+        }
+        if (type === "CompoundObject") {
+          reject(op, `${part.Name} is a Compound Object; how it looks comes from its definition, so setStyle would not show.`);
+          break;
+        }
+        // In the product only a Rectangle has rounded corners (reference/part_examples.json).
+        if (op.radius !== undefined && type !== "Rectangle") {
+          reject(op, `${part.Name} is a ${type}; in OTE only a Rectangle has rounded corners. For a rounded button, put a Rectangle with the radius behind it and make the ${type}'s own fill and border see-through (setStyle transparency 100, once with colorRole fill and once with border).`);
+          break;
+        }
+        // Parts with states draw a face each; a style is for all of them.
+        const faces: string[][] =
+          type === "Lamp" || type === "ToggleSwitch" ? [["Off"], ["On"]]
+          : type === "Switch" ? [["Release"], ["Press"]]
+          : type === "N-StateLamp" ? part.States.map((_, i) => ["States", String(i)])
+          : [[]];
+        const said: string[] = [];
+        if (op.borderWidth !== undefined) {
+          if (faces[0].length === 0 && type !== "Rectangle" && type !== "NumericDisplay") {
+            reject(op, `${part.Name} is a ${type} and has no outline whose thickness can be set.`);
+            break;
+          }
+          for (const face of faces) s.setProperty(part.UniqueId, [...face, "Thickness"], Math.round(op.borderWidth));
+          said.push(`outline ${Math.round(op.borderWidth)} px`);
+        }
+        if (op.transparency !== undefined) {
+          const role = op.colorRole ?? (type === "TextBox" ? "text" : "fill");
+          if (type === "TextBox" && role !== "text") {
+            reject(op, `${part.Name} is a text box and draws no ${role}; put a rectangle behind it, or set the transparency of its text.`);
+            break;
+          }
+          const key = role === "border" ? "Border" : role === "text" ? "TextColor" : "Fill";
+          for (const face of faces) s.setProperty(part.UniqueId, [...face, key, "Color", "Transparency"], Math.round(op.transparency));
+          said.push(`${role} ${Math.round(op.transparency)}% see-through`);
+        }
+        if (op.radius !== undefined) {
+          const size = sizeOf(part);
+          // More than half the shorter side is the same pill; the product would clip it anyway.
+          const r = Math.round(Math.min(op.radius, Math.min(size.width, size.height) / 2));
+          s.setProperty(part.UniqueId, ["CornerRadius"], { Style: 2, TopLeft: r, TopRight: r, BottomLeft: r, BottomRight: r });
+          said.push(r === 0 ? "square corners" : `corners rounded ${r} px`);
+        }
+        touch(s, part.UniqueId);
+        ok(note || `Styled ${part.Name}: ${said.join(", ")}`);
+        break;
+      }
+
+      case "setAction": {
+        const found = resolve(s, op.target!);
+        if (!found) {
+          reject(op, unresolved(s, op.target!));
+          break;
+        }
+        const { part } = found;
+        if (part.Type !== "Switch") {
+          reject(op, `${part.Name} is a ${part.Type}; only a Switch acts on a touch. Add a Switch (addObject type Switch) and set its action.`);
+          break;
+        }
+        if (!op.action) {
+          reject(op, `setAction on ${part.Name} names no action: goToScreen, momentary, toggle, set or reset.`);
+          break;
+        }
+        if (op.action === "goToScreen") {
+          const to = findScreen(s, op.toScreen);
+          if (!to || !op.toScreen) {
+            reject(op, `setAction goToScreen needs toScreen, one of: ${s.screens.filter(isMainScreen).map((x) => `${handleOf(s, x.UniqueId)} ${x.Name}`).join(", ") || "no screens yet"}`);
+            break;
+          }
+          if (!isMainScreen(to)) {
+            reject(op, `${to.Name} is a content screen, shown inside a display; a button cannot open it as a screen.`);
+            break;
+          }
+          // The screen by name until the file is written, when it becomes the screen's number (packager linkScreens).
+          s.setProperty(part.UniqueId, ["ClickTrigger"], { OperationType: 4, Operation: 1, ScreenName: to.Name });
+          touch(s, part.UniqueId);
+          ok(note || `${part.Name} now opens ${to.Name}`);
+          break;
+        }
+        const operation = BIT_OPERATION[op.action];
+        s.setProperty(part.UniqueId, ["ClickTrigger"], operation === BIT_OPERATION.set ? { OperationType: 1 } : { OperationType: 1, Operation: operation });
+        touch(s, part.UniqueId);
+        const bound = s.bindings.some((b) => b.targetId === part.UniqueId);
+        ok(note || `${part.Name} is now a ${op.action} button${bound ? "" : "; it writes nothing until a BOOL tag is bound to it (bindTag)"}`);
+        break;
+      }
+
+      case "addTag": {
+        const name = (op.tag ?? op.name ?? "").trim();
+        const parsed = Variable.safeParse({ Name: name, DataType: op.dataType, Comments: op.comment ?? "", DeviceAddress: op.address ?? "" });
+        if (!parsed.success) {
+          reject(op, `Cannot add tag ${name || "(no name)"}: ${parsed.error.issues[0]?.path.join(".") || "tag"} ${parsed.error.issues[0]?.message ?? "is not valid"}. A tag needs a name of letters, digits and underscores and a dataType.`);
+          break;
+        }
+        if (s.variables.some((v) => v.Name === parsed.data.Name)) {
+          reject(op, `There is already a tag called ${parsed.data.Name}; use setTag to change it.`);
+          break;
+        }
+        s.importTags([...s.variables, parsed.data], tagRecord(s));
+        ok(note || `Added tag ${parsed.data.Name} (${parsed.data.DataType})`);
+        break;
+      }
+
+      case "setTag": {
+        const had = s.variables.find((v) => v.Name === op.tag);
+        if (!had) {
+          reject(op, noTag(op, "no tag was changed"));
+          break;
+        }
+        const renamed = op.name !== undefined && op.name.trim() !== had.Name;
+        if (!renamed && op.dataType === undefined && op.comment === undefined && op.address === undefined) {
+          reject(op, `setTag on ${had.Name} carries no name, dataType, comment or address`);
+          break;
+        }
+        const parsed = Variable.safeParse({
+          ...had,
+          Name: renamed ? op.name!.trim() : had.Name,
+          DataType: op.dataType ?? had.DataType,
+          Comments: op.comment ?? had.Comments,
+          DeviceAddress: op.address ?? had.DeviceAddress,
+        });
+        if (!parsed.success) {
+          reject(op, `Cannot change tag ${had.Name}: ${parsed.error.issues[0]?.message ?? "the result is not a valid tag"}`);
+          break;
+        }
+        if (renamed && s.variables.some((v) => v.Name === parsed.data.Name)) {
+          reject(op, `There is already a tag called ${parsed.data.Name}.`);
+          break;
+        }
+        const next = s.variables.map((v) => (v.Name === had.Name ? parsed.data : v));
+        // A rename is followed by everything that names the tag: bindings, alarms, equipment.
+        if (renamed) s.adoptTags(next, tagRecord(s), { ...Object.fromEntries(s.variables.map((v) => [v.Name, v.Name])), [had.Name]: parsed.data.Name });
+        else s.importTags(next, tagRecord(s));
+        ok(note || (renamed ? `Renamed tag ${had.Name} to ${parsed.data.Name}; what was bound to it follows` : `Changed tag ${had.Name}`));
+        break;
+      }
+
+      case "deleteTag": {
+        const had = s.variables.find((v) => v.Name === op.tag);
+        if (!had) {
+          reject(op, noTag(op, "no tag was deleted"));
+          break;
+        }
+        const bound = s.bindings.filter((b) => b.tag === had.Name).length;
+        const alarmed = s.alarms.filter((a) => a.Trigger === had.Name).length;
+        // Everything but this one keeps its name; what named this one is unbound, and says what it was for.
+        s.adoptTags(
+          s.variables.filter((v) => v.Name !== had.Name),
+          tagRecord(s),
+          Object.fromEntries(s.variables.filter((v) => v.Name !== had.Name).map((v) => [v.Name, v.Name])),
+        );
+        out.deleted = true;
+        ok(note || `Deleted tag ${had.Name}${bound || alarmed ? `: ${bound} binding${bound === 1 ? "" : "s"} and ${alarmed} alarm${alarmed === 1 ? "" : "s"} went with it` : ""}`);
         break;
       }
 

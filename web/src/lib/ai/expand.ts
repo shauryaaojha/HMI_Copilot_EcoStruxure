@@ -45,7 +45,7 @@ const ROLE_STEM: Record<SelectRole, string> = {
 };
 
 /** Ops that act on an existing object and so can be fanned out over objects. */
-const ON_OBJECTS = new Set<Op["op"]>(["moveObject", "resizeObject", "setText", "setColor", "deleteObject", "duplicateObject"]);
+const ON_OBJECTS = new Set<Op["op"]>(["moveObject", "resizeObject", "setText", "setColor", "setStyle", "deleteObject", "duplicateObject"]);
 /** Ops on a set of objects: one op per screen, holding that screen's matches. */
 const ON_SETS = new Set<Op["op"]>(["alignObjects", "matchSize", "snapToGrid", "groupObjects", "ungroupObjects"]);
 /** Ops that create something on a screen and so can be repeated per screen. */

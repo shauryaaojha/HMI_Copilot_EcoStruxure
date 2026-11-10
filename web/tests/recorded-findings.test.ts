@@ -68,7 +68,7 @@ describe("an op that would do nothing is refused, not reported as done", () => {
   it("setText with nothing to set", () => {
     const { problems, applied } = applyOps([{ op: "setText", target: "Num_Flow", note: "n" }]);
     expect(applied).toEqual([]);
-    expect(problems.join(" ")).toMatch(/no text, bold or fontSize/);
+    expect(problems.join(" ")).toMatch(/no text, bold, italic or fontSize/);
   });
 
   it("setText with bold restyles a numeric display", () => {

@@ -129,6 +129,8 @@ export const FontRef = z.object({
   Size: z.number().positive().optional(),
   Bold: z.boolean().optional(),
   Italic: z.boolean().optional(),
+  /** Where the product keeps bold: `{Bold: true}`, in every engineer file and Compound Object on hand. */
+  Attribute: z.object({ Bold: z.boolean().optional() }).passthrough().optional(),
 });
 
 export const Location = z.object({

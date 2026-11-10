@@ -15,7 +15,7 @@
  */
 
 import { z } from "zod";
-import { PART_TYPES } from "@/lib/ote/schema";
+import { DATA_TYPES, PART_TYPES } from "@/lib/ote/schema";
 import { COMPOSITE_KINDS } from "@/lib/composites";
 import { COMPONENT_KINDS } from "@/lib/components/types";
 import { TOKEN_NAMES } from "@/lib/components/theme";
@@ -39,6 +39,11 @@ export const OP_NAMES = [
   "ungroupObjects",
   "bindTag",
   "addAlarm",
+  "setStyle",
+  "setAction",
+  "addTag",
+  "setTag",
+  "deleteTag",
   "applyPack",
   "tidyLayout",
   "arrange",
@@ -73,6 +78,9 @@ export const COLOR_NAMES = [
   "purple",
   "charcoal",
 ] as const;
+
+/** What a touch on a Switch can do: change screen, or write its bit in one of four ways. */
+export const SWITCH_ACTIONS = ["goToScreen", "momentary", "toggle", "set", "reset"] as const;
 
 export const ALIGN_MODES = [
   "left",
@@ -136,6 +144,21 @@ export const Op = z.object({
   height: z.number().optional(),
   fontSize: z.number().optional(),
   bold: z.boolean().optional(),
+  italic: z.boolean().optional(),
+  /** setStyle: rounded corners in pixels, on a Rectangle. Half the height makes a pill. */
+  radius: z.number().min(0).max(400).optional(),
+  /** setStyle: how see-through the colour named by colorRole is, 0 solid to 100 invisible. */
+  transparency: z.number().min(0).max(100).optional(),
+  /** setStyle: the outline's thickness in pixels; 0 draws none. */
+  borderWidth: z.number().min(0).max(40).optional(),
+  /** setAction: what a touch on a Switch does. */
+  action: z.enum(SWITCH_ACTIONS).optional(),
+  /** setAction goToScreen: the screen it opens, by handle or name. */
+  toScreen: z.string().optional(),
+  /** addTag, setTag: the tag's data type, a few words on what it is, and its device address. */
+  dataType: z.enum(DATA_TYPES).optional(),
+  comment: z.string().optional(),
+  address: z.string().optional(),
   decimals: z.number().optional(),
   colorRole: z.enum(["fill", "border", "text"]).optional(),
   /**
@@ -231,6 +254,8 @@ export function coerceTurn(value: unknown): Turn | null {
     "deleteObject",
     "duplicateObject",
     "bindTag",
+    "setStyle",
+    "setAction",
   ];
   const ops = (parsed.data.ops ?? [])
     .filter((op) => {

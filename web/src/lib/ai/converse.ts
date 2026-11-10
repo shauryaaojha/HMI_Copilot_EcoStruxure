@@ -30,8 +30,8 @@ import { regionOf, regionsOf, roomReport } from "@/lib/ote/regions";
 import { overlapsOn } from "@/lib/ote/tidy";
 import { sceneOf } from "@/lib/layout/scene";
 import { layoutFacts, printLayoutFacts } from "@/lib/layout/facts";
-import { ALIGN_MODES, COLOR_NAMES, OP_NAMES, coerceTurn, type Op, type Turn } from "./ops";
-import { PART_TYPES } from "@/lib/ote/schema";
+import { ALIGN_MODES, COLOR_NAMES, OP_NAMES, SWITCH_ACTIONS, coerceTurn, type Op, type Turn } from "./ops";
+import { DATA_TYPES, PART_TYPES } from "@/lib/ote/schema";
 import { COMPONENT_KINDS } from "@/lib/components/types";
 import { TOKEN_NAMES } from "@/lib/components/theme";
 import { REGIONS, SIDES } from "@/lib/ote/regions";
@@ -467,6 +467,23 @@ Overlaps and alignment:
 - "Put it on the grid", "snap these" is snapToGrid, with targets, or none for
   the whole screen. grid is the spacing in pixels, 8 unless they say another.
 
+Style, what a button does, and tags:
+- setStyle shapes and softens: radius rounds a Rectangle's corners (half its
+  height is a pill), transparency makes a fill, border or text see-through,
+  borderWidth sets the outline. Only a Rectangle has rounded corners in OTE. A
+  rounded or pill button is a rounded Rectangle with a Switch over it whose own
+  fill and border are fully see-through; group the two.
+- setText takes bold, italic and fontSize. OTE has one typeface per language
+  and no font families: a refined look comes from size, weight, spacing,
+  colour and shape. Never promise a named font.
+- setAction says what a touch on a Switch does. goToScreen with toScreen makes
+  it a navigation button. momentary, toggle, set and reset say how it writes
+  the BOOL tag bound to it.
+- addTag, setTag and deleteTag change the tag list one tag at a time: tag is
+  the tag's name, dataType its type, and on setTag name is its new name. A
+  rename is followed by every binding and alarm. deleteTag takes the bindings
+  and alarms of that tag with it, so ask first when it is in use.
+
 reply is one or two sentences, in the register an engineer uses with another
 engineer. Never describe your own reasoning process.`;
 
@@ -504,6 +521,15 @@ const D = {
   height: "Height in screen units, for resizeObject or a new object",
   fontSize: "Point size; on setText, to restyle without relabelling",
   bold: "Whether the text is bold; on setText, to restyle without relabelling",
+  italic: "Whether the text is italic; on setText",
+  radius: "setStyle: rounded corners in pixels, on a Rectangle only. Half its height makes a pill",
+  transparency: "setStyle: 0 solid to 100 invisible, for the colour colorRole names (fill if left out)",
+  borderWidth: "setStyle: the outline's thickness in pixels; 0 draws none",
+  action: "setAction on a Switch: goToScreen (with toScreen), or how it writes its bit: momentary, toggle, set, reset",
+  toScreen: "setAction goToScreen: the screen it opens, by handle or name",
+  dataType: "addTag, setTag: BOOL for a state or command, REAL or INT for a value, STRING for text",
+  comment: "addTag, setTag: what the tag is, in a few words",
+  address: "addTag, setTag: the device address, when known",
   decimals: "Decimal digits on a numeric display",
   dx: "moveObject only: pixels to move right (negative: left), when the engineer gives a distance",
   dy: "moveObject only: pixels to move down (negative: up), when the engineer gives a distance",
@@ -570,6 +596,15 @@ function geminiSchema() {
             height: N(D.height),
             fontSize: N(D.fontSize),
             bold: B(D.bold),
+            italic: B(D.italic),
+            radius: N(D.radius),
+            transparency: N(D.transparency),
+            borderWidth: N(D.borderWidth),
+            action: { type: "STRING", enum: [...SWITCH_ACTIONS], description: D.action },
+            toScreen: S(D.toScreen),
+            dataType: { type: "STRING", enum: [...DATA_TYPES], description: D.dataType },
+            comment: S(D.comment),
+            address: S(D.address),
             decimals: N(D.decimals),
             dx: N(D.dx),
             dy: N(D.dy),
@@ -642,6 +677,15 @@ const JSON_SCHEMA = {
           height: { type: "number" },
           fontSize: { type: "number" },
           bold: { type: "boolean" },
+          italic: { type: "boolean" },
+          radius: { type: "number", description: D.radius },
+          transparency: { type: "number", description: D.transparency },
+          borderWidth: { type: "number", description: D.borderWidth },
+          action: { type: "string", enum: [...SWITCH_ACTIONS], description: D.action },
+          toScreen: { type: "string", description: D.toScreen },
+          dataType: { type: "string", enum: [...DATA_TYPES], description: D.dataType },
+          comment: { type: "string", description: D.comment },
+          address: { type: "string", description: D.address },
           decimals: { type: "number" },
           dx: { type: "number" },
           dy: { type: "number" },
@@ -666,6 +710,16 @@ const JSON_SCHEMA = {
   required: ["mode", "reply"],
   additionalProperties: false,
 } as const;
+
+/** One op as the model is asked to write it: the same schema, for the agent loop's edit tool (lib/copilot). */
+export const OP_ITEM_SCHEMA = JSON_SCHEMA.properties.ops.items;
+
+/**
+ * The rules for writing ops, cut out of SYSTEM so the agent loop teaches the
+ * same ones: how things are addressed and placed, equipment, scope, layout.
+ * tests/copilot-step.test.ts fails if either marker is edited away.
+ */
+export const OP_RULES = SYSTEM.slice(SYSTEM.indexOf("Addressing things:"), SYSTEM.indexOf("reply is one or two sentences")).trim();
 
 /**
  * Everything the lookup tools can search. Sent by the client each turn and

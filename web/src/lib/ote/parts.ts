@@ -54,7 +54,8 @@ export function textBox(
     Name: name,
     Text: text,
     TextColor: color(colour),
-    Font: bold ? { ...FONT, Size: size, Bold: true } : { ...FONT, Size: size },
+    // Attribute.Bold is the product's own key for bold; Bold is what this editor has always drawn from.
+    Font: bold ? { ...FONT, Size: size, Bold: true, Attribute: { Bold: true } } : { ...FONT, Size: size },
     TextLayout: { HorizontalAlignment: 1, VerticalAlignment: 64 },
     Location: { Left: box.left, Top: box.top },
     Width: box.width,

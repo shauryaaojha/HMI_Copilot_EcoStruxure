@@ -75,7 +75,8 @@ export function fontOf(
 ): FontSpec {
   return {
     fontSize: node.Font?.Size ?? fallback,
-    fontWeight: node.Font?.Bold ? 700 : 400,
+    // The product writes bold as Font.Attribute.Bold (152 of 152 in the files on hand); ours also sets Font.Bold.
+    fontWeight: node.Font?.Bold || (node.Font as { Attribute?: { Bold?: boolean } } | undefined)?.Attribute?.Bold ? 700 : 400,
     fontStyle: node.Font?.Italic ? "italic" : "normal",
   };
 }
