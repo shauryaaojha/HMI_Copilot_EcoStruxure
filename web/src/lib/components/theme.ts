@@ -23,8 +23,8 @@ export const DEFAULT_THEME: Theme = {
   colorSet: 4,
   tokens: {
     ground: 11, field: 21, line: 22, ink: 1, muted: 52, faint: 2,
-    equipmentLine: 22, equipmentRunning: 12, equipmentStopped: 11, equipmentDisabled: 2,
-    onDark: 21, processValue: 12, normalBand: 2, alarmLimit: 1, setpoint: 46,
+    equipmentLine: 22, equipmentRunning: 43, equipmentStopped: 11, equipmentDisabled: 2,
+    onDark: 21, processValue: 46, normalBand: 2, alarmLimit: 1, setpoint: 56,
     alarmP1: 55, alarmP2: 44, alarmP3: 18, alarmP4: 50, onAlarm: 21,
     commandFace: 21, commandPressed: 12, selected: 12,
     trend1: 12, trend2: 46, trend3: 33, trend4: 52,

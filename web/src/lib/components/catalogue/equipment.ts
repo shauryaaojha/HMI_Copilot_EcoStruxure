@@ -2,9 +2,8 @@ import { z } from "zod";
 import { pathPart, type Box } from "@/lib/ote/parts";
 import type { ComponentDef, ComponentKind, ComponentUse, RoleSlot } from "../types";
 import type { Theme, Token } from "../theme";
-import { alarmIndicator } from "./alarmIndicator";
 import { commandButton } from "./commandButton";
-import { assembly, barParts, boxAt, equipmentBadge, equipmentBody, label, reading, stemOf } from "./shared";
+import { assembly, barParts, boxAt, equipmentBadge, INDICATOR, label, merge, reading, shapedLamp, stemOf, symbolParts } from "./shared";
 
 export const EquipmentProps = z.object({
   label: z.string().default("Equipment"),
@@ -48,8 +47,8 @@ export function equipmentDef(config: {
       if (use.variant === "libraryIcon" && use.props.icon) {
         add(pathPart(`${stem}_Icon`, use.props.icon, body, { fill: theme.tokens.equipmentStopped, border: theme.tokens.equipmentLine }));
       } else {
-        add(equipmentBody(`${stem}_Body`, body, theme));
-        if (bodyHeight >= 24 && bodyWidth >= 24) add(label(`${stem}_Glyph`, config.letter, boxAt(box, 8, 4, bodyWidth - 8, bodyHeight - 8), theme, "title"));
+        // The body is the state: it fills when the machine runs, and the words under it say so again.
+        merge({ parts, wires }, symbolParts(stem, config.kind, body, theme, { state: tag }));
       }
       let y = bodyHeight;
       const column = Math.min(box.width, 88);
@@ -59,10 +58,7 @@ export function equipmentDef(config: {
       }
       if (tag) add(equipmentBadge(`${stem}_State`, boxAt(box, 0, y + 4, column, 20), theme, config.activeRole === "open" ? ["CLOSED", "OPEN"] : undefined), tag);
       if (alarmSize) {
-        const alarm = alarmIndicator(`${stem}_Alarm`, boxAt(box, 4 + bodyWidth + 4, 0, alarmSize, alarmSize), theme, { fault: use.tags.fault });
-        const offset = parts.length;
-        parts.push(...alarm.parts);
-        wires.push(...alarm.wires.map((wire) => ({ ...wire, index: wire.index + offset })));
+        merge({ parts, wires }, shapedLamp(`${stem}_Alarm`, INDICATOR.fault(), boxAt(box, 4 + bodyWidth + 4, 0, alarmSize, alarmSize), theme, { tag: use.tags.fault, on: theme.tokens.alarmP1 }));
       }
 
       const extras = config.extra?.[use.variant] ?? [];

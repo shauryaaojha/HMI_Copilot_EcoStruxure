@@ -37,7 +37,7 @@ export const Tokens = z.object({
   /** A symbol or a lamp at rest. */
   equipmentFill: index,
   equipmentLine: index,
-  /** Running or open uses a dark fill; stopped stays open. */
+  /** Running or open fills the symbol; stopped stays the resting grey. */
   runningLine: index,
   /** Alarm priority 1 to 4, ISA-18.2 order: highest first. */
   alarmP1: index,
@@ -49,6 +49,8 @@ export const Tokens = z.object({
   /** A pressed or latched control: inverted, not coloured. */
   pressedFill: index,
   pressedInk: index,
+  /** A live value: the number, and the fill of a bar, a tank or a ring. One hue, so it is never read as an alarm. */
+  process: index.default(46),
 });
 export type Tokens = z.infer<typeof Tokens>;
 
@@ -130,7 +132,7 @@ export const ISA101: StandardPack = {
     white: 21, // #ffffff
     equipmentFill: 11,
     equipmentLine: 22,
-    runningLine: 12, // #303030
+    runningLine: 43, // #008626: the body of a symbol while it runs, said again in words beside it
     alarmP1: 55, // #971a24
     alarmP2: 44, // #cf7c00
     alarmP3: 18, // #ffff58
@@ -138,6 +140,7 @@ export const ISA101: StandardPack = {
     onAlarm: 21,
     pressedFill: 12,
     pressedInk: 21,
+    process: 46, // #1146b4
   },
   theme: DEFAULT_THEME,
   rules: {
@@ -167,7 +170,8 @@ export const DEFAULT_PACK = ISA101;
 /** Indices a normal, quiet screen may use anywhere. */
 export function neutralSet(pack: StandardPack): Set<number> {
   const t = pack.tokens;
-  return new Set([t.ground, t.panel, t.line, t.ink, t.muted, t.white, t.equipmentFill, t.equipmentLine, t.runningLine, t.pressedFill, t.pressedInk]);
+  return new Set([t.ground, t.panel, t.line, t.ink, t.muted, t.white, t.equipmentFill, t.equipmentLine, t.runningLine, t.pressedFill, t.pressedInk,
+    t.process, pack.theme.tokens.processValue, pack.theme.tokens.equipmentRunning, pack.theme.tokens.setpoint]);
 }
 
 /** Indices that mean something is wrong or abnormal, allowed only on such a face. */

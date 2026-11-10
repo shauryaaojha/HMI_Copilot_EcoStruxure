@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ComponentDef } from "../types";
-import { alarmIndicator } from "./alarmIndicator";
-import { assembly, barParts, boxAt, equipmentBody, label, reading, stemOf } from "./shared";
+import { drum, maskPart, shapePart, vessel } from "@/lib/ote/shapes";
+import { assembly, barParts, boxAt, INDICATOR, label, merge, reading, shapedLamp, stemOf } from "./shared";
 
 const Props = z.object({ label: z.string().default("Tank"), min: z.number().default(0), max: z.number().default(100),
   normalLow: z.number().default(20), normalHigh: z.number().default(80), units: z.string().default("%") });
@@ -22,23 +22,21 @@ export const Tank: ComponentDef<z.infer<typeof Props>> = {
     const alarmSize = alarmTag ? (box.width < 88 ? 16 : 24) : 0;
     const bodyWidth = Math.floor((box.width - 8 - (alarmSize ? alarmSize + 4 : 0)) / 4) * 4;
     const bodyHeight = box.height - (hasLabel ? 44 : 24);
-    add(equipmentBody(`${stem}_Body`, boxAt(box, 4, 0, bodyWidth, bodyHeight), theme));
-    const level = barParts(`${stem}_Level`, boxAt(box, 12, 8, bodyWidth - 16, bodyHeight - 16), theme, {
+    // The level is the product's own filling rectangle, seen through the vessel's outline.
+    const body = boxAt(box, 4, 0, bodyWidth, bodyHeight);
+    const outline = use.variant === "horizontal" ? drum(body.width / body.height) : vessel(body.width / body.height, use.variant === "coneBottom" ? "cone" : "dome");
+    merge({ parts, wires }, barParts(`${stem}_Level`, body, theme, {
       tag: use.tags.level, min: use.props.min, max: use.props.max, normalLow: use.props.normalLow, normalHigh: use.props.normalHigh, vertical: true,
-    });
-    const offset = parts.length;
-    parts.push(...level.parts);
-    wires.push(...level.wires.map((wire) => ({ ...wire, index: wire.index + offset })));
+    }));
+    add(maskPart(`${stem}_Plate`, outline, body, { fill: theme.tokens.ground, inset: 0 }));
+    add(shapePart(`${stem}_Body`, outline, body, { border: theme.tokens.equipmentLine, thickness: theme.stroke.equipment }));
     let y = bodyHeight;
     if (hasLabel) { add(label(`${stem}_Label`, use.props.label, boxAt(box, 0, y, box.width, 20), theme, "small")); y += 20; }
     add(reading(`${stem}_Value`, boxAt(box, 0, y, box.width - 28, 24), theme), use.tags.level);
     add(label(`${stem}_Unit`, use.props.units, boxAt(box, box.width - 28, y + 4, 28, 20), theme, "small"));
-    if (alarmTag) {
-      const alarm = alarmIndicator(`${stem}_Alarm`, boxAt(box, 4 + bodyWidth + 4, 0, alarmSize, alarmSize), theme, { fault: alarmTag });
-      const start = parts.length;
-      parts.push(...alarm.parts);
-      wires.push(...alarm.wires.map((wire) => ({ ...wire, index: wire.index + start })));
-    }
+    // A high limit points up at the top of the vessel, a low one points down at its foot.
+    if (alarmSize && use.tags.high) merge({ parts, wires }, shapedLamp(`${stem}_Alarm`, INDICATOR.high(), boxAt(box, 4 + bodyWidth + 4, 0, alarmSize, alarmSize), theme, { tag: use.tags.high, on: theme.tokens.alarmP1 }));
+    if (alarmSize && use.tags.low) merge({ parts, wires }, shapedLamp(use.tags.high ? `${stem}_AlarmLow` : `${stem}_Alarm`, INDICATOR.low(), boxAt(box, 4 + bodyWidth + 4, bodyHeight - alarmSize, alarmSize, alarmSize), theme, { tag: use.tags.low, on: theme.tokens.alarmP1 }));
     return { parts, wires };
   },
 };

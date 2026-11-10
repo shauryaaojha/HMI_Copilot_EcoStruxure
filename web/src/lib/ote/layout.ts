@@ -315,6 +315,8 @@ export function chrome(
   // The title, in Title Case, on a white band. Where the screen sits in the
   // hierarchy goes beside it when the panel has the room.
   place.add(surface(`Hdr_${key}`, { left: 0, top: 0, width: panel.width, height: HEADER }));
+  // The application's mark: one stripe of its own colour at the head of every screen.
+  place.add(surface(`HdrMark_${key}`, { left: 0, top: 0, width: 8, height: HEADER }, T.process));
   const wide = panel.width >= 640;
   place.add(
     textBox(`HdrTitle_${key}`, titleCase(spec.title), { left: MARGIN, top: 4, width: panel.width - MARGIN * 2 - (wide ? 208 : 0), height: 24 }, { size: 18, colour: T.ink }),
