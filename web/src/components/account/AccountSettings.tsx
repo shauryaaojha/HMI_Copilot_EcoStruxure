@@ -52,23 +52,27 @@ export function AccountSettings({ name, email }: { name: string; email: string }
   }
 
   return <div className="space-y-6 text-sm text-text-secondary">
-    <section className="space-y-2 rounded-xl border border-line bg-surface-float p-5">
-      <h2 className="font-semibold text-text-primary">Profile</h2>
-      <p>Name: {name}</p><p>Email: {email}</p>
-      <a className="focus-ring text-brand-400 underline" href="/account/connections">Connections</a>
+    <section className="reveal is-in flex items-center gap-4 rounded-2xl border border-line bg-surface-float/95 p-5 sm:p-6" style={{ boxShadow: "var(--elev-2)" }}>
+      <span aria-hidden className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-base font-semibold text-brand-400">
+        {(name || email).trim().charAt(0).toUpperCase()}
+      </span>
+      <div className="min-w-0">
+        <h2 className="truncate text-base font-semibold text-text-primary">{name || email}</h2>
+        <p className="truncate text-text-muted">{email}</p>
+      </div>
     </section>
-    <form onSubmit={change} className="space-y-3 rounded-xl border border-line bg-surface-float p-5">
+    <form onSubmit={change} className="space-y-3 rounded-2xl border border-line bg-surface-float/95 p-5 sm:p-6">
       <h2 className="font-semibold text-text-primary">Change password</h2>
       <Field layout="stack" label="Current password"><Input type="password" autoComplete="current-password" required value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} /></Field>
       <Field layout="stack" label="New password" hint="At least 10 characters."><Input type="password" autoComplete="new-password" required value={newPassword} onChange={event => setNewPassword(event.target.value)} /></Field>
       <Button type="submit" variant="primary" disabled={busy}>Change password</Button>
     </form>
-    <section className="space-y-3 rounded-xl border border-line bg-surface-float p-5">
+    <section className="space-y-3 rounded-2xl border border-line bg-surface-float/95 p-5 sm:p-6">
       <h2 className="font-semibold text-text-primary">Sessions</h2>
       <p>End your sessions on every device, including this one.</p>
       <Button type="button" disabled={busy} onClick={() => void everywhere()}>Sign out everywhere</Button>
     </section>
-    <form onSubmit={remove} className="space-y-3 rounded-xl border border-line bg-surface-float p-5">
+    <form onSubmit={remove} className="space-y-3 rounded-2xl border border-status-warn/40 bg-surface-float/95 p-5 sm:p-6">
       <h2 className="font-semibold text-status-warn">Delete account</h2>
       <p>Projects with other members must have those members removed or ownership transferred first.</p>
       <Field layout="stack" label="Password"><Input type="password" autoComplete="current-password" required value={deletePassword} onChange={event => setDeletePassword(event.target.value)} /></Field>
