@@ -34,8 +34,30 @@ const WorkspaceShell = dynamic(
   () => import("./WorkspaceShell").then((m) => m.WorkspaceShell),
   {
     ssr: false,
-    // Matches the shell's own ground, so the swap is not a flash of white.
-    loading: () => <div className="min-h-0 flex-1 bg-surface-base" />,
+    // The shell's own shape, so the workspace arrives into its place rather than out of a blank page.
+    loading: () => (
+      <div aria-busy className="flex h-screen flex-col bg-surface-base">
+        <div className="h-11 shrink-0 border-b border-line-subtle bg-surface-frame" />
+        <div className="flex min-h-0 flex-1">
+          <div className="w-14 shrink-0 border-r border-line-subtle bg-surface-frame" />
+          <div className="w-[22%] min-w-64 space-y-3 border-r border-line-subtle bg-surface-copilot p-3">
+            <div className="skeleton h-7 w-2/3" />
+            <div className="skeleton h-16" />
+            <div className="skeleton h-10" />
+            <div className="skeleton h-10" />
+          </div>
+          <div className="canvas-grid flex min-w-0 flex-1 items-center justify-center p-10">
+            <div className="skeleton aspect-[1024/600] w-full max-w-3xl" />
+          </div>
+          <div className="hidden w-[23%] min-w-60 space-y-3 border-l border-line-subtle bg-surface-panel p-3 xl:block">
+            <div className="skeleton h-7" />
+            <div className="skeleton h-24" />
+            <div className="skeleton h-24" />
+          </div>
+        </div>
+        <div className="h-7 shrink-0 border-t border-line-subtle bg-surface-panel" />
+      </div>
+    ),
   },
 );
 

@@ -12,6 +12,7 @@
  */
 
 import { type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { NavRail } from "./NavRail";
 import { StatusBar } from "./StatusBar";
 import { TopBar } from "./TopBar";
@@ -36,16 +37,17 @@ export function PageShell({
   // Deep-linking straight to /project/x/validation has to find a project, so
   // every route hydrates through the same path the workspace does.
   useProjectHydration(projectId);
+  const pathname = usePathname();
 
   return (
     <div className="flex h-screen flex-col bg-surface-base">
       <TopBar />
       <div className="flex min-h-0 flex-1">
         <NavRail projectId={projectId} />
-        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-surface-panel">
+        <main key={pathname} className="animate-swap flex min-h-0 flex-1 flex-col overflow-y-auto bg-surface-panel">
           <header className="flex shrink-0 items-start gap-4 border-b border-line-subtle px-6 py-4">
             <div className="min-w-0">
-              <h1 className="text-lg font-semibold">{title}</h1>
+              <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
               {description && (
                 <p className="mt-0.5 text-sm text-text-muted">{description}</p>
               )}

@@ -39,6 +39,7 @@ import { NavRail } from "./NavRail";
 import { StatusBar } from "./StatusBar";
 import { TopBar } from "./TopBar";
 import { cn } from "@/components/ui";
+import { useProject } from "@/store/project";
 
 /** Each region collapses to a strip you can still see and click. */
 const RAIL = "2.25rem";
@@ -88,7 +89,7 @@ function CollapsedRail({
       title={`Show ${label}`}
       aria-label={`Show ${label}`}
       className={cn(
-        "focus-ring group flex h-full w-full items-center gap-2 bg-surface-panel text-text-muted transition hover:bg-surface-hover hover:text-text-secondary",
+        "focus-ring group animate-fade flex h-full w-full items-center gap-2 bg-surface-panel text-text-muted transition hover:bg-surface-hover hover:text-text-secondary",
         vertical ? "flex-col justify-start py-3" : "justify-start px-4",
       )}
     >
@@ -135,8 +136,8 @@ function CollapseButton({
       title={`Hide ${label}`}
       aria-label={`Hide ${label}`}
       className={cn(
-        "focus-ring absolute top-1/2 z-20 flex h-12 w-4 -translate-y-1/2 items-center justify-center",
-        "rounded-md border border-line bg-surface-float text-text-muted opacity-0 transition",
+        "focus-ring press absolute top-1/2 z-20 flex h-12 w-4 -translate-y-1/2 items-center justify-center",
+        "rounded-md border border-line bg-surface-float text-text-muted opacity-0",
         "hover:text-text-primary focus-visible:opacity-100 group-hover/pane:opacity-100",
         side === "left" ? "right-0 translate-x-1/2" : "left-0 -translate-x-1/2",
       )}
@@ -168,6 +169,8 @@ export function WorkspaceShell({
     panelIds: ["intent", "canvas", "inspector"],
     storage: layoutStorage,
   });
+
+  const working = useProject((s) => s.generating || s.chat.some((m) => m.pending));
 
   const intentRef = useRef<PanelImperativeHandle | null>(null);
   const inspectorRef = useRef<PanelImperativeHandle | null>(null);
@@ -239,7 +242,9 @@ export function WorkspaceShell({
     <div className="flex h-screen flex-col bg-surface-base">
       <TopBar onExport={onExport} />
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
+        {/* Something is being built or answered: a line of light under the bar, there only while it is. */}
+        {working && <div aria-hidden className="run-line animate-fade absolute inset-x-0 top-0 z-30" />}
         <NavRail projectId={projectId} />
 
         <Group
@@ -267,6 +272,9 @@ export function WorkspaceShell({
                 collapsedSize={RAIL}
                 onResize={sync("intent", intentRef)}
                 className="group/pane relative min-w-0 bg-surface-panel"
+                // The collapse control straddles the divider. A pane that scrolls its own
+                // overflow counted that half button as content and grew a scrollbar for it.
+                style={{ overflow: "visible" }}
               >
                 {collapsed.intent ? (
                   <CollapsedRail
@@ -281,7 +289,8 @@ export function WorkspaceShell({
                       side="left"
                       onCollapse={() => toggle("intent", intentRef)}
                     />
-                    {intent}
+                    {/* Coming back from its rail, the pane's content arrives from the side it was put away to. */}
+                    <div className="animate-slide-left h-full">{intent}</div>
                   </>
                 )}
               </Panel>
@@ -306,6 +315,9 @@ export function WorkspaceShell({
                 collapsedSize={RAIL}
                 onResize={sync("inspector", inspectorRef)}
                 className="group/pane relative min-w-0 bg-surface-panel"
+                // The collapse control straddles the divider. A pane that scrolls its own
+                // overflow counted that half button as content and grew a scrollbar for it.
+                style={{ overflow: "visible" }}
               >
                 {collapsed.inspector ? (
                   <CollapsedRail
@@ -320,7 +332,7 @@ export function WorkspaceShell({
                       side="right"
                       onCollapse={() => toggle("inspector", inspectorRef)}
                     />
-                    {inspector}
+                    <div className="animate-slide-right h-full">{inspector}</div>
                   </>
                 )}
               </Panel>

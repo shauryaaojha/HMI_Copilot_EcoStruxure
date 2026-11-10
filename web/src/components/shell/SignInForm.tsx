@@ -19,7 +19,7 @@
  */
 
 import { useState, type FormEvent } from "react";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { Button, Field, Input } from "@/components/ui";
 
@@ -48,11 +48,33 @@ export function SignInForm({ next, compact = false, initialMode = "in", heading:
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  /** Something that went right and still needs saying: the account exists, now sign in. */
+  const [notice, setNotice] = useState<string>();
+  const [shown, setShown] = useState(false);
+
+  /**
+   * Changing tab on /signin or /signup changes the address with it. Without
+   * this the page said "Sign up" under /signin, and a reload - or the link
+   * someone copied - put them back on the form they had just left.
+   */
+  function choose(next: "in" | "up") {
+    setMode(next);
+    setError(undefined);
+    setNotice(undefined);
+    const path = window.location.pathname;
+    if (path === "/signin" || path === "/signup") {
+      window.history.replaceState(null, "", `${next === "in" ? "/signin" : "/signup"}${window.location.search}`);
+    }
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
     setError(undefined);
+    setNotice(undefined);
+    // The button stays busy until the next page has replaced this one; going
+    // back to "Sign in" while the browser was still leaving invited a second press.
+    let leaving = false;
     try {
       if (mode === "up") {
         const made = await fetch("/api/signup", {
@@ -69,14 +91,23 @@ export function SignInForm({ next, compact = false, initialMode = "in", heading:
       }
       const result = await signIn("credentials", { email, password, redirect: false });
       if (!result || result.error) {
-        setError(REFUSED);
+        if (mode === "up") {
+          // The account was made a moment ago; it is the sign-in that failed.
+          // Saying "no such account" here sent people to sign up a second time,
+          // and into "that address is taken".
+          setMode("in");
+          setNotice("Your account is ready. Sign in with the password you just chose.");
+        } else {
+          setError(REFUSED);
+        }
         return;
       }
+      leaving = true;
       window.location.assign(next || window.location.pathname + window.location.search);
     } catch {
       setError("Sign-in is unavailable. Check the connection and try again.");
     } finally {
-      setBusy(false);
+      if (!leaving) setBusy(false);
     }
   }
 
@@ -104,7 +135,7 @@ export function SignInForm({ next, compact = false, initialMode = "in", heading:
             key={way.id}
             type="button"
             aria-pressed={mode === way.id}
-            onClick={() => { setMode(way.id); setError(undefined); }}
+            onClick={() => choose(way.id)}
             className={
               "focus-ring relative rounded-md py-1.5 text-sm font-medium transition-colors duration-300 " +
               (mode === way.id ? "text-text-onbrand" : "text-text-muted hover:text-text-primary")
@@ -119,11 +150,25 @@ export function SignInForm({ next, compact = false, initialMode = "in", heading:
       </Field>
       <Field layout="stack" label="Password" hint={mode === "up" ? "At least 10 characters." : undefined}>
         <Input
-          type="password"
+          type={shown ? "text" : "password"}
           autoComplete={mode === "up" ? "new-password" : "current-password"}
           required
+          // The server's own floor, said before the request rather than after it.
+          minLength={mode === "up" ? 10 : undefined}
           value={password}
           onChange={e => setPassword(e.target.value)}
+          className="pr-9"
+          adornment={
+            <button
+              type="button"
+              onClick={() => setShown(s => !s)}
+              aria-label={shown ? "Hide the password" : "Show the password"}
+              aria-pressed={shown}
+              className="focus-ring rounded p-1 text-text-muted transition hover:text-text-primary"
+            >
+              {shown ? <EyeOff size={14} aria-hidden /> : <Eye size={14} aria-hidden />}
+            </button>
+          }
         />
       </Field>
       {mode === "up" && (
@@ -134,8 +179,13 @@ export function SignInForm({ next, compact = false, initialMode = "in", heading:
         </div>
       )}
       {error && (
-        <p role="alert" className="text-xs text-status-warn">
+        <p role="alert" className="animate-rise rounded-md border border-status-warn/30 bg-status-warn/[0.08] px-2.5 py-2 text-xs leading-snug text-status-warn">
           {error}
+        </p>
+      )}
+      {notice && (
+        <p role="status" className="animate-rise rounded-md border border-brand-500/30 bg-brand-500/[0.08] px-2.5 py-2 text-xs leading-snug text-text-primary">
+          {notice}
         </p>
       )}
       <Button

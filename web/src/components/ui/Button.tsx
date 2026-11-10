@@ -16,7 +16,7 @@ export type ButtonSize = "sm" | "md" | "lg";
 
 const VARIANT: Record<ButtonVariant, string> = {
   primary:
-    "bg-brand-500 text-text-onbrand hover:bg-brand-600 active:bg-brand-700 shadow-sm",
+    "bg-brand-500 text-text-onbrand hover:bg-brand-600 active:bg-brand-700 shadow-sm shadow-brand-500/20",
   secondary:
     "border border-line bg-surface-raised text-text-secondary hover:border-line-strong hover:text-text-primary",
   ghost: "text-text-muted hover:bg-surface-hover hover:text-text-primary",
@@ -54,7 +54,7 @@ export function Button({
     <button
       type={type}
       className={cn(
-        "focus-ring inline-flex shrink-0 items-center justify-center rounded-md font-medium transition",
+        "focus-ring press inline-flex shrink-0 items-center justify-center rounded-md font-medium",
         "disabled:pointer-events-none disabled:opacity-40",
         VARIANT[variant],
         SIZE[size],

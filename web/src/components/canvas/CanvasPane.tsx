@@ -64,7 +64,7 @@ const TABS: TabItem<CanvasTab>[] = [
 type CanvasView = "board" | "screen";
 
 const ZOOMS = [25, 50, 75, 100, 125, 150, 200, 300, 400];
-const FIT_PADDING = 48;
+const FIT_PADDING = 96;
 
 /** Where a new comment is being placed, until it is posted or cancelled. */
 interface CommentDraft {
@@ -407,9 +407,12 @@ export function CanvasPane({ defaultCommenting = false }: CanvasPaneProps = {}) 
    * Shift+wheel scrolls sideways, which is the convention, and dragging with
    * the middle button or the Hand tool still pans.
    */
-  function onWheel(event: React.WheelEvent) {
+  function onWheel(event: WheelEvent) {
     const el = viewport.current;
-    if (!el || event.shiftKey) return;
+    // Only the drawing zooms: the binding map and the JSON scroll like any page.
+    if (!el || tab !== "design" || event.shiftKey) return;
+    // A sideways swipe on a trackpad is a pan, and the browser does that already.
+    if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
     event.preventDefault();
 
     const rect = el.getBoundingClientRect();
@@ -435,6 +438,21 @@ export function CanvasPane({ defaultCommenting = false }: CanvasPaneProps = {}) 
       return next;
     });
   }
+
+  /**
+   * Listened for on the element, not through React: React's wheel listener is
+   * passive, so its preventDefault did nothing and the pane scrolled while it
+   * zoomed - the screen slid out from under the pointer it was zooming towards.
+   */
+  const wheel = useRef(onWheel);
+  wheel.current = onWheel;
+  useEffect(() => {
+    const el = viewport.current;
+    if (!el) return;
+    const listener = (event: WheelEvent) => wheel.current(event);
+    el.addEventListener("wheel", listener, { passive: false });
+    return () => el.removeEventListener("wheel", listener);
+  }, []);
 
   function onPointerDown(event: React.PointerEvent) {
     // Middle button pans regardless of mode, which is the muscle memory. So
@@ -567,7 +585,6 @@ export function CanvasPane({ defaultCommenting = false }: CanvasPaneProps = {}) 
       <div className="flex min-h-0 flex-1">
         <div
           ref={viewport}
-          onWheel={onWheel}
           onPointerDownCapture={(e) => {
             lastPress.current = { x: e.clientX, y: e.clientY };
           }}
@@ -589,17 +606,19 @@ export function CanvasPane({ defaultCommenting = false }: CanvasPaneProps = {}) 
             tab === "design"
               ? cn(
                   "canvas-grid overflow-auto p-8",
+                  // Driven by simulated values, not being designed: the whole canvas says so.
+                  simulating && "sim-live",
                   panMode && "cursor-grab active:cursor-grabbing",
                 )
               : "overflow-hidden",
           )}
         >
           {tab === "bindings" ? (
-            <BindingMap />
+            <div key="bindings" className="animate-swap h-full w-full"><BindingMap /></div>
           ) : tab === "json" ? (
-            <ScreenJson screen={screen} />
+            <div key="json" className="animate-swap h-full w-full"><ScreenJson screen={screen} /></div>
           ) : showBoard ? (
-            <div className="flex min-h-full min-w-full items-start justify-center p-4">
+            <div key="board" className="animate-fade flex min-h-full min-w-full items-start justify-center p-4">
               <ScreenBoard
                 screens={screens}
                 activeScreenId={screen.UniqueId}
@@ -644,8 +663,10 @@ export function CanvasPane({ defaultCommenting = false }: CanvasPaneProps = {}) 
                 {rulers && (
                   <Rulers width={panel.width} height={panel.height} scale={scale} />
                 )}
+                {/* Keyed by the screen, so changing screens is seen to happen. */}
                 <div
-                  className="canvas-screen"
+                  key={screen.UniqueId}
+                  className="canvas-screen animate-swap"
                   style={{ width: panel.width * scale, height: panel.height * scale }}
                 >
                   <ScreenRenderer
@@ -687,8 +708,10 @@ export function CanvasPane({ defaultCommenting = false }: CanvasPaneProps = {}) 
           {/* The build timeline, over the work rather than under it. It shows
               itself when a run starts and settles to one line when it ends. */}
           {tab === "design" && (
-            <div className="pointer-events-none sticky bottom-0 left-0 flex justify-start pt-4">
-              <RunOverlay />
+            // No height of its own: with one, a screen fitted to the pane was
+            // sixteen pixels too tall for it and the pane always scrolled.
+            <div className="pointer-events-none sticky bottom-0 left-0 h-0">
+              <div className="absolute bottom-0 left-0"><RunOverlay /></div>
             </div>
           )}
         </div>

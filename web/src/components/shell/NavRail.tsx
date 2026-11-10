@@ -88,7 +88,7 @@ function RailLink({
       aria-current={active ? "page" : undefined}
       title={item.label}
       className={cn(
-        "focus-ring group relative flex h-10 w-10 items-center justify-center rounded-lg transition",
+        "focus-ring press group relative flex h-10 w-10 items-center justify-center rounded-lg",
         active
           ? "bg-brand-500/12 text-brand-400"
           : "text-text-muted hover:bg-surface-hover hover:text-text-secondary",
@@ -97,7 +97,7 @@ function RailLink({
       {active && (
         <span
           aria-hidden
-          className="absolute -left-2 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r bg-brand-400"
+          className="animate-fade absolute -left-2 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r bg-brand-400"
         />
       )}
       <Icon size={17} aria-hidden strokeWidth={active ? 2.1 : 1.7} />
@@ -119,7 +119,7 @@ function RailLink({
       {/* The label, on hover, rather than as permanent width. */}
       <span
         role="tooltip"
-        className="pointer-events-none absolute left-full z-50 ml-2 whitespace-nowrap rounded-md border border-line bg-surface-float px-2 py-1 text-xs text-text-primary opacity-0 transition group-hover:opacity-100"
+        className="pointer-events-none absolute left-full z-50 ml-2 -translate-x-1 whitespace-nowrap rounded-md border border-line bg-surface-float px-2 py-1 text-xs text-text-primary opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100"
         style={{ boxShadow: "var(--elev-2)" }}
       >
         {item.label}

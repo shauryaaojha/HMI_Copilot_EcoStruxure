@@ -22,6 +22,8 @@ const WITH_AN_ACCOUNT = [
  * afterwards. On a phone the form stands alone on the same ground.
  */
 export async function AuthPage({ mode, next }: { mode: "in" | "up"; next: string | undefined }) {
+  // With nowhere named to go back to, signing in leads to the projects. It
+  // used to lead to the landing page, which reads as not having signed in.
   const target = safeNext(next);
   // Already signed in: the only reason to be here is to get somewhere else.
   if (await currentUser()) redirect(target);
@@ -103,5 +105,5 @@ export async function AuthPage({ mode, next }: { mode: "in" | "up"; next: string
 function safeNext(value: string | undefined): string {
   // A browser reads "\" as "/" and drops tabs and newlines, so "/\evil" and
   // "/<tab>/evil" are "//evil" by the time it navigates.
-  return value && value.startsWith("/") && !value.startsWith("//") && !/[\\\u0000-\u001f\u007f]/.test(value) ? value : "/";
+  return value && value.startsWith("/") && !value.startsWith("//") && !/[\\\u0000-\u001f\u007f]/.test(value) ? value : "/projects";
 }
