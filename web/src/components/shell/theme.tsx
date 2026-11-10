@@ -29,6 +29,36 @@ export const THEME_BOOTSTRAP = `(function(){try{var t=localStorage.getItem(${JSO
   THEME_STORAGE_KEY,
 )});if(!t)t=window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme="dark";}})();`;
 
+/** The theme the bootstrap would choose. Shared by ThemeGuard, which runs after it. */
+function storedTheme(): Theme {
+  try {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    if (saved === "light" || saved === "dark") return saved;
+    return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  } catch {
+    return "dark";
+  }
+}
+
+/**
+ * Puts the theme back if a render took it off <html>. When hydration fails React
+ * draws the document again from scratch, without the attribute the bootstrap
+ * script set, and a light-theme page would turn dark. Draws nothing.
+ */
+export function ThemeGuard() {
+  useEffect(() => {
+    const root = document.documentElement;
+    const restore = () => {
+      if (!root.dataset.theme) root.dataset.theme = storedTheme();
+    };
+    restore();
+    const watcher = new MutationObserver(restore);
+    watcher.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => watcher.disconnect();
+  }, []);
+  return null;
+}
+
 export function useTheme() {
   // Starts undefined so the first render matches whatever the bootstrap script
   // already put on <html>; the effect then adopts it.

@@ -1,6 +1,6 @@
 # Design A: a nested canvas and a grid the AI can do geometry on
 
-Audit 2026-11, stream S5. Status: design only. Nothing here is built.
+Audit 2026-11, stream S5. Status when written: design only. Since built on `main` (a2d2f39): the layout solver in `web/src/lib/layout`, the 4 px grid, and the Layers tree with the Compound Object row. This text is the design, not a record of what shipped.
 
 Shaurya's idea is a tree, like a DOM:
 - one project canvas that holds every screen and Compound Object (CO);

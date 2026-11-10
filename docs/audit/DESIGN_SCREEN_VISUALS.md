@@ -1,6 +1,6 @@
 # Design B: better-looking screens (a component library the generator and the agent pick from)
 
-*Audit 2026-11, stream S6. Design only: nothing here is built. Measured on branch `audit/2026-11` at 5fd701d.*
+*Audit 2026-11, stream S6. Design only when written. Since built on `main` (a2d2f39): the component catalogue in `web/src/lib/components/catalogue` and components by name from chat, agent and connector (phases 1-4). Phases 5-6 are not built. Measured on branch `audit/2026-11` at 5fd701d.*
 
 Related designs:
 - **DESIGN_NESTED_CANVAS.md** (design A) owns the grid unit, the coordinate spaces and the solver. This design

@@ -1168,8 +1168,15 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
           reject(op, noTag(op, "nothing was bound"));
           break;
         }
+        const property = op.property ?? valuePropertyOf(found.part) ?? "CurrentValue";
+        // OTE refuses to simulate a StringDisplay whose value is not a STRING tag (benched, S1-17).
+        // The other pairs it refuses are not known, so this is the only one turned away here.
+        if (found.part.Type === "StringDisplay" && property === "CurrentValue" && tag.DataType !== "STRING") {
+          reject(op, `${found.part.Name} is a StringDisplay and shows only a STRING tag; ${tag.Name} is ${tag.DataType}, and OTE will not simulate that. Use a NumericDisplay or a Lamp for it`);
+          break;
+        }
         // A bar binds its fill, not CurrentValue; and a rebind replaces the old tag rather than adding a second.
-        s.setBinding(found.part.UniqueId, op.property ?? valuePropertyOf(found.part) ?? "CurrentValue", tag.Name);
+        s.setBinding(found.part.UniqueId, property, tag.Name);
         touch(s, found.part.UniqueId);
         ok(note || `Bound ${tag.Name} to ${handleOf(s, found.part.UniqueId)} ${found.part.Name}`);
         break;

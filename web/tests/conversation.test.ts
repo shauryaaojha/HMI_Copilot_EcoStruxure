@@ -544,6 +544,19 @@ describe("naming an object the request did not name", () => {
     expect(useProject.getState().bindings).toHaveLength(0);
   });
 
+  it("will not bind a StringDisplay to a tag that is not a STRING", () => {
+    // S1-17: OTE opens such a file and refuses to simulate it, with no pointer to the binding.
+    seed();
+    const tag = useProject.getState().variables.find((v) => v.DataType === "BOOL")!;
+    const before = useProject.getState().bindings.length;
+    const { problems } = applyOps([
+      { op: "addObject", type: "StringDisplay", left: 600, top: 320, width: 160, height: 40, note: "n" },
+      { op: "bindTag", target: "StringDisplay_1", tag: tag.Name, note: "n" },
+    ]);
+    expect(problems.join(" ")).toMatch(/shows only a STRING tag/);
+    expect(useProject.getState().bindings).toHaveLength(before);
+  });
+
   it("gives an unnamed object a name carrying its type", () => {
     applyOps([{ op: "addObject", type: "NumericDisplay", note: "n" }]);
     expect(parts().at(-1)!.Name).toMatch(/^NumericDisplay_\d+$/);

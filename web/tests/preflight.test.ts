@@ -49,6 +49,17 @@ describe("preflight", () => {
     expect(text).toMatch(/^screen /m);
   });
 
+  it("refuses a StringDisplay whose value is not a STRING tag", async () => {
+    // S1-17, benched in licensed OTE: the file opens and will not simulate.
+    const { input } = await real();
+    const bool = input.variables.find((v) => v.DataType === "BOOL")!;
+    const wire = { ...input.wires[0], tag: bool.Name, property: "CurrentValue", part: { ...input.wires[0].part, Type: "StringDisplay" } };
+    const problems = preflight({ ...input, wires: [wire as PackageInput["wires"][number], ...input.wires.slice(1)] });
+    expect(problems.map((p) => p.problem).join(" ")).toMatch(/a StringDisplay shows only a STRING tag/);
+    // Another property of the same object may take a BOOL: visibility does.
+    expect(preflight({ ...input, wires: [{ ...wire, property: "Visibility" } as PackageInput["wires"][number], ...input.wires.slice(1)] })).toEqual([]);
+  });
+
   it("treats names as case-sensitive, as OTE does", async () => {
     const { input } = await real();
     const v = input.variables[0];

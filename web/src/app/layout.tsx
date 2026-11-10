@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { SignInPrompt } from "@/components/shell/SignInPrompt";
-import { THEME_BOOTSTRAP } from "@/components/shell/theme";
+import { THEME_BOOTSTRAP, ThemeGuard } from "@/components/shell/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
       <body>
+        <ThemeGuard />
         <SignInPrompt />
         {children}
       </body>
