@@ -77,6 +77,7 @@ export function preflight(input: PackageInput): PreflightProblem[] {
     else if (a.Trigger && !names.has(a.Trigger)) push(`alarm "${a.Message}"`, `is triggered by ${a.Trigger}, which is not a declared variable`);
   });
 
+  const typeOf = new Map(input.variables.map((v) => [String(v?.Name ?? ""), v?.DataType]));
   const parts = new Set(
     input.screens.flatMap((s) => (Array.isArray(s?.Children?.[0]?.Children) ? s.Children[0].Children.map((p) => p.UniqueId) : [])),
   );
@@ -87,6 +88,11 @@ export function preflight(input: PackageInput): PreflightProblem[] {
     }
     if (!names.has(w.tag)) push(`binding of ${w.part.Name}`, `reads ${w.tag}, which is not a declared variable`);
     if (!parts.has(w.part.UniqueId)) push(`binding of ${w.part.Name}`, "points at an object that is on no screen");
+    // The one pair OTE is known to refuse: it opens the file and will not simulate it (S1-17).
+    const type = typeOf.get(w.tag);
+    if (w.part.Type === "StringDisplay" && w.property === "CurrentValue" && type && type !== "STRING") {
+      push(`binding of ${w.part.Name}`, `shows ${w.tag}, which is ${type}; a StringDisplay shows only a STRING tag and OTE will not simulate this`);
+    }
   });
   return out;
 }
