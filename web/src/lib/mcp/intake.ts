@@ -1,12 +1,14 @@
 /**
- * The two ways a file reaches a project through the connector: an .eote that
- * becomes a project, and a tag export that lands on one. Both go through what
- * the app itself uses, so a file means the same thing whichever door it came in.
+ * How a project begins through the connector: a new empty one, an .eote that
+ * becomes one, and a tag export that lands on one. All go through what the
+ * app itself uses, so a project means the same thing whichever door it came in.
  */
 
 import { z } from "zod";
 import { refuse, sniff } from "@/lib/ingest/sniff";
 import { DEFAULT_STANDARDS } from "@/store/types";
+import { DEFAULT_PANEL, PANELS, panelNamed } from "@/lib/backend/panels";
+import { DATA_TYPES, Variable } from "@/lib/ote/schema";
 import { readProject } from "@/lib/ote/reader";
 import { repo } from "@/lib/server/repo";
 import { parseTagsFile } from "@/lib/tags/parse";
@@ -25,6 +27,84 @@ function bytesOf(base64: string): Uint8Array | null {
 }
 const tooBig = "That file is over 3 MB, too big to send through the connector. Open it on the Projects page instead.";
 const fileName = (name: string) => name.replace(/^.*[\\/]/, "").slice(0, 255);
+
+/** A name the product and a file system both take: letters, digits, space, dash and underscore. */
+const projectName = (asked: string) => asked.trim().replace(/[^A-Za-z0-9 _-]+/g, "_").replace(/\s+/g, " ").slice(0, 80).trim();
+
+/** The asked name, or the next free "<name>_2", so two projects are never told apart only by their id. */
+function freeName(name: string, taken: Set<string>): string {
+  if (!taken.has(name.toLowerCase())) return name;
+  for (let n = 2; ; n++) if (!taken.has(`${name}_${n}`.toLowerCase())) return `${name}_${n}`;
+}
+
+const createProject = tool({
+  name: "create_project",
+  title: "Create a project",
+  description:
+    "Makes a new, empty HMI project the engineer owns, optionally with a tag list, and returns its id. Use it when the work is for a plant or machine that none of the projects in list_projects is for: never put one machine's screens into another machine's project. Then use generate to lay out screens, or apply_ops with addScreen to draw them. Changes to it wait as proposals for the engineer to accept in the app, unless directWrites is true.",
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+  input: {
+    name: z.string().min(1).max(80).describe("The project's name, e.g. Coffee_Machine. If the engineer already has one with this name, a number is added."),
+    panel: z.enum(PANELS.map((p) => p.model) as [string, ...string[]]).optional().describe(`The target panel. ${DEFAULT_PANEL.model} (${DEFAULT_PANEL.width} x ${DEFAULT_PANEL.height}) if left out. ${PANELS.map((p) => `${p.model} is ${p.width} x ${p.height}`).join("; ")}.`),
+    tags: z
+      .array(
+        z.object({
+          name: z.string().describe("The tag's name as OTE takes it: letters, digits and underscores, starting with a letter. BOILER_TEMP, not 'Boiler temp'."),
+          dataType: z.enum(DATA_TYPES).describe("BOOL for a state or a command, REAL or INT for a measurement or a setpoint, STRING for text."),
+          comment: z.string().max(200).optional().describe("What it is, in a few words. Alarm messages and labels are written from this."),
+          address: z.string().max(80).optional().describe("The device address, when it is known."),
+        }),
+      )
+      .max(2000)
+      .optional()
+      .describe("The PLC tags, when the engineer gave them or agreed to a set. A project can also start with none: generate takes a plant brief and makes placeholder tags."),
+    directWrites: z.boolean().optional().describe("True only when the engineer has said changes may land without their accepting each one. Left out, every change waits as a proposal."),
+  },
+  async run({ name: asked, panel, tags, directWrites: direct }, { caller }) {
+    const name = projectName(asked);
+    if (!name) return refusal("That name has no letters or digits in it. Give the project a name such as Coffee_Machine.", "invalid");
+    const variables: Variable[] = [];
+    const bad: string[] = [];
+    const seen = new Set<string>();
+    for (const t of tags ?? []) {
+      const parsed = Variable.safeParse({ Name: t.name, DataType: t.dataType, Comments: t.comment ?? "", DeviceAddress: t.address ?? "" });
+      if (!parsed.success) bad.push(`${field(t.name, 60)}: ${field(parsed.error.issues[0]?.message ?? "not a valid tag", 120)}`);
+      else if (seen.has(parsed.data.Name)) bad.push(`${field(t.name, 60)}: listed twice`);
+      else {
+        seen.add(parsed.data.Name);
+        variables.push(parsed.data);
+      }
+    }
+    if (bad.length) {
+      return refusal(
+        [`Nothing was created: ${bad.length} of the ${tags!.length} tags cannot be used as they are. Correct them and call create_project again.`, projectData("tags refused", bad.slice(0, 40))].join("\n"),
+        "invalid",
+      );
+    }
+
+    const user = callerUser(caller);
+    const storage = repo();
+    const mine = await storage.projects.list(user.id);
+    const target = panelNamed(panel ?? DEFAULT_PANEL.model) ?? DEFAULT_PANEL;
+    const project = await storage.projects.create(user.id, {
+      v: 3, id: crypto.randomUUID(), name: freeName(name, new Set(mine.map((p) => p.name.toLowerCase()))),
+      target: { model: target.model, width: target.width, height: target.height },
+      screens: [], variables, alarms: [], bindings: [],
+      objectMeta: {}, screenPlacement: {}, standards: DEFAULT_STANDARDS, versions: [], chat: [], foreign: {},
+    } as never);
+    if (direct === true) await storage.projects.connector(project._id, { directWrites: true });
+    return {
+      text: [
+        `Created project ${project._id} "${field(project.name, 120)}" for ${target.model} (${target.width} x ${target.height}), with ${variables.length} tags and no screens yet.`,
+        direct === true
+          ? "Direct writes are on: what you change next lands at once."
+          : "What you change next waits as proposals; the engineer accepts them in the app, on this project's page.",
+        "Next: generate lays out screens from a plant brief or from the tags, and apply_ops with addScreen draws them one by one.",
+      ].join("\n"),
+      structured: { projectId: project._id, name: project.name, panel: target.model, width: target.width, height: target.height, tags: variables.length, directWrites: direct === true },
+    };
+  },
+});
 
 const openEote = tool({
   name: "open_eote",
@@ -96,4 +176,4 @@ const importTags = tool({
   },
 });
 
-export const INTAKE_TOOLS: readonly McpTool[] = [openEote, importTags];
+export const INTAKE_TOOLS: readonly McpTool[] = [createProject, openEote, importTags];

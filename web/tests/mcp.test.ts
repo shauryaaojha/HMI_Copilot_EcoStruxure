@@ -158,7 +158,7 @@ describe("the transport", () => {
     const { body } = await rpc("tools/list");
     const tools = body.result.tools as { name: string; inputSchema: { properties?: Record<string, unknown> } }[];
     expect(tools.map(t => t.name).sort()).toEqual(
-      ["apply_ops", "components", "find_tags", "generate", "generation_cancel", "generation_status", "get_layout", "get_screens", "import_tags", "kb_get", "kb_search", "list_projects", "open_eote", "place_component", "propose", "render_screen", "validate"],
+      ["apply_ops", "components", "create_project", "find_tags", "generate", "generation_cancel", "generation_status", "get_layout", "get_screens", "import_tags", "kb_get", "kb_search", "list_projects", "open_eote", "place_component", "propose", "render_screen", "validate"],
     );
     expect(tools.map(t => t.name).sort()).toEqual(TOOLS.map(t => t.name).sort());
     // apply_ops publishes the Op union itself: the op names come from
@@ -494,6 +494,48 @@ describe("a file through the connector", () => {
   const base64 = (text: string) => Buffer.from(text).toString("base64");
   const eote = () => readFileSync(path.resolve(import.meta.dirname, "../../demo_project/HMICopilot_Bars.eote")).toString("base64");
   const CSV = "Name,DataType\nNEW_101_RUN,BOOL\nNEW_101_SPEED,REAL\n";
+
+  it("create_project makes an empty project the caller owns, with its tags, that the other tools can work on", async () => {
+    const made = await call("create_project", {
+      name: "Coffee Machine",
+      tags: [
+        { name: "BOILER_TEMP", dataType: "REAL", comment: "Boiler temperature" },
+        { name: "PUMP_RUN", dataType: "BOOL" },
+      ],
+    });
+    expect(made.refused).toBe(false);
+    const id = made.structured!.projectId as string;
+    expect(made.structured).toMatchObject({ name: "Coffee Machine", tags: 2, directWrites: false, panel: "HMIST6500AWADI", width: 1024, height: 600 });
+    expect(await state.repo.members.get(id, "alice")).toMatchObject({ role: "owner" });
+    const snap = (await snapshotOf(id)).snapshot;
+    expect(snap.screens).toEqual([]);
+    expect(snap.variables.map(v => v.Name)).toEqual(["BOILER_TEMP", "PUMP_RUN"]);
+    // It is a project like any other: listed, readable, and a change to it waits for the engineer.
+    expect((await call("list_projects", {})).text).toContain(id);
+    expect((await call("get_screens", { projectId: id })).refused).toBe(false);
+    const change = await call("apply_ops", { projectId: id, ops: [{ op: "addScreen", name: "Overview", note: "the first screen" }] });
+    expect(change.structured).toMatchObject({ mode: "proposal" });
+  });
+
+  it("create_project keeps names apart, takes a panel, and turns direct writes on only when told", async () => {
+    const first = await call("create_project", { name: "Line 2", panel: "HMIGTO6310", directWrites: true });
+    const second = await call("create_project", { name: "Line 2" });
+    expect(first.structured).toMatchObject({ name: "Line 2", width: 800, height: 600, directWrites: true });
+    expect(second.structured).toMatchObject({ name: "Line 2_2", directWrites: false });
+    const id = first.structured!.projectId as string;
+    const change = await call("apply_ops", { projectId: id, ops: [{ op: "addScreen", name: "Overview", note: "the first screen" }] });
+    expect(change.structured).toMatchObject({ mode: "direct" });
+    expect((await snapshotOf(id)).snapshot.screens.map(s => s.Name)).toEqual(["Overview"]);
+  });
+
+  it("create_project makes nothing when a tag cannot be used, and says which", async () => {
+    const before = (await state.repo.projects.list("alice")).length;
+    const refused = await call("create_project", { name: "Bad", tags: [{ name: "Boiler temp", dataType: "REAL" }, { name: "OK_1", dataType: "BOOL" }, { name: "OK_1", dataType: "BOOL" }] });
+    expect(refused.refused).toBe(true);
+    expect(refused.text).toMatch(/2 of the 3 tags/);
+    expect(refused.text).toMatch(/listed twice/);
+    expect((await state.repo.projects.list("alice")).length).toBe(before);
+  });
 
   it("open_eote makes a project the caller owns, and it reads back", async () => {
     const { structured, refused } = await call("open_eote", { fileName: "Bars.eote", contentBase64: eote() });
