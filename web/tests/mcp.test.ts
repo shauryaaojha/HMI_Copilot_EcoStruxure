@@ -206,6 +206,7 @@ describe("list_projects", () => {
     expect(text).toContain(ID);
     expect(text).toContain("Pump Station");
     expect(text).toContain("1 screens, 8 tags, 0 alarms");
+    expect(text).toContain("screens: PumpStation1");
     expect(text).toContain("your role: owner");
     expect(text).toContain("changes land as proposals an editor accepts");
     expect(structured).toMatchObject({ projects: 1 });
@@ -217,6 +218,26 @@ describe("list_projects", () => {
   it("says when a project is opted in to direct writes", async () => {
     await state.repo.projects.connector(ID, { directWrites: true });
     expect((await call("list_projects")).text).toContain("changes land directly");
+  });
+});
+
+describe("projects as resources", () => {
+  it("shows every project the caller is a member of by name, and no one else's", async () => {
+    const { body } = await rpc("resources/list");
+    const listed = (body.result.resources as { uri: string; name: string }[]).filter((r) => r.uri.startsWith("hmi-copilot://project/"));
+    expect(listed.map((r) => r.name)).toEqual(["Pump Station"]);
+    expect(listed[0].uri).toBe(`hmi-copilot://project/${ID}`);
+  });
+
+  it("reads one as its screens and objects, fenced, and refuses one the caller has no role on", async () => {
+    const { body } = await rpc("resources/read", { uri: `hmi-copilot://project/${ID}` });
+    const text = body.result.contents[0].text as string;
+    expect(text).toContain('<project-data kind="project">');
+    expect(text).toContain('"Pump Station"');
+    expect(text).toContain("o1 Lamp_PUMP1_RUN [Lamp, shows PMP_101_RUN]");
+    const other = await rpc("resources/read", { uri: `hmi-copilot://project/${OTHER}` });
+    expect(other.body.error).toBeDefined();
+    expect(JSON.stringify(other.body)).not.toContain("Someone else's");
   });
 });
 
