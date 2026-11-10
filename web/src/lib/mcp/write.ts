@@ -257,7 +257,7 @@ const applyOpsTool = tool({
   name: "apply_ops",
   title: "Apply ops",
   description:
-    "Changes a project with a list of ops - add, move, resize, rename, set text or colour, bind a tag, delete, align, tidy. Ops are dry-run first and the report says exactly what landed and what was refused. On most projects the change is queued as a proposal for a human editor to accept; a project whose owner has turned on direct writes is changed straight away. Pass confirm: true only after the engineer has agreed, and only when a previous call said it was needed.",
+    "Changes a project with a list of ops - add, move, resize, rename, set text or colour, bind a tag, delete, align, tidy; setStyle for rounded corners (Rectangle), see-through colours and outline width; setText with fontSize, bold and italic; setAction to make a Switch open a screen or write its bit (momentary, toggle, set, reset); addTag, setTag and deleteTag to change the tag list one tag at a time. OTE has one typeface per language and no font families, so a refined look comes from size, weight, colour and shape. Ops are dry-run first and the report says exactly what landed and what was refused. On most projects the change is queued as a proposal for a human editor to accept; a project whose owner has turned on direct writes is changed straight away. Pass confirm: true only after the engineer has agreed, and only when a previous call said it was needed.",
   annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
   input: {
     projectId: z.string().describe("The project id, from list_projects."),

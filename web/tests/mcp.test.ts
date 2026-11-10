@@ -158,7 +158,7 @@ describe("the transport", () => {
     const { body } = await rpc("tools/list");
     const tools = body.result.tools as { name: string; inputSchema: { properties?: Record<string, unknown> } }[];
     expect(tools.map(t => t.name).sort()).toEqual(
-      ["apply_ops", "components", "create_project", "find_tags", "generate", "generation_cancel", "generation_status", "get_layout", "get_screens", "import_tags", "kb_get", "kb_search", "list_projects", "open_eote", "place_component", "propose", "render_screen", "validate"],
+      ["apply_ops", "components", "create_project", "delete_project", "duplicate_project", "find_tags", "generate", "generation_cancel", "generation_status", "get_layout", "get_screens", "import_tags", "kb_get", "kb_search", "list_projects", "open_eote", "place_component", "proposals", "propose", "rename_project", "render_screen", "set_direct_writes", "validate"],
     );
     expect(tools.map(t => t.name).sort()).toEqual(TOOLS.map(t => t.name).sort());
     // apply_ops publishes the Op union itself: the op names come from
@@ -257,7 +257,64 @@ describe("validate", () => {
   });
 });
 
+describe("the project around the screens", () => {
+  it("proposals says what is waiting, and what was decided", async () => {
+    const queued = await call("apply_ops", { projectId: ID, ops: [{ op: "addScreen", name: "Waiting_Room", note: "a screen to wait in" }] });
+    const id = queued.structured!.proposalId as string;
+    const open = await call("proposals", { projectId: ID });
+    expect(open.structured).toMatchObject({ open: 1 });
+    expect(open.text).toContain(id);
+    expect(open.text).toMatch(/open/);
+    expect((await call("proposals", { projectId: ID, status: "decided" })).structured).toMatchObject({ count: 0 });
+  });
+
+  it("set_direct_writes is the owner's to turn on, and then a change lands at once", async () => {
+    state.user = { id: "bob", name: "Bob" };
+    expect((await call("set_direct_writes", { projectId: ID, on: true })).refused).toBe(true);
+    state.user = { id: "alice", name: "Alice" };
+    expect((await call("set_direct_writes", { projectId: ID, on: true })).structured).toMatchObject({ directWrites: true, changed: true });
+    expect((await call("set_direct_writes", { projectId: ID, on: true })).structured).toMatchObject({ changed: false });
+    const change = await call("apply_ops", { projectId: ID, ops: [{ op: "addTag", tag: "BOILER_TEMP", dataType: "REAL", comment: "Boiler temperature", note: "a tag for the boiler" }] });
+    expect(change.structured).toMatchObject({ mode: "direct" });
+    expect((await snapshotOf()).snapshot.variables.some(v => v.Name === "BOILER_TEMP")).toBe(true);
+    expect((await call("set_direct_writes", { projectId: ID, on: false })).structured).toMatchObject({ directWrites: false });
+  });
+
+  it("renames, copies and deletes a project, and deletes only the one named", async () => {
+    const copy = await call("duplicate_project", { projectId: ID, name: "Trial" });
+    const copyId = copy.structured!.projectId as string;
+    expect((await snapshotOf(copyId)).snapshot.screens.length).toBe((await snapshotOf()).snapshot.screens.length);
+    expect(await state.repo.members.get(copyId, "alice")).toMatchObject({ role: "owner" });
+
+    expect((await call("rename_project", { projectId: copyId, name: "Trial_2" })).refused).toBe(false);
+    expect((await snapshotOf(copyId)).snapshot.name).toBe("Trial_2");
+
+    const wrong = await call("delete_project", { projectId: copyId, confirmName: "Trial" });
+    expect(wrong.refused).toBe(true);
+    expect(await state.repo.projects.get(copyId)).toBeTruthy();
+    expect((await call("delete_project", { projectId: copyId, confirmName: "Trial_2" })).structured).toMatchObject({ deleted: true });
+    expect(await state.repo.projects.get(copyId)).toBeNull();
+    // An editor is not an owner: they cannot delete.
+    state.user = { id: "bob", name: "Bob" };
+    expect((await call("delete_project", { projectId: ID, confirmName: (await snapshotOf()).snapshot.name })).refused).toBe(true);
+  });
+});
+
 describe("render_screen", () => {
+  it("draws the screen at given tag values, and says which it did not know", async () => {
+    const snap = (await snapshotOf()).snapshot;
+    const bound = snap.bindings[0]?.tag ?? snap.variables[0].Name;
+    const type = snap.variables.find(v => v.Name === bound)!.DataType;
+    const design = await call("render_screen", { projectId: ID, screenId: "s1" });
+    const live = await call("render_screen", { projectId: ID, screenId: "s1", values: { [bound]: type === "BOOL" ? true : 77, NOT_A_TAG: 1 } });
+    expect(live.refused).toBe(false);
+    expect(live.text).toMatch(/1 tag value\(s\) applied/);
+    expect(live.text).toMatch(/not a run of the panel/);
+    expect(live.text).toMatch(/Not in the tag list, so ignored: NOT_A_TAG/);
+    expect(live.image).toBeTruthy();
+    expect(design.text).not.toMatch(/tag value/);
+  });
+
   it("answers with the screen as a PNG", async () => {
     const { text, image } = await call("render_screen", { projectId: ID, screenId: "s1" });
     expect(image?.mimeType).toBe("image/png");
@@ -364,10 +421,13 @@ describe("writing", () => {
     expect(await state.repo.proposals.list(ID)).toHaveLength(0);
   });
 
-  it("has no delete_project, in this version", async () => {
-    expect(TOOLS.map(t => t.name)).not.toContain("delete_project");
+  it("delete_project does nothing without the project's own name", async () => {
+    // The first version had no delete at all. It has one now, behind the bar the
+    // research set for destructive tools: an argument Claude can only fill in
+    // from what the engineer agreed to.
     const { body } = await rpc("tools/call", { name: "delete_project", arguments: { projectId: ID } });
     expect(body.result?.isError || body.error).toBeTruthy();
+    expect((await call("delete_project", { projectId: ID, confirmName: "yes" })).refused).toBe(true);
     expect(await state.repo.projects.get(ID)).toBeTruthy();
   });
 });

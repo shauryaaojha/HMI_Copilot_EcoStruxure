@@ -249,58 +249,85 @@ button[disabled] { opacity: 0.5; cursor: default; }
  * `postMessage` to the host frame, so the part we use is small enough to own:
  * say hello, take the tool result, ask for a tool call or a prompt.
  *
- * `ui/initialize` and the `ui/*` namespace are the design guidelines' own
- * spelling. The method names for calling a tool and for putting a prompt in
- * the composer were not on either page read, so both spellings are tried and
- * the handlers accept the result notification under any of its plausible
- * names: a card that misses the notification shows nothing, and that is the
- * one failure worth being generous about. Pin these against the MCP Apps SDK
- * before the connector is submitted (M5).
+ * The method names are the specification's (MCP Apps, 2026-01-26, read
+ * 2026-11-10): the view sends `ui/initialize`, and after the host answers it
+ * sends `ui/notifications/initialized`. The host sends nothing before that
+ * notification, which is why a card that skipped it stayed on "Loading" for
+ * ever. The host then pushes `ui/notifications/tool-input` (the arguments the
+ * tool was called with) and `ui/notifications/tool-result` (the result
+ * itself, as the params). A card runs a tool again with the ordinary
+ * `tools/call`, puts words in the conversation with `ui/message`, and says how
+ * tall it is with `ui/notifications/size-changed`.
  */
 const CARD_BRIDGE = `
 var host = window.parent;
 var seq = 0;
-var ready = false;
-function send(method, params) {
+var waiting = {};
+/** The arguments this card's tool was called with, for running it again. */
+var toolInput = null;
+function request(method, params, done) {
   var id = ++seq;
+  if (done) waiting[id] = done;
   host.postMessage({ jsonrpc: "2.0", id: id, method: method, params: params || {} }, "*");
   return id;
 }
 function notify(method, params) {
   host.postMessage({ jsonrpc: "2.0", method: method, params: params || {} }, "*");
 }
-/** The host's push of the tool result, under any of the names it may use. */
-function resultOf(message) {
-  if (!message || typeof message !== "object") return null;
-  var method = message.method || "";
-  if (method.indexOf("tool-result") >= 0 || method.indexOf("toolResult") >= 0) {
-    return message.params && (message.params.result || message.params);
-  }
-  if (message.result && (message.result.content || message.result._meta)) return message.result;
-  return null;
-}
-window.addEventListener("message", function (event) {
-  var result = resultOf(event.data);
-  if (!result) return;
-  ready = true;
+function show(result) {
   try {
     render(result, (result._meta && result._meta.ui && result._meta.ui.data) || null);
   } catch (error) {
     /* A card that throws must not take the answer with it: the text content
        beside it is the real answer and is already in the conversation. */
   }
+  reportSize();
+}
+function reportSize() {
+  var box = document.documentElement.getBoundingClientRect();
+  notify("ui/notifications/size-changed", { width: Math.ceil(box.width), height: Math.ceil(document.documentElement.scrollHeight) });
+}
+window.addEventListener("message", function (event) {
+  var message = event.data;
+  if (!message || typeof message !== "object" || message.jsonrpc !== "2.0") return;
+  if (message.id !== undefined && !message.method) {
+    var done = waiting[message.id];
+    delete waiting[message.id];
+    if (done) done(message.result || null, message.error || null);
+    return;
+  }
+  if (message.method === "ui/notifications/tool-input") toolInput = (message.params && message.params.arguments) || null;
+  if (message.method === "ui/notifications/tool-result" && message.params) show(message.params);
+  if (message.method === "ui/notifications/tool-cancelled" && typeof cancelled === "function") cancelled();
+  /* The host waits for an answer before it takes the card down. */
+  if (message.method === "ui/resource-teardown" && message.id !== undefined) {
+    if (typeof stopLive === "function") stopLive();
+    host.postMessage({ jsonrpc: "2.0", id: message.id, result: {} }, "*");
+  }
 });
-/** Runs one of this card's tools again, through the host. */
-function callTool(name, args) {
-  send("ui/call-tool", { name: name, arguments: args });
-  send("ui/tool-call", { name: name, arguments: args });
+/** Runs one of this server's tools through the host, and draws what comes back. */
+function callTool(name, args, done) {
+  request("tools/call", { name: name, arguments: args }, function (result, error) {
+    if (result && !result.isError) show(result);
+    if (done) done(result, error);
+  });
 }
-/** Hands the engineer's request to the composer, where language work belongs. */
+/** Puts the engineer's request in the conversation, where language work belongs. */
 function askClaude(text) {
-  notify("ui/send-prompt", { prompt: text });
-  notify("ui/prompt", { prompt: text });
+  request("ui/message", { role: "user", content: { type: "text", text: text } });
 }
-send("ui/initialize", { appCapabilities: { availableDisplayModes: ["inline"] } });
+request(
+  "ui/initialize",
+  {
+    protocolVersion: "2026-01-26",
+    clientInfo: { name: "hmi-copilot-card", version: "2" },
+    appInfo: { name: "hmi-copilot-card", version: "2" },
+    capabilities: {},
+    appCapabilities: { availableDisplayModes: ["inline"] }
+  },
+  function () { notify("ui/notifications/initialized", {}); }
+);
+if (window.ResizeObserver) new ResizeObserver(reportSize).observe(document.body);
 `;
 
 /** Every card: one document, no external reference of any kind. */
@@ -328,16 +355,23 @@ ${body}
  * thing in the result against a 150,000-character cap
  * (docs/CONNECTOR_SPEC_NOTES.md §2), and hosting it would need an origin.
  *
- * No action. The guidelines draw the line at direct manipulation of content
- * the card already owns, and everything an engineer wants to do to a screen -
- * move this, bind that, redo the layout - is a request in words that Claude
- * has to interpret. A button that could only mean "ask again" earns nothing.
+ * One control: Live. While it is on the card draws the screen again every few
+ * seconds, by running `render_screen` with the arguments it was first called
+ * with, so the engineer watches the screen being made while Claude works on it
+ * in the same conversation. It pauses while the tab is hidden and stops by
+ * itself after ten minutes; a drawing nobody is looking at should not cost a
+ * render. Everything else an engineer wants to do to a screen - move this,
+ * bind that - is a request in words that Claude has to interpret.
  */
 const SCREEN_CARD_HTML = cardHtml(
   "Screen preview",
   `<h1 id="name">Loading the screen…</h1>
 <div class="sub" id="size"></div>
 <div class="stats" id="stats"></div>
+<div class="actions">
+  <button id="live" class="quiet" disabled aria-pressed="false">Live: off</button>
+  <span class="where" id="liveNote"></span>
+</div>
 <img id="shot" class="shot" alt="" hidden>
 <ul id="bindings"></ul>
 <div class="rest" id="rest" hidden></div>
@@ -389,7 +423,44 @@ function render(result, data) {
   var rest = document.getElementById("rest");
   rest.hidden = !data.more;
   rest.textContent = data.more ? data.more + " more objects, not listed here." : "";
+  drawn = Date.now();
+  document.getElementById("live").disabled = !toolInput;
+  if (toolInput && !started) { started = true; startLive(); }
+  note();
 }
+/* Live: the same tool, the same arguments, every few seconds while someone is looking. */
+var EVERY_MS = 4000;
+var FOR_MS = 10 * 60 * 1000;
+var timer = null;
+var since = 0;
+var drawn = 0;
+var busy = false;
+var started = false;
+function note() {
+  var el = document.getElementById("liveNote");
+  var button = document.getElementById("live");
+  button.textContent = timer ? "Live: on" : "Live: off";
+  button.setAttribute("aria-pressed", timer ? "true" : "false");
+  el.textContent = timer ? "Redraws as the project changes." : drawn ? "Paused. This is the screen as it was when drawn." : "";
+}
+function tick() {
+  if (!toolInput || busy || document.hidden) return;
+  if (Date.now() - since > FOR_MS) { stopLive(); return; }
+  busy = true;
+  callTool("render_screen", toolInput, function () { busy = false; });
+}
+function startLive() {
+  if (timer || !toolInput) return;
+  since = Date.now();
+  timer = setInterval(tick, EVERY_MS);
+  note();
+}
+function stopLive() {
+  if (timer) clearInterval(timer);
+  timer = null;
+  note();
+}
+document.getElementById("live").onclick = function () { if (timer) stopLive(); else startLive(); };
 `,
 );
 

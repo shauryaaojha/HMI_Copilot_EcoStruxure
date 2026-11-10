@@ -205,8 +205,28 @@ describe("the validation card", () => {
     expect(html).toContain('callTool("validate"');
   });
 
-  it("has no action on the screen card, which has nothing to act on", () => {
-    expect(CARD_RESOURCES[SCREEN_CARD_URI].html).not.toContain("<button");
+  it("has one control on the screen card: Live, which draws the screen again with the same arguments", () => {
+    const html = CARD_RESOURCES[SCREEN_CARD_URI].html;
+    expect(html.match(/<button/g)).toHaveLength(1);
+    expect(html).toContain('callTool("render_screen", toolInput');
+    // It stops by itself, and does not draw for a tab nobody is looking at.
+    expect(html).toContain("document.hidden");
+    expect(html).toContain("FOR_MS");
+  });
+
+  it("speaks the published protocol: the host sends nothing until it is told the card is ready", () => {
+    for (const { html } of Object.values(CARD_RESOURCES)) {
+      expect(html).toContain('"ui/initialize"');
+      expect(html).toContain('notify("ui/notifications/initialized"');
+      expect(html).toContain('"ui/notifications/tool-result"');
+      expect(html).toContain('"ui/notifications/tool-input"');
+      expect(html).toContain('request("tools/call"');
+      expect(html).toContain('request("ui/message"');
+      expect(html).toContain('"ui/notifications/size-changed"');
+      // The guessed names the first version tried, which no host answers.
+      expect(html).not.toContain("ui/call-tool");
+      expect(html).not.toContain("ui/send-prompt");
+    }
   });
 });
 

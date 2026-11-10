@@ -16,6 +16,7 @@ import { componentCatalogue } from "@/lib/components/place";
 import { z } from "zod";
 import { findTags } from "@/lib/ai/retrieve";
 import { screenToPng } from "@/lib/critic/render";
+import { objectValues } from "@/lib/sim/alarms";
 import { rootBox, type Variable } from "@/lib/ote/schema";
 import { sceneOf } from "@/lib/layout/scene";
 import { layoutFacts, printLayoutFacts } from "@/lib/layout/facts";
@@ -201,10 +202,10 @@ const validate = tool({
  * large panel at full size passes it. Reading a slightly smaller picture of
  * the whole screen beats being handed a truncated one.
  */
-async function pngWithinCap(screen: Parameters<typeof screenToPng>[0], foreign: Parameters<typeof screenToPng>[1], size: { width: number; height: number }) {
+async function pngWithinCap(screen: Parameters<typeof screenToPng>[0], foreign: Parameters<typeof screenToPng>[1], size: { width: number; height: number }, around: Parameters<typeof screenToPng>[3] = {}) {
   let scale = Math.min(1, 1024 / Math.max(size.width, size.height, 1));
   for (let attempt = 0; attempt < 4; attempt++) {
-    const bytes = await screenToPng(screen, foreign, scale);
+    const bytes = await screenToPng(screen, foreign, scale, around);
     // 4 base64 characters per 3 bytes, with room left for the text beside it.
     if (Math.ceil(bytes.length / 3) * 4 <= RESULT_LIMIT - 2_000 || attempt === 3) return { bytes, scale };
     scale /= 2;
@@ -217,23 +218,39 @@ const renderScreen = tool({
   title: "Render screen",
   ui: { resourceUri: SCREEN_CARD_URI },
   description:
-    "Draws one screen as a PNG, exactly as the app's canvas draws it, so you can look at the layout instead of inferring it from a list of objects. Name the screen by the handle get_screens gave it.",
+    "Draws one screen as a PNG, exactly as the app's canvas draws it, so you can look at the layout instead of inferring it from a list of objects. Name the screen by the handle get_screens gave it. In claude.ai the picture is a live card: it redraws by itself as the project changes, so render a screen once before you start changing it and the engineer watches the changes land. Pass values to see the screen as it would look at run time with those tag values.",
   annotations: { readOnlyHint: true, openWorldHint: false },
   input: {
     projectId: z.string().describe("The project id, from list_projects."),
     screenId: z.string().describe("Screen handle (s2), name, or UniqueId, from get_screens."),
+    values: z
+      .record(z.string(), z.union([z.number(), z.boolean()]))
+      .optional()
+      .describe("Tag values to draw the screen with, by tag name, e.g. { PUMP_RUN: true, BOILER_TEMP: 92.5 }: lamps light, readings and bars show the numbers. Left out, the screen is drawn in its design state."),
   },
-  async run({ projectId, screenId }, { caller }) {
+  async run({ projectId, screenId, values }, { caller }) {
     const { doc } = await openProject(caller, projectId, "read");
     const screen = findScreen(doc, screenId);
     const size = rootBox(screen.Children[0], { width: doc.target.width, height: doc.target.height });
-    const { bytes, scale } = await pngWithinCap(screen, doc.foreign?.[screen.UniqueId], size);
+    const known = new Set(doc.variables.map((v) => v.Name));
+    const unknown = Object.keys(values ?? {}).filter((name) => !known.has(name));
+    // Through the bindings, as the runtime does: a tag's value reaches the objects that show it.
+    const live = values ? objectValues(doc.bindings, values) : undefined;
+    const { bytes, scale } = await pngWithinCap(screen, doc.foreign?.[screen.UniqueId], size, {
+      contents: doc.screens,
+      contentForeign: doc.foreign,
+      panel: { width: doc.target.width, height: doc.target.height },
+      ...(live ? { values: live } : {}),
+    });
     const handle = handleOf(doc, screen.UniqueId);
     // `screenLines` already decides which of an object's bindings is the one
     // worth naming; asking it again here is cheaper than a second opinion.
     const objects = screenLines(doc).find((s) => s.handle === handle)?.objects ?? [];
     return {
-      text: `Screen ${handle} "${field(screen.Name, 120)}", ${size.width}x${size.height} px, drawn at ${Math.round(scale * 100)}%.`,
+      text:
+        `Screen ${handle} "${field(screen.Name, 120)}", ${size.width}x${size.height} px, drawn at ${Math.round(scale * 100)}%` +
+        (live ? `, with ${Object.keys(values!).length - unknown.length} tag value(s) applied. This is a drawing of the screen at those values, not a run of the panel: scripts, converters beyond scaling and timing are not played.` : ".") +
+        (unknown.length ? ` Not in the tag list, so ignored: ${unknown.slice(0, 8).map((n) => field(n, 60)).join(", ")}.` : ""),
       image: { bytes, mimeType: "image/png" },
       structured: { handle, width: size.width, height: size.height, scale },
       ui: screenCard({

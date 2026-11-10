@@ -42,6 +42,8 @@ export interface Around {
   contentForeign?: Record<string, ForeignPart[]>;
   /** The panel's size, for a screen whose root gives none (an opened project's Canvas). */
   panel?: { width: number; height: number };
+  /** Run-time values by object name, to draw the screen as it would look live. Absent is the design state. */
+  values?: Record<string, number | boolean | string>;
 }
 
 /**
@@ -69,7 +71,7 @@ export async function screenToSvg(screen: Screen, foreign?: ForeignPart[], aroun
   screen = onCanvas(screen, box);
   const renderToStaticMarkup = await serverRenderer();
   const env = { ...DEFAULT_ENV, contents: contentsById(around.contents ?? []), carried: around.contentForeign };
-  const markup = renderToStaticMarkup(createElement(StaticScreen, { screen, foreign, env, panel: around.panel }));
+  const markup = renderToStaticMarkup(createElement(StaticScreen, { screen, foreign, env, panel: around.panel, ...(around.values ? { values: around.values } : {}) }));
   // The canvas SVG sizes itself to its container and reads its colours from
   // the page. Standalone, it needs an absolute size, an xmlns, and the two
   // CSS variables the design uses spelled out.
