@@ -2,9 +2,12 @@ import {
   CircleCheck,
   FileInput,
   Link2,
+  MessagesSquare,
+  Plug,
   Ruler,
   ScanEye,
   ShieldCheck,
+  Users,
 } from "lucide-react";
 import { SchneiderMark } from "@/components/shell/SchneiderMark";
 import { AuthLinks } from "@/components/landing/AuthLinks";
@@ -12,6 +15,7 @@ import { StartButtons } from "@/components/landing/StartButtons";
 import { ScreenBuild } from "@/components/landing/ScreenBuild";
 import { Flow, Routes } from "@/components/landing/Sections";
 import { CursorLight } from "@/components/landing/CursorLight";
+import { ConnectClaude } from "@/components/landing/ConnectClaude";
 
 /**
  * Landing page.
@@ -55,7 +59,22 @@ const CLAIMS = [
   {
     icon: ShieldCheck,
     title: "Nothing happens without you",
-    note: "Every proposal is a ghost first, and every change can be undone.",
+    note: "An AI change opens as a review: what was asked, the screen now beside the screen after, and every change with a tick.",
+  },
+  {
+    icon: MessagesSquare,
+    title: "Say it, and it is drawn",
+    note: "Move, align, restyle, bind a tag, make a button change screen, add a tag: asked in words, done with the same ops as the mouse.",
+  },
+  {
+    icon: Users,
+    title: "Work on it together",
+    note: "Share a link, edit the same screen at once, comment on an object, and go back to any saved version.",
+  },
+  {
+    icon: Plug,
+    title: "Or let Claude drive",
+    note: "A connector for Claude with the app's own tools, and a live picture of the screen in the conversation.",
   },
 ];
 
@@ -73,6 +92,9 @@ export default function Landing() {
           <span aria-hidden className="h-6 w-px bg-line" />
           <span className="text-lg font-semibold tracking-tight">HMI Copilot</span>
           <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+            <a href="#connect" className="focus-ring hidden h-9 items-center rounded-md px-3 text-sm font-medium text-text-secondary transition hover:bg-surface-hover hover:text-text-primary sm:inline-flex">
+              Connect Claude
+            </a>
             <AuthLinks />
             <StartButtons compact />
           </div>
@@ -142,6 +164,7 @@ export default function Landing() {
 
           <Flow />
           <Routes />
+          <ConnectClaude />
 
           <footer className="mx-auto max-w-5xl border-t border-line-subtle px-8 py-10">
             <p className="text-sm leading-relaxed text-text-muted">
