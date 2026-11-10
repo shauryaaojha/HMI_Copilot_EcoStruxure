@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * The landing's two calls to action.
+ * The landing's calls to action: start, open a file, or go to the projects already made.
  *
  * They have to be client-side because a project is an id created in the
  * browser's own storage - there is no server to ask for one. The landing page
@@ -12,7 +12,7 @@
  * new project, and the start pane asks what to build.
  */
 
-import { ArrowRight, FolderOpen } from "lucide-react";
+import { ArrowRight, FolderOpen, LayoutGrid } from "lucide-react";
 import { useNewProject } from "@/components/shell/useNewProject";
 
 export function StartButtons({ compact = false }: { compact?: boolean }) {
@@ -20,6 +20,11 @@ export function StartButtons({ compact = false }: { compact?: boolean }) {
 
   if (compact) {
     return (
+      <>
+      <a href="/projects" className="focus-ring inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm font-medium text-text-secondary transition hover:border-line-strong hover:text-text-primary">
+        <LayoutGrid size={14} aria-hidden />
+        Your projects
+      </a>
       <button
         type="button"
         onClick={() => newProject()}
@@ -28,6 +33,7 @@ export function StartButtons({ compact = false }: { compact?: boolean }) {
         Get started
         <ArrowRight size={15} aria-hidden />
       </button>
+      </>
     );
   }
 
@@ -49,6 +55,13 @@ export function StartButtons({ compact = false }: { compact?: boolean }) {
         <FolderOpen size={15} aria-hidden />
         Open an existing .eote
       </button>
+      <a
+        href="/projects"
+        className="focus-ring inline-flex h-11 items-center gap-2 rounded-md border border-line px-6 text-sm font-medium text-text-secondary transition hover:border-line-strong hover:text-text-primary"
+      >
+        <LayoutGrid size={15} aria-hidden />
+        Your projects
+      </a>
     </div>
   );
 }
