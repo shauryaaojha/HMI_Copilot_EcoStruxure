@@ -1,6 +1,6 @@
 # Design C: one indexed knowledge base the AI builds screens from
 
-Audit 2026-11, stream S5. Status: design only. Nothing here is built. Companion designs:
+Audit 2026-11, stream S5. Status when written: design only. Since built on `main` (a2d2f39): the index in `web/src/lib/kb` with `kb_search` and `kb_get` in chat, agent and connector (phases 1-3). Phases 4-6 are not built. Companion designs:
 - `docs/audit/DESIGN_NESTED_CANVAS.md` (design A: layout facts and the solver);
 - `docs/audit/DESIGN_SCREEN_VISUALS.md` (design B: the component library; another stream writes it, and this
   design indexes its components by reference).
