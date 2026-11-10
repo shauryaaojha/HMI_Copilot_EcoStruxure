@@ -21,6 +21,7 @@ import { useCan, useCanEdit } from "@/store/access";
 import { useProject } from "@/store/project";
 import { decideProposal, useProposals, type SharedProposal } from "@/store/proposals";
 import { cn } from "@/components/ui";
+import { openReview } from "./ProposalReview";
 
 /** Ghost a proposal (or the ticked part of it) on the canvas, under its id. */
 function showGhosts(proposal: SharedProposal, keep?: number[]) {
@@ -143,7 +144,14 @@ function ProposalCard({ proposal }: { proposal: SharedProposal }) {
       )}
 
       {open && canEdit && (
-        <div className="flex gap-2 pt-1">
+        <div className="flex flex-wrap gap-2 pt-1">
+          <button
+            type="button"
+            onClick={() => openReview(proposal._id)}
+            className="focus-ring rounded-md border border-brand-500/50 px-2.5 py-1 text-[11px] font-medium text-brand-400 transition hover:bg-brand-500/10"
+          >
+            Review
+          </button>
           <button
             type="button"
             disabled={busy || keep.length === 0}

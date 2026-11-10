@@ -17,6 +17,7 @@
  * was thrown away a frame later regardless.
  */
 
+import { ProposalReviewHost } from "@/components/chat/ProposalReview";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useProject } from "@/store/project";
@@ -70,6 +71,8 @@ export function Workspace({ projectId }: { projectId: string }) {
       canvas={<CanvasPane />}
       inspector={<Inspector />}
       />
+      {/* A change waiting for a decision is shown over the whole workspace, not only in the chat pane. */}
+      <ProposalReviewHost />
     </div>
   );
 }
