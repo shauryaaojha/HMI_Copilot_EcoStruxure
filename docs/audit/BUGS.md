@@ -10,7 +10,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **Totals:** 82 bugs: P0 3, P1 12, P2 39, P3 28. (4 duplicates merged into the bug they repeat.)
 
-**Status on `main`, 2026-11-06:** 79 of 84 rows closed, 5 open: S1-04, S1-10, S1-12, S1-17, S1-13. All five wait on OTE file work. Every status names its commit. The audit proofs run with the command above and only S1-04 still fails.
+**Status on `fix/leftovers`, 2026-11-10:** 80 of 84 rows closed, 4 open: S1-04, S1-10, S1-12, S1-13. All four wait on OTE file work. Every status names its commit. The audit proofs run with the command above and only S1-04 still fails.
 
 ## Summary
 
@@ -64,7 +64,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 | [S3-06](#s3-06) | P2 | MCP generate takes a brief with an unbounded unit count | - web/src/lib/mcp/generate.ts:111 `count: z.number().int().optional()`; | web/scripts/audit/s3-brief-count.test.ts (fails: "problemsWith accept… | connector users, rarely. Only a client that sends the brief… | fixed in bcdb85d |
 | [S1-11](#s1-11) | P2 | setColor and setText report success with no visible change on several types | web/src/core/ops/apply.ts:766-767 (setColor always writes the top-level `Fill.Color.Value… | measured by fidelity.mts. Applied but not visible: setColor TextBox 1… | chat, agent and MCP users restyling objects. | fixed in dd813d7 |
 | [S1-16](#s1-16) | P1 | A new STRING tag makes a project OTE refuses to simulate | web/src/lib/ote/databases.ts (`shapeOf`) | licensed OTE, auto&manua.eote; web/tests/eote-writer-audit.test.ts | anyone who adds a STRING tag | fixed |
-| [S1-17](#s1-17) | P2 | A StringDisplay bound to a BOOL tag passes preflight, and OTE refuses to simulate it | web/src/core/ops/apply.ts (`bindTag`), web/src/lib/ote/preflight.ts | licensed OTE, auto&manua.eote | anyone who rebinds a StringDisplay | open · deferred (OTE file work is on hold, needs the bench) |
+| [S1-17](#s1-17) | P2 | A StringDisplay bound to a BOOL tag passes preflight, and OTE refuses to simulate it | web/src/core/ops/apply.ts (`bindTag`), web/src/lib/ote/preflight.ts | licensed OTE, auto&manua.eote | anyone who rebinds a StringDisplay | fixed in 437ff89: refused in `bindTag` and at preflight for this one benched pair; other pairs OTE may refuse are not benched |
 | [S3-03](#s3-03) | P2 | alignObjects silently drops targets it cannot find, and reports a no-op spread as done | web/src/core/ops/apply.ts:879-881 drops unresolved names without a word; it rejects only … | web/scripts/audit/s3-align-partial.test.ts (2 of 2 fail with the mess… | chat and MCP users who ask to align, whenever the model mis… | fixed in ed0bb1c |
 | [S4-06](#s4-06) | P2 | Variables.csv exports placeholder tags that the .eote leaves out | web/src/components/export/useExport.ts:129-131 | web/scripts/audit/s4-variables-csv-placeholders.test.ts (fails with "… | screens-first users who hand the CSV to the PLC programmer. | fixed in 2b7483a |
 | [S4-08](#s4-08) | P2 | Restoring a version drops locks, groups, provenance keys and bind intents | web/src/store/types.ts:117-125 (Version), web/src/store/slices/collab.ts:364-401 | web/scripts/audit/s4-restore-drops-meta.test.ts (fails with "the rest… | History and "revert to here" users. Regeneration then treat… | fixed in 1b693cf |
@@ -960,7 +960,7 @@ Severity: **P0** data loss or security, **P1** a broken flow, **P2** wrong outpu
 
 **A StringDisplay bound to a BOOL tag passes preflight, and OTE refuses to simulate it**
 
-- Status: open · deferred (OTE file work is on hold, needs the bench)
+- Status: fixed in 437ff89: refused in `bindTag` and at preflight for this one benched pair; other pairs OTE may refuse are not benched
 - Severity: P2. The engineer learns of it only in OTE, with no pointer to the binding.
 - Where: web/src/core/ops/apply.ts (`bindTag` does not look at the tag's type) and web/src/lib/ote/preflight.ts.
 - Repro: on auto&manua.eote, rebind the StringDisplay from its STRING tag to a BOOL tag, export, press Simulate in OTE.
