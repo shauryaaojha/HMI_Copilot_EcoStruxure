@@ -22,7 +22,7 @@ import { AccountControl } from "./AccountControl";
 import { PresenceAvatars } from "@/components/collab/PresenceAvatars";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Command, Download, Monitor, Pencil, SquarePen, Users } from "lucide-react";
+import { ChevronRight, Command, Download, Monitor, Pencil, SquarePen, Users } from "lucide-react";
 import { useProject } from "@/store/project";
 import { useAccess, useCanEdit } from "@/store/access";
 import { ShareDialog } from "./ShareDialog";
@@ -75,7 +75,7 @@ function ProjectNameField() {
 
   if (!canEdit) {
     return (
-      <span className="flex h-7 min-w-0 items-center px-2 text-sm font-semibold text-text-primary">
+      <span className="flex h-7 min-w-0 items-center px-1.5 text-sm font-semibold text-text-primary">
         <span className="truncate">{name}</span>
       </span>
     );
@@ -117,7 +117,7 @@ function ProjectNameField() {
         setEditing(true);
       }}
       title="Rename project"
-      className="focus-ring group flex h-7 min-w-0 items-center gap-1.5 rounded-md px-2 text-sm font-semibold text-text-primary transition hover:bg-surface-hover"
+      className="focus-ring group flex h-7 min-w-0 items-center gap-1.5 rounded-md px-1.5 text-sm font-semibold text-text-primary transition hover:bg-surface-hover"
     >
       <span className="truncate">{name}</span>
       <Pencil
@@ -167,32 +167,36 @@ export function TopBar({ onExport, className }: TopBarProps) {
         <Link
           href="/projects"
           title="Your projects"
-          className="focus-ring flex shrink-0 items-center gap-2 rounded-md px-1.5 py-1 transition hover:bg-surface-hover"
+          className="focus-ring flex shrink-0 items-center gap-2 rounded-lg px-1.5 py-1 transition hover:bg-surface-hover"
         >
           <SchneiderMark className="text-brand-400" />
-          <span className="hidden text-sm font-semibold tracking-tight sm:inline">
-            Copilot
+          <span className="hidden items-baseline gap-1 text-sm font-semibold tracking-tight sm:flex">
+            HMI <span className="text-brand-400">Copilot</span>
           </span>
         </Link>
 
-        <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-line-subtle" />
+        <span aria-hidden className="mx-1.5 h-5 w-px shrink-0 bg-line" />
 
         <button
           type="button"
           onClick={() => newProject()}
           title="New project — blank canvas, empty conversation"
           aria-label="New project"
-          className="focus-ring shrink-0 rounded-md p-1.5 text-text-muted transition hover:bg-surface-hover hover:text-text-primary"
+          className="focus-ring shrink-0 rounded-lg p-1.5 text-text-muted transition hover:bg-surface-hover hover:text-text-primary"
         >
           <SquarePen size={15} aria-hidden />
         </button>
 
-        <div className="flex min-w-0 items-center gap-2">
+        {/* Where you are: the projects, then this one. */}
+        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-0.5 text-sm">
+          <Link href="/projects" className="focus-ring hidden shrink-0 rounded-md px-1.5 py-1 text-text-muted transition hover:text-text-primary md:inline">
+            Projects
+          </Link>
+          <ChevronRight size={13} aria-hidden className="hidden shrink-0 text-text-faint md:block" />
           <ProjectNameField />
+        </nav>
 
-        </div>
-
-        <div className="ml-auto flex shrink-0 items-center gap-1">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
           {/* Who else is in this shared project right now (Phase C). */}
           <PresenceAvatars />
           <AccountControl projectId={projectId} />
@@ -201,7 +205,7 @@ export function TopBar({ onExport, className }: TopBarProps) {
               type="button"
               onClick={() => setSharing(true)}
               title="Share this project: members, roles and links"
-              className="focus-ring flex items-center gap-1.5 rounded-md border border-line-subtle px-2 py-1 text-[11px] text-text-muted transition hover:border-line hover:text-text-secondary"
+              className="chip focus-ring"
             >
               <Users size={12} aria-hidden />
               Share
@@ -218,10 +222,8 @@ export function TopBar({ onExport, className }: TopBarProps) {
                 : "Change the target panel"
             }
             className={cn(
-              "focus-ring hidden items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] transition md:flex",
-              mismatch
-                ? "border-status-warn/50 text-status-warn"
-                : "border-line-subtle text-text-muted hover:border-line hover:text-text-secondary",
+              "chip focus-ring hidden md:inline-flex",
+              mismatch && "!border-status-warn/50 !text-status-warn",
             )}
           >
             <Monitor size={12} aria-hidden />
@@ -235,7 +237,7 @@ export function TopBar({ onExport, className }: TopBarProps) {
             type="button"
             onClick={() => palette.setOpen(true)}
             title="Commands (Ctrl+K)"
-            className="focus-ring flex items-center gap-1.5 rounded-md border border-line-subtle px-2 py-1 text-[11px] text-text-muted transition hover:border-line hover:text-text-secondary"
+            className="chip focus-ring"
           >
             <Command size={12} aria-hidden />
             <span className="hidden sm:inline">K</span>
@@ -245,8 +247,7 @@ export function TopBar({ onExport, className }: TopBarProps) {
             <button
               type="button"
               onClick={onExport}
-              className="focus-ring inline-flex h-7 items-center gap-1.5 rounded-md bg-brand-500 px-3 text-xs font-medium text-text-onbrand transition hover:bg-brand-600"
-              style={{ boxShadow: "var(--elev-1)" }}
+              className="btn-primary focus-ring press ml-0.5 inline-flex h-8 items-center gap-1.5 rounded-lg px-3.5 text-xs font-semibold text-text-onbrand transition hover:brightness-110"
             >
               <Download size={14} aria-hidden />
               Export
@@ -254,8 +255,7 @@ export function TopBar({ onExport, className }: TopBarProps) {
           ) : (
             <Link
               href={`/project/${projectId}/export`}
-              className="focus-ring inline-flex h-7 items-center gap-1.5 rounded-md bg-brand-500 px-3 text-xs font-medium text-text-onbrand transition hover:bg-brand-600"
-              style={{ boxShadow: "var(--elev-1)" }}
+              className="btn-primary focus-ring press ml-0.5 inline-flex h-8 items-center gap-1.5 rounded-lg px-3.5 text-xs font-semibold text-text-onbrand transition hover:brightness-110"
             >
               <Download size={14} aria-hidden />
               Export

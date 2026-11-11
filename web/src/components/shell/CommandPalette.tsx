@@ -160,11 +160,11 @@ export function CommandPalette({
       data-command-palette
       aria-modal="true"
       aria-label="Commands"
-      className="fixed inset-0 z-[60] flex items-start justify-center bg-black/40 pt-[12vh] backdrop-blur-sm"
+      className="animate-fade fixed inset-0 z-[60] flex items-start justify-center bg-black/45 pt-[12vh] backdrop-blur-[3px]"
       onPointerDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
-        className="animate-rise w-full max-w-xl overflow-hidden rounded-xl border border-line-strong bg-surface-float"
+        className="menu animate-pop w-full max-w-xl overflow-hidden rounded-2xl"
         style={{ boxShadow: "var(--elev-3)" }}
         onKeyDown={onKeyDown}
       >
@@ -178,7 +178,7 @@ export function CommandPalette({
             aria-label="Search commands"
             className="h-12 w-full bg-transparent text-sm text-text-primary outline-none placeholder:text-text-faint"
           />
-          <kbd className="shrink-0 rounded border border-line px-1.5 py-0.5 text-[10px] text-text-faint">
+          <kbd className="kbd shrink-0">
             Esc
           </kbd>
         </div>
@@ -205,7 +205,7 @@ export function CommandPalette({
                     className={cn(
                       "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition",
                       index === cursor
-                        ? "bg-brand-500/12 text-text-primary"
+                        ? "bg-surface-hover text-text-primary shadow-[inset_2px_0_0_var(--color-brand-400)]"
                         : "text-text-secondary",
                     )}
                   >

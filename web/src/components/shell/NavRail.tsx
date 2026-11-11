@@ -90,14 +90,14 @@ function RailLink({
       className={cn(
         "focus-ring press group relative flex h-10 w-10 items-center justify-center rounded-lg",
         active
-          ? "bg-brand-500/12 text-brand-400"
+          ? "rail-active text-brand-400"
           : "text-text-muted hover:bg-surface-hover hover:text-text-secondary",
       )}
     >
       {active && (
         <span
           aria-hidden
-          className="animate-fade absolute -left-2 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r bg-brand-400"
+          className="animate-fade absolute -left-2 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-brand-400"
         />
       )}
       <Icon size={17} aria-hidden strokeWidth={active ? 2.1 : 1.7} />
@@ -109,7 +109,7 @@ function RailLink({
             "text-figure absolute -right-0.5 -top-0.5 min-w-4 rounded-full px-1 text-[9px] font-semibold leading-4",
             item.alarming
               ? "bg-status-alarm text-white"
-              : "bg-surface-active text-text-secondary",
+              : "border border-line bg-surface-panel text-text-secondary",
           )}
         >
           {count > 99 ? "99+" : count}
@@ -119,7 +119,7 @@ function RailLink({
       {/* The label, on hover, rather than as permanent width. */}
       <span
         role="tooltip"
-        className="pointer-events-none absolute left-full z-50 ml-2 -translate-x-1 whitespace-nowrap rounded-md border border-line bg-surface-float px-2 py-1 text-xs text-text-primary opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100"
+        className="pointer-events-none absolute left-full z-50 ml-3 -translate-x-1 whitespace-nowrap rounded-lg border border-line bg-surface-float px-2.5 py-1 text-xs font-medium text-text-primary opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100"
         style={{ boxShadow: "var(--elev-2)" }}
       >
         {item.label}

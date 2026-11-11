@@ -108,15 +108,15 @@ export function AccountControl({ projectId = "", signIn = true }: { projectId?: 
           onClick={() => setOpen(o => !o)}
           title={account.user.name}
           className={cn(
-            "focus-ring press flex h-7 items-center gap-1.5 rounded-full border py-0.5 pl-0.5 pr-2 text-xs transition",
-            open ? "border-line-strong bg-surface-hover text-text-primary" : "border-line-subtle text-text-secondary hover:border-line hover:text-text-primary",
+            "focus-ring press flex h-8 items-center gap-1.5 rounded-full border py-0.5 pl-0.5 pr-2.5 text-xs transition",
+            open ? "border-line-strong bg-surface-hover text-text-primary" : "border-line bg-surface-raised/60 text-text-secondary hover:border-line-strong hover:text-text-primary",
           )}
         >
-          <span aria-hidden className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-brand-500/20 text-[10px] font-semibold text-brand-400">{initials(account.user.name)}</span>
+          <span aria-hidden className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-[10px] font-semibold text-white">{initials(account.user.name)}</span>
           <span className="hidden max-w-28 truncate sm:inline">{account.user.name}</span>
         </button>
         {open && account.providers.length > 0 && (
-          <div role="menu" className="animate-pop absolute right-0 top-full z-50 mt-1.5 w-56 origin-top-right rounded-xl border border-line bg-surface-float p-1" style={{ boxShadow: "var(--elev-3)" }}>
+          <div role="menu" className="menu animate-pop absolute right-0 top-full z-50 mt-2 w-60 origin-top-right p-1.5">
             <p className="truncate px-2 pb-1 pt-1.5 text-xs font-medium text-text-primary">{account.user.name}</p>
             <a role="menuitem" className={item} href="/account"><UserRound size={13} aria-hidden /> Account</a>
             {/* The only way an engineer finds out what the connector has been granted
