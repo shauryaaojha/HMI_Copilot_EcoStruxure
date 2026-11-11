@@ -213,6 +213,13 @@ body {
 }
 
 /*
+ * The theme's component classes, in the components layer so that a utility
+ * on the same element always wins: `overflow-y-auto` on an island, `rounded-2xl`
+ * on a menu. Unlayered, these beat every utility and a page's island could not
+ * scroll. docs/NEW_THEME.md.
+ */
+@layer components {
+/*
  * An island: one of the sheets the workspace is made of (the Copilot, the
  * canvas, the inspector, a page's body). A rounded surface with a lit edge,
  * floating on the ground with a gutter round it. docs/NEW_THEME.md decision 1.
@@ -380,6 +387,30 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .magnetic { transition: none; }
+}
+
+/* --- project pages --------------------------------------------------------- */
+
+/* A table's head: mono eyebrow labels on a raised band. */
+.table-head {
+  background: var(--color-surface-raised);
+  color: var(--color-text-faint);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.table-head th {
+  font-weight: 500;
+  border-bottom: 1px solid var(--color-line-subtle);
+}
+/* Rows that answer the pointer. */
+.table-rows tbody tr {
+  transition: background-color 120ms ease;
+}
+.table-rows tbody tr:hover {
+  background: color-mix(in srgb, var(--color-surface-hover) 70%, transparent);
+}
 }
 
 /* The canvas backdrop grid, as in the reference renders. */

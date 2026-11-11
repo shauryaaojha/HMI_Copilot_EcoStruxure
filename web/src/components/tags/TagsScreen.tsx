@@ -55,7 +55,7 @@ export function TagsScreen({ projectId }: { projectId: string }) {
             </span>
           }
           bordered
-          className="min-h-0 flex-1"
+          className="min-h-[26rem] flex-1"
           bodyClassName="flex min-h-0 flex-1 flex-col px-3 pb-3"
         >
           <TagTable variables={variables} className="min-h-0 flex-1" />

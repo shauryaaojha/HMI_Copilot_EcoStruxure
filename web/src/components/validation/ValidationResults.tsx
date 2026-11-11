@@ -110,7 +110,7 @@ export function ValidationResults({ projectId }: { projectId?: string }) {
 
       {/* The rules above are what a lint can check. What a picture shows -
           flow, salience, balance - is the critic's, and it only proposes. */}
-      <div className="shrink-0 rounded-panel border border-line-subtle p-3">
+      <div className="shrink-0 card p-3">
         <CriticPanel projectId={projectId} />
       </div>
 
@@ -121,7 +121,7 @@ export function ValidationResults({ projectId }: { projectId?: string }) {
         <Tile active={filter === "info"} onClick={() => setFilter("info")} label="Info" count={counts.info} tone="info" />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto rounded-panel border border-line-subtle">
+      <div className="min-h-[18rem] flex-1 overflow-y-auto card">
         {shown.length === 0 ? (
           <p className="flex h-full items-center justify-center gap-2 p-8 text-sm text-text-muted">
             <ShieldCheck size={16} aria-hidden className="text-status-ok" />

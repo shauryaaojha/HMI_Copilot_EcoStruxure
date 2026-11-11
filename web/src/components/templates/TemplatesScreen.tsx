@@ -163,7 +163,7 @@ export function TemplatesScreen({ projectId }: { projectId: string }) {
           return (
             <li
               key={template.id}
-              className="flex flex-col rounded-panel border border-line-subtle bg-surface-raised"
+              className="flex flex-col card"
             >
               {/* The preview is the real renderer over the real parts, so it
                   cannot show something the template will not place. */}

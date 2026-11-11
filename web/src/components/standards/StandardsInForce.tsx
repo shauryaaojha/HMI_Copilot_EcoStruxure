@@ -156,7 +156,7 @@ export function StandardsInForce() {
           return (
             <li
               key={standard.code}
-              className="flex flex-col rounded-panel border border-line-subtle bg-surface-raised p-4"
+              className="flex flex-col card p-4"
               style={{ boxShadow: "var(--elev-1)" }}
             >
               <div className="flex items-start gap-3">
@@ -214,7 +214,7 @@ export function StandardsInForce() {
 
       {/* One line of arithmetic that ties the four together. */}
       {objects > 0 && (
-        <p className="rounded-panel border border-line-subtle px-4 py-3 text-xs text-text-muted">
+        <p className="card px-4 py-3 text-xs text-text-muted">
           In this project:{" "}
           <span className="text-figure font-medium text-text-secondary">
             {screens.length}

@@ -129,7 +129,7 @@ export function ExportScreen() {
 
         <Panel title="Files to generate" bordered>
           <div className="space-y-3">
-            <label className="flex items-start gap-3 rounded-md border border-line p-3">
+            <label className="flex items-start gap-3 rounded-xl border border-line bg-surface-raised/40 p-3.5">
               <Toggle
                 checked={wantEote}
                 onChange={setWantEote}
@@ -147,7 +147,7 @@ export function ExportScreen() {
               </span>
             </label>
 
-            <label className="flex items-start gap-3 rounded-md border border-line p-3">
+            <label className="flex items-start gap-3 rounded-xl border border-line bg-surface-raised/40 p-3.5">
               <Toggle
                 checked={wantCsv}
                 onChange={setWantCsv}
@@ -162,7 +162,7 @@ export function ExportScreen() {
               </span>
             </label>
 
-            <label className="flex items-start gap-3 rounded-md border border-line p-3">
+            <label className="flex items-start gap-3 rounded-xl border border-line bg-surface-raised/40 p-3.5">
               <Toggle
                 checked={wantReport}
                 onChange={setWantReport}
@@ -294,7 +294,7 @@ export function ExportScreen() {
         )}
 
         {artifacts.length > 0 && (
-          <div className="mt-5 rounded-panel border border-line-subtle p-4">
+          <div className="mt-5 card p-4">
             <p className="label-eyebrow pb-3">After you download</p>
             <ol className="space-y-2.5">
               {[

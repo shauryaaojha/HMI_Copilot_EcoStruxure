@@ -76,6 +76,7 @@ export function SettingsScreen() {
                   onChange={(e) => setStandards({ gridSize: Number(e.target.value) })}
                 />
               </Field>
+              <div className="flex flex-col items-start gap-3">
               <Toggle
                 checked={standards.snap}
                 onChange={(on) => setStandards({ snap: on })}
@@ -91,6 +92,7 @@ export function SettingsScreen() {
                 onChange={(on) => setStandards({ reviewAiEdits: on })}
                 label="Review every AI edit before it lands (management of change)"
               />
+              </div>
               <Field label="Colours">
                 <ColourModeSwitch />
               </Field>

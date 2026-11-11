@@ -44,7 +44,7 @@ export function TagImport({
   // where the tags came from instead of being offered a drop zone.
   if (!canEdit) {
     return (
-      <div className={cn("rounded-md border border-line-subtle p-4 text-xs text-text-muted", className)}>
+      <div className={cn("rounded-lg border border-line-subtle p-4 text-xs text-text-muted", className)}>
         {tagImport ? `Tags imported from ${tagImport.fileName}.` : "No tags imported yet."}{" "}
         View only — ask an editor to import tags.
       </div>

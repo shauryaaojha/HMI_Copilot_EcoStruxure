@@ -170,7 +170,7 @@ function PlantBody() {
               const e = byId.get(id)!;
               const readings = Object.keys(e.ranges);
               return (
-                <li key={id} className="rounded-md border border-line-subtle p-3">
+                <li key={id} className="rounded-lg border border-line-subtle p-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-medium">{e.label}</span>
                     <span className="font-mono text-[11px] text-text-muted">{e.id}</span>

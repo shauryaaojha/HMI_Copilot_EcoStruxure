@@ -104,9 +104,9 @@ export function TagTable({
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-md border border-line-subtle">
-        <table className="w-full border-collapse text-left text-xs">
-          <thead className="sticky top-0 z-10 bg-surface-raised text-text-muted">
+      <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-line-subtle">
+        <table className="table-rows w-full border-collapse text-left text-xs">
+          <thead className="table-head sticky top-0 z-10">
             <tr>
               <th scope="col" className="px-3 py-2 font-medium">
                 PLC Tag

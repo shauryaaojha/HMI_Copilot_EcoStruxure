@@ -69,9 +69,9 @@ export function HistoryScreen({ projectId }: { projectId: string }) {
           when a template is placed. Generate a screen and one will appear here.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-panel border border-line-subtle">
-          <table className="w-full border-collapse text-left text-sm">
-            <thead className="bg-surface-raised text-xs text-text-muted">
+        <div className="overflow-x-auto card">
+          <table className="table-rows w-full border-collapse text-left text-sm">
+            <thead className="table-head">
               <tr>
                 <th scope="col" className="px-4 py-2 font-medium">Version</th>
                 <th scope="col" className="px-4 py-2 font-medium">Date</th>

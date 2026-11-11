@@ -81,7 +81,7 @@ export function KnowledgePanel() {
             ) : (
               <ul className="space-y-1">
                 {data.projects.map((p) => (
-                  <li key={p.id} className="flex items-center gap-2 rounded-md border border-line-subtle px-2 py-1.5">
+                  <li key={p.id} className="flex items-center gap-2 rounded-lg border border-line-subtle px-2 py-1.5">
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium text-text-primary">{p.fileName}</span>
                       <span className="block text-[11px] text-text-muted">

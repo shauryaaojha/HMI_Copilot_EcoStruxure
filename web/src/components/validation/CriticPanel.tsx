@@ -99,7 +99,7 @@ export function CriticPanel({ projectId }: { projectId?: string }) {
       {(png || answer) && (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           {png && (
-            <figure className="min-w-0 rounded-panel border border-line-subtle bg-surface-raised p-2">
+            <figure className="min-w-0 card p-2">
               {/* The render the critic saw, exactly. */}
               <img src={png} alt={`Render of ${chosen?.Name}`} className="w-full rounded" />
               <figcaption className="flex items-center gap-1.5 pt-1.5 text-[11px] text-text-faint">

@@ -115,7 +115,7 @@ export function LibraryScreen() {
           </div>
         </div>
 
-        <ul className="grid min-h-0 flex-1 auto-rows-min gap-3 overflow-y-auto sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        <ul className="grid min-h-[18rem] flex-1 auto-rows-min gap-3 overflow-y-auto sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
           {shown.map((symbol) => (
             <li key={`${symbol.category}/${symbol.name}`}>
               <button
