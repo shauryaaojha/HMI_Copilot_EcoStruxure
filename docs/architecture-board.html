@@ -1,0 +1,1081 @@
+<title>HMI Copilot Architecture</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: an app frame. A header with three views; each view is a pannable board of nested boxes with a step player, or a scrolling journey. Evergreen palette from the product itself. */
+:root{
+  --bg:#e8eee9; --stage:#f2f5f2; --panel:#fbfcfb; --panel2:#eef3ef; --ink:#12201a; --muted:#536359;
+  --line:#c2cec6; --line2:#d9e2dc; --edge:#a9b8ae; --grid:#cfd9d2;
+  --accent:#1c7449; --flow:#0e9a5e; --flow-soft:#0e9a5e26; --warn:#9a5b0c; --warn-soft:#f6ead6;
+  --k-client:#3b5878; --k-ui:#1c7449; --k-api:#6a4c9c; --k-core:#22706a; --k-ai:#9c3f72;
+  --k-data:#86640e; --k-rt:#1f76a0; --k-compute:#56606b; --k-se:#4b7a16; --k-note:#9a5b0c;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --shadow:0 1px 0 #ffffff80 inset, 0 1px 2px #12201a14;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0b120e; --stage:#0f1813; --panel:#142019; --panel2:#18261e; --ink:#e2ece5; --muted:#8fa498;
+  --line:#2a3b31; --line2:#203029; --edge:#3c5145; --grid:#1d2b23;
+  --accent:#57c98f; --flow:#5fe3a1; --flow-soft:#5fe3a12b; --warn:#e3a650; --warn-soft:#3a2c17;
+  --k-client:#8fb0d6; --k-ui:#57c98f; --k-api:#b49be6; --k-core:#5cc7bd; --k-ai:#e48bbd;
+  --k-data:#dcb54f; --k-rt:#6cc3ec; --k-compute:#a3aebb; --k-se:#a3d15a; --k-note:#e3a650;
+  --shadow:0 1px 2px #00000066; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0b120e; --stage:#0f1813; --panel:#142019; --panel2:#18261e; --ink:#e2ece5; --muted:#8fa498;
+  --line:#2a3b31; --line2:#203029; --edge:#3c5145; --grid:#1d2b23;
+  --accent:#57c98f; --flow:#5fe3a1; --flow-soft:#5fe3a12b; --warn:#e3a650; --warn-soft:#3a2c17;
+  --k-client:#8fb0d6; --k-ui:#57c98f; --k-api:#b49be6; --k-core:#5cc7bd; --k-ai:#e48bbd;
+  --k-data:#dcb54f; --k-rt:#6cc3ec; --k-compute:#a3aebb; --k-se:#a3d15a; --k-note:#e3a650;
+  --shadow:0 1px 2px #00000066; color-scheme:dark }
+
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45;overflow:hidden}
+.app{height:100%;display:flex;flex-direction:column;min-height:0}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
+
+/* header */
+.top{display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding-block:12px 10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line2)}
+.brand{display:flex;flex-direction:column;gap:1px;min-width:0}
+.brand b{font-family:var(--f-display);font-weight:700;font-size:19px;letter-spacing:-.01em}
+.brand span{font-family:var(--f-mono);font-size:11px;color:var(--muted);letter-spacing:.02em}
+.tabs{display:flex;gap:4px;background:var(--panel2);border:1px solid var(--line2);border-radius:9px;padding:3px}
+.tabs a{font-family:var(--f-body);font-weight:500;font-size:13px;text-decoration:none;color:var(--muted);padding:6px 12px;border-radius:6px}
+.tabs a[aria-current="page"]{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
+.top .spacer{flex:1}
+.hint{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.ibtn{border:1px solid var(--line);background:var(--panel);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.ibtn:hover{border-color:var(--muted)}
+.ibtn[aria-pressed="true"]{border-color:var(--flow);color:var(--flow)}
+
+/* views */
+.view{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;padding-block:10px 12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.toolbar{display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
+.chip{flex:none;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 12px;font-size:12.5px;cursor:pointer;white-space:nowrap;display:inline-flex;gap:7px;align-items:center}
+.chip i{width:7px;height:7px;border-radius:50%;background:var(--edge)}
+.chip[aria-pressed="true"]{border-color:var(--flow);background:var(--flow-soft)}
+.chip[aria-pressed="true"] i{background:var(--flow)}
+.find{flex:none;margin-left:auto;border:1px solid var(--line);background:var(--panel);border-radius:7px;padding:6px 10px;font:12.5px var(--f-body);color:var(--ink);width:170px}
+
+/* stage + world */
+.stage{position:relative;flex:1;min-height:300px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--stage);touch-action:none;cursor:grab}
+.stage.drag{cursor:grabbing}
+.world{position:absolute;left:0;top:0;transform-origin:0 0;background-image:radial-gradient(var(--grid) 1px,transparent 1.3px);background-size:24px 24px}
+.world.cam{transition:transform .75s cubic-bezier(.2,.7,.2,1)}
+.node{position:absolute;box-sizing:border-box;--kc:var(--k-core)}
+.k-client{--kc:var(--k-client)} .k-ui{--kc:var(--k-ui)} .k-api{--kc:var(--k-api)} .k-core{--kc:var(--k-core)} .k-ai{--kc:var(--k-ai)}
+.k-data{--kc:var(--k-data)} .k-rt{--kc:var(--k-rt)} .k-compute{--kc:var(--k-compute)} .k-se{--kc:var(--k-se)} .k-note{--kc:var(--k-note)}
+.grp{border:1px dashed color-mix(in srgb,var(--kc) 50%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--kc) 5%,transparent);z-index:1;transition:opacity .4s,border-color .3s,background .3s}
+.grp .gl{position:absolute;left:14px;top:10px;right:14px;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-family:var(--f-mono);font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--kc);font-weight:500}
+.grp .gl small{font-size:11px;text-transform:none;letter-spacing:0;color:var(--muted);font-weight:400}
+.box{z-index:3;background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:8px 10px;overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px;cursor:pointer;transition:opacity .4s,border-color .3s,box-shadow .3s,transform .3s}
+.box:hover{border-color:var(--kc)}
+.nk{display:flex;align-items:center;gap:5px;font-family:var(--f-mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--kc)}
+.nk i{width:6px;height:6px;background:var(--kc);border-radius:1px}
+.nt{font-family:var(--f-display);font-weight:500;font-size:14.5px;line-height:1.15;letter-spacing:-.005em;text-wrap:balance}
+.ns{font-size:11.5px;color:var(--muted);line-height:1.3;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.box.sm .nk{display:none}
+.box.sm{justify-content:center}
+.box.k-note{background:var(--warn-soft);border-style:dashed;border-color:color-mix(in srgb,var(--warn) 55%,var(--line))}
+.box.k-note .nt{font-size:13.5px}
+.box.big .nt{font-size:17px}
+.box.sel{border-color:var(--kc);box-shadow:0 0 0 3px color-mix(in srgb,var(--kc) 28%,transparent)}
+.flowing .box:not(.on):not(.seen){opacity:.32}
+.flowing .grp:not(.on):not(.seen):not(.ctx){opacity:.55}
+.flowing .box.seen{opacity:.75}
+.box.on{border-color:var(--flow);box-shadow:0 0 0 3px var(--flow-soft),var(--shadow)}
+.grp.on{border-color:var(--flow);border-style:solid;background:color-mix(in srgb,var(--flow) 8%,transparent)}
+.grp.on .gl{color:var(--flow)}
+.node.hit::after{content:"";position:absolute;inset:-2px;border-radius:inherit;border:2px solid var(--flow);animation:hit 1.1s ease-out 1;pointer-events:none}
+@keyframes hit{from{opacity:.9;transform:scale(1)}to{opacity:0;transform:scale(1.08)}}
+.dim{opacity:.22!important}
+.match{border-color:var(--flow)!important}
+
+svg.edges{position:absolute;left:0;top:0;z-index:2;overflow:visible;pointer-events:none}
+svg.top{z-index:4}
+.edge{fill:none;stroke:var(--edge);stroke-width:1.4;opacity:.7;transition:opacity .35s,stroke .35s}
+.flowing .edge{opacity:.12}
+.edge.trail{opacity:.75;stroke:var(--muted);stroke-width:1.6}
+.edge.hov{opacity:1;stroke:var(--muted);stroke-width:1.8}
+.edge.on{opacity:1;stroke:var(--flow);stroke-width:2.6;stroke-dasharray:8 6;animation:ants .8s linear infinite}
+@keyframes ants{to{stroke-dashoffset:-14}}
+.mk-base{fill:var(--edge)} .mk-trail{fill:var(--muted)} .mk-on{fill:var(--flow)}
+.lab{opacity:0;transition:opacity .3s}
+.lab.show{opacity:1}
+.lab rect{fill:var(--panel);stroke:var(--line)}
+.lab.onl rect{stroke:var(--flow)}
+.lab text{font-family:var(--f-mono);font-size:11px;fill:var(--ink)}
+.pk{fill:var(--flow)} .pkh{fill:var(--flow)}
+
+.ctrls{position:absolute;right:calc(10px + env(safe-area-inset-right,0px));bottom:10px;z-index:6;display:flex;flex-direction:column;gap:4px}
+.ctrls button{width:32px;height:32px;border:1px solid var(--line);background:var(--panel);border-radius:7px;cursor:pointer;font-family:var(--f-mono);font-size:15px;display:grid;place-items:center}
+.ctrls button:hover{border-color:var(--muted)}
+.legend{position:absolute;left:10px;bottom:10px;z-index:6;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:grid;grid-template-columns:repeat(2,auto);gap:3px 14px;font-family:var(--f-mono);font-size:10.5px;color:var(--muted);max-width:calc(100% - 70px)}
+.legend span{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.legend i{width:8px;height:8px;border-radius:2px;background:var(--kc)}
+.legend.min{grid-template-columns:auto}
+.legend.min span:not(:first-child){display:none}
+.lg-t{cursor:pointer;color:var(--ink)}
+
+/* player */
+.player{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.pl-btns{display:flex;gap:4px}
+.pl-btns button{width:36px;height:36px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;display:grid;place-items:center}
+.pl-btns button.play{background:var(--flow);border-color:var(--flow);color:var(--panel)}
+.pl-btns svg{width:15px;height:15px;fill:currentColor}
+.pl-text{min-width:0;display:flex;flex-direction:column;gap:2px}
+.pl-meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.pl-meta b{color:var(--flow);font-weight:500}
+.pl-title{font-family:var(--f-display);font-weight:700;font-size:16.5px;letter-spacing:-.01em}
+.pl-cap{font-size:13.5px;color:var(--ink);max-width:95ch;text-wrap:pretty}
+.pl-cap code,.dr code,.jr code{font-family:var(--f-mono);font-size:.88em;background:var(--panel2);border:1px solid var(--line2);border-radius:4px;padding:0 4px}
+.dots{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.dots button{width:18px;height:6px;border-radius:3px;border:0;background:var(--line);cursor:pointer;padding:0}
+.dots button.done{background:color-mix(in srgb,var(--flow) 45%,var(--line))}
+.dots button.cur{background:var(--flow);width:28px}
+.prog{height:2px;background:var(--line2);border-radius:2px;overflow:hidden;margin-top:6px}
+.prog i{display:block;height:100%;width:0;background:var(--flow)}
+
+/* drawer */
+.drawer{position:fixed;z-index:20;top:calc(70px + env(safe-area-inset-top,0px));right:calc(16px + env(safe-area-inset-right,0px));width:min(380px,calc(100% - 32px));max-height:calc(100% - 100px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 40px #0000002a;padding:16px 18px;--kc:var(--k-core)}
+.dr-k{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--kc);display:flex;align-items:center;gap:6px}
+.dr-k i{width:7px;height:7px;background:var(--kc);border-radius:2px}
+.dr h3{font-family:var(--f-display);font-size:20px;margin:6px 0 2px;letter-spacing:-.01em;text-wrap:balance}
+.dr .sub{color:var(--muted);font-size:12.5px;margin:0 0 10px}
+.dr p{margin:0 0 12px;font-size:13.5px}
+.dr h4{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px;font-weight:500}
+.dr ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px}
+.dr li button{all:unset;cursor:pointer;display:flex;gap:8px;font-size:12.5px;align-items:baseline;padding:3px 0}
+.dr li button:hover .to{color:var(--flow)}
+.dr li .dir{font-family:var(--f-mono);font-size:11px;color:var(--muted);width:14px}
+.dr li .to{font-weight:500}
+.dr li .el{color:var(--muted)}
+.dr .files{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);word-break:break-word}
+.dr .x{position:absolute;right:10px;top:10px;width:28px;height:28px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);cursor:pointer}
+
+/* LLD */
+.lldwrap{flex:1;min-height:0;display:grid;grid-template-columns:250px minmax(0,1fr);gap:12px}
+.lldlist{display:flex;flex-direction:column;gap:4px;overflow:auto;min-height:0}
+.lldlist button{all:unset;cursor:pointer;border:1px solid transparent;border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:1px}
+.lldlist button:hover{background:var(--panel2)}
+.lldlist button[aria-current="true"]{background:var(--panel);border-color:var(--line);box-shadow:var(--shadow)}
+.lldlist .n{font-family:var(--f-mono);font-size:10px;color:var(--muted);letter-spacing:.06em}
+.lldlist b{font-family:var(--f-display);font-weight:500;font-size:14px}
+.lldlist span{font-size:11.5px;color:var(--muted)}
+.lldmain{min-width:0;min-height:0;display:flex;flex-direction:column;gap:10px}
+.lldhead{display:flex;flex-direction:column;gap:2px}
+.lldhead h2{margin:0;font-family:var(--f-display);font-size:21px;letter-spacing:-.01em}
+.lldhead p{margin:0;color:var(--muted);font-size:13px;max-width:100ch}
+.lldhead .files{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.lldhost{flex:1;min-height:0;display:flex}
+.lldhost>.stage{flex:1}
+
+/* journey */
+#v-journey{overflow:auto}
+.jr{max-width:1180px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:34px;padding-bottom:40px}
+.jr h2{font-family:var(--f-display);font-size:26px;letter-spacing:-.015em;margin:0 0 4px;text-wrap:balance}
+.jr .lede{color:var(--muted);margin:0 0 14px;max-width:75ch}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--line2);border:1px solid var(--line2);border-radius:10px;overflow:hidden}
+.stats div{background:var(--panel);padding:12px 14px;display:flex;flex-direction:column;gap:1px}
+.stats b{font-family:var(--f-display);font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.stats span{font-size:12px;color:var(--muted)}
+.tl{position:relative;display:flex;flex-direction:column;gap:14px;padding-left:28px}
+.tl::before{content:"";position:absolute;left:8px;top:6px;bottom:6px;width:2px;background:linear-gradient(var(--line),var(--flow))}
+.ph{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:150px minmax(0,1fr);gap:4px 18px;animation:rise .6s cubic-bezier(.2,.7,.2,1) both}
+.ph::before{content:"";position:absolute;left:-25px;top:18px;width:10px;height:10px;border-radius:50%;background:var(--panel);border:2px solid var(--muted)}
+.ph.now::before{background:var(--flow);border-color:var(--flow);box-shadow:0 0 0 5px var(--flow-soft)}
+.ph .d{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.ph .d b{display:block;color:var(--ink);font-family:var(--f-display);font-size:16px;font-weight:700;margin-top:2px}
+.ph ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px;font-size:13.5px}
+.ph .m{grid-column:2;font-family:var(--f-mono);font-size:11.5px;color:var(--accent);margin-top:6px}
+@keyframes rise{from{transform:translateY(10px);opacity:.35}to{transform:none;opacity:1}}
+.mx-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+table.mx{border-collapse:collapse;width:100%;min-width:860px;font-size:12.5px}
+.mx th,.mx td{padding:6px 8px;border-bottom:1px solid var(--line2);text-align:center}
+.mx th{font-family:var(--f-mono);font-weight:500;font-size:11px;color:var(--muted);letter-spacing:.03em;cursor:pointer}
+.mx td:first-child,.mx th:first-child{text-align:left;position:sticky;left:0;background:var(--panel);min-width:230px}
+.mx .c{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:middle}
+.mx .c1{background:var(--accent)} .mx .cb{background:transparent;border:2px solid var(--accent)} .mx .cx{background:transparent;border:2px solid var(--warn);position:relative}
+.mx .cx::after{content:"";position:absolute;left:-2px;right:-2px;top:5px;height:2px;background:var(--warn);transform:rotate(-35deg)}
+.mx col.hl,.mx td.hl,.mx th.hl{background:var(--flow-soft)}
+.mx td:first-child.hl{background:var(--panel)}
+.mx-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:12.5px;color:var(--muted)}
+.mx-bar .key{display:flex;gap:12px;flex-wrap:wrap}
+.mx-bar .key span{display:inline-flex;gap:6px;align-items:center}
+.dec{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.dc{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.dc .when{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.dc h3{margin:0;font-family:var(--f-display);font-size:16px;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.ba{display:grid;grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr);gap:6px;align-items:stretch;font-size:12.5px}
+.ba div{border-radius:7px;padding:7px 9px}
+.ba .b{background:var(--panel2);color:var(--muted);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--warn) 70%,transparent)}
+.ba .a{background:var(--flow-soft);color:var(--ink)}
+.ba .ar{display:grid;place-items:center;color:var(--muted);padding:0}
+.dc p{margin:0;font-size:12.5px;color:var(--muted)}
+.now2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.now2 .col{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.now2 h3{margin:0 0 8px;font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:500}
+.now2 .ok h3{color:var(--accent)} .now2 .open h3{color:var(--warn)}
+.now2 ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;font-size:13px}
+
+@media (max-width:820px){
+  .lldwrap{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+  .lldlist{flex-direction:row;overflow-x:auto;padding-bottom:4px}
+  .lldlist button{flex:none;width:170px}
+  .lldlist span{display:none}
+  .ph{grid-template-columns:minmax(0,1fr)}
+  .ph .m{grid-column:1}
+  .top .hint{display:none}
+  .find{width:130px}
+}
+@media (max-width:560px){
+  .player{grid-template-columns:minmax(0,1fr)}
+  .drawer{top:auto;bottom:calc(12px + env(safe-area-inset-bottom,0px));max-height:55%}
+  .legend{display:none}
+  .pl-cap{font-size:13px}
+}
+@media (prefers-reduced-motion: reduce){
+  .edge.on{animation:none;stroke-dasharray:none}
+  .world.cam{transition:none}
+  .node.hit::after{animation:none;display:none}
+  .ph{animation:none}
+}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand"><b>HMI Copilot · architecture</b><span>PLC tags + one sentence → an .eote that EcoStruxure OTE 4.4 opens</span></div>
+    <nav class="tabs" aria-label="Views">
+      <a href="#map" data-v="map">System map</a>
+      <a href="#lld" data-v="lld">Deep dives</a>
+      <a href="#journey" data-v="journey">Journey</a>
+    </nav>
+    <div class="spacer"></div>
+    <span class="hint">← → step · space play · F fit · drag to pan · Ctrl+scroll to zoom</span>
+    <button class="ibtn" id="follow" aria-pressed="true" title="Move the camera to each step">Follow</button>
+    <button class="ibtn" id="fs" title="Fullscreen">Fullscreen</button>
+  </header>
+
+  <section class="view" id="v-map">
+    <div class="toolbar" id="flows" role="toolbar" aria-label="Flows"></div>
+    <div class="stage" id="stage-map"></div>
+    <div class="player" id="player-map"></div>
+  </section>
+
+  <section class="view" id="v-lld" hidden>
+    <div class="lldwrap">
+      <nav class="lldlist" id="lldlist" aria-label="Deep dives"></nav>
+      <div class="lldmain">
+        <div class="lldhead" id="lldhead"></div>
+        <div class="lldhost" id="lldhost"></div>
+        <div class="player" id="player-lld"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-journey" hidden>
+    <div class="jr" id="journey"></div>
+  </section>
+</div>
+<aside class="drawer dr" id="drawer" hidden></aside>
+
+<script>
+"use strict";
+const SVGNS="http://www.w3.org/2000/svg";
+const REDUCE=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const KIND={client:"Client",ui:"Web app",api:"API route",core:"Domain",ai:"AI",data:"MongoDB",rt:"Realtime",compute:"Platform",se:"Schneider",note:"Note"};
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+const sv=(t,a)=>{const e=document.createElementNS(SVGNS,t);for(const k in a)e.setAttribute(k,a[k]);return e};
+const N=(i,x,y,w,h,k,t,s,d,f,o)=>Object.assign({i,x,y,w,h,k,t,s,d,f},o||{});
+const G=(i,x,y,w,h,k,t,s,d)=>({i,x,y,w,h,k,t,s,d,g:1});
+
+/* ====================== SYSTEM MAP (HLD) ====================== */
+const HLD={W:2700,H:1620,nodes:[
+G("z_people",40,60,300,470,"client","People & clients","who works with it"),
+N("eng",70,115,240,120,"client","Engineer in a browser","hmibuildtimecopilot.vercel.app","The HMI engineer. Brings a PLC tag export or an existing .eote, describes the plant, reviews every change and exports. Nothing reaches a panel without them.","",{big:1}),
+N("claude",70,255,240,120,"client","Claude in claude.ai","custom connector · MCP","Claude connects from Anthropic's cloud to /api/mcp. It reads projects, proposes changes and draws screens as inline cards. Writes arrive as proposals unless the owner turns direct writes on.","",{big:1}),
+N("cli",70,395,240,105,"client","Terminal","npm run hmi · scripts/agent.mts · npm run db","The same code at a command line: Compound Object inspect, check and build; the agent loop on a local .eote; database reports such as the gap log.","web/bin/hmi.mts · web/scripts/agent.mts · web/scripts/db.mts"),
+
+G("z_se",40,880,300,690,"se","Schneider ground truth","read, never committed"),
+N("ote",70,935,240,120,"se","OTE 4.4 · licensed laptop","the final judge","EcoStruxure Operator Terminal Expert 4.4.20.31 opens, builds and simulates what we write. A UI Automation bench drives it. The lab rig runs 4.1, so exports are moved into the engineer's own 4.1 project.","web/scripts/into-project.mts · tools/ote-bench",{big:1}),
+N("skel",70,1075,240,105,"se","Skeleton + graphics","474 graphic objects, per machine","An empty project and the graphics index are extracted from a licensed install (npm run setup:skeleton) and uploaded to GridFS. They are Schneider's files, so the repo never contains them.","web/scripts/extract-skeleton.mjs · upload-skeleton.mts"),
+N("schemas",70,1200,240,95,"se","Property definitions · COs.pkg","the source of every part type","The install's .propDef schemas and shipped Compound Objects. Part types come from them, so the inspector cannot offer a property OTE does not have."),
+N("plcx",70,1315,240,115,"se","PLC exports","CSV · XML · Control Expert .xvm · Machine Expert symbols","Where tags come from. Machine Expert symbols bind as ObjectFullName MachineExpertEquipment1.GVL.Name with BindingText …Value. Bare names bind to nothing on a real panel."),
+N("vijeo",70,1450,240,90,"se","Vijeo Designer .vdz","older HMI projects","A .vdz migrates to OTE, and tags can go back to Vijeo through the engineer's own variable export."),
+
+G("z_vercel",400,60,1680,1510,"compute","Vercel · project web","one Next.js 15 deployment · main auto-deploys"),
+G("z_ui",430,110,460,940,"ui","Web app","React 19 · zustand + immer · Tailwind v4"),
+N("ui_ws",455,160,200,95,"ui","Workspace","canvas · board · Layers","Screens drawn by the same JSON the packager writes. The Board shows every screen side by side; Layers shows nested parts and Compound Objects.","components/canvas · components/board"),
+N("ui_insp",670,160,195,95,"ui","Inspector","schema-driven editors","Property editors generated from the part schemas, so it can only offer properties the file format has."),
+G("z_cop",455,275,410,175,"ui","Copilot column","three ways to work"),
+N("ui_chat",475,320,115,110,"ui","Chat","tool loop · answers as buttons","Plain-language edits. A turn runs the agent-chat loop on the server and returns ops that apply as one undo. Clarifying questions come back as buttons.","components/chat"),
+N("ui_agent",600,320,115,110,"ui","Agent","edits the file itself","Gives a job to the agent that works on the opened .eote with 30 tools. Shows each step live, reloads from the saved file, and puts back what was open in one click.","components/chat/AgentPane.tsx"),
+N("ui_mcp",725,320,120,110,"ui","MCP","proposals queue","Connect steps when Claude is not connected. When it is: open and past proposals, with their state and log."),
+N("ui_start",455,470,200,85,"ui","Start pane","tags · screens · assumed · opened","Four ways in: from tags, from screens, from a description through the plant brief form, or by opening an .eote."),
+N("ui_tags",670,470,195,85,"ui","Tags","corrections · binding map","Tag summary, the corrections it made, and the binding map: click a tag to see everywhere it is bound."),
+N("ui_review",455,575,200,85,"ui","Proposal review","now beside after","A waiting change opens as a review: the request, what it touches, the screen now beside after, every op, and what accepting means.","components/chat/ProposalReview.tsx"),
+N("ui_val",670,575,195,85,"ui","Validation · Simulate","findings · alarms fire","Findings link to the object. Simulate drives values through the project's own alarm setpoints, so every configured alarm fires without hardware."),
+N("ui_export",455,680,200,85,"ui","Export",".eote · Variables.csv · report","Downloads the project file, the variable list and an export report."),
+N("ui_acct",670,680,195,85,"ui","Accounts","members · shares · comments","Sign-in, members with roles, share links, comments, sessions and tokens for the connector."),
+N("ui_store",455,790,410,85,"ui","Project store","zustand + immer · one undo per turn","The client's copy of the project document. Every source of change goes through applyOps from core/ops."),
+N("ui_sync",455,900,200,110,"ui","Live replica","collab/browser","Applies other people's revisions. A broadcast is only a hint; the replica fetches the ops from the API.","lib/collab/browser.ts"),
+N("ui_render",670,900,195,110,"ui","Renderer","the same JSON as the packager","The canvas cannot draw a part the packager cannot write. Switching the app theme leaves the HMI colours alone: they are palette indices from the project's colour set."),
+
+G("z_api",920,110,360,1000,"api","Route handlers","/api · 61 routes"),
+N("api_gen",945,160,310,72,"api","generate · regenerate · brief/draft","streamed events","Starts the eight-step pipeline as a stream. regenerate returns a diff. brief/draft turns a description into a plant brief."),
+N("api_chat",945,245,310,62,"api","chat · provider","one Copilot turn","Runs the chat loop when the provider is Gemini and the client sends the document; Claude takes the single-call path."),
+N("api_agent",945,320,310,62,"api","agent","NDJSON · maxDuration 300 s","POST {source, message, history}. One event per line. The file is loaded with the same access check the export uses; the opened file is never changed."),
+N("api_mcp",945,395,310,62,"api","mcp","Streamable HTTP for claude.ai","The connector's endpoint. Reads the body once and replays it, because the SDK transport would hang on a half-read clone."),
+N("api_oauth",945,470,310,62,"api","oauth/*","our own authorization server","Discovery documents, dynamic client registration, authorize, token with PKCE, revoke. claude.ai signs in to the same accounts; personal access tokens are the fallback."),
+N("api_auth",945,545,310,62,"api","auth · signup · account/*","NextAuth Credentials","Sign-in with email and password, sign-up, password change, sessions, tokens, account delete. Sign-out revokes."),
+N("api_proj",945,620,310,92,"api","projects/[id]/*","changes · versions · proposals · presence · members · comments · shares · agent lock","Everything about one project. Each call runs one access check that reads the project and the membership in parallel."),
+N("api_rt",945,725,310,62,"api","realtime-token · keepalive","short-lived token · Cron in UTC","Mints a Realtime token for the one project the user can read. A Cron job keeps the free Supabase project awake."),
+N("api_io",945,800,310,72,"api","import · upload · tags","chunked upload · tags/parse · tags/match · vijeo/migrate","Brings files in: tag exports, .eote projects in chunks, screens from other projects, Vijeo projects."),
+N("api_out",945,885,310,62,"api","export · picture · symbols · panel","files out","Writes the .eote and Variables.csv, renders screen pictures, serves the symbol library and panel models."),
+N("api_val",945,960,310,62,"api","validate · critique · knowledge","checks","Runs validation, the critic, and the knowledge store."),
+
+G("z_core",1310,110,740,1210,"core","Domain core · lib/","about 72.7k lines of TypeScript"),
+N("d_ops",1335,160,330,85,"core","core/ops","26 ops · applyOps · the only write path","Chat, inspector, connector and co-editing all change a project through the same Op union, checked with zod. Handles such as o12 and s2 stay stable across turns.","web/src/core/ops/ops.ts · apply.ts",{big:1}),
+G("z_ai",1335,262,330,330,"ai","ai/","models propose, code decides"),
+N("d_pipe",1355,302,140,62,"ai","pipeline","eight streamed steps","Eight steps, each yielding one complete object: parse, infer, plan, layout, alarms, bindings, validate, package. Every line it reports is computed from what happened.","lib/ai/pipeline.ts"),
+N("d_plan",1505,302,140,62,"ai","plan · infer","equipment from tag names","infer groups tags into equipment: PU_101's run bit, fault and speed become one pump. plan asks the model for a screen plan as JSON, fits it to the panel's limits, and falls back to a rule plan with no key.","lib/ai/infer.ts · plan.ts · lib/plant · lib/program"),
+N("d_loop",1355,377,140,62,"ai","agent-chat","forced function calling","The chat's server loop: lookups, get_screen, try_ops on a draft, render_screen (the model sees a PNG), validate, finish.","lib/ai/agent-chat.ts"),
+N("d_conv",1505,377,140,62,"ai","converse · applier","dry run · one repair · one undo","Claude's single-call path over the same ops. The applier dry-runs ops, allows one repair, then commits them as one undo step.","lib/ai/converse.ts · applier.ts"),
+N("d_draft",1355,452,290,55,"ai","draft · retrieve · review","placeholder tags · tag retrieval · checks","draft turns a description into placeholder tags; retrieve picks the tags a request is about; review checks a result.","lib/ai/draft.ts · retrieve.ts · review.ts"),
+N("d_prov",1355,517,290,55,"ai","provider seam","AI_PROVIDER = gemini | claude","One seam for every model call. AI_PROVIDER picks Gemini or Claude; GEMINI_MODEL and AGENT_MODEL pick the model.","lib/ai/provider.ts"),
+N("d_brief",1335,612,160,72,"core","brief/","catalogue · evidence","The plant brief: units from a fixed catalogue of kinds, counts, signals, alarms, screens, naming. The engineer confirms it before anything is built.","lib/brief/*"),
+N("d_layout",1505,612,160,72,"core","layout solver","facts · solve · verify","Constraints (align, distribute, noOverlap, snap) solved over nested cards on a 4 px grid, then verified.","lib/layout/*"),
+N("d_val",1335,702,160,72,"core","validation","rules · semantic · naming","Type mismatches, unbound objects, naming, standards and semantic checks, caught at the desk instead of at commissioning.","lib/validation/*"),
+N("d_critic",1505,702,160,72,"core","critic","render · geometry · coverage","Renders a screen to PNG with resvg and measures geometry and coverage, so a model or a reviewer can look at the result.","lib/critic/*"),
+N("d_sim",1335,792,160,62,"core","sim","engine · alarms","Drives tag values through the project's alarm setpoints, so alarms fire and lamps change with no PLC.","lib/sim/*"),
+N("d_std",1505,792,160,62,"core","standard","pack · lint · apply","Company standards as packs: colours, grid, naming. lint reports, apply fixes.","lib/standard/*"),
+N("d_tags",1335,872,330,62,"core","tags/","parse · binder · controlExpert · xml","Parsers for CSV, XML, Control Expert and Machine Expert exports. The binder matches tags to parts. Corrections are reported.","lib/tags/*"),
+N("d_ingest",1335,952,160,62,"core","ingest","sniff · zip · cfb","Checks what an upload really is (ZIP, OLE compound file, XML) before anything trusts it.","lib/ingest/*"),
+N("d_vijeo",1505,952,160,62,"core","vijeo","vdz · migrate · exportVariables","Vijeo Designer projects into OTE, and tags back out to Vijeo.","lib/vijeo/*"),
+N("d_kb",1335,1032,330,62,"core","knowledge · kb","learned conventions · kb_search · kb_get","knowledge learns conventions from imported projects. kb is a built index of notes that chat, agent and connector search.","lib/knowledge · lib/kb"),
+G("z_ote",1690,160,340,420,"core","ote/ · the file boundary","read and write the product's own format"),
+N("d_reader",1710,200,150,72,"core","reader","lossless · byte-identical","Opens an .eote losslessly: unknown fields survive, untouched entries go back byte-identical. Fields lost on the sample corpus went from 7,500+ to 0.","lib/ote/reader.ts · fidelity.ts"),
+N("d_pack",1870,200,145,72,"core","packager","preserved · rehang · linkScreens","Writes the product's own .eote: screens, variables, alarms and bindings, hung under the MasterScreen, screen links resolved, used ids skipped.","lib/ote/packager.ts"),
+N("d_schema",1710,287,150,62,"core","schema · parts","from Schneider's definitions","Part schemas taken from the property definitions; lossless() keeps what we do not model.","lib/ote/schema.ts · parts.ts"),
+N("d_bind",1870,287,145,62,"core","bindings","Sources → Targets","The binding graph, joined on ReferenceId. PLC symbols as ObjectFullName …Value, with PropertyFullName so OTE will simulate.","lib/ote/bindings.ts"),
+N("d_co",1710,362,150,62,"core","co · co-look","Compound Objects","A .co is a nested ZIP of JSON and SQLite. Read, built, and drawn from its definition: values, bindings, scale converters, Script.dat run once.","lib/ote/co.ts · co-build.ts · co-look.ts"),
+N("d_regions",1870,362,145,62,"core","layout · regions","header · nav · alarm banner","Every screen shares a header, nav strip and alarm banner. Placement uses region and anchor slots, never raw coordinates from a model.","lib/ote/layout.ts · regions.ts · place.ts"),
+N("d_pre",1710,437,305,58,"core","preflight · palette · symbols","refuse what OTE would refuse","preflight blocks what OTE rejects, such as a StringDisplay on a BOOL. palette is the project's 60 colours. symbols is the shipped library.","lib/ote/preflight.ts · palette.ts · symbols.ts"),
+N("d_skel",1710,507,305,55,"core","skeleton · imports","GridFS · laptop .imports/","Loads the per-machine skeleton and imported bytes.","lib/ote/skeleton.ts · imports.ts"),
+G("z_agent",1690,600,340,270,"ai","agent/ · 30 tools","works on the raw file"),
+N("d_ws",1710,640,150,70,"ai","workspace","the ZIP in memory","Names, BOMs and order kept; JSON checked on every write; SQLite through sql.js; checkpoints and undo. DriverConfig.db, the PLC connection, is hidden from every tool.","lib/agent/workspace.ts · project.ts"),
+N("d_tools",1870,640,145,70,"ai","tools","files 14 · project 12 · proof 4","list_files, read_file, json_set, sql_query, clone_object, bind, duplicate_screen, check, view_screen, run_script, shell and more.","lib/agent/tools.ts"),
+N("d_qjs",1710,725,150,62,"ai","run_script","QuickJS WASM · 64 MB · 10 s","JavaScript in a separate engine with its own heap: no require, network, file system or timers, only ws.* on the workspace.","lib/agent/script.ts"),
+N("d_sbx",1870,725,145,62,"ai","shell","Vercel Sandbox","bash in a microVM. Every file is hashed after a command, and changes come back through the workspace's checks.","lib/agent/sandbox.ts"),
+N("d_run",1710,802,305,52,"ai","run · the loop","Claude or Gemini · 40 steps by default","Claude: streaming, adaptive thinking, prompt caching, context editing. Gemini: function calling that waits out the per-minute quota.","lib/agent/run.ts"),
+G("z_mcp",1690,890,340,150,"ai","mcp/ · 23 tools","the claude.ai connector"),
+N("d_mcpsrv",1710,930,150,92,"ai","server · tools","read · write · manage","Read: list_projects, get_screens, get_layout, find_tags, components, kb_search. Write: apply_ops, place_component, propose, generate, import_tags, open_eote. Manage: create, rename, duplicate and delete projects, set_direct_writes, proposals.","lib/mcp/server.ts · tools.ts · write.ts"),
+N("d_cards",1870,930,145,92,"ai","cards","MCP Apps · live every 4 s","render_screen returns an inline card that redraws every 4 s. Rewritten to the 2026-01-26 spec; not yet seen drawing in claude.ai.","lib/mcp/cards.ts"),
+N("d_collab",1690,1060,340,62,"core","collab","changes · sync · proposal · realtime","Co-editing changes and sync, proposals as a queue, the realtime transport.","lib/collab/*"),
+N("d_server",1335,1140,695,68,"core","server · storage","Mongo, laptop-file and memory stores · pure reads outside transactions · snapshots v2","One storage seam with three stores that behave alike. Reads run outside transactions so they can go in parallel; snapshots are content-addressed pieces.","lib/server/storage.ts · repo.ts · snapshots.ts"),
+N("d_auth",1335,1228,330,62,"core","auth","session · OAuth server · tokens","NextAuth Credentials for people; our own OAuth server and personal access tokens for the connector.","web/src/auth.ts · lib/server/session.ts"),
+N("d_rtl",1690,1228,340,62,"rt","realtime","token · publish · announce","Mints a short-lived token for one project; publishes a small hint after each commit.","lib/realtime/*"),
+N("v_cron",430,1370,190,82,"compute","Cron Jobs","keepalive · UTC","Pings Supabase so the free project does not pause after a week of inactivity."),
+N("v_env",640,1370,190,82,"compute","Env secrets","keys stay server-side","Model keys, Mongo URI, Supabase secret, AUTH_SECRET live in Vercel env, never in git or NEXT_PUBLIC_*."),
+N("v_fluid",850,1370,200,82,"compute","Fluid functions","maxDuration 300 s for the agent","A 60 s limit once cut every SSE stream, which is why live sync moved to Supabase Realtime."),
+N("v_oidc",1070,1370,200,82,"compute","OIDC token","authorises the Sandbox","The platform supplies it on Vercel; locally it comes from vercel env pull and lasts 12 hours."),
+
+G("z_ai_ext",2140,60,520,300,"ai","Model providers","behind one seam"),
+N("gem",2165,110,230,115,"ai","Google Gemini","gemini-3.8-flash · fallback flash-lite","The provider in use today. gemini-3.8-flash runs chat; flash-lite is the fallback that stays available.","",{big:1}),
+N("cla",2410,110,225,115,"ai","Anthropic Claude","agent default claude-opus-5-5","Wired through the same seam: streaming, adaptive thinking and prompt caching in the agent loop, single-call converse for chat. Needs ANTHROPIC_API_KEY.","",{big:1}),
+N("quota",2165,240,470,95,"note","Free tier: 5 requests a minute, 20 a day","A chat turn spends 3 to 8 calls. A paid key is the real fix before a live demo.","The daily quota falls back to one call on GEMINI_FALLBACK_MODEL. The loop has only been seen end to end with mocks."),
+G("z_mongo",2140,400,520,560,"data","MongoDB Atlas M0","512 MB · every byte of project data"),
+N("m_proj",2165,450,230,62,"data","projects · members · users","roles · ownership"),
+N("m_ver",2410,450,225,62,"data","versions","manifests, not copies"),
+N("m_obj",2165,527,230,62,"data","objects","brotli pieces keyed by SHA-256"),
+N("m_chg",2410,527,225,62,"data","changes","the op log · revisions"),
+N("m_prop",2165,602,230,62,"data","proposals · comments · shares","via: mcp | chat"),
+N("m_ttl",2410,602,225,62,"data","presence · oauthCodes · tokens","TTL the database enforces"),
+N("m_gaps",2165,677,230,62,"data","gaps · knowledge","connector refusals · conventions"),
+N("m_up",2410,677,225,62,"data","uploads · uploadParts","bytes, not base64"),
+N("m_gfs",2165,752,470,70,"data","GridFS","skeleton · pictures · .eote bytes · agent saves","Binaries. The skeleton for export lives here per deployment."),
+N("m_stat",2165,840,470,95,"note","Database v2: 74.77 MB → 3.86 MB on production","Listing 10 projects went from 52 database commands to 2; opening a project from 639 ms to 157 ms (measured from a laptop)."),
+G("z_supa",2140,1000,520,210,"rt","Supabase Free","Realtime only · no Postgres, Storage or Auth"),
+N("s_bc",2165,1050,230,130,"rt","Broadcast","{ projectId, rev, author }","After each commit the server broadcasts a small hint. Ops never ride it (256 KB cap); clients fetch them from the API.","",{big:1}),
+N("s_pr",2410,1050,225,130,"rt","Presence · private channels","non-members receive nothing","Who is in a project. The INSERT policy was dropped, so a browser token can receive and cannot send.","",{big:1}),
+G("z_sbx",2140,1250,520,160,"compute","Vercel Sandbox","microVM per agent run"),
+N("sbx_vm",2165,1298,470,90,"compute","Ubuntu · Python 3.14 · Node 24 · sqlite3 · jq","network reaches only pypi and npm","One sandbox per run, started on first use, stopped at the end (15 minutes at most). The project is copied in without the PLC connection."),
+N("gh",2140,1450,520,90,"compute","GitHub · main → production","every merge to main deploys","The repo HMI_Copilot_EcoStruxure. Schneider's files (web/skeleton, graphics-index.json, real .eote samples) are gitignored."),
+],
+edges:[
+["e1","eng","ui_tags","drop a tag export"],["e2","ui_tags","api_io","POST tags/parse"],["e3","api_io","d_tags","parse · correct · report"],
+["g3","plcx","d_tags","CSV · .xvm · symbols"],["e4","ui_start","api_gen","sentence or brief"],["e5","api_gen","d_pipe","run 8 steps"],
+["e6","d_pipe","d_plan","infer equipment"],["e7","d_plan","gem","plan as JSON"],["e8","d_pipe","d_regions","ISA-101 layout"],
+["e9","d_pipe","d_val","validate"],["e10","d_pipe","ui_ws","SSE · one object at a time"],["e11","ui_export","api_out","export"],
+["e12","api_out","d_pack","package"],["e13","d_skel","m_gfs","skeleton bytes"],["g1","skel","d_skel","extracted per machine"],
+["e14","api_out","ote","File → Open Project"],["g2","schemas","d_schema","real part types"],["e15","d_pack","d_skel","wrap the skeleton"],
+["c1","ui_chat","api_chat","message + document"],["c2","api_chat","d_loop","tool loop"],["c3","d_loop","gem","function calls"],
+["c4","d_loop","d_ops","try_ops on a draft"],["c5","d_loop","d_critic","render_screen → PNG"],["c6","d_loop","d_val","validate"],
+["c7","api_chat","ui_store","ops · one undo"],["c8","ui_store","api_proj","POST changes"],["c9","api_proj","d_server","transaction · revision"],
+["c10","d_server","m_chg","op log"],["c11","api_proj","d_rtl","after commit"],["c11b","d_rtl","s_bc","hint"],["c12","s_bc","ui_sync","others refetch"],
+["c13","d_server","m_obj","pieces"],["c14","d_server","m_ver","manifest"],
+["m1","claude","api_oauth","OAuth + PKCE"],["m2","claude","api_mcp","tools/call"],["m3","api_mcp","d_mcpsrv","23 tools"],
+["m4","d_mcpsrv","d_ops","apply_ops"],["m5","d_mcpsrv","m_prop","proposal · via mcp"],["m6","s_bc","ui_mcp","new proposal"],
+["m7","ui_mcp","ui_review","open review"],["m8","ui_review","api_proj","accept → changes"],["m9","d_cards","claude","inline screen card"],
+["m10","api_oauth","d_auth","same accounts"],["m11","d_mcpsrv","d_kb","kb_search"],["m12","d_mcpsrv","m_gaps","refusal → gap log"],
+["a1","ui_agent","api_agent","a job in words"],["a2","api_agent","d_ws","open .eote in memory"],["a3","d_ws","d_tools","30 tools"],
+["a4","d_run","cla","loop"],["a4b","d_run","gem","loop"],["a5","d_tools","d_qjs","run_script"],["a6","d_tools","d_sbx","shell"],
+["a7","d_sbx","sbx_vm","microVM"],["a8","d_ws","d_pre","check · repackage"],["a9","api_agent","m_gfs","saved as a new file"],
+["a10","cli","d_run","same loop"],["a11","v_oidc","d_sbx","OIDC"],
+["b1","eng","api_io","upload .eote in chunks"],["b2","api_io","d_ingest","sniff · unzip"],["b3","d_ingest","d_reader","lossless read"],
+["b4","d_reader","d_co","draw COs"],["b5","d_reader","d_kb","learn conventions"],["b6","d_reader","ui_ws","the engineer's own screens"],["b7","api_io","m_up","parts as bytes"],
+["g4","vijeo","d_vijeo","migrate"],
+["au1","eng","api_auth","sign in"],["au2","api_auth","d_auth",""],["au3","d_auth","m_proj","users · members"],
+["r1","api_rt","d_rtl","mint token"],["r2","d_rtl","s_pr","presence"],["r3","v_cron","api_rt","keepalive"],
+["p1","d_prov","gem",""],["p2","d_prov","cla",""],["s1","ui_val","d_sim","simulate"],["gh1","gh","z_vercel","deploy"],
+],
+flows:[
+{id:"tour",t:"Overview tour",steps:[
+ {t:"Five zones",c:"People on the left. One Vercel deployment in the middle. Paid-for services on the right. Schneider's own files at the bottom left, as the ground truth everything is checked against.",n:["z_people","z_vercel","z_ai_ext","z_mongo","z_supa","z_sbx","z_se"],fit:1},
+ {t:"Who works with it",c:"An engineer in the browser, Claude in claude.ai through our connector, and a terminal for the same code. All three go through the same write path.",n:["z_people","eng","claude","cli"]},
+ {t:"The web app",c:"Workspace, inspector, a Copilot column with Chat, Agent and MCP, plus tags, validation, simulate and export. The renderer draws from the same JSON the packager writes.",n:["z_ui"]},
+ {t:"61 route handlers",c:"Thin adapters. They check access, then call lib/. Generation and the agent stream; projects/[id] carries co-editing; mcp and oauth serve claude.ai.",n:["z_api"]},
+ {t:"Domain core",c:"All logic lives in lib/. <code>core/ops</code> is the only write path: 26 ops, checked with zod, used by chat, inspector, connector and co-editing alike.",n:["z_core","d_ops"]},
+ {t:"The file boundary",c:"ote/ reads and writes EcoStruxure's own .eote. Untouched entries go back byte-identical; Compound Objects are drawn from their definitions; preflight refuses what OTE would refuse.",n:["z_ote"]},
+ {t:"Three AI paths",c:"ai/ plans screens and runs the chat loop. agent/ edits the raw file with 30 tools. mcp/ exposes 23 tools to Claude. A model proposes; code checks; a person accepts.",n:["z_ai","z_agent","z_mcp"]},
+ {t:"Data and sync",c:"MongoDB holds every byte of project data, including binaries in GridFS. Supabase is used for one thing only: Realtime hints, because Vercel cut SSE streams at 60 s.",n:["z_mongo","z_supa"]},
+ {t:"Models",c:"Gemini today, Claude through the same seam. The free-tier quota is the one hard limit for a live demo.",n:["z_ai_ext","quota"]},
+ {t:"Ground truth",c:"A licensed OTE 4.4 opens and simulates what we write. Part types, graphics and the skeleton come from the install and are never committed.",n:["z_se"]},
+]},
+{id:"gen",t:"Tags → .eote",steps:[
+ {t:"A tag export comes in",c:"The engineer drops a PLC export: CSV, XML, Control Expert .xvm or Machine Expert symbols.",e:["e1"]},
+ {t:"Parsed and corrected, in the open",c:"Names that break OTE's rules are corrected and listed. The sample plant: 1,248 tags, five corrections, all reported.",e:["e2","e3","g3"]},
+ {t:"One sentence starts the pipeline",c:"A sentence or a confirmed plant brief starts the eight streamed steps.",e:["e4","e5"]},
+ {t:"Equipment, then a plan",c:"Tag names become equipment. The model plans screens as JSON and picks among real parts. It never does geometry.",e:["e6","e7"]},
+ {t:"Layout and validation",c:"Every screen gets the same header, nav strip and alarm banner (ISA-101). Validation runs before anything is shown as done.",e:["e8","e9"]},
+ {t:"Streamed to the canvas",c:"Events arrive over SSE, one complete object at a time, with lines like <code>Parsed 1,248 tags</code>, never <code>Thinking…</code>.",e:["e10"]},
+ {t:"Packaged in the product's own format",c:"The packager wraps a skeleton extracted from a licensed install, read from GridFS.",e:["e11","e12","e15","e13","g1"]},
+ {t:"It opens in OTE 4.4",c:"File → Open Project. Screens, variables, alarms and bindings are there. Nothing to import or assemble.",e:["e14"]},
+]},
+{id:"chat",t:"Chat edit",steps:[
+ {t:"A request in words",c:"<code>make the pump 2 fault lamp red</code>. The client sends the message with the current document.",e:["c1"]},
+ {t:"A tool loop on the server",c:"Gemini 3.8 Flash with forced function calling: look things up, read the screen, try ops.",e:["c2","c3"]},
+ {t:"Ops tried on a draft",c:"try_ops applies ops to a copy. The real project is untouched until the engineer sees the result.",e:["c4"]},
+ {t:"The model looks at its work",c:"render_screen sends a PNG back to the model; validate runs the rules on the draft.",e:["c5","c6"]},
+ {t:"Applied as one undo",c:"The client applies the ops through applyOps. One turn is one undo step.",e:["c7"]},
+ {t:"Committed with a revision",c:"The batch goes to /changes. A Mongo transaction assigns the revision and writes the op log.",e:["c8","c9","c10","c13","c14"]},
+ {t:"Everyone else sees it",c:"A small Realtime hint goes out; other replicas fetch the ops.",e:["c11","c11b","c12"]},
+]},
+{id:"mcp",t:"Claude over MCP",steps:[
+ {t:"claude.ai signs in",c:"Our own OAuth server: discovery, dynamic registration, authorize, token with PKCE, against the same accounts.",e:["m1","m10"]},
+ {t:"A tool call",c:"Claude calls <code>/api/mcp</code> over Streamable HTTP. 23 tools read, write and manage projects.",e:["m2","m3","m11"]},
+ {t:"Writes become proposals",c:"Unless direct writes are on, a write is stored as a proposal with via: mcp. A refused call goes to the gap log.",e:["m4","m5","m12"]},
+ {t:"The engineer is told",c:"A Realtime hint puts it in the MCP tab's queue.",e:["m6"]},
+ {t:"Reviewed, then accepted",c:"The review shows now beside after and every op. Accept sends it through the normal change path.",e:["m7","m8"]},
+ {t:"Claude sees the screen",c:"render_screen returns an MCP Apps card in the chat.",e:["m9"]},
+]},
+{id:"agent",t:"Agent on the file",steps:[
+ {t:"A job in words",c:"For example: add a push button made like the engineer's START, bound to AUTOSTART the way START is bound to Run_CMD.",e:["a1"]},
+ {t:"The .eote opens in memory",c:"Entry names, BOMs and order kept. DriverConfig.db, the PLC connection, is hidden.",e:["a2"]},
+ {t:"The loop picks tools",c:"Claude or Gemini choose among 30 tools, step by step, every step shown live.",e:["a3","a4","a4b","a10"]},
+ {t:"Scripts and a real shell",c:"run_script in QuickJS, or bash in a Vercel Sandbox that can reach only pypi and npm.",e:["a5","a6","a7","a11"]},
+ {t:"It checks its own work",c:"check: JSON, duplicate ids, dangling bindings, screen numbers, the screen tree, preflight and a full repackage.",e:["a8"]},
+ {t:"Saved as a new file",c:"The opened file is never changed. The result is a new source; one click puts back what was open.",e:["a9"]},
+]},
+{id:"open",t:"Open an existing project",steps:[
+ {t:"Upload in chunks",c:"Brownfield is the market, so the reader came before more writing. Parts are stored as bytes.",e:["b1","b7"]},
+ {t:"Checked before trusted",c:"ingest sniffs what the file really is and unzips it safely.",e:["b2"]},
+ {t:"Read without loss",c:"Unknown fields survive. Fields lost on the corpus went from 7,500+ to 0.",e:["b3"]},
+ {t:"The engineer's own objects",c:"Compound Objects are drawn from their definitions; the project's conventions feed the knowledge store.",e:["b4","b5","b6"]},
+]},
+{id:"sync",t:"Live co-editing",steps:[
+ {t:"Engineer A edits",c:"Every edit is a batch of ops with change ids, so a retry is safe.",e:["c8"]},
+ {t:"The server decides",c:"A Mongo transaction checks retries with one $in query, assigns the revision and writes the log.",e:["c9","c10"]},
+ {t:"A hint, not the data",c:"Broadcast carries project, revision and author. Non-members cannot join the private channel.",e:["c11","c11b","r1","r2"]},
+ {t:"Others catch up",c:"A replica that sees a gap fetches the ops from the API.",e:["c12"]},
+]},
+]};
+
+/* ====================== DEEP DIVES (LLD) ====================== */
+const LLD=[
+{id:"pipeline",t:"Generation pipeline",s:"Eight streamed steps from tags to a file",f:"lib/ai/pipeline.ts · infer.ts · plan.ts · lib/ote/layout.ts · bindings.ts · packager.ts · lib/validation/rules.ts",W:1500,H:660,
+nodes:[
+N("in_tags",40,110,210,100,"se","Tag export","CSV · XML · .xvm · Machine Expert"),
+N("in_sent",40,240,210,100,"client","One sentence","or a confirmed plant brief"),
+G("pipe",290,60,920,420,"ai","pipeline.ts","an async generator of GenerationEvent"),
+N("s1",310,110,205,150,"core","1 · Parse","lib/tags/parse · names corrected and reported, never silently"),
+N("s2",535,110,205,150,"ai","2 · Infer equipment","infer + plant/model · run bit, fault and speed become one pump"),
+N("s3",760,110,205,150,"ai","3 · Plan screens","plan → model as JSON · fitToLimits · fallbackPlan with no key"),
+N("s4",985,110,205,150,"core","4 · Layout","Placer · HEADER, NAV, ALARM_SCREEN · the same frame on every screen"),
+N("s5",985,300,205,150,"core","5 · Alarms","proposeAlarms · HI, LO, FLT · level alarms by share"),
+N("s6",760,300,205,150,"core","6 · Bindings","Wire · ObjectFullName …Value · PropertyFullName"),
+N("s7",535,300,205,150,"core","7 · Validate","rules · semantic · naming · zero errors before done"),
+N("s8",310,300,205,150,"core","8 · Package","packager · skeleton from GridFS · Variables.csv"),
+N("model",1260,90,210,130,"ai","Model","Gemini or Claude · picks real parts · no geometry"),
+N("canvas",1260,300,210,130,"ui","Canvas","SSE · one complete object at a time"),
+N("sim",1260,500,210,110,"ui","Simulate","values through alarm setpoints"),
+N("eote",310,520,205,100,"data",".eote + Variables.csv","the product's own file"),
+N("ote",560,520,220,100,"se","OTE 4.4","File → Open Project"),
+],
+edges:[["l1","in_tags","s1","tags"],["l2","s1","s2","clean names"],["l3","s2","s3","equipment"],["l3b","in_sent","s3","intent"],["l4","s3","model","plan request"],["l5","s3","s4","screen plan"],["l6","s4","s5","placed parts"],["l7","s5","s6","alarms"],["l8","s6","s7","wires"],["l9","s7","s8","clean"],["l10","pipe","canvas","events"],["l11","s8","eote","bytes"],["l12","eote","ote","opens"],["l13","canvas","sim","run"]],
+steps:[
+ {t:"Parse",c:"1,248 tags in the sample plant. Five names had to change; each change is listed for the engineer.",e:["l1"]},
+ {t:"Infer equipment",c:"Tag names are grouped into equipment. PU_101_RUN, PU_101_FLT and PU_101_SPD become one pump with a faceplate.",e:["l2"]},
+ {t:"Plan screens",c:"The model gets the equipment and the sentence and returns a plan as JSON: which screens, which units on each. With no key, a rule plan does the same job.",e:["l3","l3b","l4"]},
+ {t:"Layout",c:"The plan becomes placed parts. Every screen gets the same header, navigation strip and alarm banner, which is what ISA-101 asks for.",e:["l5"]},
+ {t:"Alarms",c:"HI, LO and fault alarms are proposed from the signals. On the sample plant: 232 alarms.",e:["l6"]},
+ {t:"Bindings",c:"Every tag is wired to the property it drives, in the form a real panel accepts.",e:["l7"]},
+ {t:"Validate",c:"Type mismatches, unbound objects, naming and standards. Generation is not done until this is clean.",e:["l8"]},
+ {t:"Package",c:"The packager writes screens, variables, alarms and bindings into the skeleton.",e:["l9"]},
+ {t:"Streamed all the way",c:"Each step yields complete objects, so the canvas fills while the run is still going.",e:["l10"]},
+ {t:"Out the other end",c:"An .eote that OTE 4.4 opens, and Simulate fires every configured alarm without hardware.",e:["l11","l12","l13"]},
+]},
+{id:"chatloop",t:"Chat tool loop",s:"How one Copilot turn works",f:"lib/ai/agent-chat.ts · converse.ts · applier.ts · app/api/chat/route.ts",W:1500,H:720,
+nodes:[
+N("user",40,70,210,100,"client","Engineer","make the pump 2 fault lamp red"),
+N("route",40,210,210,120,"api","/api/chat","Gemini + document → tool loop; Claude → converse"),
+N("cpath",40,380,210,110,"ai","Claude path","converse.ts · one call over the same ops"),
+N("clar",40,540,210,110,"ui","Clarify","at most two questions · answers as buttons"),
+G("loop",300,40,760,520,"ai","agent-chat.ts","forced function calling"),
+N("look",330,95,220,110,"ai","Lookups","find_tags · find_objects · components · kb_search"),
+N("gets",570,95,220,110,"ai","get_screen","a digest with stable handles o12, s2"),
+N("fin",810,95,220,110,"ai","finish","ops + reply + Worked in N steps"),
+N("try",330,245,220,110,"core","try_ops","applies to a draft, never the real project"),
+N("rend",570,245,220,110,"core","render_screen","resvg PNG back to the model"),
+N("valid",810,245,220,110,"core","validate","the rules, on the draft"),
+N("quota",330,400,700,130,"note","Quota guard","Per-minute limit: wait the retryDelay Gemini reports. Daily limit: one call on GEMINI_FALLBACK_MODEL. Each turn shows how many steps it used."),
+N("gem",1110,60,220,110,"ai","Gemini 3.8 Flash","picks the next tool"),
+N("applier",1110,230,220,110,"core","Client applies","applyOps · dry run · one repair"),
+N("store",1110,400,220,110,"ui","One undo step","the whole turn undoes together"),
+N("sync",1110,570,220,100,"rt","Shared","changes → revision → hint"),
+],
+edges:[["q1","user","route","message"],["q2","route","look","doc + request"],["q3","loop","gem","tool call ⇄ result"],["q4","look","gets","what it found"],["q5","gets","try","handles"],["q6","try","rend","draft"],["q7","rend","valid","picture"],["q8","valid","fin","clean"],["q9","fin","applier","ops"],["q10","applier","store","commit"],["q11","store","sync","POST changes"],["q12","route","cpath","Claude"],["q13","loop","clar","unclear?"]],
+steps:[
+ {t:"The request",c:"The client sends the sentence and the current project document.",e:["q1"]},
+ {t:"Pick a path",c:"Gemini with a document runs the tool loop. Claude keeps the single-call path in converse.ts. Both use the same ops.",e:["q2","q12"]},
+ {t:"Every step is a tool call",c:"The model must call a function each turn. It cannot answer with free text that skips the checks.",e:["q3"]},
+ {t:"Look things up",c:"It finds the pump 2 fault tag and the lamp bound to it, instead of guessing names.",e:["q4"]},
+ {t:"Try on a draft",c:"get_screen gives handles; try_ops applies setColor to a copy.",e:["q5"]},
+ {t:"Look at the result",c:"render_screen draws the draft to PNG and gives it to the model. validate runs the rules.",e:["q6","q7"]},
+ {t:"Finish",c:"finish returns the ops and a reply in engineering language.",e:["q8"]},
+ {t:"Applied once, undone once",c:"The client dry-runs the ops, allows one repair, then commits them as one undo step.",e:["q9","q10"]},
+ {t:"Shared with the team",c:"The batch goes through the normal change path.",e:["q11"]},
+ {t:"When it is unclear",c:"It asks at most two specific questions, with the answers offered as buttons.",e:["q13"]},
+ {t:"Quota guard",c:"The free key allows 5 calls a minute and 20 a day; a turn spends 3 to 8. A paid key or Claude is the fix.",n:["quota"]},
+]},
+{id:"ops",t:"Ops: the one write path",s:"26 ops, one applyOps, one document",f:"web/src/core/ops/ops.ts · apply.ts · lib/refs · lib/layout",W:1500,H:720,
+nodes:[
+N("src1",40,60,210,90,"ui","Chat","ops from a turn"),
+N("src2",40,170,210,90,"ui","Inspector","a property edit"),
+N("src3",40,280,210,90,"client","Connector","apply_ops · accepted proposal"),
+N("src4",40,390,210,90,"ui","Board","drag, align, group"),
+N("src5",40,500,210,90,"rt","Co-editing replay","someone else's revision"),
+G("union",300,40,560,630,"core","OP_NAMES","26 ops, a zod union"),
+N("g1",320,90,250,120,"core","Screens","addScreen · renameScreen · deleteScreen"),
+N("g2",590,90,250,120,"core","Objects","addObject · addEquipment · moveObject · resizeObject · deleteObject · duplicateObject"),
+N("g3",320,225,250,120,"core","Look","setText · setColor · setStyle"),
+N("g4",590,225,250,120,"core","Arrange","alignObjects · groupObjects · ungroupObjects · arrange · matchSize · snapToGrid · tidyLayout"),
+N("g5",320,360,250,120,"core","Tags and behaviour","addTag · setTag · deleteTag · bindTag · addAlarm · setAction"),
+N("g6",590,360,250,120,"core","Standards","applyPack"),
+N("zod",320,500,520,140,"note","Checked, never trusted","Every op is parsed by zod. Handles like o12 and s2 are stable. Fields a model should not set, such as raw coordinates, are dropped before they reach the document."),
+N("apply",920,200,230,150,"core","applyOps","refs cascades · a taken handle moves to the next free one · only changed paths land"),
+N("solver",920,40,230,120,"core","Layout solver","align · distribute · noOverlap · snap"),
+N("log",920,420,230,120,"data","Op log","changes → revision"),
+N("doc",1210,200,240,150,"data","Project document","one JSON for everything"),
+N("cv",1210,400,240,100,"ui","Canvas draws it",""),
+N("pk",1210,540,240,100,"core","Packager writes it",""),
+],
+edges:[["o1","src1","union",""],["o2","src2","union",""],["o3","src3","union",""],["o4","src4","union",""],["o5","src5","union",""],["o6","union","apply","valid ops"],["o7","apply","solver","layout ops"],["o8","apply","doc","new state"],["o9","doc","cv","render"],["o10","doc","pk","package"],["o11","apply","log","record"]],
+steps:[
+ {t:"Five sources, one door",c:"Chat, inspector, the connector, the board and co-editing replay all speak the same 26 ops.",e:["o1","o2","o3","o4","o5"]},
+ {t:"Checked first",c:"zod parses each op. A model cannot invent a field or place by raw pixels.",n:["zod"]},
+ {t:"applyOps",c:"One function changes the document. References cascade, so deleting a tag also cleans what it bound.",e:["o6"]},
+ {t:"Geometry by constraints",c:"Arrange ops become constraints for the layout solver on a 4 px grid.",e:["o7"]},
+ {t:"A new document",c:"The result is the project document, the only model of the screens.",e:["o8"]},
+ {t:"One model, two outputs",c:"The canvas and the packager read the same JSON. What the engineer approves is what OTE opens.",e:["o9","o10"]},
+ {t:"Recorded",c:"Every applied batch is logged with a revision, which is what makes undo, history and co-editing work.",e:["o11"]},
+]},
+{id:"mcp",t:"claude.ai connector",s:"OAuth, 23 tools, proposals and review",f:"app/api/mcp · app/api/oauth/* · lib/mcp/* · components/chat/ProposalReview.tsx",W:1600,H:760,
+nodes:[
+N("cl",40,290,210,130,"client","claude.ai","custom connector",null,null,{big:1}),
+N("disc",300,40,240,90,"api","Discovery","oauth/protected-resource · authorization-server"),
+N("reg",300,150,240,85,"api","Register","dynamic client registration"),
+N("auth",300,255,240,90,"api","Authorize","sign in · consent"),
+N("tok",300,365,240,85,"api","Token","PKCE · bearer · revoke"),
+N("mcp",600,250,240,130,"api","/api/mcp","Streamable HTTP · body read once"),
+G("tools",900,40,370,470,"ai","lib/mcp","23 tools"),
+N("tr",920,85,330,85,"ai","Read","list_projects · get_screens · get_layout · find_tags · components · kb_search · kb_get · validate"),
+N("tw",920,185,330,85,"ai","Write","apply_ops · place_component · propose · generate · import_tags · open_eote"),
+N("tm",920,285,330,85,"ai","Manage","create, rename, duplicate, delete project · set_direct_writes · proposals"),
+N("tc",920,385,330,100,"ai","render_screen","an MCP Apps card · redraws every 4 s"),
+N("gate",1330,170,240,120,"core","Write gate","direct writes off → proposal · refusals → gap log"),
+N("prop",1330,330,240,90,"data","proposals","via: mcp"),
+N("rt",1330,460,240,90,"rt","Realtime hint",""),
+N("tab",920,590,240,110,"ui","MCP tab","queue · state · log"),
+N("rev",600,590,250,120,"ui","Review","request · now beside after · every op"),
+N("acc",300,590,250,120,"core","Accept","applyOps → revision"),
+],
+edges:[["k1","cl","disc","discover"],["k2","cl","reg","register"],["k3","cl","auth","authorize"],["k4","cl","tok","code → token"],["k5","cl","mcp","tools/call + bearer"],["k6","mcp","tools","dispatch"],["k7","tw","gate","write"],["k8","gate","prop","store"],["k9","prop","rt","notify"],["k10","rt","tab","queue"],["k11","tab","rev","open"],["k12","rev","acc","accept"],["k13","tc","cl","card"]],
+steps:[
+ {t:"Find the server",c:"claude.ai reads the protected-resource and authorization-server documents.",e:["k1"]},
+ {t:"Register itself",c:"Dynamic client registration gives claude.ai a client id. No pasted secrets.",e:["k2"]},
+ {t:"The engineer signs in",c:"Same accounts as the web app (NextAuth Credentials), then consent.",e:["k3"]},
+ {t:"A bearer token",c:"Code exchanged with PKCE. Tokens can be revoked; personal access tokens are the fallback.",e:["k4"]},
+ {t:"Tool calls",c:"Claude calls tools over Streamable HTTP. The route reads the body once and replays it.",e:["k5","k6"]},
+ {t:"The write gate",c:"With direct writes off, a write becomes a proposal. A refused call is logged in gaps so we see what Claude needed.",e:["k7","k8"]},
+ {t:"The engineer is told",c:"A Realtime hint puts the proposal in the MCP tab's queue.",e:["k9","k10"]},
+ {t:"Review",c:"Now beside after, the request, every op, what accepting means.",e:["k11"]},
+ {t:"Accept",c:"The proposal applies through applyOps like any other change.",e:["k12"]},
+ {t:"Claude sees the result",c:"render_screen returns an inline card that redraws every 4 s.",e:["k13"]},
+]},
+{id:"agent",t:"Agent workspace",s:"A working directory and 30 tools on the raw .eote",f:"lib/agent/workspace.ts · project.ts · tools.ts · script.ts · sandbox.ts · run.ts · app/api/agent",W:1500,H:760,
+nodes:[
+N("job",40,70,210,100,"ui","Agent tab","a job in words"),
+N("rte",40,220,210,130,"api","/api/agent","NDJSON events · 300 s · the export's access check"),
+N("src",40,400,210,100,"data","Opened .eote","never changed"),
+N("saved",40,570,210,110,"data","Saved as a new file","reload · one click puts back"),
+G("ws",300,40,520,670,"ai","workspace.ts","the ZIP in memory"),
+N("ent",320,90,480,110,"ai","Entries","original names, BOMs and order · JSON checked on every write · SQLite through sql.js"),
+N("hid",320,215,230,90,"note","DriverConfig.db hidden","written back untouched"),
+N("cp",570,215,230,90,"ai","checkpoint · undo · diff",""),
+N("prj",320,320,480,95,"ai","project.ts","screens, objects at any depth, JSON pointer, grid cell · bind and unbind through the packager"),
+N("chk",320,430,480,115,"core","check","JSON · duplicate ids · dangling bindings · screen numbers · screen tree · preflight · full repackage"),
+N("out",320,560,480,110,"data","Write back","unchanged entries byte for byte"),
+N("lp",870,40,260,120,"ai","run.ts","Claude: streaming, thinking, caching · Gemini: waits out the quota"),
+N("mdl",1190,40,260,120,"ai","Model","claude-opus-5-5 or Gemini"),
+G("tl",870,195,580,310,"ai","tools.ts","30 tools"),
+N("tf",890,240,260,120,"ai","Files · 14","list_files read_file search write_file edit_file json_get json_set copy_path delete_path sql_query sql_exec diff checkpoint undo"),
+N("tp",1170,240,260,120,"ai","Project · 12","project_summary list_screens screen_objects find_objects bindings tags own_objects compound_objects clone_object bind unbind duplicate_screen"),
+N("tpr",890,375,540,110,"ai","Proof · 4","check · view_screen · run_script · shell"),
+N("qjs",870,560,260,130,"compute","QuickJS WASM","own heap · 64 MB · 10 s · only ws.*"),
+N("sbx",1190,560,260,130,"compute","Vercel Sandbox","bash · pypi + npm only · files hashed after each command"),
+],
+edges:[["w1","job","rte","job"],["w2","src","rte","bytes"],["w3","rte","ent","open"],["w4","rte","lp","start"],["w5","lp","mdl","next step?"],["w6","lp","tl","call"],["w7","tf","ent","read · write"],["w8","tp","prj","structure"],["w9","tpr","qjs","run_script"],["w10","tpr","sbx","shell"],["w11","sbx","chk","changes come back checked"],["w12","tpr","chk","check"],["w13","out","saved","new source"]],
+steps:[
+ {t:"A job",c:"The engineer writes a job, like copying START as AUTO START bound to AUTOSTART.",e:["w1","w2"]},
+ {t:"The file opens in memory",c:"Every entry keeps its name, BOM and order. The PLC connection is hidden from every tool.",e:["w3"]},
+ {t:"The loop",c:"The model picks the next tool each step. Default limit: 40 steps.",e:["w4","w5","w6"]},
+ {t:"Files and structure",c:"It found START (CompoundObject.Switch_PB04) and its binding to Run_CMD, then cloned it into a free grid cell.",e:["w7","w8"]},
+ {t:"Scripts",c:"run_script runs JavaScript in QuickJS, a separate engine with no network or file system.",e:["w9"]},
+ {t:"A real shell",c:"bash in a microVM with Python 3.14. It once wrote three Python scripts to count objects and list 143 unbound tags, changing nothing.",e:["w10","w11"]},
+ {t:"Check",c:"Seven checks, ending with a full repackage. Overlap is a warning: engineers overlap objects on purpose.",e:["w12"]},
+ {t:"A new file",c:"Unchanged entries go back byte for byte. The opened file is never touched.",e:["w13"]},
+]},
+{id:"sync",t:"Live sync",s:"Mongo decides, Supabase whispers",f:"app/api/projects/[id]/changes · lib/collab · lib/realtime · lib/server/repo.ts",W:1400,H:640,
+nodes:[
+N("a",40,80,220,110,"client","Engineer A","edits"),
+N("api",320,80,240,110,"api","POST /changes","a batch with change ids"),
+G("tx",620,40,330,340,"data","Mongo transaction","the server wins"),
+N("rc",640,85,290,75,"data","Retry check","one $in over change ids"),
+N("rv",640,175,290,75,"data","Assign revision",""),
+N("lg",640,265,290,90,"data","Write the log","putMany · trim with removeMany"),
+N("pub",1010,80,350,110,"rt","Publish","{ projectId, rev, author } · ops never ride it"),
+N("ch",1010,250,350,120,"rt","Private channel","a token minted per project · non-members refused"),
+N("rcv",620,440,330,120,"client","Engineer B","gets the hint · sees a gap"),
+N("ftc",320,440,240,120,"api","GET /changes?since","the ops it missed"),
+N("prs",1010,440,350,120,"rt","Presence","heartbeat every 5 s · one transaction"),
+N("bb",40,440,220,120,"ui","B's replica","applies, in order"),
+],
+edges:[["y1","a","api","ops"],["y2","api","tx","commit"],["y3","rc","rv",""],["y4","rv","lg",""],["y5","tx","pub","committed"],["y6","pub","ch","broadcast"],["y7","ch","rcv","hint"],["y8","rcv","ftc","fetch"],["y9","ftc","bb","ops"],["y10","prs","ch","who is here"]],
+steps:[
+ {t:"An edit",c:"Each batch carries change ids, so sending it twice is harmless.",e:["y1"]},
+ {t:"The transaction",c:"One $in finds retries; the server assigns the revision; the log is written in one call.",e:["y2","y3","y4"]},
+ {t:"A hint goes out",c:"Only project, revision and author. A Free plan message is capped at 256 KB; a big op batch would not fit.",e:["y5","y6"]},
+ {t:"Only members hear it",c:"The browser gets a short-lived token for one project. The INSERT policy is gone, so browsers cannot send.",e:["y7"]},
+ {t:"Fetch what was missed",c:"A replica that sees a revision gap asks the API. It never resolves a conflict from a broadcast alone.",e:["y8","y9"]},
+ {t:"Presence",c:"Who is in the project, refreshed every 5 s with one transaction per beat.",e:["y10"]},
+]},
+{id:"db",t:"Database v2",s:"Snapshots as content-addressed pieces",f:"lib/server/snapshots.ts · storage.ts · docs/DATABASE_V2.md",W:1400,H:700,
+nodes:[
+N("snap",40,80,240,120,"data","A project snapshot","for example 3 MB"),
+G("split",330,40,420,390,"data","snapshots.ts","split into pieces"),
+N("f1",350,90,180,75,"data","name","512 bytes or less: inline"),
+N("f2",550,90,180,75,"data","screens","one piece per screen"),
+N("f3",350,180,180,75,"data","variables","one piece"),
+N("f4",550,180,180,75,"data","versions list","one piece per entry"),
+N("hs",350,280,380,125,"core","SHA-256 of each piece","its key, scoped to the project"),
+N("ask",800,80,260,110,"data","Which exist?","one $in query"),
+N("wr",800,240,260,110,"data","Write only new ones","brotli, quality 5"),
+N("obj",1110,80,260,110,"data","objects","{ projectId:sha, z, n }"),
+N("man",1110,240,260,130,"data","Manifest","{ f:1, n, k:{ screens:{ a:[h1,h2] } } }"),
+N("rd",800,420,260,110,"data","Read","one $in, reassemble"),
+N("gc",1110,430,260,130,"data","Mark and sweep","in a transaction · at each checkpoint, at most every 10 minutes"),
+N("st",40,470,700,170,"note","Measured on production","74.77 MB → 3.86 MB. One version had been a full 3 MB copy; 97.6% of the database was versions. Listing 10 projects: 52 commands → 2. Opening a project: 639 ms → 157 ms."),
+],
+edges:[["d1","snap","split","save"],["d2","hs","ask","keys"],["d3","ask","wr","missing ones"],["d4","wr","obj","pieces"],["d5","wr","man","manifest"],["d6","man","rd","load"],["d7","obj","gc",""],["d8","man","gc","what is referenced"]],
+steps:[
+ {t:"The problem",c:"Every version was a full copy. A 3 MB project wrote 3 MB per edit, and the free 512 MB cluster held about 15 heavy projects.",n:["st","snap"]},
+ {t:"Split",c:"Each top-level field is a piece; screens and the history list are one piece per element, because they hold the bytes and change one at a time.",e:["d1"]},
+ {t:"Hash",c:"A piece's key is the SHA-256 of its JSON. An unchanged screen has the same key.",n:["hs"]},
+ {t:"Ask once",c:"One $in query says which pieces already exist.",e:["d2","d3"]},
+ {t:"Write only what is new",c:"New pieces are brotli-compressed. The version stores a small manifest.",e:["d4","d5"]},
+ {t:"Read",c:"One $in fetches every piece of a manifest.",e:["d6"]},
+ {t:"Clean up",c:"Mark and sweep inside a transaction that also writes the project row, so a concurrent save cannot lose a piece.",e:["d7","d8"]},
+]},
+{id:"eote",t:".eote and the round trip",s:"The product's format, read and written",f:"lib/ote/reader.ts · packager.ts · co.ts · co-look.ts · fidelity.ts · docs/CO_FORMAT.md",W:1500,H:760,
+nodes:[
+G("file",40,40,420,680,"se",".eote","a ZIP of plain JSON and SQLite"),
+N("pd",60,90,380,62,"se","Project.dat","version stamp, e.g. 4.4 or 4.1.0.89"),
+N("bd",60,165,380,62,"se","Bindings.dat","Sources → Targets on ReferenceId"),
+N("sd",60,240,380,72,"se","Screen.dat + Metadata.dat","per screen · geometry maps to SVG"),
+N("hd",60,325,380,62,"se","Hierarchies","the screen tree · MasterScreen"),
+N("db",60,400,380,72,"se","DriverConfig.db · Converters.db","SQLite · the PLC connection"),
+N("co",60,485,380,100,"se","Compound Objects","a .co is a nested ZIP: Screen.dat, Bindings.dat, Properties.propDef, Script.dat"),
+N("vr",60,600,380,90,"se","Variables","a STRING needs Type 2048, Size 32"),
+N("rd",520,110,270,130,"core","reader.ts","lossless() · 7,500+ lost fields → 0"),
+N("doc",850,110,270,130,"data","Project document","plus what we preserve"),
+N("lk",520,300,270,120,"core","co-look.ts","draw each CO from its definition"),
+N("cv",850,300,270,120,"ui","Canvas · Inspector",""),
+N("pk",1180,110,280,130,"core","packager.ts","rehang under MasterScreen · linkScreens · skip used ids"),
+N("by",1180,300,280,120,"core","Byte-identical","untouched entries"),
+N("ote",1180,480,280,120,"se","OTE 4.4","opens · builds · simulates",null,null,{big:1}),
+N("ft",520,480,600,240,"note","Facts proven on the licensed bench","A variable source without PropertyFullName on a …Value binding stops Simulate. Machine Expert symbols bind as ObjectFullName MachineExpertEquipment1.GVL.X. Bold is Font.Attribute.Bold. Only a Rectangle has CornerRadius. Fonts are a fixed list, one per language."),
+],
+edges:[["f1","file","rd","read"],["f2","co","lk","definitions"],["f3","rd","doc","document"],["f4","doc","cv","draw"],["f5","lk","cv","looks"],["f6","doc","pk","write"],["f7","pk","by","keep"],["f8","by","ote","open"],["f9","ft","pk","guards"]],
+steps:[
+ {t:"What an .eote is",c:"A ZIP of plain JSON and SQLite. No signature, no encryption. Bindings are declarative.",n:["file"]},
+ {t:"Read without loss",c:"Fields we do not model survive the read. On the sample corpus, lost fields went from more than 7,500 to 0.",e:["f1","f3"]},
+ {t:"Draw the engineer's objects",c:"Compound Objects were hatched boxes; now each is drawn from its definition, with values, bindings and scale converters.",e:["f2","f5","f4"]},
+ {t:"Write",c:"New screens hang under the MasterScreen, screen links resolve, and new ids skip used ones.",e:["f6"]},
+ {t:"Leave the rest alone",c:"Untouched entries go back byte for byte, so nobody loses a project to us.",e:["f7"]},
+ {t:"The bench decides",c:"Licensed OTE opens, builds and simulates. The rules it taught us are now guards in the writer.",e:["f8","f9"]},
+]},
+{id:"brief",t:"Plant brief",s:"Generation without tags, reviewed first",f:"lib/brief/brief.ts · catalogue.ts · draft.ts · evidence.ts · validate.ts",W:1400,H:640,
+nodes:[
+N("ds",40,80,240,110,"client","Description","or the guided form"),
+N("kb",40,260,240,120,"core","Knowledge","signal sets other projects used, with counts · advice only"),
+N("pr",340,80,260,120,"ai","The model proposes","catalogue kinds only · no geometry"),
+N("cq",340,260,260,110,"ui","clarify","at most two questions"),
+N("tb",660,80,290,180,"data","The brief","plant · panel · units (kind, count, label, signals) · flow · alarms · screens · naming"),
+N("cf",660,310,290,110,"client","Engineer confirms","no units or a count of 0 cannot be confirmed"),
+N("ph",1010,80,350,110,"core","Placeholder tags","each carries its brief row"),
+N("gn",1010,240,350,100,"ai","Pipeline builds screens",""),
+N("vl",1010,380,350,120,"core","Validation","rejects any tag without a confirmed row"),
+N("nt",40,450,910,150,"note","Why it exists","draftTags used to go straight to the build, and the prompt's 'clearly implies' let a model add units the plant does not have. Nothing checked the draft against the engineer's intent."),
+],
+edges:[["b1","ds","pr","words"],["b2","kb","pr","advice"],["b3","pr","cq","missing detail"],["b4","pr","tb","proposal"],["b5","tb","cf","review"],["b6","cf","ph","confirmed"],["b7","ph","gn","build"],["b8","gn","vl","trace every tag"]],
+steps:[
+ {t:"Why",c:"Without a review step a model could invent equipment. The brief puts a person between the words and the build.",n:["nt"]},
+ {t:"Words in",c:"A description, or the same fields as a form.",e:["b1","b2"]},
+ {t:"Ask, briefly",c:"Missing details trigger at most two specific questions.",e:["b3"]},
+ {t:"A brief, as a table",c:"Units from a fixed catalogue, with signals the engineer can add or remove.",e:["b4"]},
+ {t:"Confirmed by a person",c:"A brief with no units cannot be confirmed; the error names the field.",e:["b5"]},
+ {t:"Tags with provenance",c:"Each placeholder tag records the row it came from.",e:["b6"]},
+ {t:"Built, then traced",c:"Validation rejects any tag that does not trace to a confirmed row.",e:["b7","b8"]},
+]},
+];
+
+/* ====================== BOARD ENGINE ====================== */
+function geom(a,b){
+  const ox=a.x<b.x+b.w&&b.x<a.x+a.w, oy=a.y<b.y+b.h&&b.y<a.y+a.h;
+  let p0,p3,c1,c2;
+  if(ox&&!oy){
+    const dn=b.y>a.y;
+    p0={x:a.x+a.w/2,y:dn?a.y+a.h:a.y}; p3={x:b.x+b.w/2,y:dn?b.y:b.y+b.h};
+    const k=Math.max(30,Math.abs(p3.y-p0.y)*.5);
+    c1={x:p0.x,y:p0.y+(dn?k:-k)}; c2={x:p3.x,y:p3.y-(dn?k:-k)};
+  }else{
+    const rt=(b.x+b.w/2)>(a.x+a.w/2);
+    p0={x:rt?a.x+a.w:a.x,y:a.y+a.h/2}; p3={x:rt?b.x:b.x+b.w,y:b.y+b.h/2};
+    const k=Math.max(40,Math.abs(p3.x-p0.x)*.45);
+    c1={x:p0.x+(rt?k:-k),y:p0.y}; c2={x:p3.x-(rt?k:-k),y:p3.y};
+  }
+  return{p0,c1,c2,p3};
+}
+function bez(g,t){const u=1-t,a=u*u*u,b=3*u*u*t,c=3*u*t*t,d=t*t*t;return{x:a*g.p0.x+b*g.c1.x+c*g.c2.x+d*g.p3.x,y:a*g.p0.y+b*g.c1.y+c*g.c2.y+d*g.p3.y}}
+let BID=0;
+class Board{
+  constructor(host,spec,opt){
+    this.host=host;this.spec=spec;this.opt=opt||{};this.id="b"+(++BID);
+    this.nodes=new Map(spec.nodes.map(n=>[n.i,n]));
+    this.cam={x:0,y:0,s:1};this.packets=[];this.raf=0;this.sel=null;
+    this.build();this.bindInput();
+    new ResizeObserver(()=>{const w=this.host.offsetWidth,hh=this.host.offsetHeight;if(!w||(w===this.lw&&hh===this.lh))return;
+      if(!this.userMoved)this.fit(false);else{this.lw=w;this.lh=hh}}).observe(host);
+  }
+  build(){
+    const {W,H}=this.spec,h=this.host;h.innerHTML="";h.classList.add("stage");
+    const w=this.world=el("div","world");w.style.width=W+"px";w.style.height=H+"px";
+    this.els=new Map();
+    const mk=n=>{
+      const d=el("div","node "+(n.g?"grp":"box")+" k-"+n.k);
+      Object.assign(d.style,{left:n.x+"px",top:n.y+"px",width:n.w+"px",height:n.h+"px"});
+      d.dataset.id=n.i;
+      if(n.g){d.innerHTML=`<div class="gl"><span>${n.t}</span>${n.s?`<small>${n.s}</small>`:""}</div>`}
+      else{
+        if(n.h<72)d.classList.add("sm");if(n.big)d.classList.add("big");
+        d.innerHTML=`<div class="nk"><i></i>${KIND[n.k]||""}</div><div class="nt">${n.t}</div>${n.s?`<div class="ns">${n.s}</div>`:""}`;
+        d.tabIndex=0;d.setAttribute("role","button");
+      }
+      this.els.set(n.i,d);return d;
+    };
+    this.spec.nodes.filter(n=>n.g).forEach(n=>w.append(mk(n)));
+    const svg=this.svg=sv("svg",{class:"edges",width:W,height:H,viewBox:`0 0 ${W} ${H}`});
+    const defs=sv("defs",{});
+    for(const s of["base","trail","on"]){const m=sv("marker",{id:`${this.id}-${s}`,viewBox:"0 0 10 10",refX:"9",refY:"5",markerWidth:"7",markerHeight:"7",orient:"auto-start-reverse",markerUnits:"userSpaceOnUse"});m.setAttribute("markerWidth",s==="on"?"11":"8");m.setAttribute("markerHeight",s==="on"?"11":"8");m.append(sv("path",{d:"M0,0 L10,5 L0,10 z",class:"mk-"+s}));defs.append(m)}
+    svg.append(defs);
+    this.edges=new Map();
+    const lay=sv("g",{});svg.append(lay);
+    // labels and packets go in a top svg so leaves never hide them
+    const top=this.top=sv("svg",{class:"edges top",width:W,height:H,viewBox:`0 0 ${W} ${H}`});
+    const labs=sv("g",{});this.pkLayer=sv("g",{});top.append(labs,this.pkLayer);
+    for(const [id,a,b,l] of this.spec.edges){
+      const A=this.nodes.get(a),B=this.nodes.get(b);if(!A||!B)continue;
+      const g=geom(A,B);
+      const p=sv("path",{d:`M${g.p0.x},${g.p0.y} C${g.c1.x},${g.c1.y} ${g.c2.x},${g.c2.y} ${g.p3.x},${g.p3.y}`,class:"edge","marker-end":`url(#${this.id}-base)`});
+      lay.append(p);
+      let lab=null;
+      if(l){const m=bez(g,.5),tw=l.length*6.7+14;lab=sv("g",{class:"lab",transform:`translate(${m.x},${m.y})`});
+        lab.append(sv("rect",{x:-tw/2,y:-10,width:tw,height:20,rx:5}));const tx=sv("text",{x:0,y:4,"text-anchor":"middle"});tx.textContent=l;lab.append(tx);labs.append(lab)}
+      this.edges.set(id,{id,a,b,l,g,p,lab});
+    }
+    w.append(svg);
+    this.spec.nodes.filter(n=>!n.g).forEach(n=>w.append(mk(n)));
+    w.append(top);
+    h.append(w);
+    const c=el("div","ctrls");
+    c.innerHTML=`<button data-z="in" aria-label="Zoom in">+</button><button data-z="out" aria-label="Zoom out">−</button><button data-z="fit" aria-label="Fit to screen">⤢</button>`;
+    c.addEventListener("click",e=>{const z=e.target.closest("button")?.dataset.z;if(!z)return;const r=h.getBoundingClientRect();
+      if(z==="fit")this.fit(true);else this.zoomAt(r.left+r.width/2,r.top+r.height/2,z==="in"?1.25:.8,true)});
+    h.append(c);
+    if(this.opt.legend){const lg=el("div","legend");const ks=["client","ui","api","core","ai","data","rt","compute","se","note"];
+      lg.innerHTML=`<span class="lg-t">Legend ▾</span><span></span>`+ks.map(k=>`<span class="k-${k}"><i></i>${KIND[k]}</span>`).join("");
+      lg.querySelector(".lg-t").addEventListener("click",()=>lg.classList.toggle("min"));h.append(lg);
+      if(innerWidth<900)lg.classList.add("min")}
+  }
+  apply(anim){this.lw=this.host.offsetWidth;this.lh=this.host.offsetHeight;const w=this.world;w.classList.toggle("cam",!!anim&&!REDUCE);w.style.transform=`translate(${this.cam.x}px,${this.cam.y}px) scale(${this.cam.s})`}
+  fitScale(){const r=this.host.getBoundingClientRect();return Math.min((r.width-24)/this.spec.W,(r.height-24)/this.spec.H)}
+  fit(anim){const r=this.host.getBoundingClientRect();if(!r.width)return;const s=this.fitScale();
+    this.cam={s,x:(r.width-this.spec.W*s)/2,y:(r.height-this.spec.H*s)/2};this.userMoved=false;this.apply(anim)}
+  focus(ids,anim){
+    const r=this.host.getBoundingClientRect();if(!r.width||!ids.length)return;
+    let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    for(const i of ids){const n=this.nodes.get(i);if(!n)continue;x0=Math.min(x0,n.x);y0=Math.min(y0,n.y);x1=Math.max(x1,n.x+n.w);y1=Math.max(y1,n.y+n.h)}
+    const pad=60,fs=this.fitScale();
+    let s=Math.min((r.width-pad*2)/(x1-x0),(r.height-pad*2)/(y1-y0),1.15);s=Math.max(s,fs);
+    this.cam={s,x:r.width/2-(x0+x1)/2*s,y:r.height/2-(y0+y1)/2*s};this.apply(anim);
+  }
+  zoomAt(cx,cy,f,anim){const r=this.host.getBoundingClientRect(),px=cx-r.left,py=cy-r.top,c=this.cam;
+    const s=Math.min(2.6,Math.max(this.fitScale()*.6,c.s*f));const k=s/c.s;
+    this.cam={s,x:px-(px-c.x)*k,y:py-(py-c.y)*k};this.userMoved=true;this.apply(anim)}
+  bindInput(){
+    const h=this.host,pts=new Map();let moved=0,downNode=null,last=null,pinch=null;
+    h.addEventListener("pointerdown",e=>{if(e.target.closest(".ctrls,.legend"))return;
+      pts.set(e.pointerId,{x:e.clientX,y:e.clientY});h.setPointerCapture(e.pointerId);
+      if(pts.size===1){moved=0;downNode=e.target.closest(".box");last={x:e.clientX,y:e.clientY}}
+      if(pts.size===2){const [p,q]=[...pts.values()];pinch={d:Math.hypot(p.x-q.x,p.y-q.y)}}
+      this.world.classList.remove("cam")});
+    h.addEventListener("pointermove",e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(pts.size===1&&last){const dx=e.clientX-last.x,dy=e.clientY-last.y;moved+=Math.abs(dx)+Math.abs(dy);last={x:e.clientX,y:e.clientY};
+        if(moved>5){h.classList.add("drag");this.cam.x+=dx;this.cam.y+=dy;this.userMoved=true;this.apply(false)}}
+      else if(pts.size===2&&pinch){const [p,q]=[...pts.values()];const d=Math.hypot(p.x-q.x,p.y-q.y);moved=99;
+        this.zoomAt((p.x+q.x)/2,(p.y+q.y)/2,d/pinch.d,false);pinch.d=d}});
+    const up=e=>{if(!pts.has(e.pointerId))return;pts.delete(e.pointerId);h.classList.remove("drag");
+      if(pts.size===0){if(moved<=5&&e.type==="pointerup"){if(downNode)this.select(downNode.dataset.id);else this.select(null)}last=null;pinch=null}};
+    h.addEventListener("pointerup",up);h.addEventListener("pointercancel",up);
+    h.addEventListener("wheel",e=>{e.preventDefault();this.world.classList.remove("cam");
+      if(e.ctrlKey||e.metaKey){this.zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*.0025),false)}
+      else{this.cam.x-=e.deltaX;this.cam.y-=e.deltaY;this.userMoved=true;this.apply(false)}},{passive:false});
+    h.addEventListener("keydown",e=>{const b=e.target.closest?.(".box");if(b&&(e.key==="Enter"||e.key===" ")){e.preventDefault();e.stopPropagation();this.select(b.dataset.id)}});
+    h.addEventListener("pointerover",e=>{const b=e.target.closest(".box");if(b)this.hover(b.dataset.id,true)});
+    h.addEventListener("pointerout",e=>{const b=e.target.closest(".box");if(b)this.hover(b.dataset.id,false)});
+  }
+  hover(id,on){for(const E of this.edges.values()){if(E.a===id||E.b===id||(this.sel&&(E.a===this.sel||E.b===this.sel)&&!on&&false)){
+    if(on){E.p.classList.add("hov");E.lab&&E.lab.classList.add("show")}else if(!(this.sel&&(E.a===this.sel||E.b===this.sel))){E.p.classList.remove("hov");if(E.lab&&!E.p.classList.contains("on")&&!E.p.classList.contains("trail"))E.lab.classList.remove("show")}}}}
+  select(id){
+    if(this.sel){this.els.get(this.sel)?.classList.remove("sel");const o=this.sel;this.sel=null;this.hover(o,false)}
+    if(id){this.sel=id;this.els.get(id)?.classList.add("sel");this.hover(id,true)}
+    this.opt.onSelect&&this.opt.onSelect(id?this.nodes.get(id):null,this);
+  }
+  links(id){const out=[];for(const E of this.edges.values()){if(E.a===id)out.push({dir:"→",other:E.b,l:E.l});else if(E.b===id)out.push({dir:"←",other:E.a,l:E.l})}return out}
+  setEdge(E,state){E.p.classList.remove("on","trail");if(state)E.p.classList.add(state);E.p.setAttribute("marker-end",`url(#${this.id}-${state||"base"})`);
+    if(E.lab){E.lab.classList.toggle("show",!!state);E.lab.classList.toggle("onl",state==="on")}}
+  clear(){this.host.classList.remove("flowing");for(const E of this.edges.values())this.setEdge(E,null);
+    for(const d of this.els.values())d.classList.remove("on","seen","hit","ctx");this.stopPackets()}
+  stepIds(st){const s=new Set(st.n||[]);for(const id of st.e||[]){const E=this.edges.get(id);if(E){s.add(E.a);s.add(E.b)}}return[...s]}
+  show(steps,i,follow){
+    this.clear();if(i<0)return;this.host.classList.add("flowing");
+    for(let j=0;j<i;j++){for(const id of steps[j].e||[]){const E=this.edges.get(id);E&&this.setEdge(E,"trail")}for(const n of this.stepIds(steps[j]))this.els.get(n)?.classList.add("seen")}
+    const st=steps[i],ids=this.stepIds(st);
+    for(const id of st.e||[]){const E=this.edges.get(id);E&&this.setEdge(E,"on")}
+    for(const n of ids){const d=this.els.get(n);if(!d)continue;d.classList.remove("seen");d.classList.add("on");void d.offsetWidth;d.classList.add("hit")}
+    // keep the groups that contain active nodes readable
+    for(const n of ids){const N0=this.nodes.get(n);for(const g of this.spec.nodes)if(g.g&&g.i!==n&&g.x<=N0.x&&g.y<=N0.y&&g.x+g.w>=N0.x+N0.w&&g.y+g.h>=N0.y+N0.h)this.els.get(g.i)?.classList.add("ctx")}
+    this.startPackets(st.e||[]);
+    if(follow){if(st.fit)this.fit(true);else this.focus(ids,true)}
+  }
+  startPackets(eids){this.stopPackets();if(REDUCE)return;const now=performance.now();
+    eids.forEach((id,k)=>{const E=this.edges.get(id);if(!E)return;const len=Math.hypot(E.g.p3.x-E.g.p0.x,E.g.p3.y-E.g.p0.y);const dur=Math.min(2200,Math.max(900,len*2.2));
+      for(let r=0;r<2;r++){const h=sv("circle",{r:11,class:"pkh"}),c=sv("circle",{r:5,class:"pk"});this.pkLayer.append(h,c);this.packets.push({E,h,c,t0:now+k*180+r*dur/2,dur})}});
+    const tick=t=>{for(const p of this.packets){let u=(t-p.t0)/p.dur;if(u<0){p.c.setAttribute("opacity",0);p.h.setAttribute("opacity",0);continue}u=u%1;
+      const e=u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2,pt=bez(p.E.g,e);for(const c of[p.c,p.h]){c.setAttribute("cx",pt.x);c.setAttribute("cy",pt.y)}
+      const o=u<.08?u/.08:u>.92?(1-u)/.08:1;p.c.setAttribute("opacity",o);p.h.setAttribute("opacity",o*.22)}
+      if(this.packets.length)this.raf=requestAnimationFrame(tick)};
+    if(this.packets.length)this.raf=requestAnimationFrame(tick)}
+  stopPackets(){cancelAnimationFrame(this.raf);for(const p of this.packets){p.c.remove();p.h.remove()}this.packets=[]}
+  find(q){q=q.trim().toLowerCase();for(const [i,d] of this.els){const n=this.nodes.get(i);if(n.g)continue;
+    const hit=q&&[n.t,n.s,n.d,n.f].filter(Boolean).join(" ").toLowerCase().includes(q);d.classList.toggle("match",!!hit);d.classList.toggle("dim",!!q&&!hit)}}
+}
+
+/* ====================== PLAYER ====================== */
+const ICON={prev:'<svg viewBox="0 0 16 16"><path d="M10.5 2.5 4.5 8l6 5.5z"/></svg>',next:'<svg viewBox="0 0 16 16"><path d="M5.5 2.5 11.5 8l-6 5.5z"/></svg>',
+  play:'<svg viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5z"/></svg>',pause:'<svg viewBox="0 0 16 16"><path d="M4 2.5h3v11H4zM9 2.5h3v11H9z"/></svg>'};
+class Player{
+  constructor(host){this.host=host;this.i=-1;this.playing=false;this.timer=0;
+    host.innerHTML=`<div class="pl-btns"><button data-a="prev" aria-label="Previous step">${ICON.prev}</button><button class="play" data-a="play" aria-label="Play">${ICON.play}</button><button data-a="next" aria-label="Next step">${ICON.next}</button></div>
+    <div class="pl-text"><div class="pl-meta"></div><div class="pl-title"></div><div class="pl-cap"></div><div class="dots"></div><div class="prog"><i></i></div></div>`;
+    host.addEventListener("click",e=>{const a=e.target.closest("[data-a]")?.dataset.a;if(a==="prev")this.prev();if(a==="next")this.next(true);if(a==="play")this.toggle();
+      const d=e.target.closest("[data-i]");if(d){this.pause();this.go(+d.dataset.i)}});
+    this.meta=host.querySelector(".pl-meta");this.title=host.querySelector(".pl-title");this.cap=host.querySelector(".pl-cap");this.dots=host.querySelector(".dots");this.bar=host.querySelector(".prog i");this.pbtn=host.querySelector(".play")}
+  load(board,name,steps,auto){this.pause();this.board=board;this.name=name;this.steps=steps;
+    this.dots.innerHTML=steps.map((s,i)=>`<button data-i="${i}" aria-label="Step ${i+1}: ${s.t.replace(/"/g,"")}"></button>`).join("");
+    this.go(0);if(auto&&!REDUCE)this.play()}
+  go(i){this.i=Math.max(0,Math.min(this.steps.length-1,i));const st=this.steps[this.i];
+    this.board.show(this.steps,this.i,FOLLOW);
+    this.meta.innerHTML=`<b>${this.name}</b><span>Step ${this.i+1} of ${this.steps.length}</span>`;
+    this.title.textContent=st.t;this.cap.innerHTML=st.c;
+    [...this.dots.children].forEach((d,k)=>{d.classList.toggle("cur",k===this.i);d.classList.toggle("done",k<this.i)});
+    this.restartBar()}
+  dur(){const st=this.steps[this.i];return Math.min(7000,2600+st.c.replace(/<[^>]+>/g,"").length*28)}
+  restartBar(){const b=this.bar;b.style.transition="none";b.style.width="0";if(this.playing){void b.offsetWidth;b.style.transition=`width ${this.dur()}ms linear`;b.style.width="100%"}
+    clearTimeout(this.timer);if(this.playing)this.timer=setTimeout(()=>this.next(false),this.dur())}
+  next(user){if(user)this.pause();if(this.i<this.steps.length-1)this.go(this.i+1);else this.pause()}
+  prev(){this.pause();this.go(this.i-1)}
+  play(){if(this.i>=this.steps.length-1)this.i=-1;this.playing=true;this.pbtn.innerHTML=ICON.pause;this.pbtn.setAttribute("aria-label","Pause");if(this.i<0)this.go(0);else this.restartBar()}
+  pause(){this.playing=false;clearTimeout(this.timer);if(this.pbtn){this.pbtn.innerHTML=ICON.play;this.pbtn.setAttribute("aria-label","Play")}if(this.bar){this.bar.style.transition="none";this.bar.style.width="0"}}
+  toggle(){this.playing?this.pause():this.play()}
+}
+
+/* ====================== DRAWER ====================== */
+const drawer=document.getElementById("drawer");
+function openDrawer(n,board){
+  if(!n){drawer.hidden=true;return}
+  drawer.className="drawer dr k-"+n.k;drawer.style.setProperty("--kc",`var(--k-${n.k})`);
+  const ls=board.links(n.i);
+  drawer.innerHTML=`<button class="x" aria-label="Close">✕</button><div class="dr-k"><i></i>${KIND[n.k]||""}${n.g?" · group":""}</div><h3>${n.t}</h3>${n.s?`<p class="sub">${n.s}</p>`:""}
+  ${n.d?`<p>${n.d}</p>`:""}${n.f?`<h4>Code</h4><div class="files">${n.f}</div>`:""}
+  ${ls.length?`<h4>Connections</h4><ul>${ls.map(l=>`<li><button data-go="${l.other}"><span class="dir">${l.dir}</span><span class="to">${board.nodes.get(l.other).t}</span><span class="el">${l.l||""}</span></button></li>`).join("")}</ul>`:""}`;
+  drawer.hidden=false;
+  drawer.querySelector(".x").onclick=()=>board.select(null);
+  drawer.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{const id=b.dataset.go;board.select(id);if(FOLLOW||true)board.focus([n.i,id],true)});
+}
+
+/* ====================== VIEWS ====================== */
+let FOLLOW=true;
+try{const f=localStorage.getItem("hmi-arch-follow");if(f!==null)FOLLOW=f==="1"}catch(e){}
+const followBtn=document.getElementById("follow");followBtn.setAttribute("aria-pressed",FOLLOW);
+followBtn.onclick=()=>{FOLLOW=!FOLLOW;followBtn.setAttribute("aria-pressed",FOLLOW);try{localStorage.setItem("hmi-arch-follow",FOLLOW?"1":"0")}catch(e){}if(!FOLLOW)cur().board?.fit(true)};
+document.getElementById("fs").onclick=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen().catch(()=>{})}catch(e){}};
+
+// map
+const mapBoard=new Board(document.getElementById("stage-map"),HLD,{legend:1,onSelect:openDrawer});
+const mapPlayer=new Player(document.getElementById("player-map"));
+const flowsBar=document.getElementById("flows");
+flowsBar.innerHTML=HLD.flows.map(f=>`<button class="chip" data-f="${f.id}" aria-pressed="false"><i></i>${f.t}</button>`).join("")+`<input class="find" id="find" type="search" placeholder="Find a box…" aria-label="Find a box">`;
+function loadFlow(id,auto){const f=HLD.flows.find(x=>x.id===id);flowsBar.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",c.dataset.f===id));mapPlayer.load(mapBoard,f.t,f.steps,auto)}
+flowsBar.addEventListener("click",e=>{const c=e.target.closest(".chip");if(c)loadFlow(c.dataset.f,true)});
+document.getElementById("find").addEventListener("input",e=>mapBoard.find(e.target.value));
+
+// lld
+const lldList=document.getElementById("lldlist"),lldHead=document.getElementById("lldhead"),lldHost=document.getElementById("lldhost");
+const lldPlayer=new Player(document.getElementById("player-lld"));const lldBoards={};let lldCur=null;
+lldList.innerHTML=LLD.map((d,i)=>`<button data-l="${d.id}"><span class="n">${String(i+1).padStart(2,"0")} / ${LLD.length}</span><b>${d.t}</b><span>${d.s}</span></button>`).join("");
+lldList.addEventListener("click",e=>{const b=e.target.closest("[data-l]");if(b)location.hash="lld-"+b.dataset.l});
+function showLLD(id){
+  const d=LLD.find(x=>x.id===id)||LLD[0];lldCur=d;
+  lldList.querySelectorAll("[data-l]").forEach(b=>b.setAttribute("aria-current",b.dataset.l===d.id));
+  lldHead.innerHTML=`<h2>${d.t}</h2><p>${d.s}</p><div class="files">${d.f}</div>`;
+  Object.values(lldBoards).forEach(b=>b.host.hidden=true);
+  if(!lldBoards[d.id]){const h=el("div");lldHost.append(h);lldBoards[d.id]=new Board(h,d,{onSelect:openDrawer})}
+  const B=lldBoards[d.id];B.host.hidden=false;requestAnimationFrame(()=>{B.fit(false);lldPlayer.load(B,d.t,d.steps,true)});
+}
+
+// journey
+const PHASES=[
+{d:"Sep 10–12",t:"Hackathon build",items:["The browser writes .eote files that OTE opens, from a TypeScript packager checked against a Python one","Tag parsing and validation; the shipped symbol library made placeable","Gemini reads the request; Claude stays an option","The eight-step pipeline, streamed to a canvas; board view and conversational editor","Won the Schneider Electric HMI hackathon on Sep 12"],m:"467 tests · submitted at e1d9642"},
+{d:"Sep 17",t:"Re-think as a product",items:["REENGINEERING.md: a standards compiler with an AI front end; the model never does geometry","Plant Model as the product's own document; screens are projections of it","Stable handles (o12, s2), region and anchor slots, dry run plus one repair plus one undo","Reader with a byte-identical round trip; Open .eote; proposals ghosted on the canvas"],m:"root cause of 'bad after two prompts': a small model doing geometry over a flat digest"},
+{d:"Oct 1–7",t:"More formats in",items:["MongoDB for opened projects and the skeleton, so a deployed instance can export","The .vxdz task and its four encodings","Vijeo .vdz migrates to OTE; tags go to Vijeo through the engineer's own export","Deep audit: safe ingest, Control Expert import, a knowledge base, regenerate as a diff"]},
+{d:"Oct 16–17",t:"Licensed bench and teams",items:["A UI Automation bench on licensed OTE 4.4.20.31","Compound Object format reverse-engineered; 38 samples round-trip entry-identical","Accounts, shared projects, chunked upload, live co-editing over SSE, the Copilot as a collaborator","Two Vercel projects collapsed into one"]},
+{d:"Oct 29–31",t:"A real project and an agent",items:["PLAN_FULL_ARCHITECTURE: data stays in Mongo, Supabase only for Realtime, Credentials sign-in","The first engineer-made .eote (HMI ST6600, M251, ATV340); PLC-symbol binding fixed","Lossless parts: fields lost on the corpus 7,500+ → 0; Compound Objects drawn from definitions","The agent: a working directory, 30 tools, QuickJS, then a Vercel Sandbox shell","MCP server and Supabase Realtime started on team branches"]},
+{d:"Nov 3",t:"Architecture lands",items:["Team branches s1–s7 merged: sign-in, live sync, plant brief, claude.ai connector, generate job, preview cards","Project-native work merged; server render fix; Realtime on Supabase's new keys"]},
+{d:"Nov 5–6",t:"Audit, Database v2, the rest",items:["An 84-row audit; 79 closed, five left for OTE bench work","Database v2: 74.77 MB → 3.86 MB on production; fewer database trips per request","Layout solver with nested cards; components by name; a knowledge index (kb_search)","Account management; the Realtime INSERT policy dropped"],m:"1,547 tests passing after the merge"},
+{d:"Nov 10–11",t:"Where we are now",now:1,items:["Connector: create, rename, duplicate and delete projects; new ops setStyle, setAction, addTag, setTag, deleteTag","Graphite UI with three Copilot modes; P&ID shapes (pump casing, valve, vessel level); the Evergreen theme","Chat as a tool loop on Gemini 3.8 Flash; MCP tab with past proposals and a gap log","Binding map; clarifying answers as buttons; proposals as a queue"],m:"373 commits on main · 1,776 tests on the last full run"},
+];
+const COLS=["Sep 10","Sep 17","Oct 7","Oct 17","Oct 31","Nov 3","Nov 6","Nov 11"];
+// 1 present, b on a branch, x replaced at this column
+const MX=[
+["Packager writes .eote","11111111"],["Gemini through one provider seam","11111111"],["Claude through the same seam","11111111"],
+["Region slots instead of model geometry","01111111"],["Reader with byte-identical round trip","01111111"],
+["MongoDB + GridFS","00111111"],["Vijeo and Control Expert import","00111111"],["Knowledge base","00111111"],
+["GitHub / Google sign-in","0001bx00"],["Credentials + our own OAuth server","000bb111"],
+["SSE live sync (cut at 60 s)","00011x00"],["Supabase Realtime hints","0000b111"],
+["Compound Objects read and built","00011111"],["Lossless parts, COs drawn","0000b111"],
+["Agent: workspace, 30 tools, QuickJS","0000b111"],["Vercel Sandbox shell","0000b111"],
+["claude.ai connector (MCP)","0000b111"],["Plant brief, reviewed first","0000b111"],
+["Database v2 pieces","00000011"],["Layout solver","00000011"],["Knowledge index (kb_search)","00000011"],
+["Chat as a tool loop","00000001"],["Proposals queue + gap log","00000001"],
+];
+const DEC=[
+{w:"Sep 17",t:"The model stops drawing",b:"Prompt → screen: the model chose coordinates",a:"A standards compiler: the model picks parts and intent, code does layout",y:"After two or three edits a small model doing geometry produced overlaps. Region slots and later a constraint solver fixed it."},
+{w:"Sep 17",t:"Read before writing more",b:"A write-only generator",a:"A lossless reader with byte-identical round trip",y:"Engineers already have projects. Nobody hands over a second one if the tool drops what it does not understand."},
+{w:"Sep 17 → Oct 31",t:"Native objects, not look-alikes",b:"Rectangles imitating OTE objects",a:"Master screens, the engineer's Compound Objects, native bindings",y:"The real Panel-1 project showed bare tag names bind to nothing on a panel."},
+{w:"Sep 17 → Oct",t:"Hosted, not desktop",b:"Proposed: a Tauri desktop app with local SQLite",a:"One Next.js app on Vercel, the skeleton stored per deployment",y:"One deployment is easier to share, review and demo. The licensed OTE stays on the laptop as the judge."},
+{w:"Oct 17",t:"One deployment",b:"Two Vercel projects from one repo",a:"Only project web, at one URL",y:"Testing on one while checking another, with different env vars, wasted days."},
+{w:"Oct 29",t:"Mongo stays",b:"A planned move to Postgres and a storage bucket",a:"All data and binaries in MongoDB; a second service only where needed",y:"It was built and tested. Two databases only where one cannot do the job."},
+{w:"Oct 29 → Nov 3",t:"Realtime for one job",b:"SSE streams that Vercel cut at 60 s",a:"Supabase Realtime carries only a small hint; the API carries the ops",y:"Free-plan messages cap at 256 KB, and Mongo already decides who wins."},
+{w:"Oct 29 → Nov 3",t:"Our own sign-in",b:"GitHub and Google OAuth",a:"NextAuth Credentials, plus our own OAuth server for claude.ai",y:"No user migration was needed, and the connector needed an OAuth server of ours anyway."},
+{w:"Oct 29 → Nov 3",t:"A person between words and build",b:"draftTags went straight to generation",a:"A plant brief from a catalogue, confirmed before anything is built",y:"The model could add equipment the plant does not have, and nothing checked."},
+{w:"Oct 30",t:"An agent on the file",b:"A Copilot limited to fixed ops",a:"A working directory with 30 tools, scripts and a sandboxed shell",y:"Some jobs need the raw project: copy the engineer's own button and bind it the same way."},
+{w:"Nov 3",t:"Proposals by default",b:"Connector writes applied directly",a:"Writes become proposals; direct writes need manage rights",y:"An HMI is what an operator looks at during an upset. A person accepts every change."},
+{w:"Nov 5",t:"Store pieces, not copies",b:"Every version a full project copy",a:"Content-addressed, compressed pieces with a manifest",y:"97.6% of the database was versions; the free cluster would have filled with about 15 projects."},
+{w:"Nov 11",t:"Chat works like Claude over MCP",b:"One model call returns a fixed list of ops",a:"A tool loop: look up, try on a draft, look at a picture, validate, finish",y:"Claude over MCP made better screens than the in-app chat, because it could look and retry."},
+];
+function buildJourney(){
+  const J=document.getElementById("journey");
+  const stats=[["373","commits on main"],["61","API routes"],["26","ops in one write path"],["8","pipeline steps"],["30","agent tools"],["23","MCP tools"],["182","test files"],["~72.7k","lines of TypeScript"]];
+  J.innerHTML=`
+  <section><h2>From a hackathon win to a product</h2><p class="lede">Built in about two months. Each phase below is taken from the merges on main; the matrix shows which parts existed at each point and which ones were replaced.</p>
+  <div class="stats">${stats.map(s=>`<div><b>${s[0]}</b><span>${s[1]}</span></div>`).join("")}</div></section>
+  <section><h2>Build phases</h2><div class="tl">${PHASES.map((p,i)=>`<article class="ph${p.now?" now":""}" style="animation-delay:${i*70}ms"><div class="d">${p.d}<b>${p.t}</b></div><ul>${p.items.map(x=>`<li>${x}</li>`).join("")}</ul>${p.m?`<div class="m">${p.m}</div>`:""}</article>`).join("")}</div></section>
+  <section><h2>What the system was made of, phase by phase</h2>
+   <div class="mx-bar"><button class="ibtn" id="mxplay">Play through</button><div class="key"><span><i class="c c1" style="display:inline-block"></i>on main</span><span><i class="c cb" style="display:inline-block"></i>on a branch</span><span><i class="c cx" style="display:inline-block"></i>replaced here</span></div><span>Click a date to highlight it.</span></div>
+   <div class="mx-wrap"><table class="mx"><thead><tr><th>Part</th>${COLS.map((c,i)=>`<th data-c="${i}">${c}</th>`).join("")}</tr></thead>
+   <tbody>${MX.map(r=>`<tr><td>${r[0]}</td>${[...r[1]].map((v,i)=>`<td data-c="${i}">${v==="1"?'<i class="c c1" title="on main"></i>':v==="b"?'<i class="c cb" title="on a branch"></i>':v==="x"?'<i class="c cx" title="replaced"></i>':""}</td>`).join("")}</tr>`).join("")}</tbody></table></div></section>
+  <section><h2>Decisions that changed the architecture</h2><p class="lede">What we started with, what replaced it, and why.</p>
+   <div class="dec">${DEC.map(d=>`<article class="dc"><span class="when">${d.w}</span><h3>${d.t}</h3><div class="ba"><div class="b">${d.b}</div><div class="ar">→</div><div class="a">${d.a}</div></div><p>${d.y}</p></article>`).join("")}</div></section>
+  <section><h2>Where we stand on Nov 11</h2><div class="now2">
+   <div class="col ok"><h3>Live at hmibuildtimecopilot.vercel.app</h3><ul><li>Tags or a sentence → multi-screen .eote that OTE 4.4 opens and simulates</li><li>Open an engineer's .eote losslessly, Compound Objects drawn</li><li>Chat tool loop, agent with 30 tools, claude.ai connector with 23 tools</li><li>Proposals with review, co-editing over Supabase hints, accounts and shares</li><li>Database v2 on production</li></ul></div>
+   <div class="col open"><h3>Still open</h3><ul><li>Gemini free tier (20 calls a day); the chat loop not yet seen end to end live</li><li>Master screens not drawn yet (S1-10, on a branch)</li><li>TIME, USINT and structured variables; dangling binding rows on delete</li><li>No sign-off workflow or compare-with-source before export</li><li>MCP Apps cards and the agent shell not yet seen working from production</li><li>The lab runs OTE 4.1; our exports are 4.4 and are moved into a 4.1 project</li></ul></div>
+  </div></section>`;
+  const tbl=J.querySelector("table.mx");let ti=0;
+  const hl=c=>{tbl.querySelectorAll(".hl").forEach(x=>x.classList.remove("hl"));if(c==null)return;tbl.querySelectorAll(`[data-c="${c}"]`).forEach(x=>x.classList.add("hl"))};
+  tbl.addEventListener("click",e=>{const th=e.target.closest("th[data-c]");if(th)hl(+th.dataset.c)});
+  J.querySelector("#mxplay").onclick=()=>{clearInterval(ti);let c=0;hl(c);ti=setInterval(()=>{c++;if(c>=COLS.length){clearInterval(ti);return}hl(c)},REDUCE?0:1100)};
+  hl(COLS.length-1);
+}
+buildJourney();
+
+// routing
+const views={map:document.getElementById("v-map"),lld:document.getElementById("v-lld"),journey:document.getElementById("v-journey")};
+let curView="map";
+function cur(){return curView==="map"?{board:mapBoard,player:mapPlayer}:curView==="lld"?{board:lldCur&&lldBoards[lldCur.id],player:lldPlayer}:{}}
+let mapStarted=false;
+function route(){
+  const h=(location.hash||"#map").slice(1);const v=h.startsWith("lld")?"lld":views[h]?h:"map";
+  if(v!==curView){mapPlayer.pause();lldPlayer.pause()}
+  curView=v;for(const k in views)views[k].hidden=k!==v;
+  document.querySelectorAll(".tabs a").forEach(a=>a.setAttribute("aria-current",a.dataset.v===v?"page":"false"));
+  drawer.hidden=true;
+  if(v==="map")requestAnimationFrame(()=>{mapBoard.fit(false);if(!mapStarted){mapStarted=true;loadFlow("tour",false)}else mapPlayer.go(mapPlayer.i)});
+  if(v==="lld")showLLD(h.slice(4)||(lldCur&&lldCur.id)||LLD[0].id);
+}
+addEventListener("hashchange",route);route();
+
+document.addEventListener("keydown",e=>{
+  if(e.target.matches("input,textarea"))return;const c=cur();if(!c.player)return;
+  if(e.key==="ArrowRight"){e.preventDefault();c.player.next(true)}
+  else if(e.key==="ArrowLeft"){e.preventDefault();c.player.prev()}
+  else if(e.key===" "&&!e.target.closest("button,.box")){e.preventDefault();c.player.toggle()}
+  else if(e.key==="f"||e.key==="F"){c.board&&c.board.fit(true)}
+  else if(e.key==="Escape"){c.board&&c.board.select(null)}
+});
+</script>
