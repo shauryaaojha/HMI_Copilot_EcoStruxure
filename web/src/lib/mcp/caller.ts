@@ -46,6 +46,8 @@ export interface Caller {
    * "no narrowing": the caller may do whatever their project role allows.
    */
   scopes?: string[];
+  /** The app's public origin for this call, for links a tool hands back (export, upload). */
+  origin?: string;
 }
 
 /** The caller as the role matrix takes them. */

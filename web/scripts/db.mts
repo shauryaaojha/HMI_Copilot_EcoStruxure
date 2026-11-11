@@ -9,6 +9,7 @@
  *                                    .backups/<stamp>/, rewrite it as a manifest, sweep
  *   npm run db -- gc                 sweep unreferenced pieces in every project
  *   npm run db -- gaps [n]           what the connector was asked for and could not do, newest n
+ *   npm run db -- rejections [n]     refused ops kept on the last n proposals, grouped by kind
  *                                    rows (default 200), grouped so the commonest gap is first
  *
  * Migrating is optional for correctness - v2 reads v1 rows - and is what
@@ -178,14 +179,43 @@ async function gaps(limit: number) {
   }
 }
 
+/**
+ * What proposals were refused, grouped like the gap log. The gap log only
+ * starts with schema v4; proposals have carried their refusals since the
+ * beginning, so this reads the history the gap log never saw.
+ */
+async function rejections(limit: number) {
+  const rows = await db.collection("proposals").find({}, { projection: { rejected: 1, request: 1, via: 1, createdAt: 1, status: 1 } }).sort({ createdAt: -1 }).limit(limit).toArray();
+  const shape = (detail: string) => detail.replace(/"[^"]*"/g, '"…"').replace(/\b[os]\d+\b/gi, "#").replace(/\b[A-Z][A-Za-z0-9]*_[A-Za-z0-9_]+\b/g, "NAME").replace(/\d+/g, "N");
+  const groups = new Map<string, { count: number; example: string; proposals: Set<string> }>();
+  let total = 0;
+  for (const row of rows) {
+    for (const reason of (row.rejected ?? []) as string[]) {
+      total++;
+      const key = shape(String(reason)).slice(0, 160);
+      const g = groups.get(key) ?? { count: 0, example: String(reason), proposals: new Set<string>() };
+      g.count++;
+      g.proposals.add(String(row._id));
+      groups.set(key, g);
+    }
+  }
+  if (total === 0) return console.log(`No refusals in the last ${rows.length} proposals.`);
+  console.log(`${total} refused op(s) in the last ${rows.length} proposals, ${groups.size} kind(s)\n`);
+  for (const [key, g] of [...groups].sort((a, b) => b[1].count - a[1].count)) {
+    console.log(`${String(g.count).padStart(4)}x in ${g.proposals.size} proposal(s)  ${key}`);
+    console.log(`       e.g. ${g.example.slice(0, 220)}`);
+  }
+}
+
 try {
-  if (command === "stats") await stats();
+  if (command === "rejections") await rejections(Number(flags[0]) || 300);
+  else if (command === "stats") await stats();
   else if (command === "verify") await verify();
   else if (command === "migrate") await migrate();
   else if (command === "gc") await gc();
   else if (command === "reset-password") await resetPasswordCommand(flags[0]);
   else if (command === "gaps") await gaps(Number(flags[0]) || 200);
-  else { console.error(`Unknown command ${command}. Use stats, verify, migrate [--apply], gc, gaps [n] or reset-password <email>.`); process.exitCode = 1; }
+  else { console.error(`Unknown command ${command}. Use stats, verify, migrate [--apply], gc, gaps [n], rejections [n] or reset-password <email>.`); process.exitCode = 1; }
 } finally {
   await (await mongoClient()).close();
 }

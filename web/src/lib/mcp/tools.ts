@@ -20,12 +20,17 @@ import { GENERATE_TOOLS } from "./generate";
 import { INTAKE_TOOLS } from "./intake";
 import { KB_TOOLS } from "./kb";
 import { MANAGE_TOOLS } from "./manage";
+import { GUIDE_TOOLS } from "./guide";
+import { PORT_TOOLS } from "./port";
 import { READ_TOOLS } from "./read";
 import { refusal, toolResult, type ToolOutput } from "./result";
+import { SCREEN_TOOLS } from "./screens";
 import type { McpTool, ToolContext } from "./spec";
 import { WRITE_TOOLS } from "./write";
 
-export const TOOLS: readonly McpTool[] = [...READ_TOOLS, ...KB_TOOLS, ...WRITE_TOOLS, ...INTAKE_TOOLS, ...MANAGE_TOOLS, ...GENERATE_TOOLS];
+export const TOOLS: readonly McpTool[] = [
+  ...GUIDE_TOOLS, ...READ_TOOLS, ...KB_TOOLS, ...WRITE_TOOLS, ...SCREEN_TOOLS, ...INTAKE_TOOLS, ...PORT_TOOLS, ...MANAGE_TOOLS, ...GENERATE_TOOLS,
+];
 
 /**
  * The scope a narrowed credential needs for this tool, or null when it has it.

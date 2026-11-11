@@ -60,7 +60,8 @@ export async function unlockScreen(user: User | null, projectId: string, screenI
   await storage.locks.release(projectId, screenId, user.id);
 }
 
-const Ops = z.array(Op).max(200);
+/** 200 from a caller, more when the server adds its own (replace_screen's clearing). */
+const Ops = z.array(Op).max(600);
 
 /**
  * The project with every open proposal applied, oldest first: what it will be

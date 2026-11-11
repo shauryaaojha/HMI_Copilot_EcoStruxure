@@ -27,6 +27,7 @@ import { checkOrigin, insufficientScope, unauthorized } from "@/lib/mcp/http";
 import { missingScope, TOOLS } from "@/lib/mcp/tools";
 import { handleMcpRequest, MOST_MCP_BODY } from "@/lib/mcp/server";
 import { readBody } from "@/lib/ingest/body";
+import { publicOrigin } from "@/lib/server/origin";
 
 export const runtime = "nodejs";
 /**
@@ -41,8 +42,9 @@ export const maxDuration = 120;
 export async function POST(request: Request): Promise<Response> {
   try {
     checkOrigin(request);
-    const caller = await resolveCaller(request);
-    if (!caller) return unauthorized(request);
+    const resolved = await resolveCaller(request);
+    if (!resolved) return unauthorized(request);
+    const caller = { ...resolved, origin: publicOrigin(request) };
     // A scope failure is an HTTP challenge so an OAuth client can ask the
     // engineer for the missing grant. The tool handler still checks it too.
     // Read once and replayed: a clone abandoned part way never lets the original

@@ -165,6 +165,22 @@ export function relevantTags(
     .map((x) => x.v);
 }
 
+/**
+ * The same ranking with its scores, for a caller that has to say how sure it
+ * is: `match_tags` calls a phrase settled only when one tag is clearly ahead.
+ */
+export function scoredTags(variables: Variable[], request: string, limit = 5): { tag: Variable; score: number }[] {
+  const want = wanted(request);
+  const owns = variables.map((v) => new Set([...nameTokens(v.Name), ...tokens(v.Comments ?? "")]));
+  const rare = rarity(owns);
+  return variables
+    .map((v, index) => ({ tag: v, score: scoreOf(owns[index], want, rare) + (saidOutright(request, v.Name) ? 50 : 0), index }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, limit)
+    .map(({ tag, score }) => ({ tag, score }));
+}
+
 /** The lookup behind the `find_tags` tool: same scoring, any query. */
 export function findTags(variables: Variable[], query: string, limit = 25): Variable[] {
   return relevantTags(variables, query, { limit });
