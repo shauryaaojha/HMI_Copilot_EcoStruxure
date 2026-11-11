@@ -10,6 +10,7 @@
  * Phase 9 of docs/BUILD_PLAN.md.
  */
 
+import { ColourModeSwitch } from "@/components/standards/ColourModeSwitch";
 import { useState } from "react";
 import { KnowledgePanel } from "./KnowledgePanel";
 import { useAccess, useCanEdit } from "@/store/access";
@@ -90,6 +91,14 @@ export function SettingsScreen() {
                 onChange={(on) => setStandards({ reviewAiEdits: on })}
                 label="Review every AI edit before it lands (management of change)"
               />
+              <Field label="Colours">
+                <ColourModeSwitch />
+              </Field>
+              <p className="text-xs text-text-faint">
+                Standard holds faces to neutral greys with colour only for alarms, and
+                validation warns on anything else. Our own colours keeps what the screens
+                were drawn with, in the app and through the connector.
+              </p>
               <p className="text-xs text-text-faint">
                 These are company standards and live on the Standards screen too;
                 both write the same values.

@@ -13,7 +13,7 @@ import { alarmTriggers } from "@/lib/sim/alarms";
 import type { Doc } from "./types";
 
 /** Everything /api/export and /api/validate need, from a store state or a snapshot. */
-export function packageInputOf(doc: Pick<Doc, "name" | "target" | "screens" | "variables" | "alarms" | "bindings" | "plant" | "source"> & Partial<Pick<Doc, "tagImport">>) {
+export function packageInputOf(doc: Pick<Doc, "name" | "target" | "screens" | "variables" | "alarms" | "bindings" | "plant" | "source"> & Partial<Pick<Doc, "tagImport" | "standards">>) {
   // Placeholder tags (screens first) are not the plant's: the file gets the
   // screens, and no variables, bindings or alarms until the real tags arrive.
   if (doc.tagImport?.pending) doc = { ...doc, variables: [], alarms: [], bindings: [] };
@@ -58,5 +58,7 @@ export function packageInputOf(doc: Pick<Doc, "name" | "target" | "screens" | "v
     plant: doc.plant,
     // Set when the project was opened from a file: export writes back into it.
     source: doc.source,
+    // Validation reads it: a project on its own colours gets no colour warnings.
+    ...(doc.standards?.colours === "own" ? { colours: "own" as const } : {}),
   };
 }

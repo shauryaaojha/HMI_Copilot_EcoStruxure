@@ -78,6 +78,8 @@ const VALUE_TYPES = new Set<Part["Type"]>([
 ]);
 
 export function lintPack(project: PackageInput, pack: StandardPack = DEFAULT_PACK): Finding[] {
+  // The project chose its own colours: the colour rule is the engineer's call, not a finding.
+  const ownColours = project.colours === "own";
   const findings: Finding[] = [];
   const neutral = neutralSet(pack);
   const signal = signalSet(pack);
@@ -88,7 +90,7 @@ export function lintPack(project: PackageInput, pack: StandardPack = DEFAULT_PAC
     const parts = screen.Children[0].Children;
 
     // --- colour.abnormalOnly -------------------------------------------
-    for (const part of parts) {
+    for (const part of ownColours ? [] : parts) {
       for (const { face, label, normal } of facesOf(part)) {
         for (const key of ["Fill", "Border", "TextColor", "Stroke"]) {
           const c = colourOf(face, key);

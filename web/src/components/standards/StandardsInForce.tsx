@@ -74,7 +74,9 @@ export function StandardsInForce() {
         "Level 1 plant overview above Level 2 unit overviews above Level 3 detail",
         `At most ${UNITS_PER_SCREEN} units on a unit display — split rather than crowd`,
         "Header, navigation strip and alarm banner at the same position on every screen",
-        "Colour as a signal: neutral while normal, red and amber for abnormal only",
+        standards.colours === "own"
+          ? "Colour: this project keeps its own colours, so the colour rule is off (Settings or Validation to change)"
+          : "Colour as a signal: neutral while normal, red and amber for abnormal only",
       ],
       applied:
         screens.length > 0

@@ -207,3 +207,27 @@ describe("applying the pack to a screen drawn without it", () => {
       .some((f) => f.rule === "colour.abnormalOnly")).toBe(true);
   });
 });
+
+describe("a project on its own colours", () => {
+  const coloured = () => project([rectangle("Banner", { left: 0, top: 0, width: 1024, height: 56 }, { fill: GREEN, border: GREEN }) as ReturnType<typeof lamp>]);
+
+  it("is warned about colours outside the pack by default", () => {
+    expect(lintPack(coloured()).some((f) => f.rule === "colour.abnormalOnly")).toBe(true);
+  });
+
+  it("gets no colour finding, and keeps every other rule", () => {
+    const small = textBox("Tiny", "x", { left: 0, top: 100, width: 40, height: 10 }) as ReturnType<typeof lamp>;
+    if ("Font" in small && small.Font) (small.Font as { Size: number }).Size = 6;
+    const input = { ...project([small, ...coloured().screens[0].Children[0].Children] as ReturnType<typeof lamp>[]), colours: "own" as const };
+    const findings = lintPack(input);
+    expect(findings.filter((f) => f.rule === "colour.abnormalOnly")).toEqual([]);
+    expect(findings.some((f) => f.rule === "text.fontFloor")).toBe(true);
+  });
+
+  it("carries the choice from the saved project to the checks the connector runs", async () => {
+    const { packageInputOf } = await import("@/lib/collab/package");
+    const base = { ...coloured(), bindings: [], plant: undefined, source: undefined };
+    expect(packageInputOf({ ...base, standards: { colours: "own" } } as never).colours).toBe("own");
+    expect(packageInputOf({ ...base, standards: {} } as never).colours).toBeUndefined();
+  });
+});

@@ -83,6 +83,7 @@ export function useValidation() {
           // traces to a row the engineer confirmed. The export sends no brief,
           // because it leaves the placeholders out altogether.
           brief: s.tagImport?.brief,
+          colours: s.standards.colours,
         }),
       });
 

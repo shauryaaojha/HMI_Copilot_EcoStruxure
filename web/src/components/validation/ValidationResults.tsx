@@ -18,6 +18,7 @@ import { useProject, type Finding } from "@/store/project";
 import { Badge, Button, cn } from "@/components/ui";
 import { summarise, useValidation } from "./useValidation";
 import { CriticPanel } from "./CriticPanel";
+import { ColourModeSwitch } from "@/components/standards/ColourModeSwitch";
 
 type Filter = "all" | "error" | "warning" | "info";
 
@@ -89,9 +90,10 @@ export function ValidationResults({ projectId }: { projectId?: string }) {
             ? `Last run ${new Date(ranAt).toLocaleTimeString("en-GB", { hour12: false })}`
             : "Not run yet."}
         </p>
+        {/* The colour rule follows this: a fresh run says what the choice means. */}
+        <ColourModeSwitch className="ml-auto" onChange={() => { if (ranAt) void validate(); }} />
         <Button
           variant="primary"
-          className="ml-auto"
           disabled={running}
           onClick={() => void validate()}
           icon={<Play size={15} />}

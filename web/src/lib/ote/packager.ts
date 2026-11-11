@@ -66,6 +66,11 @@ export interface PackageInput {
    * row of it; the packager, as with `plant`, writes nothing from it.
    */
   brief?: ConfirmedBrief;
+  /**
+   * The project's colour mode (store/types Standards.colours), for validation
+   * only: "own" turns the pack's colour rule off. Absent means standard.
+   */
+  colours?: "standard" | "own";
 }
 
 /** The product writes its .dat files as UTF-8 JSON indented by two spaces. */
