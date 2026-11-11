@@ -115,7 +115,7 @@ export function RunOverlay() {
   return (
     <section
       aria-label="Build timeline"
-      className="menu animate-pop pointer-events-auto w-[min(30rem,calc(100%-2rem))] overflow-hidden backdrop-blur"
+      className="menu animate-pop pointer-events-auto w-[min(30rem,calc(100%-2rem))] overflow-hidden"
       style={{ boxShadow: "var(--elev-3)" }}
     >
       <header className="flex items-center gap-2 border-b border-line-subtle px-3 py-2">
