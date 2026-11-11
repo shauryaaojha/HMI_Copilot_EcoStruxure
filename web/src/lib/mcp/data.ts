@@ -80,9 +80,14 @@ export function limited(lines: string[], budget: number): string[] {
   return out;
 }
 
+/** Text cut at a line to a character limit, saying so. */
+export function cappedTo(text: string, limit: number): string {
+  if (text.length <= limit) return text;
+  const keep = text.slice(0, limit - 120);
+  return `${keep.slice(0, keep.lastIndexOf("\n") + 1 || keep.length)}… cut here: the answer passed the ${limit}-character limit. Ask for one screen or a narrower query.`;
+}
+
 /** The last guard before a result leaves: no tool answer exceeds Claude's cap. */
 export function capped(text: string): string {
-  if (text.length <= RESULT_LIMIT) return text;
-  const keep = text.slice(0, RESULT_LIMIT - 120);
-  return `${keep.slice(0, keep.lastIndexOf("\n") + 1 || keep.length)}… cut here: the answer passed the ${RESULT_LIMIT}-character limit. Ask for one screen or a narrower query.`;
+  return cappedTo(text, RESULT_LIMIT);
 }

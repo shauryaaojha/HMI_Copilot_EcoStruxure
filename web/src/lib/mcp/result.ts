@@ -12,7 +12,18 @@
  * wants one sets `ui` on its output and nothing else about it changes.
  */
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { capped } from "./data";
+import { capped, cappedTo } from "./data";
+
+/**
+ * How much of the text is repeated inside `structuredContent`. Claude Code hands
+ * the model the structured object in place of the text content, so a result
+ * whose structured part was only counts (`{"errors":4}`) left it blind to the
+ * findings, the screens and the guide. The copy is the same fenced text, so the
+ * fence of `data.ts` still stands around every customer string; and it is held
+ * to a share of the result cap because a host that sends both would otherwise
+ * be sent the answer twice.
+ */
+export const MIRROR_LIMIT = 60_000;
 
 export interface ToolOutput {
   /** What the model reads. Capped at Claude's result limit on the way out. */
@@ -39,7 +50,9 @@ export function toolResult(output: ToolOutput): CallToolResult {
   }
   return {
     content,
-    ...(output.structured ? { structuredContent: output.structured } : {}),
+    ...(output.structured
+      ? { structuredContent: output.text !== undefined ? { ...output.structured, text: cappedTo(output.text, MIRROR_LIMIT) } : output.structured }
+      : {}),
     ...(output.ui ? { _meta: { ui: output.ui } } : {}),
     ...(output.isError ? { isError: true } : {}),
   };

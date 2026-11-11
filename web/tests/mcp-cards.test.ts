@@ -237,21 +237,50 @@ describe("a client with no UI support", () => {
     expect(validation.content.filter(c => c.type === "text")).toHaveLength(1);
     expect(validation.content[0].text).toMatch(/^\d+ findings: \d+ errors, \d+ warnings, \d+ info\./);
     expect(validation.content[0].text).toContain("<project-data kind=\"findings\">");
-    expect(Object.keys(validation.structuredContent!).sort()).toEqual(["all", "errors", "info", "warnings"]);
+    expect(Object.keys(validation.structuredContent!).sort()).toEqual(["all", "errors", "info", "text", "warnings"]);
 
     const render = await call("render_screen", { projectId: ID, screenId: "s1" });
     expect(render.content.map(c => c.type)).toEqual(["text", "image"]);
     expect(render.content[0].text).toContain("1024x600");
-    expect(Object.keys(render.structuredContent!).sort()).toEqual(["handle", "height", "scale", "width"]);
+    expect(Object.keys(render.structuredContent!).sort()).toEqual(["handle", "height", "scale", "text", "width"]);
   });
 
-  it("keeps the card's copy of a customer's string out of structuredContent", async () => {
-    // A host may hand the model `structuredContent` instead of the text, and
-    // the text is where lib/mcp/data.ts puts its fence. So the card's data -
-    // screen names, object names, tag names - rides in `_meta.ui` only.
+  it("repeats the text in structuredContent so a host that shows only that still sees the findings", async () => {
+    // Claude Code hands the model `structuredContent` instead of the text. When
+    // that was only counts, validate answered "4 errors" and nothing else.
+    const validation = await call("validate", { projectId: ID });
+    expect(validation.structuredContent!.text).toBe(validation.content[0].text);
+  });
+
+  it("keeps a customer's string out of structuredContent except inside the fence", async () => {
+    // The text is where lib/mcp/data.ts puts its fence, and a host may show
+    // `structuredContent` alone. So no field of it carries a screen, object or
+    // tag name bare; the only copy is the mirrored text, fence and all, and the
+    // card's own data rides in `_meta.ui`.
     const render = await call("render_screen", { projectId: ID, screenId: "s1" });
-    expect(JSON.stringify(render.structuredContent)).not.toContain("PMP_101_RUN");
+    const { text, ...fields } = render.structuredContent as { text: string } & Record<string, unknown>;
+    expect(JSON.stringify(fields)).not.toContain("PMP_101_RUN");
+    if (text.includes("PMP_101_RUN")) {
+      const open = text.indexOf("<project-data");
+      expect(open).toBeGreaterThanOrEqual(0);
+      expect(text.indexOf("PMP_101_RUN")).toBeGreaterThan(open);
+    }
     expect(JSON.stringify(render._meta)).toContain("PMP_101_RUN");
+  });
+
+  it("opens with a count by rule, and shows only a few of each layout tidy-up", async () => {
+    const validation = await call("validate", { projectId: ID });
+    const text = validation.content[0].text!;
+    expect(text).toMatch(/\nBy rule: /);
+    expect(text.indexOf("By rule:")).toBeLessThan(text.indexOf("<project-data"));
+    const perRule = new Map<string, number>();
+    for (const line of text.split("\n")) {
+      const m = /^\[info\] (layout\.offGrid|geom\.nearMiss): (?!\d+ more)/.exec(line);
+      if (m) perRule.set(m[1], (perRule.get(m[1]) ?? 0) + 1);
+    }
+    for (const n of perRule.values()) expect(n).toBeLessThanOrEqual(3);
+    // An unused tag is not noise: it is named, even with the layout rules capped.
+    expect(text).toContain("LVL_201_PV");
   });
 
   it("puts the card in _meta and nowhere else, for any tool that sets one", () => {

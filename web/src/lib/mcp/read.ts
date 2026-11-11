@@ -164,6 +164,30 @@ const findTagsTool = tool({
   },
 });
 
+/**
+ * The info rules a big project repeats by the hundred, each a layout tidy-up
+ * about a position rather than something wrong with a tag or a binding.
+ * `validate` lists a few examples of these and counts the rest. Every other
+ * info finding (an unused tag, say) names a thing the engineer can act on, so
+ * it is listed in full.
+ */
+const COUNTED_INFO_RULES = new Set(["layout.offGrid", "geom.nearMiss"]);
+const INFO_PER_RULE = 3;
+
+/**
+ * Findings counted by severity and rule, worst first: "error nav.reachable x4;
+ * warning completeness x10". Rule names are ours, not the customer's, so this
+ * line sits outside the fence.
+ */
+function tally(findings: Finding[]): string {
+  const counts = new Map<string, number>();
+  for (const f of findings) {
+    const key = `${f.severity} ${f.rule}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts.size === 0 ? "" : `By rule: ${[...counts].map(([key, n]) => `${key} x${n}`).join("; ")}`;
+}
+
 const validate = tool({
   name: "validate",
   title: "Validate",
@@ -183,15 +207,33 @@ const validate = tool({
       if (part) return `${handleOf(doc, part.UniqueId)} ${field(part.Name, 80)}`;
       return f.tag ? `tag ${field(f.tag, 120)}` : "";
     };
-    const lines = findings.map((f) => {
+    const lineOf = (f: Finding) => {
       const at = where(f);
       return `[${f.severity}] ${field(f.rule, 60)}: ${field(f.message, 400)}${at ? ` (${at})` : ""}${f.suggestion ? ` -> ${field(f.suggestion, 300)}` : ""}`;
-    });
+    };
+    // Errors and warnings in full: each is something to act on. So is most
+    // info; only the layout tidy-ups a big project repeats hundreds of times
+    // show a few examples and a count of the rest.
+    const shown = new Map<string, number>();
+    const lines: string[] = [];
+    for (const f of findings) {
+      if (f.severity !== "info" || !COUNTED_INFO_RULES.has(f.rule)) {
+        lines.push(lineOf(f));
+        continue;
+      }
+      const seen = (shown.get(f.rule) ?? 0) + 1;
+      shown.set(f.rule, seen);
+      if (seen <= INFO_PER_RULE) lines.push(lineOf(f));
+    }
+    for (const [rule, seen] of shown) {
+      if (seen > INFO_PER_RULE) lines.push(`[info] ${field(rule, 60)}: ${seen - INFO_PER_RULE} more like these, not listed`);
+    }
     return {
       text: [
         `${summary.all} findings: ${summary.errors} errors, ${summary.warnings} warnings, ${summary.info} info.`,
+        tally(findings),
         projectData("findings", limited(lines, RESULT_LIMIT - 2_000)),
-      ].join("\n"),
+      ].filter(Boolean).join("\n"),
       structured: { ...summary },
       ui: validationCard({ projectId, ...summary, findings: cardFindings(findings, where) }),
     };
