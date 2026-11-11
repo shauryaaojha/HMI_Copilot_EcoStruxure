@@ -8,6 +8,8 @@
  *   npm run db -- migrate --apply    create the v2 indexes, back up each v1 version to
  *                                    .backups/<stamp>/, rewrite it as a manifest, sweep
  *   npm run db -- gc                 sweep unreferenced pieces in every project
+ *   npm run db -- gaps [n]           what the connector was asked for and could not do, newest n
+ *                                    rows (default 200), grouped so the commonest gap is first
  *
  * Migrating is optional for correctness - v2 reads v1 rows - and is what
  * returns the space. It works one version per transaction, verifies each
@@ -152,13 +154,38 @@ async function resetPasswordCommand(email: string | undefined) {
   console.log("This link expires in 30 minutes and works once. Give it to the account owner securely.");
 }
 
+/** The gap log (lib/server/repo-gaps.ts): what to build next, by how often it was asked for. */
+async function gaps(limit: number) {
+  const rows = await new MongoRepo().gaps.list(limit);
+  if (rows.length === 0) return console.log("The gap log is empty.");
+  // Group by the refusal with names and numbers taken out, so one missing
+  // feature asked for on ten objects counts as one gap asked for ten times.
+  const shape = (detail: string) => detail.replace(/"[^"]*"/g, '"…"').replace(/\b[os]\d+\b/gi, "#").replace(/\d+/g, "N");
+  const groups = new Map<string, { count: number; last: number; example: string; sources: Set<string> }>();
+  for (const row of rows) {
+    const key = `${row.tool ?? row.source}: ${shape(row.detail)}`;
+    const g = groups.get(key) ?? { count: 0, last: 0, example: row.detail, sources: new Set() };
+    g.count++;
+    g.last = Math.max(g.last, row.at);
+    g.sources.add(row.source);
+    groups.set(key, g);
+  }
+  console.log(`${rows.length} gap(s), ${groups.size} kind(s), from ${new Date(rows[rows.length - 1].at).toISOString()} on
+`);
+  for (const [key, g] of [...groups].sort((a, b) => b[1].count - a[1].count)) {
+    console.log(`${String(g.count).padStart(4)}x  ${key}`);
+    console.log(`       last ${new Date(g.last).toISOString()}  [${[...g.sources].join(", ")}]  e.g. ${g.example.slice(0, 220)}`);
+  }
+}
+
 try {
   if (command === "stats") await stats();
   else if (command === "verify") await verify();
   else if (command === "migrate") await migrate();
   else if (command === "gc") await gc();
   else if (command === "reset-password") await resetPasswordCommand(flags[0]);
-  else { console.error(`Unknown command ${command}. Use stats, verify, migrate [--apply], gc or reset-password <email>.`); process.exitCode = 1; }
+  else if (command === "gaps") await gaps(Number(flags[0]) || 200);
+  else { console.error(`Unknown command ${command}. Use stats, verify, migrate [--apply], gc, gaps [n] or reset-password <email>.`); process.exitCode = 1; }
 } finally {
   await (await mongoClient()).close();
 }

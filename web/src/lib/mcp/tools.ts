@@ -15,6 +15,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { IngestError } from "@/lib/ingest/errors";
 import { ServerError } from "@/lib/server/errors";
+import { logGaps } from "@/lib/server/gaps";
 import { GENERATE_TOOLS } from "./generate";
 import { INTAKE_TOOLS } from "./intake";
 import { KB_TOOLS } from "./kb";
@@ -42,6 +43,34 @@ export function missingScope(spec: McpTool, caller: ToolContext["caller"]): stri
 
 /** Runs one tool, turning a role or storage failure into something sayable. */
 export async function runTool(spec: McpTool, args: Record<string, never>, ctx: ToolContext): Promise<ToolOutput> {
+  const output = await runOnce(spec, args, ctx);
+  if (output.isError) await logToolGap(spec, args, ctx, output);
+  return output;
+}
+
+/**
+ * Refusals that are about who is asking, or about asking again, say nothing
+ * about what the product can do, so they stay out of the gap log.
+ */
+const NOT_A_GAP = new Set(["unauthorized", "forbidden", "insufficient_scope", "not-found", "needs-confirm", "stale", "busy", "rate-limited", "decided"]);
+
+async function logToolGap(spec: McpTool, args: Record<string, never>, ctx: ToolContext, output: ToolOutput) {
+  const code = typeof output.structured?.code === "string" ? output.structured.code : undefined;
+  if (code && NOT_A_GAP.has(code)) return;
+  const projectId = (args as Record<string, unknown>).projectId;
+  await logGaps([
+    {
+      source: "mcp-tool",
+      tool: spec.name,
+      ...(typeof projectId === "string" ? { projectId } : {}),
+      ...(ctx.caller.userId ? { userId: ctx.caller.userId } : {}),
+      detail: output.text ?? `${spec.name} failed`,
+      ...(code ? { code } : {}),
+    },
+  ]);
+}
+
+async function runOnce(spec: McpTool, args: Record<string, never>, ctx: ToolContext): Promise<ToolOutput> {
   const needed = missingScope(spec, ctx.caller);
   if (needed) return refusal(`${spec.name} needs the ${needed} scope, which this connection was not granted. Reconnect the connector and allow it.`, "insufficient_scope");
   try {
@@ -52,6 +81,8 @@ export async function runTool(spec: McpTool, args: Record<string, never>, ctx: T
     if (error instanceof IngestError) return refusal(error.message, error.code);
     // An unexpected failure must not carry infrastructure detail out to a
     // third party, which is the rule `lib/server/errors.ts` already keeps.
+    // The detail does go in the server's own log, which is where it is useful.
+    console.error(`[mcp] ${spec.name} failed`, error);
     return refusal(`${spec.name} could not be completed.`, "internal");
   }
 }

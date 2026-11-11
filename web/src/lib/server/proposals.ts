@@ -67,7 +67,7 @@ const Ops = z.array(Op).max(200);
  * and what they would change is kept for everyone to see. The requester's
  * lock on the screen ends here.
  */
-export async function proposeEdit(user: User | null, projectId: string, body: Record<string, unknown>, storage: Repo = repo()): Promise<Proposal> {
+export async function proposeEdit(user: User | null, projectId: string, body: Record<string, unknown>, storage: Repo = repo(), via?: "mcp"): Promise<Proposal> {
   const actor = await editor(user, projectId, storage);
   const parsed = Ops.safeParse(body.ops);
   if (!parsed.success) throw new ServerError(400, "invalid", "Expected the Copilot's list of ops");
@@ -87,6 +87,8 @@ export async function proposeEdit(user: User | null, projectId: string, body: Re
       labels: run.labels,
       changes: run.changes,
       rejected: run.outcome.problems,
+      // Set by the caller, never read from the request body.
+      ...(via ? { via } : {}),
     });
     announceProposals(projectId);
     return proposal;
@@ -104,7 +106,7 @@ export async function proposeEdit(user: User | null, projectId: string, body: Re
 export async function proposeAgentRun(
   actor: User,
   projectId: string,
-  run: { screenId?: string; request: string; label: string; changes: StoreChange[]; rejected: string[] },
+  run: { screenId?: string; request: string; label: string; changes: StoreChange[]; rejected: string[]; via?: "mcp" },
   storage: Repo = repo(),
 ) {
   const proposal = await storage.proposals.create({
@@ -121,6 +123,7 @@ export async function proposeAgentRun(
     changes: run.changes,
     groups: [run.changes],
     rejected: run.rejected,
+    ...(run.via ? { via: run.via } : {}),
   });
   // Awaited, not `after`: a run already lives inside the agent route's `after`.
   await publishProjectEvent(projectId, PROPOSAL_EVENT, { projectId });

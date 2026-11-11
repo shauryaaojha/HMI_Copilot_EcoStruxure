@@ -99,7 +99,7 @@ function ProposalCard({ proposal }: { proposal: SharedProposal }) {
       <div className="flex items-start gap-2">
         <Sparkles size={12} aria-hidden className="mt-0.5 shrink-0 text-brand-400" />
         <p className="min-w-0 flex-1 text-[11px] leading-snug text-text-secondary">
-          <span className="font-medium text-text-primary">HMI Copilot</span> for {proposal.requestedByName}:{" "}
+          <span className="font-medium text-text-primary">{proposal.via === "mcp" ? "Claude over MCP" : "HMI Copilot"}</span> for {proposal.requestedByName}:{" "}
           {proposal.request || "a change"}
         </p>
         {open && (
@@ -193,10 +193,26 @@ function ProposalCard({ proposal }: { proposal: SharedProposal }) {
   );
 }
 
+/** Which proposals a pane shows: the connector's go to the MCP tab, the rest stay in the chat. */
+export const fromMcp = (p: SharedProposal) => p.via === "mcp";
+export const notFromMcp = (p: SharedProposal) => p.via !== "mcp";
+
 /** Every proposal on the shared project, open ones first, with this person's agent steps. */
-export function SharedProposals() {
-  const list = useProposals((s) => s.list);
-  const steps = useProposals((s) => s.steps);
+export function SharedProposals({
+  only = () => true,
+  title = "Shared with the project",
+  showSteps = true,
+}: {
+  /** Which proposals this pane is for. */
+  only?: (p: SharedProposal) => boolean;
+  title?: string;
+  showSteps?: boolean;
+} = {}) {
+  const all = useProposals((s) => s.list);
+  const allSteps = useProposals((s) => s.steps);
+  // `only` is a module-level function in practice, so the memo holds.
+  const list = useMemo(() => all.filter(only), [all, only]);
+  const steps = showSteps ? allSteps : [];
   const ordered = useMemo(() => [...list.filter((p) => p.status === "open"), ...list.filter((p) => p.status !== "open").slice(0, 5)], [list]);
   const newest = list.find((p) => p.status === "open");
 
@@ -216,7 +232,7 @@ export function SharedProposals() {
   if (ordered.length === 0 && steps.length === 0) return null;
   return (
     <section aria-label="Copilot proposals for this project" className="space-y-2">
-      <p className="label-eyebrow">Shared with the project</p>
+      <p className="label-eyebrow">{title}</p>
       {steps.length > 0 && (
         <ul className="space-y-0.5 rounded-lg border border-line-subtle p-2 font-mono text-[10px] text-text-muted">
           {steps.slice(-6).map((step, i) => (

@@ -36,6 +36,8 @@ export type Proposal = Row & {
   groups?: StoreChange[][];
   /** What the dry run could not do, and why. */
   rejected: string[];
+  /** "mcp" when Claude asked for it through the connector; unset for the chat and the agent. */
+  via?: "mcp";
   createdAt: number;
   updatedAt: number;
   status: ProposalStatus;
@@ -79,7 +81,7 @@ export const LOCK_MS = 90_000;
 
 /** What creating a proposal needs; `Omit` would collapse over Row's index signature. */
 export type ProposalInput = Pick<Proposal, "projectId" | "requestedBy" | "requestedByName" | "request" | "author" | "ops" | "labels" | "changes" | "rejected"> &
-  Partial<Pick<Proposal, "screenId" | "groups">>;
+  Partial<Pick<Proposal, "screenId" | "groups" | "via">>;
 
 export interface ProposalsRepo {
   create(proposal: ProposalInput): Promise<Proposal>;

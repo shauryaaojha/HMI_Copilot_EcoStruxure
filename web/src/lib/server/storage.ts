@@ -310,7 +310,7 @@ function mongoData(db: Db, session?: ClientSession): Data {
  * creates the indexes (idempotent, so two cold starts racing is harmless) and
  * records the version; one that is current pays a single read per process.
  */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 const ttlIndex = (): IndexDescription => ({ key: { _expireAt: 1 }, expireAfterSeconds: 0, name: "ttl_expireAt" });
 export const INDEXES: Record<string, IndexDescription[]> = {
   projects: [{ key: { sources: 1 } }, { key: { ownerId: 1 } }],
@@ -335,6 +335,8 @@ export const INDEXES: Record<string, IndexDescription[]> = {
   decisions: [{ key: { projectId: 1, at: 1 } }],
   agentLocks: [{ key: { projectId: 1 } }, ttlIndex()],
   generationJobs: [{ key: { projectId: 1, createdAt: -1 } }],
+  // The gap log is read newest first (npm run db -- gaps).
+  gaps: [{ key: { at: -1 } }],
   // Content-addressed snapshot pieces (lib/server/snapshots.ts). The sweep
   // lists a project's pieces by id only, which this index covers.
   objects: [{ key: { projectId: 1, _id: 1 } }],

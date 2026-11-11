@@ -374,6 +374,27 @@ describe("writing", () => {
     expect(proposals[0]).toMatchObject({ status: "open", requestedBy: "alice", request: "Move the pump lamp" });
   });
 
+  it("marks a connector proposal as from MCP, so the app shows it in the MCP tab", async () => {
+    await call("apply_ops", { projectId: ID, ops: [MOVE], note: "Move the pump lamp" });
+    const [proposal] = await state.repo.proposals.list(ID);
+    expect(proposal.via).toBe("mcp");
+  });
+
+  it("logs what it could not do in the gap log, and not the refusals about who is asking", async () => {
+    const ghost = { op: "moveObject", target: "No_Such_Lamp", left: 10, top: 10 };
+    const { structured } = await call("apply_ops", { projectId: ID, ops: [MOVE, ghost], note: "Move two lamps" });
+    expect(structured).toMatchObject({ mode: "proposal", rejected: 1 });
+    const gaps = await state.repo.gaps.list();
+    expect(gaps).toHaveLength(1);
+    expect(gaps[0]).toMatchObject({ source: "mcp-proposal", projectId: ID, userId: "alice", request: "Move two lamps" });
+    expect(gaps[0].detail).toMatch(/^could not be done: .*No_Such_Lamp/);
+
+    // A project the caller has no role on is a refusal about access, not a
+    // missing feature, and stays out.
+    expect((await call("get_screens", { projectId: OTHER })).refused).toBe(true);
+    expect(await state.repo.gaps.list()).toHaveLength(1);
+  });
+
   it("applies directly once the project has opted in", async () => {
     await state.repo.projects.connector(ID, { directWrites: true });
     const before = await snapshotOf();

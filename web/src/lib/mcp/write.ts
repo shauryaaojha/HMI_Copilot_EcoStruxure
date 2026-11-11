@@ -42,6 +42,7 @@ import { repo } from "@/lib/server/repo";
 import { announceRevision } from "@/lib/realtime/announce";
 import { ServerError } from "@/lib/server/errors";
 import { agentAuthor, proposeAgentRun, proposeEdit } from "@/lib/server/proposals";
+import { logGaps, REFUSED_LINE } from "@/lib/server/gaps";
 import type { TagImport } from "@/store/types";
 import { callerUser, type Caller } from "./caller";
 import { field, limited, projectData, RESULT_LIMIT } from "./data";
@@ -68,7 +69,7 @@ function reportLines(outcome: Pick<OpOutcome, "applied" | "rejected" | "created"
  * project's existing ones rather than anything this module invented.
  */
 async function queue(caller: Caller, projectId: string, ops: z.infer<typeof Ops>, note: string, screenId?: string, preamble?: string) {
-  const proposal = await proposeEdit(callerUser(caller), projectId, { ops, request: note, ...(screenId ? { screenId } : {}) });
+  const proposal = await proposeEdit(callerUser(caller), projectId, { ops, request: note, ...(screenId ? { screenId } : {}) }, repo(), "mcp");
   const lines = [
     ...proposal.labels.map((l) => `waiting: ${field(l, 300)}`),
     ...proposal.rejected.map((r) => `could not be done: ${field(r, 400)}`),
@@ -165,6 +166,7 @@ async function queueBuild(caller: Caller, projectId: string, landing: Landing, r
     label: landing.label ?? landing.note,
     changes,
     rejected: run.outcome.problems,
+    via: "mcp",
   });
   const lines = reportLines(run.outcome);
   return {
@@ -184,6 +186,25 @@ async function queueBuild(caller: Caller, projectId: string, landing: Landing, r
  * proposal queue or the change log.
  */
 export async function land(caller: Caller, projectId: string, landing: Landing): Promise<Landed> {
+  const landed = await landOnce(caller, projectId, landing);
+  // Whatever could not be done goes in the gap log, so the product learns
+  // what it was asked for and does not have yet.
+  const refused = landed.landed.lines.filter((line) => REFUSED_LINE.test(line));
+  if (refused.length > 0) {
+    await logGaps(
+      refused.map((line) => ({
+        source: landed.landed.mode === "proposal" ? ("mcp-proposal" as const) : ("mcp-direct" as const),
+        projectId,
+        userId: caller.userId,
+        request: landing.note,
+        detail: line,
+      })),
+    );
+  }
+  return landed;
+}
+
+async function landOnce(caller: Caller, projectId: string, landing: Landing): Promise<Landed> {
   const { project, rev, doc } = await openProject(caller, projectId, "edit");
   const { ops, note, screenId, seed, confirm } = landing;
 

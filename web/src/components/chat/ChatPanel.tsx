@@ -53,7 +53,7 @@ import { SAMPLES } from "@/components/tags";
 import { cn } from "@/components/ui";
 import { anythingMissing, requirementsOf } from "./requirements";
 import { useChat } from "./useChat";
-import { SharedProposals } from "./SharedProposals";
+import { SharedProposals, fromMcp, notFromMcp } from "./SharedProposals";
 import { AgentPane } from "./AgentPane";
 import { ConnectorPane } from "./ConnectorPane";
 import { useProposals } from "@/store/proposals";
@@ -80,7 +80,7 @@ type Mode = "chat" | "agent" | "connector";
 const MODES: { id: Mode; label: string; icon: typeof Sparkles; title: string }[] = [
   { id: "chat", label: "Chat", icon: MessagesSquare, title: "Ask for a change and see it on the canvas before it is applied" },
   { id: "agent", label: "Agent", icon: Wrench, title: "Give a job on the opened project file; it works step by step" },
-  { id: "connector", label: "Claude", icon: Plug, title: "What Claude has done to this project through the connector" },
+  { id: "connector", label: "MCP", icon: Plug, title: "Claude over MCP: connect it, and see the changes it proposed for this project" },
 ];
 
 const OPENERS = [
@@ -96,7 +96,7 @@ export function ChatPanel() {
   const [mode, setMode] = useState<Mode>("chat");
   const [agentRunning, setAgentRunning] = useState(false);
   /** Changes waiting for a decision, whoever asked for them. */
-  const waiting = useProposals((s) => s.list.filter((p) => p.status === "open").length);
+  const waiting = useProposals((s) => s.list.filter((p) => p.status === "open" && fromMcp(p)).length);
   const chat = useProject((s) => s.chat);
   const generating = useProject((s) => s.generating);
   const variables = useProject((s) => s.variables);
@@ -112,6 +112,17 @@ export function ChatPanel() {
   // conversation but cannot add to it, apply what it proposed, revert to a
   // turn or clear it.
   const canEdit = useCanEdit();
+
+  // A project with changes from Claude waiting and nothing said in the chat
+  // yet - the usual state of one Claude just created - opens on the MCP tab,
+  // once, so the proposals are the first thing seen rather than an empty chat.
+  const openedOnMcp = useRef<string | null>(null);
+  useEffect(() => {
+    if (waiting > 0 && chat.length === 0 && openedOnMcp.current !== projectId) {
+      openedOnMcp.current = projectId;
+      setMode("connector");
+    }
+  }, [waiting, chat.length, projectId]);
 
   /**
    * Once a known sample is loaded, the objection to a worked example goes away:
@@ -388,7 +399,7 @@ export function ChatPanel() {
         )}
 
         {/* A shared project's proposals belong to everyone on it (Phase D). */}
-        <SharedProposals />
+        <SharedProposals only={notFromMcp} />
 
         {chat.map((message) =>
           message.role === "user" ? (

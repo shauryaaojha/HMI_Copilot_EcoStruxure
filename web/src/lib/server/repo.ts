@@ -22,10 +22,12 @@ import { latestVersion, liveRepo, type LiveRepo } from "./repo-live";
 import { locksRepo, proposalsRepo, type LocksRepo, type ProposalsRepo } from "./repo-agent";
 import { jobsRepo, type JobsRepo } from "./repo-jobs";
 import { connectorRepo, type ConnectorRepo } from "./repo-connector";
+import { gapsRepo, type GapsRepo } from "./repo-gaps";
 export * from "./repo-collab";
 export * from "./repo-agent";
 export * from "./repo-jobs";
 export * from "./repo-connector";
+export * from "./repo-gaps";
 
 /** Every collection whose records belong to one project and go when it is deleted. */
 const PROJECT_TABLES = ["versions", "members", "shares", "comments", "changes", "heads", "presence", "proposals", "decisions", "agentLocks", "generationJobs", OBJECTS];
@@ -157,6 +159,8 @@ export interface Repo {
   proposals: ProposalsRepo;
   locks: LocksRepo;
   jobs: JobsRepo;
+  /** What the product could not do when asked; see lib/server/repo-gaps.ts. */
+  gaps: GapsRepo;
   sources: { info(id: string): Promise<Source | null>; put(bytes: Uint8Array, fileName: string, ownerId: string | null, expiresAt?: number, creditUploadId?: string): Promise<string>; get(id: string): Promise<{ meta: Source; bytes: Uint8Array } | null>; remove(id: string): Promise<void> };
   uploads: { create(fileName: string, size: number, ownerId: string | null): Promise<Upload>; get(id: string): Promise<Upload | null>; part(id: string, part: number, bytes: Uint8Array, ownerId: string | null): Promise<void>; complete(id: string, ownerId: string | null): Promise<string>; sweep(): Promise<void>; removeOwned(ownerId: string): Promise<void> };
 }
@@ -440,6 +444,7 @@ export class BaseRepo implements Repo {
   locks = locksRepo(fn => this.tx(fn), () => this.now(), fn => this.read(fn));
   jobs = jobsRepo(fn => this.tx(fn), () => this.now(), fn => this.read(fn));
   connector = connectorRepo(fn => this.tx(fn), () => this.now(), fn => this.read(fn));
+  gaps = gapsRepo(fn => this.tx(fn), () => this.now(), fn => this.read(fn));
   sources: Repo["sources"] = {
     remove: async id => {
       await this.storage.bytes.remove(id);

@@ -22,6 +22,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useProject } from "@/store/project";
+import { useProposals } from "@/store/proposals";
 import { useCanEdit } from "@/store/access";
 import { StartPane } from "./StartPane";
 import { useProjectHydration } from "./useProjectHydration";
@@ -82,6 +83,14 @@ export function Workspace({ projectId }: { projectId: string }) {
     const decided = startPaneFor(useProject.getState(), projectId);
     if (decided !== null) setStart(decided);
   }, [start, projectId, loadedId]);
+
+  // Changes waiting for a decision mean the project is not empty in the way
+  // the start pane assumes: Claude may have built it through the connector,
+  // with every screen still a proposal. The pane steps aside for them.
+  const proposalsWaiting = useProposals((s) => s.projectId === projectId && s.list.some((p) => p.status === "open"));
+  useEffect(() => {
+    if (proposalsWaiting && start) setStart(false);
+  }, [proposalsWaiting, start]);
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">

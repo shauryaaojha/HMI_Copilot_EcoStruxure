@@ -31,7 +31,11 @@ export function liveSession(): CollabSession | null {
  */
 export function useCollab(projectId: string, rev?: number) {
   const access = useAccess((s) => (s.projectId === projectId ? s.access : null));
-  const loaded = useProject((s) => s.id === projectId && s.screens.length > 0);
+  // Loaded means the store holds this project, not that it has screens: a
+  // project Claude created through the connector can have none yet, with
+  // its first screens waiting as a proposal - and the proposals only load
+  // once this session starts.
+  const loaded = useProject((s) => s.id === projectId);
 
   useEffect(() => {
     if (!access || !loaded) return;
