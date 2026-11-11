@@ -344,6 +344,23 @@ body {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--mode) 16%, transparent), var(--elev-1);
 }
 
+/* --- canvas chrome (components/canvas) ---------------------------------- */
+
+/* The tools: a floating island of their own inside the canvas island. */
+.tool-island {
+  border-radius: 0.8rem;
+  border: 1px solid var(--color-line-subtle);
+  background: var(--color-surface-raised);
+  box-shadow: var(--elev-1);
+}
+
+/* A strip that scrolls sideways fades at its trailing edge, so a cut-off name reads as "more this way". */
+.strip-fade {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  padding-right: 20px;
+}
+
 /* The canvas backdrop grid, as in the reference renders. */
 .canvas-grid {
   background-color: var(--color-surface-canvas);

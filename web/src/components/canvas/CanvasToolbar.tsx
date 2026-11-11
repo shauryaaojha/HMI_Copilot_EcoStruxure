@@ -204,11 +204,11 @@ export function CanvasToolbar({
   );
 
   return (
-    <div className="flex shrink-0 flex-col border-b border-line-subtle bg-surface-panel">
+    <div className="flex shrink-0 flex-col">
       {/* What is being looked at, and in which state: its own row, in the same
           place at any width. It used to share one row with the tools, kept its
           width, and left them 379 of the 1339 pixels they need. */}
-      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line-subtle px-2">
+      <div className="flex h-11 shrink-0 items-center gap-2 px-2.5">
         <div className="mr-auto min-w-0">{tabs}</div>
         {/* Board or one screen. Pinned outside the scrolling half, because
             losing the way back to the whole project behind a scrollbar is the
@@ -225,7 +225,7 @@ export function CanvasToolbar({
         )}
 
         {canBoard && (
-          <div className="flex items-center rounded-md border border-line-subtle p-0.5">
+          <div className="flex items-center rounded-lg border border-line-subtle bg-surface-raised p-0.5">
             {(["board", "screen"] as const).map((mode) => (
               <button
                 key={mode}
@@ -238,9 +238,9 @@ export function CanvasToolbar({
                     : "Only the screen being edited"
                 }
                 className={cn(
-                  "focus-ring rounded px-2 py-0.5 text-[11px] font-medium capitalize transition",
+                  "focus-ring rounded-md px-2.5 py-0.5 text-[11px] font-medium capitalize transition",
                   view === mode
-                    ? "bg-surface-active text-text-primary"
+                    ? "bg-surface-panel text-text-primary shadow-[var(--elev-1)]"
                     : "text-text-muted hover:text-text-secondary",
                 )}
               >
@@ -300,7 +300,7 @@ export function CanvasToolbar({
       </div>
       {/* Everything that acts on the drawing. `min-w-0` is what lets this
           shrink below its content width so the pinned half keeps its room. */}
-      <div className="relative flex h-10 min-w-0 shrink-0">
+      <div className="tool-island relative mx-2.5 mb-2 flex h-10 min-w-0 shrink-0">
         <div
           ref={scroller}
           onScroll={measureEdges}
@@ -439,7 +439,7 @@ export function CanvasToolbar({
           <Sep />
 
           {icon("Zoom out", Minus, () => onZoomStep(-1))}
-          <span className="w-11 shrink-0 text-center text-xs tabular-nums text-text-secondary">
+          <span className="w-12 shrink-0 text-center font-mono text-[11px] tabular-nums text-text-secondary">
             {zoom}%
           </span>
           {icon("Zoom in", Plus, () => onZoomStep(1))}
@@ -452,13 +452,13 @@ export function CanvasToolbar({
         {edge.start && (
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-surface-panel to-transparent"
+            className="pointer-events-none absolute inset-y-0 left-0 w-6 rounded-l-xl bg-gradient-to-r from-surface-raised to-transparent"
           />
         )}
         {edge.end && (
           <span
             aria-hidden
-            className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-surface-panel to-transparent"
+            className="pointer-events-none absolute inset-y-0 right-0 w-6 rounded-r-xl bg-gradient-to-l from-surface-raised to-transparent"
           />
         )}
       </div>

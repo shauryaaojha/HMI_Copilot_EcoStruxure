@@ -327,14 +327,15 @@ export function ScreenBoard({
                   : screen.Name + " - drag to move, double-click to zoom to it"
               }
               className={cn(
-                "focus-ring flex w-full items-baseline gap-2 truncate px-0.5 text-left transition",
+                "focus-ring flex w-full items-end gap-2 overflow-visible whitespace-nowrap px-0.5 pb-[0.35em] text-left leading-none transition",
                 !readOnly && "cursor-grab active:cursor-grabbing",
                 live ? "text-brand-400" : "text-text-muted hover:text-text-secondary",
               )}
               style={{ height: BOARD_LABEL * scale, fontSize: Math.max(10, 13 * scale) }}
             >
-              <span className="truncate font-medium">{screen.Name}</span>
-              <span className="text-figure shrink-0 opacity-60">{objects}</span>
+              {live && <span aria-hidden className="mb-[0.15em] h-[0.5em] w-[0.5em] shrink-0 rounded-full bg-brand-400" />}
+              <span className="min-w-0 truncate font-medium">{screen.Name}</span>
+              <span className="text-figure shrink-0 font-mono opacity-60">{objects}</span>
             </button>
 
             <div
@@ -352,8 +353,8 @@ export function ScreenBoard({
                 onZoomTo?.(screen.UniqueId);
               }}
               className={cn(
-                "canvas-screen relative overflow-hidden ring-1 transition",
-                live ? "ring-brand-500/70" : "ring-line hover:ring-line-strong",
+                "canvas-screen relative overflow-hidden rounded-[2px] ring-1 transition",
+                live ? "ring-2 ring-brand-500/80" : "ring-line hover:ring-line-strong",
               )}
               style={{ width: rootBox(view, target).width * scale, height: rootBox(view, target).height * scale }}
             >

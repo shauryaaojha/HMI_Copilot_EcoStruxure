@@ -60,11 +60,11 @@ export function ScreenStrip() {
   }
 
   return (
-    <div className="flex h-9 shrink-0 items-center gap-1.5 border-b border-line-subtle bg-surface-panel px-2">
+    <div className="flex h-10 shrink-0 items-center gap-1.5 border-y border-line-subtle bg-surface-panel px-2.5">
       <span className="label-eyebrow shrink-0 pr-1">Screens</span>
 
       <div
-        className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
+        className="strip-fade no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
         // A wheel mouse sends only deltaY, and this row scrolls sideways.
         onWheel={(e) => {
           if (e.deltaY !== 0 && e.deltaX === 0) e.currentTarget.scrollLeft += e.deltaY;
@@ -86,10 +86,10 @@ export function ScreenStrip() {
                 dragFrom.current = null;
               }}
               className={cn(
-                "group flex h-6 shrink-0 items-center gap-1.5 rounded-full border px-2 text-[11px] transition",
+                "group flex h-7 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] transition",
                 isActive
-                  ? "border-brand-500/50 bg-brand-500/12 text-brand-400"
-                  : "border-line-subtle text-text-muted hover:border-line hover:text-text-secondary",
+                  ? "border-brand-500/45 bg-surface-raised text-brand-400 shadow-[var(--elev-1)]"
+                  : "border-transparent text-text-muted hover:border-line hover:bg-surface-raised hover:text-text-secondary",
               )}
             >
               {editing === screen.UniqueId ? (
@@ -172,7 +172,7 @@ export function ScreenStrip() {
             onClick={() => addScreen()}
             title="Add a screen"
             aria-label="Add a screen"
-            className="focus-ring flex h-6 shrink-0 items-center gap-1 rounded-full border border-line-subtle px-2 text-[11px] text-text-muted transition hover:border-brand-500/50 hover:text-brand-400"
+            className="focus-ring flex h-7 shrink-0 items-center gap-1 rounded-lg border border-line px-2.5 text-[11px] text-text-muted transition hover:border-brand-500/50 hover:text-brand-400"
           >
             <Plus size={12} aria-hidden />
             Screen
@@ -197,7 +197,7 @@ export function ScreenStrip() {
             onClick={() => picker.current?.click()}
             title="Import screens from another .eote project"
             aria-label="Import screens from another project"
-            className="focus-ring flex h-6 shrink-0 items-center gap-1 rounded-full border border-line-subtle px-2 text-[11px] text-text-muted transition hover:border-brand-500/50 hover:text-brand-400"
+            className="focus-ring flex h-7 shrink-0 items-center gap-1 rounded-lg border border-line px-2.5 text-[11px] text-text-muted transition hover:border-brand-500/50 hover:text-brand-400"
           >
             <Import size={12} aria-hidden />
             Import

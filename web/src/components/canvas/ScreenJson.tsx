@@ -38,7 +38,7 @@ export function ScreenJson({ screen }: { screen: Screen }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-center gap-3 border-b border-line-subtle px-4 py-2">
+      <div className="flex shrink-0 items-center gap-3 border-b border-line-subtle bg-surface-raised/50 px-4 py-2">
         <p className="text-xs text-text-muted">
           {`Screens\\<guid>\\Screen.dat`} — {lines.length} lines,{" "}
           {screen.Children[0].Children.length} objects

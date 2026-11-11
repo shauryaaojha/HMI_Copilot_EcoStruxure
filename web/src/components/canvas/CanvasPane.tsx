@@ -566,7 +566,7 @@ export function CanvasPane({ defaultCommenting = false }: CanvasPaneProps = {}) 
       )}
 
       {tab !== "design" && (
-        <div className="flex h-11 shrink-0 items-center border-b border-line-subtle bg-surface-panel px-2">
+        <div className="flex h-11 shrink-0 items-center border-b border-line-subtle px-2.5">
           <Tabs
             items={TABS}
             value={tab}

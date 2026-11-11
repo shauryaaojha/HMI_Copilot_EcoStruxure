@@ -132,7 +132,7 @@ export function CanvasContextMenu({
         left: Math.min(at.x, (globalThis.innerWidth ?? 1200) - 210),
         top: Math.min(at.y, (globalThis.innerHeight ?? 800) - 380),
       }}
-      className="fixed z-50 w-52 rounded-md border border-line bg-surface-raised py-1 shadow-lg"
+      className="menu animate-pop fixed z-50 w-56 p-1"
     >
       {groups.map((entries, i) => (
         <div key={i} className={cn(i > 0 && "mt-1 border-t border-line-subtle pt-1")}>
@@ -147,7 +147,7 @@ export function CanvasContextMenu({
                 onClose();
               }}
               className={cn(
-                "flex w-full items-center justify-between gap-4 px-3 py-1.5 text-left text-xs transition",
+                "flex w-full items-center justify-between gap-4 rounded-md px-2.5 py-1.5 text-left text-xs transition",
                 "disabled:pointer-events-none disabled:opacity-35",
                 entry.danger
                   ? "text-status-alarm hover:bg-status-alarm/10"
@@ -156,7 +156,7 @@ export function CanvasContextMenu({
             >
               {entry.label}
               {entry.shortcut && (
-                <span className="text-[10px] tabular-nums text-text-faint">
+                <span className="font-mono text-[10px] tabular-nums text-text-faint">
                   {entry.shortcut}
                 </span>
               )}

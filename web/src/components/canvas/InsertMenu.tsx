@@ -105,7 +105,7 @@ export function InsertMenu({
         <div
           role="menu"
           aria-label="Insert an object"
-          className="fixed z-30 max-h-[70vh] w-72 overflow-y-auto rounded-lg border border-line bg-surface-float p-1.5"
+          className="menu animate-pop fixed z-30 max-h-[70vh] w-72 overflow-y-auto p-1.5"
           style={{ left: at.left, top: at.top, boxShadow: "var(--elev-3)" }}
         >
           {GROUPS.map((group) => {
@@ -146,7 +146,7 @@ export function InsertMenu({
                         <span className="block text-xs font-medium">{t.label}</span>
                         <span className="block truncate text-[10px] text-text-faint">{t.hint}</span>
                       </span>
-                      <kbd className="rounded border border-line-subtle px-1 font-mono text-[10px] uppercase text-text-faint">
+                      <kbd className="kbd uppercase">
                         {t.key}
                       </kbd>
                     </button>

@@ -177,10 +177,10 @@ export function RegenerateDialog({ screenId, onClose }: { screenId: string; onCl
     <aside
       role="dialog"
       aria-label={`Regenerate ${screen.Name}`}
-      className="fixed bottom-4 right-4 top-16 z-40 flex w-[26rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-line bg-surface-float"
+      className="menu animate-slide-right fixed bottom-4 right-4 top-16 z-40 flex w-[26rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl"
       style={{ boxShadow: "var(--elev-3)" }}
     >
-      <header className="flex h-11 shrink-0 items-center gap-2 border-b border-line-subtle px-4">
+      <header className="page-head flex h-12 shrink-0 items-center gap-2 border-b border-line-subtle px-5">
         <RefreshCw size={14} aria-hidden className="text-brand-400" />
         <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">
           Regenerate <span className="font-normal text-text-muted">{screen.Name}</span>

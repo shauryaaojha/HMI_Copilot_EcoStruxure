@@ -103,16 +103,16 @@ export function ImportScreensDialog({ file, onClose }: { file: File; onClose: ()
       role="dialog"
       aria-modal
       aria-label="Import screens"
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4"
+      className="animate-fade fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[3px]"
       onPointerDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-line bg-surface-float"
+        className="menu animate-pop flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl"
         style={{ boxShadow: "var(--elev-3)" }}
       >
-        <header className="flex h-11 shrink-0 items-center gap-2 border-b border-line-subtle px-4">
+        <header className="page-head flex h-12 shrink-0 items-center gap-2 border-b border-line-subtle px-5">
           <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">
             {report ? "Imported" : "Import screens"}
             <span className="ml-2 font-normal text-text-muted">{file.name}</span>

@@ -38,7 +38,7 @@ export function Rulers({
     <>
       <div
         aria-hidden
-        className="pointer-events-none absolute left-0 top-0 select-none border-b border-line-subtle bg-surface-panel"
+        className="pointer-events-none absolute left-0 top-0 select-none border-b border-line-subtle bg-surface-raised font-mono"
         style={{ width: width * scale + RULER, height: RULER, marginLeft: -RULER }}
       >
         {ticks(width).map((v) => (
@@ -54,7 +54,7 @@ export function Rulers({
 
       <div
         aria-hidden
-        className="pointer-events-none absolute left-0 top-0 select-none border-r border-line-subtle bg-surface-panel"
+        className="pointer-events-none absolute left-0 top-0 select-none border-r border-line-subtle bg-surface-raised font-mono"
         style={{ width: RULER, height: height * scale, marginLeft: -RULER }}
       >
         {ticks(height).map((v) => (

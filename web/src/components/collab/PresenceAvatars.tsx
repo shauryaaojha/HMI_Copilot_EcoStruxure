@@ -62,7 +62,7 @@ export function PresenceAvatars() {
           <span
             key={user.userId}
             title={user.name}
-            className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold text-white ring-1 ring-surface-frame"
+            className="inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold text-white ring-2 ring-surface-frame"
             style={{ backgroundColor: colorFor(user.userId) }}
           >
             {initialsOf(user.name)}
@@ -71,7 +71,7 @@ export function PresenceAvatars() {
         {overflow > 0 && (
           <span
             title={`${overflow} more`}
-            className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-surface-hover text-[10px] font-medium text-text-muted ring-1 ring-surface-frame"
+            className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-surface-hover text-[10px] font-medium text-text-muted ring-2 ring-surface-frame"
           >
             +{overflow}
           </span>
