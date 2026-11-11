@@ -257,7 +257,7 @@ export function ProjectsScreen() {
       {cloud && <section className="space-y-3" aria-label="Cloud projects">
         <h2 className="text-sm font-semibold">Saved on the server</h2>
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {cloudProjects.map(p => <li key={p._id} className="glass rounded-2xl p-5">
+          {cloudProjects.map(p => <li key={p._id} className="glass glass-dense rounded-2xl p-5">
             <Link className="focus-ring text-sm font-semibold hover:text-brand-400" href={`/project/${p._id}`}>{p.name}</Link>
             <p className="mt-2 text-xs text-text-muted">Version {p.rev} · {p.target.model}</p>
             <div className="mt-2 flex gap-3 text-xs">
@@ -345,7 +345,7 @@ export function ProjectsScreen() {
               href={`/project/${project.id}`}
               {...magnetic}
               className={cn(
-                "glass spotlight magnetic focus-ring flex min-h-44 flex-col rounded-2xl p-5",
+                "glass glass-dense spotlight magnetic focus-ring flex min-h-44 flex-col rounded-2xl p-5",
                 "hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-brand-500)_45%,transparent),var(--elev-3)]",
               )}
             >

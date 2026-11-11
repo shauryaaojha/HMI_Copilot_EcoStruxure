@@ -414,20 +414,20 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
                 type="button"
                 onClick={() => setPath(id)}
                 {...magnetic}
-                className="glass spotlight magnetic focus-ring group rounded-2xl p-5 text-left hover:border-brand-500/50"
+                className="glass glass-dense spotlight magnetic focus-ring group rounded-2xl p-5 text-left hover:border-brand-500/50"
               >
                 <Icon size={18} aria-hidden className="text-brand-400" />
                 <h2 className="mt-3 flex items-center gap-1.5 text-sm font-semibold">
                   {title}
                   <ArrowRight size={13} aria-hidden className="opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
                 </h2>
-                <p className="mt-1 text-xs leading-relaxed text-text-muted">{note}</p>
+                <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">{note}</p>
               </button>
             ))}
             <button
               type="button"
               onClick={() => filePicker.current?.click()}
-              className="glass spotlight lift focus-ring group flex items-center gap-3 rounded-2xl px-5 py-3.5 text-left hover:border-brand-500/50 sm:col-span-2"
+              className="glass glass-dense spotlight lift focus-ring group flex items-center gap-3 rounded-2xl px-5 py-3.5 text-left hover:border-brand-500/50 sm:col-span-2"
             >
               <FolderOpen size={18} aria-hidden className="shrink-0 text-brand-400" />
               <span className="min-w-0 flex-1">
@@ -435,7 +435,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
                   Open a project you already have
                   <ArrowRight size={13} aria-hidden className="opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
                 </span>
-                <span className="mt-0.5 block text-xs text-text-muted">An .eote, a .vxdz from 3.4.1 on, or a Vijeo Designer backup (.vdz) to migrate.</span>
+                <span className="mt-0.5 block text-[13px] text-text-secondary">An .eote, a .vxdz from 3.4.1 on, or a Vijeo Designer backup (.vdz) to migrate.</span>
               </span>
               <span className="hidden shrink-0 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-text-secondary group-hover:text-text-primary sm:inline">Browse…</span>
             </button>
@@ -561,14 +561,14 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
             disabled={working}
             onClick={() => tagPicker.current?.click()}
             {...magnetic}
-            className="glass spotlight magnetic focus-ring group rounded-2xl p-4 text-left hover:border-brand-500/50 disabled:opacity-50"
+            className="glass glass-dense spotlight magnetic focus-ring group rounded-2xl p-4 text-left hover:border-brand-500/50 disabled:opacity-50"
           >
             <FileUp size={16} aria-hidden className="text-brand-400" />
             <h2 className="mt-2.5 flex items-center gap-1.5 text-sm font-semibold">
               Import a tag export
               <ArrowRight size={13} aria-hidden className="opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
             </h2>
-            <p className="mt-1 text-xs leading-relaxed text-text-muted">
+            <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">
               CSV, TSV or XLSX. Equipment is inferred from the names, deterministically.
             </p>
           </button>
@@ -578,14 +578,14 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
             disabled={working}
             onClick={() => filePicker.current?.click()}
             {...magnetic}
-            className="glass spotlight magnetic focus-ring group rounded-2xl p-4 text-left hover:border-brand-500/50 disabled:opacity-50"
+            className="glass glass-dense spotlight magnetic focus-ring group rounded-2xl p-4 text-left hover:border-brand-500/50 disabled:opacity-50"
           >
             <FolderOpen size={16} aria-hidden className="text-brand-400" />
             <h2 className="mt-2.5 flex items-center gap-1.5 text-sm font-semibold">
               Open a project
               <ArrowRight size={13} aria-hidden className="opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
             </h2>
-            <p className="mt-1 text-xs leading-relaxed text-text-muted">
+            <p className="mt-1 text-[13px] leading-relaxed text-text-secondary">
               An .eote, or a .vxdz from 3.4.1 on. It exports back unchanged everywhere
               you did not touch — always as an .eote, which is the format we write.
               Or a Vijeo Designer backup (.vdz) to migrate: pick its variable export

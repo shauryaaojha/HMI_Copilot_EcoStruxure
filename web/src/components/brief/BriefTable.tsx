@@ -96,7 +96,7 @@ export function BriefTable({
   const alarmable = [...new Set(brief.units.flatMap((u) => u.signals))];
 
   return (
-    <div className="glass reveal is-in mt-7 rounded-2xl">
+    <div className="glass glass-dense reveal is-in mt-7 rounded-2xl">
       <div className="border-b border-line-subtle px-4 py-3">
         <h2 className="text-sm font-semibold">The plant brief</h2>
         <p className="mt-1 text-xs leading-relaxed text-text-muted">{by ? SOURCE[by] : ""}</p>
