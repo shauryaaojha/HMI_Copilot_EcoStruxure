@@ -3,6 +3,8 @@
  * guide, replace_screen, draft_tags, match_tags, export_project, import_link.
  * Driven through the real /api/mcp route, as the other MCP tests are.
  */
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { demoScreen, demoVariables } from "@/fixtures";
 import { MemoryRepo, type Snapshot, type User } from "@/lib/server/repo";
@@ -59,6 +61,7 @@ beforeEach(async () => {
   const snapshot: Snapshot = { ...sample(ID), name: "Pump Station", screens: [structuredClone(demoScreen)], variables: structuredClone(demoVariables) };
   state.repo = new MemoryRepo();
   await state.repo.projects.create("alice", snapshot);
+  await state.repo.users.upsert({ id: "alice", name: "Alice" });
   state.user = { id: "alice", name: "Alice" };
 });
 
@@ -166,12 +169,13 @@ describe("export links", () => {
     const url = String(done.structured.url);
     expect(url.startsWith("https://hmi.example.com/api/export/link?t=")).toBe(true);
     const response = await linkGet(new Request(url));
-    if (response.status === 200) {
+    if (existsSync(path.join(process.cwd(), "skeleton", "manifest.json"))) {
+      expect(response.status, await response.clone().text()).toBe(200);
       const bytes = new Uint8Array(await response.arrayBuffer());
       expect(bytes[0]).toBe(0x50); // a ZIP: "PK"
       expect(response.headers.get("content-disposition")).toContain(".eote");
     } else {
-      // No skeleton on this machine: the route says so rather than failing silently.
+      // No skeleton on this machine (it is extracted from a licensed install): the route says so.
       expect(response.status).toBeGreaterThanOrEqual(400);
     }
     // Someone who is not a member cannot use alice's project through a link made for them.
