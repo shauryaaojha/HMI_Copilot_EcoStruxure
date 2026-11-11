@@ -63,7 +63,7 @@ function FieldRow({
         {Array.from({ length: count }, (_, i) => {
           const element = withIndex(field.item!, i);
           return (
-            <div key={i} className="rounded-md border border-line-subtle p-2">
+            <div key={i} className="rounded-lg border border-line-subtle bg-surface-raised/50 p-2.5">
               <p className="mb-2 text-[11px] font-medium text-text-muted">
                 {label(field.key).replace(/s$/, "")} {i}
               </p>
@@ -87,7 +87,7 @@ function FieldRow({
   // because a state is a set of properties rather than a single value.
   if (field.kind === "group" && field.fields) {
     return (
-      <div className="rounded-md border border-line-subtle p-2">
+      <div className="rounded-lg border border-line-subtle bg-surface-raised/50 p-2.5">
         <p className="mb-2 text-xs font-medium text-text-secondary">
           {label(field.key)}
         </p>
@@ -185,7 +185,7 @@ export function Inspector() {
 
   return (
     <aside className="flex h-full w-full flex-col overflow-hidden">
-      <div className="flex h-10 shrink-0 items-center border-b border-line-subtle px-2">
+      <div className="flex h-11 shrink-0 items-center border-b border-line-subtle px-3">
         <Tabs items={tabs} value={tab} onChange={setTab} size="sm" aria-label="Inspector" />
       </div>
 
@@ -295,9 +295,9 @@ export function Inspector() {
                       title={
                         { left: "X position", top: "Y position", width: "Width", height: "Height" }[key]
                       }
-                      className="flex h-8 min-w-0 items-center gap-1.5 rounded-md border border-line bg-surface-raised px-2 transition focus-within:border-brand-500/60"
+                      className="field-wrap flex h-8 min-w-0 items-center gap-1.5 rounded-lg border border-line bg-surface-raised px-2 transition"
                     >
-                      <span aria-hidden className="shrink-0 text-[11px] font-medium text-text-faint">
+                      <span aria-hidden className="shrink-0 font-mono text-[10px] font-medium text-text-faint">
                         {axis}
                       </span>
                       <CommittedNumber
@@ -330,7 +330,7 @@ export function Inspector() {
                 {flagged.map((finding, i) => (
                   <li
                     key={i}
-                    className="rounded-md border border-status-warn/40 bg-status-warn/10 p-2 text-[11px] text-status-warn"
+                    className="rounded-lg border border-status-warn/40 bg-status-warn/10 p-2.5 text-[11px] text-status-warn"
                   >
                     {finding.message}
                   </li>

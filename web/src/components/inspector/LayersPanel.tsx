@@ -81,7 +81,7 @@ export function LayersPanel() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <p className="shrink-0 px-3 pb-1 pt-3 text-[10px] uppercase tracking-wide text-text-faint">
+      <p className="label-eyebrow shrink-0 truncate border-b border-line-subtle px-3 pb-2 pt-3" title="The scene tree, front to back">
         {screen.Name} · {parts.length} object{parts.length === 1 ? "" : "s"} · scene tree, front to back
       </p>
 
@@ -110,7 +110,7 @@ export function LayersPanel() {
                 className={cn(
                   "group flex items-center gap-1.5 rounded px-1.5 py-1 transition",
                   isSelected
-                    ? "bg-brand-500/12 text-text-primary"
+                    ? "bg-surface-hover text-text-primary shadow-[inset_2px_0_0_var(--color-brand-400)]"
                     : "text-text-secondary hover:bg-surface-hover",
                   dragging === part.UniqueId && "opacity-40",
                   meta.hidden && "opacity-50",
@@ -213,14 +213,14 @@ export function LayersPanel() {
         })}
 
         {parts.length === 0 && (
-          <li className="rounded-md border border-dashed border-line p-6 text-center text-xs text-text-muted">
+          <li className="rounded-xl border border-dashed border-line p-6 text-center text-xs text-text-muted">
             This screen is empty. Draw something, or ask for it in the chat.
           </li>
         )}
       </ul>
 
       {tree.some((row) => row.node.kind === "container" || row.node.kind === "content") && (
-        <div className="shrink-0 border-t border-line px-3 py-2">
+        <div className="shrink-0 border-t border-line-subtle bg-surface-raised/40 px-3 py-2">
           <p className="label-eyebrow pb-1">Scene structure — read-only</p>
           <ul className="space-y-0.5">
             {tree.filter((row) => row.node.kind === "container" || row.node.kind === "content").map((row) => (

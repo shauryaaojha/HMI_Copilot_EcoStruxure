@@ -142,7 +142,7 @@ export function LibraryPanel() {
         })}
 
         {shown.length === 0 && (
-          <li className="col-span-full rounded-md border border-dashed border-line p-6 text-center text-xs text-text-muted">
+          <li className="col-span-full rounded-xl border border-dashed border-line p-6 text-center text-xs text-text-muted">
             {status === "loading"
               ? "Reading the graphic object library…"
               : "No symbol matches that search."}
@@ -150,7 +150,7 @@ export function LibraryPanel() {
         )}
       </ul>
 
-      <p className="shrink-0 border-t border-line-subtle px-3 py-2 text-[10px] leading-relaxed text-text-faint">
+      <p className="shrink-0 border-t border-line-subtle bg-surface-raised/40 px-3 py-2 text-[10px] leading-relaxed text-text-faint">
         {status === "loading" ? (
           <>Reading the graphic object library…</>
         ) : status === "indexed" ? (

@@ -103,8 +103,8 @@ export function CommentsPanel({
   const hiddenCount = threads.length + general.length - shown.length - shownGeneral.length;
 
   return (
-    <aside className="flex h-full w-72 shrink-0 flex-col border-l border-line-subtle bg-surface-panel" aria-label="Comments">
-      <header className="flex h-10 shrink-0 items-center gap-2 border-b border-line-subtle px-3">
+    <aside className="animate-slide-right flex h-full w-72 shrink-0 flex-col border-l border-line-subtle bg-surface-panel" aria-label="Comments">
+      <header className="flex h-11 shrink-0 items-center gap-2 border-b border-line-subtle px-3">
         <MessageSquare size={13} aria-hidden className="text-brand-400" />
         <h2 className="min-w-0 flex-1 truncate text-[13px] font-semibold">
           Comments {screenName && <span className="font-normal text-text-muted">· {screenName}</span>}
@@ -127,7 +127,7 @@ export function CommentsPanel({
       </div>
 
       {data.error && (
-        <p role="alert" className="mx-3 mt-2 rounded-md border border-status-warn/30 bg-status-warn/[0.06] p-2 text-[11px] text-status-warn">
+        <p role="alert" className="mx-3 mt-2 rounded-lg border border-status-warn/30 bg-status-warn/[0.06] p-2.5 text-[11px] text-status-warn">
           {data.error}
         </p>
       )}
@@ -373,7 +373,7 @@ export function CommentComposer({
         width,
         boxShadow: "var(--elev-3)",
       }}
-      className="fixed z-50 space-y-2 rounded-lg border border-line bg-surface-float p-2.5"
+      className="menu animate-pop fixed z-50 space-y-2 p-2.5"
     >
       <Textarea
         autoFocus

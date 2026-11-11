@@ -34,10 +34,10 @@ export function ColorEditor({ field, value, onChange }: EditorProps) {
 
   return (
     <details className="group">
-      <summary className="focus-ring flex h-8 cursor-pointer list-none items-center gap-2 rounded-md border border-line bg-surface-raised px-2">
+      <summary className="field focus-ring flex h-8 cursor-pointer list-none items-center gap-2 rounded-lg border border-line bg-surface-raised px-2">
         <span
           aria-hidden
-          className="h-4 w-4 shrink-0 rounded-sm border border-line-strong"
+          className="h-4 w-4 shrink-0 rounded border border-line-strong shadow-[inset_0_0_0_1px_rgba(255,255,255,0.15)]"
           style={{ background: resolveColor(index, "transparent") }}
         />
         <span className="font-mono text-xs text-text-secondary">
@@ -45,7 +45,7 @@ export function ColorEditor({ field, value, onChange }: EditorProps) {
         </span>
       </summary>
 
-      <div className="mt-1.5 rounded-md border border-line bg-surface-raised p-2">
+      <div className="animate-pop mt-1.5 rounded-lg border border-line bg-surface-raised p-2 shadow-[var(--elev-2)]">
         <p className="mb-1.5 text-[11px] text-text-faint">
           {PALETTE.name} — the project&apos;s own colour set
         </p>
