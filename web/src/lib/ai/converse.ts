@@ -309,7 +309,7 @@ export function describeOp(op: Op): string {
   return bits.join(" ");
 }
 
-function recordText(item: Extract<HistoryItem, { role: "assistant" }>): string {
+export function recordText(item: Extract<HistoryItem, { role: "assistant" }>): string {
   const lines = [item.text.trim() || "(no reply)"];
   const t = item.turn;
   if (!t) return lines[0];
@@ -340,7 +340,7 @@ function anchorLine(older: HistoryItem[]): string | null {
 /* The prompt                                                              */
 /* ---------------------------------------------------------------------- */
 
-const SYSTEM = `You are the HMI Copilot inside EcoStruxure Operator Terminal Expert.
+export const SYSTEM = `You are the HMI Copilot inside EcoStruxure Operator Terminal Expert.
 An automation engineer is building operator screens by talking to you, turn
 after turn, until the screens are right. You edit a model of the project; the
 layout engine does the geometry. You never give coordinates.
@@ -547,7 +547,7 @@ const D = {
   note: "One line of engineering language describing what this op did",
 } as const;
 
-function geminiSchema() {
+export function geminiSchema() {
   const S = (description: string) => ({ type: "STRING", description });
   const N = (description: string) => ({ type: "NUMBER", description });
   const B = (description: string) => ({ type: "BOOLEAN", description });
@@ -755,7 +755,7 @@ export interface ConverseInput {
 }
 
 /** The tool context for a turn: the catalog when the client sent one, else the digest. */
-function toolContext(input: ConverseInput): PreparedContext {
+export function toolContext(input: ConverseInput): PreparedContext {
   return prepare({
     tags: input.catalog?.tags ?? input.digest.variables,
     objects: input.catalog?.objects ?? [],
@@ -774,7 +774,7 @@ function toolContext(input: ConverseInput): PreparedContext {
  * (lib/ai/tools.ts routeTools). Every provider gets them, including one with no
  * tool calling, and the repair pass skips them as it skips the model's own.
  */
-function routedLines(input: ConverseInput, ctx: PreparedContext): string[] {
+export function routedLines(input: ConverseInput, ctx: PreparedContext): string[] {
   if (input.repair) return [];
   const request = [...input.history].reverse().find((m) => m.role === "user")?.text ?? "";
   return routedContext(request, ctx).lines;
@@ -837,13 +837,13 @@ export function volatileContext(digest: ProjectDigest): string {
     .join("\n");
 }
 
-const REPAIR_NOTE =
+export const REPAIR_NOTE =
   "Some of your ops were rejected; the reasons are in the record above. Re-issue " +
   "a corrected op list for the same request, using the handles and regions you were " +
   "given. If it genuinely cannot be done, answer and say why.";
 
 /** History split into the verbatim tail and an anchor line for the rest. */
-function splitHistory(history: HistoryItem[]) {
+export function splitHistory(history: HistoryItem[]) {
   const keep = VERBATIM_TURNS * 2;
   const older = history.length > keep ? history.slice(0, history.length - keep) : [];
   const recent = history.slice(older.length);
@@ -867,7 +867,8 @@ export interface ConverseResult {
   usage?: Usage;
 }
 
-async function withGemini(input: ConverseInput, model: string): Promise<ConverseResult | null> {
+/** One call, no tools: the chat as it was, and the fallback when the agent loop's model is out of quota. */
+export async function withGemini(input: ConverseInput, model: string): Promise<ConverseResult | null> {
   const { GoogleGenAI } = await import("@google/genai");
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY!.trim() });
   const { anchor, recent } = splitHistory(input.history);

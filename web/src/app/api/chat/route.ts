@@ -14,7 +14,9 @@
 import { modelCaller } from "@/lib/server/model-gate";
 import { errorResponse, json } from "@/lib/server/http";
 import { describeModelError } from "@/lib/ai/model-error";
-import { converse, type Catalog, type HistoryItem, type ProjectDigest } from "@/lib/ai/converse";
+import { converse, withGemini, type Catalog, type HistoryItem, type ProjectDigest } from "@/lib/ai/converse";
+import { agentChat, type AgentStep } from "@/lib/ai/agent-chat";
+import type { Doc } from "@/lib/collab/types";
 import { providerName, resolveProvider } from "@/lib/ai/provider";
 import type { Turn } from "@/core/ops";
 import type { StructureHint } from "@/lib/ai/infer";
@@ -30,8 +32,11 @@ import { currentUser } from "@/lib/server/session";
 import { shareTokens } from "@/lib/server/shares";
 
 export const runtime = "nodejs";
-/** A model call with the whole project in context can outrun the default. */
-export const maxDuration = 120;
+/**
+ * The agent loop (lib/ai/agent-chat.ts) makes several model calls a turn and
+ * renders screens between them, so it gets the longest a function may run.
+ */
+export const maxDuration = 300;
 
 interface Body {
   history?: HistoryItem[];
@@ -41,6 +46,8 @@ interface Body {
   structure?: StructureHint[];
   /** The id of the file the project was opened from, when it was. */
   source?: string;
+  /** The whole project, for the agent loop's draft. Absent from an older client. */
+  doc?: Doc;
 }
 
 /**
@@ -119,7 +126,7 @@ export async function POST(request: Request) {
     const knowledge = (await allKnowledge().catch(() => [])).filter((record) => ownedBy(record, caller.id));
     const own = await ownObjects(body.source, request);
     const target = backendFor();
-    const result = await converse({
+    const input = {
       history,
       digest,
       repair: body.repair === true,
@@ -129,7 +136,30 @@ export async function POST(request: Request) {
       kb,
       own,
       target: { name: target.name, parts: target.capabilities.parts },
-    });
+    };
+    // Gemini with the project in hand works in a tool-calling loop; anything
+    // else (Claude, or an older client that sent no doc) answers in one call.
+    const doc = body.doc && Array.isArray(body.doc.screens) && Array.isArray(body.doc.variables) ? body.doc : undefined;
+    let result: (Awaited<ReturnType<typeof converse>> & { steps?: AgentStep[] }) | null;
+    if (doc && choice.provider === "gemini" && choice.model) {
+      try {
+        result = await agentChat({ ...input, doc }, choice.model);
+      } catch (error) {
+        // Out of quota or overloaded: the turn is still answered, in one call
+        // on a model with its own quota, and says so. Anything else is a
+        // real failure and goes to the handler below.
+        const failed = describeModelError(error);
+        const fallback = process.env.GEMINI_FALLBACK_MODEL?.trim() || "gemini-flash-lite-latest";
+        if ((failed.code !== "quota" && failed.code !== "busy") || fallback === choice.model) throw error;
+        const single = await withGemini(input, fallback);
+        result = single && {
+          ...single,
+          steps: [{ tool: "fallback", summary: `${choice.model} is ${failed.code === "quota" ? "out of quota" : "overloaded"}, so ${fallback} answered in one call, without tools`, isError: true }],
+        };
+      }
+    } else {
+      result = await converse(input);
+    }
     if (!result) {
       return Response.json(
         {
@@ -149,6 +179,7 @@ export async function POST(request: Request) {
       model: result.model,
       turn: result.turn,
       usage: result.usage,
+      ...(result.steps?.length ? { steps: result.steps } : {}),
       trace,
     });
   } catch (error) {

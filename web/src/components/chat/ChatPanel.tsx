@@ -34,6 +34,7 @@ import {
   AlertTriangle,
   ArrowUp,
   Check,
+  ChevronRight,
   CornerDownLeft,
   Info,
   MessagesSquare,
@@ -437,6 +438,24 @@ export function ChatPanel() {
                     </li>
                   ))}
                 </ul>
+              )}
+
+              {message.steps && message.steps.length > 0 && (
+                <details className="group rounded-lg border border-line-subtle bg-surface-raised/30 px-2.5 py-1.5">
+                  <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[11px] text-text-muted hover:text-text-secondary">
+                    <ChevronRight size={11} aria-hidden className="transition-transform group-open:rotate-90" />
+                    Worked in {message.steps.length} step{message.steps.length === 1 ? "" : "s"}
+                    {message.steps.some((s) => s.tool === "render_screen") && <span className="text-text-faint">· looked at the screen</span>}
+                  </summary>
+                  <ol className="mt-1.5 space-y-1 pb-1">
+                    {message.steps.map((step, i) => (
+                      <li key={i} className={cn("flex gap-2 font-mono text-[10px] leading-relaxed", step.isError ? "text-status-warn" : "text-text-faint")}>
+                        <span className="shrink-0 tabular-nums">{String(i + 1).padStart(2, "0")}</span>
+                        <span className="min-w-0 break-words">{step.summary}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </details>
               )}
 
               {message.changes && message.changes.length > 0 && (

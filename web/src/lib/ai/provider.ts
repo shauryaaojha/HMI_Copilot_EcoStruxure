@@ -31,7 +31,9 @@ const DEFAULT_MODEL: Record<Provider, string> = {
   // Claude Opus 5.5, the current Opus. Its effort defaults to medium rather
   // than Opus 5's high, so every call site states its effort explicitly.
   claude: "claude-opus-5-5",
-  gemini: "gemini-flash-lite-latest",
+  // Gemini 3.8 Flash: fast enough for the chat's tool-calling loop, and
+  // able to read the screens it renders. Checked against the model list.
+  gemini: "gemini-3.8-flash",
 };
 
 const env = (name: string) => process.env[name]?.trim() || undefined;

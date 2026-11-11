@@ -72,6 +72,19 @@ export function dryRunOnSnapshot(doc: Doc, ops: Op[], screenId?: string): Snapsh
 }
 
 /**
+ * The same dry run, also handing back the document it produced, for a caller
+ * that keeps working on the result before anything is committed: the chat's
+ * agent loop tries ops, looks at the drawn screen, and tries again.
+ */
+export function dryRunToDoc(doc: Doc, ops: Op[], screenId?: string): SnapshotRun & { after: Doc } {
+  const before = docOf(doc);
+  const store = storeFor(before, screenId);
+  const outcome = applyOps(ops, store);
+  const after = keepGenerated(before, docOf(store.getState()));
+  return { outcome, changes: diff(before, after), labels: ops.map(labelOp), after };
+}
+
+/**
  * The changes that turn a snapshot into what the agent loop ended with: its
  * screens, alarms and wires, with everything it placed marked as generated.
  */

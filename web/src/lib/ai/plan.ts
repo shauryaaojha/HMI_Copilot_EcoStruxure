@@ -303,7 +303,7 @@ async function planWithGemini(
   const ai = new GoogleGenAI({ apiKey: env("GEMINI_API_KEY")! });
 
   const response = await ai.models.generateContent({
-    model: resolveProvider().model ?? "gemini-flash-lite-latest",
+    model: resolveProvider().model ?? "gemini-3.8-flash",
     contents: prompt(intent, equipment),
     config: {
       systemInstruction: system(limits),

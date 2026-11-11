@@ -41,7 +41,7 @@ export async function askJson(system: string, prompt: string, schema: Record<str
       const { GoogleGenAI } = await import("@google/genai");
       const ai = new GoogleGenAI({ apiKey: env("GEMINI_API_KEY")! });
       const response = await ai.models.generateContent({
-        model: resolveProvider().model ?? "gemini-flash-lite-latest",
+        model: resolveProvider().model ?? "gemini-3.8-flash",
         contents: prompt,
         config: { systemInstruction: system, responseMimeType: "application/json", temperature: 0.2 },
       });

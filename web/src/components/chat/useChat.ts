@@ -29,6 +29,7 @@ import { inferEquipment } from "@/lib/ai/infer";
 import type { ExistingScreen } from "@/lib/ai/pipeline";
 import { commit, dryRun, previewOf, type DryRun, type OpOutcome } from "@/core/ops";
 import { useProject } from "@/store/project";
+import { docOf } from "@/lib/collab/changes";
 import type { ChatMessage } from "@/store/types";
 import { loadProjects, touchProject } from "@/store/projects";
 import { useGeneration } from "@/components/generation/useGeneration";
@@ -116,6 +117,9 @@ export function useChat() {
         structure: s.tagImport?.structure,
         // The file it was opened from, so the tools can say how it draws things.
         source: s.sourceId,
+        // The whole project, for the agent loop's draft: it tries ops and
+        // renders screens on a copy of this, never on the project itself.
+        doc: docOf(s),
         // What the lookup tools can search. Compact, never in the prompt.
         catalog: {
           alarms: s.alarms,
@@ -158,6 +162,7 @@ export function useChat() {
       model: string | null;
       turn: Turn;
       usage?: ChatMessage["usage"];
+      steps?: ChatMessage["steps"];
     };
   }, []);
 
@@ -277,7 +282,7 @@ export function useChat() {
 
         const first = await ask(history, request, false);
         let turn = first.turn;
-        patch({ text: turn.reply, provider: first.provider ?? "local", usage: first.usage });
+        patch({ text: turn.reply, provider: first.provider ?? "local", usage: first.usage, ...(first.steps ? { steps: first.steps } : {}) });
 
         if (turn.mode === "clarify") {
           nameIfUnnamed(request, turn.projectName);
@@ -348,7 +353,7 @@ export function useChat() {
             ops = second.turn.ops;
             run = dryRun(ops);
             repaired = true;
-            patch({ text: turn.reply, usage: second.usage });
+            patch({ text: turn.reply, usage: second.usage, ...(second.steps ? { steps: [...(useProject.getState().chat.find((m) => m.id === answerId)?.steps ?? []), ...second.steps] } : {}) });
           } else if (second.turn.mode === "answer") {
             // The model says it cannot be done. Show its reason with the
             // rejections; nothing changes.

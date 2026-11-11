@@ -230,6 +230,8 @@ export interface ChatMessage {
   };
   /** Tokens for the debug line: in, of which cached, out. */
   usage?: { input: number; cached: number; output: number };
+  /** What the agent loop looked up, tried and looked at before it answered. */
+  steps?: { tool: string; summary: string; isError?: boolean }[];
 }
 
 /**
