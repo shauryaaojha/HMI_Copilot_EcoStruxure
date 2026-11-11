@@ -8,7 +8,6 @@
  * file beside it is a different kind of claim.
  */
 
-import { magnetic } from "@/components/motion/useMagnetic";
 import {
   ArrowRight,
   FileUp,
@@ -20,6 +19,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { useNewProject } from "@/components/shell/useNewProject";
+import { Glass } from "@/components/motion/Glass";
 import { useSpotlights } from "@/components/ui/interactions";
 import { useReveal, useRevealGroup } from "./useReveal";
 
@@ -118,35 +118,30 @@ export function Routes() {
 
   return (
     <section ref={section} className="reveal relative mx-auto max-w-5xl px-8 pb-28">
-      <div className="card rounded-2xl p-8">
-        <h2 className="text-2xl font-semibold">Three ways in. All of them end in a file the product opens.</h2>
-        <p className="mt-2 max-w-2xl text-sm text-text-muted">
-          Pick one — the workspace asks the same question and takes the same three answers.
-        </p>
+      <h2 className="text-2xl font-semibold">Three ways in. All of them end in a file the product opens.</h2>
+      <p className="mt-2 max-w-2xl text-sm text-text-muted">
+        Pick one. The workspace asks the same question and takes the same three answers.
+      </p>
 
-        <div ref={cards} className="mt-7 grid gap-3 sm:grid-cols-3">
-          {ROUTES.map(({ icon: Icon, title, body }) => (
-            <button
-              key={title}
-              type="button"
-              onClick={() => newProject()}
-              {...magnetic}
-              className="spotlight magnetic focus-ring group rounded-xl border border-line bg-surface-raised/60 p-5 text-left hover:border-brand-500/50"
-            >
-              <Icon size={17} aria-hidden className="text-brand-400" />
-              <h3 className="mt-3 flex items-center gap-1.5 font-semibold">
-                {title}
-                <ArrowRight
-                  size={14}
-                  aria-hidden
-                  className="opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100"
-                />
-              </h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-text-muted">{body}</p>
-            </button>
-          ))}
-        </div>
+      {/* One strip cut into three doors, not three cards. */}
+      <Glass orbs className="mt-8 rounded-[1.75rem]">
+      <div ref={cards} className="grid overflow-hidden rounded-[1.75rem] sm:grid-cols-3">
+        {ROUTES.map(({ icon: Icon, title, body }, i) => (
+          <button key={title} type="button" onClick={() => newProject()} className="door spotlight focus-ring group text-left">
+            <span className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-text-faint">
+              <Icon size={13} aria-hidden className="text-brand-400" />
+              Route 0{i + 1}
+            </span>
+            <h3 className="mt-6 text-xl font-semibold tracking-tight">{title}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-text-muted">{body}</p>
+            <span className="door-go inline-flex items-center gap-1.5 text-sm font-medium text-brand-400">
+              Start here
+              <ArrowRight size={14} aria-hidden className="transition-transform group-hover:translate-x-1" />
+            </span>
+          </button>
+        ))}
       </div>
+      </Glass>
     </section>
   );
 }

@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 import { LogIn } from "lucide-react";
 import { getAccount, type Account } from "@/store/persist";
 
-const LINK = "focus-ring inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium transition";
+const LINK = "focus-ring inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium transition";
 
 export function AuthLinks() {
   const [account, setAccount] = useState<Account | null>(null);

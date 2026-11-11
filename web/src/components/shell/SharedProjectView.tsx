@@ -194,7 +194,7 @@ export function SharedProjectView({ token, projectId }: { token: string; project
 export function ShareSignInPrompt({ token, role, canSignIn }: { token: string; role: string; canSignIn: boolean }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface-base p-6">
-      <div className="menu animate-pop w-full max-w-sm space-y-4 rounded-2xl p-6">
+      <div className="glass animate-pop w-full max-w-sm space-y-4 rounded-2xl p-6">
         <SchneiderMark className="text-brand-400" />
         <h1 className="text-base font-semibold text-text-primary">Sign in to open this project</h1>
         <p className="text-sm text-text-secondary">

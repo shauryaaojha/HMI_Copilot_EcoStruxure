@@ -102,6 +102,7 @@
   --color-surface-float: #172419;
 
   --font-sans: var(--font-plex-sans), "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-plex-sans), "Segoe UI", system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), "IBM Plex Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
 
   /* One step rounder than the framework's, everywhere at once. */
@@ -200,6 +201,14 @@
 html,
 body {
   height: 100%;
+}
+
+/* Headings in the display face; body copy stays in Plex. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
 }
 
 body {
@@ -387,6 +396,166 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .magnetic { transition: none; }
+}
+
+/* Liquid glass: the ground blurred and saturated through a tinted pane, a lit
+   top edge, a darker bottom edge, and a highlight that follows the pointer. */
+.glass {
+  --glass-fill: linear-gradient(140deg, rgb(255 255 255 / 0.075), rgb(255 255 255 / 0.018) 42%, rgb(120 255 180 / 0.035));
+  --glass-edge: rgb(255 255 255 / 0.1);
+  --glass-hi: rgb(255 255 255 / 0.16);
+  --glass-lo: rgb(0 0 0 / 0.35);
+  --glass-glint: rgb(180 255 210 / 0.1);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  backdrop-filter: blur(22px) saturate(170%);
+  box-shadow:
+    inset 0 1px 0 var(--glass-hi),
+    inset 0 -1px 0 var(--glass-lo),
+    inset 1px 0 0 rgb(255 255 255 / 0.04),
+    0 40px 80px -40px rgb(0 0 0 / 0.7);
+}
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(420px circle at var(--gx, 18%) var(--gy, 0%), var(--glass-glint), transparent 65%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.05), transparent 30%);
+}
+[data-theme="light"] .glass {
+  --glass-fill: linear-gradient(140deg, rgb(255 255 255 / 0.72), rgb(255 255 255 / 0.42) 45%, rgb(230 248 236 / 0.55));
+  --glass-edge: rgb(255 255 255 / 0.85);
+  --glass-hi: rgb(255 255 255 / 1);
+  --glass-lo: rgb(20 60 35 / 0.08);
+  --glass-glint: rgb(255 255 255 / 0.7);
+  box-shadow:
+    inset 0 1px 0 var(--glass-hi),
+    inset 0 -1px 0 var(--glass-lo),
+    0 30px 60px -30px rgb(20 60 35 / 0.25);
+}
+/* Light moving in the glass: slow green blobs, clipped to the pane. */
+.glass-orbs {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  border-radius: inherit;
+  pointer-events: none;
+  overflow: hidden;
+}
+.glass-orbs span {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(48px);
+  opacity: 0.28;
+  animation: orb-drift 8s ease-in-out infinite alternate;
+}
+.glass-orbs span:nth-child(1) { width: 34%; aspect-ratio: 1; left: 4%; top: 10%; background: radial-gradient(circle, var(--color-brand-500), transparent 70%); }
+.glass-orbs span:nth-child(2) { width: 28%; aspect-ratio: 1; left: 40%; top: 45%; background: radial-gradient(circle, #0ea5a4, transparent 70%); animation-duration: 10s; animation-delay: -3s; opacity: 0.2; }
+.glass-orbs span:nth-child(3) { width: 30%; aspect-ratio: 1; right: 4%; top: 0%; background: radial-gradient(circle, var(--color-brand-400), transparent 70%); animation-duration: 9s; animation-delay: -6s; opacity: 0.18; }
+[data-theme="light"] .glass-orbs span { opacity: 0.16; }
+@keyframes orb-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(28%, -18%, 0) scale(1.15); }
+  100% { transform: translate3d(-20%, 22%, 0) scale(0.9); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .glass-orbs span { animation: none; }
+}
+
+/* --- landing spec sheet ------------------------------------------------------ */
+
+/* Columns split by hairlines, not boxed. */
+@media (min-width: 1024px) {
+  .spec-col + .spec-col { border-left: 1px solid var(--color-line-subtle); }
+}
+/* The group number, drawn as an outline that fills while the column is read. */
+.spec-num {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.05em;
+  background: linear-gradient(180deg, var(--color-brand-300, var(--color-brand-400)), color-mix(in srgb, var(--color-brand-500) 15%, transparent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  opacity: 0.75;
+  transition: opacity 300ms var(--ease-out);
+}
+.spec-col:hover .spec-num { opacity: 1; }
+/* A line of the sheet: a rule on top, and a green edge that grows in on hover. */
+.spec-row {
+  position: relative;
+  border-top: 1px solid var(--color-line-subtle);
+  padding: 1.15rem 0 1.15rem 1rem;
+  transition: background-color 200ms ease;
+}
+.spec-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 1.15rem;
+  bottom: 1.15rem;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--color-brand-400);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 260ms var(--ease-out);
+}
+.spec-row:hover::before { transform: scaleY(1); }
+.spec-row:hover { background: linear-gradient(90deg, color-mix(in srgb, var(--color-brand-500) 7%, transparent), transparent 70%); }
+/* The fact on the right, like a part number on a datasheet. */
+.spec-stamp {
+  flex-shrink: 0;
+  border: 1px solid var(--color-line);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+  transition: color 200ms ease, border-color 200ms ease;
+}
+.spec-row:hover .spec-stamp { color: var(--color-brand-400); border-color: color-mix(in srgb, var(--color-brand-500) 45%, transparent); }
+@media (prefers-reduced-motion: reduce) {
+  .spec-row::before, .spec-num { transition: none; }
+}
+
+/* The ways in: one strip, three doors. */
+.door {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 1.6rem 1.6rem 1.4rem;
+  transition: background-color 200ms ease;
+}
+.door + .door { border-top: 1px solid var(--color-line-subtle); }
+@media (min-width: 640px) {
+  .door + .door { border-top: 0; border-left: 1px solid var(--color-line-subtle); }
+}
+.door::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 2px;
+  background: var(--color-brand-400);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 300ms var(--ease-out);
+}
+.door:hover::after, .door:focus-visible::after { transform: scaleX(1); }
+.door:hover { background: linear-gradient(0deg, color-mix(in srgb, var(--color-brand-500) 9%, transparent), transparent 75%); }
+.door-go { margin-top: auto; padding-top: 1.5rem; }
+@media (prefers-reduced-motion: reduce) {
+  .door::after { transition: none; }
 }
 
 /* --- project pages --------------------------------------------------------- */
@@ -813,6 +982,10 @@ body {
 }
 .beam-border:focus-within::after {
   opacity: 1;
+}
+/* Glass clips to its padding box, so the beam runs just inside its edge. */
+.glass.beam-border::after {
+  inset: 0;
 }
 
 /* Words arriving out of a blur, one after another. */

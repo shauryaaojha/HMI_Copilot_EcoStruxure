@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { Glass } from "@/components/motion/Glass";
 import { Check, Copy, Eye, FilePlus2, ListChecks, MousePointerClick, Tags, Wand2 } from "lucide-react";
 
 const CAN = [
@@ -62,7 +63,7 @@ export function ConnectClaude() {
           </ul>
         </div>
 
-        <div className="card rounded-2xl p-6 sm:p-7">
+        <Glass orbs className="rounded-[1.75rem] p-6 sm:p-7">
           <ol className="space-y-5">
             {STEPS.map((step, i) => (
               <li key={step.title} className="flex gap-4">
@@ -96,7 +97,7 @@ export function ConnectClaude() {
             Works with Claude on the web, the desktop app and Claude Code. The connector can do what you can do on a project and no more. It cannot open or
             simulate a project in Operator Terminal Expert; that proof stays with you.
           </p>
-        </div>
+        </Glass>
       </div>
     </section>
   );

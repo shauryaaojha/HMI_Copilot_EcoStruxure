@@ -52,7 +52,7 @@ export function AccountSettings({ name, email }: { name: string; email: string }
   }
 
   return <div className="space-y-6 text-sm text-text-secondary">
-    <section className="reveal is-in flex items-center gap-4 rounded-2xl border border-line bg-surface-float/95 p-5 sm:p-6" style={{ boxShadow: "var(--elev-2)" }}>
+    <section className="reveal is-in flex items-center gap-4 glass rounded-2xl p-5 sm:p-6">
       <span aria-hidden className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-base font-semibold text-brand-400">
         {(name || email).trim().charAt(0).toUpperCase()}
       </span>
@@ -61,13 +61,13 @@ export function AccountSettings({ name, email }: { name: string; email: string }
         <p className="truncate text-text-muted">{email}</p>
       </div>
     </section>
-    <form onSubmit={change} className="space-y-3 rounded-2xl border border-line bg-surface-float/95 p-5 sm:p-6">
+    <form onSubmit={change} className="glass space-y-3 rounded-2xl p-5 sm:p-6">
       <h2 className="font-semibold text-text-primary">Change password</h2>
       <Field layout="stack" label="Current password"><Input type="password" autoComplete="current-password" required value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} /></Field>
       <Field layout="stack" label="New password" hint="At least 10 characters."><Input type="password" autoComplete="new-password" required value={newPassword} onChange={event => setNewPassword(event.target.value)} /></Field>
       <Button type="submit" variant="primary" disabled={busy}>Change password</Button>
     </form>
-    <section className="space-y-3 rounded-2xl border border-line bg-surface-float/95 p-5 sm:p-6">
+    <section className="glass space-y-3 rounded-2xl p-5 sm:p-6">
       <h2 className="font-semibold text-text-primary">Sessions</h2>
       <p>End your sessions on every device, including this one.</p>
       <Button type="button" disabled={busy} onClick={() => void everywhere()}>Sign out everywhere</Button>

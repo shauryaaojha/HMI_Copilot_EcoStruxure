@@ -60,7 +60,7 @@ export async function AuthPage({ mode, next }: { mode: "in" | "up"; next: string
             {WITH_AN_ACCOUNT.map(({ icon: Icon, title, note }, i) => (
               <li
                 key={title}
-                className="reveal is-in rounded-lg border border-line-subtle bg-surface-raised/60 p-3"
+                className="glass reveal is-in rounded-xl p-3.5"
                 style={{ ["--reveal-delay" as string]: `${360 + i * 110}ms` }}
               >
                 <Icon size={15} aria-hidden className="text-brand-400" />
@@ -75,7 +75,7 @@ export async function AuthPage({ mode, next }: { mode: "in" | "up"; next: string
           {/* The form is the one thing on this page to do, so the light gathers behind it. */}
           <div aria-hidden className="pointer-events-none absolute -inset-x-4 -inset-y-10 rounded-full lg:-inset-x-10 bg-brand-500/20 blur-3xl" />
           <div
-            className="menu beam-border reveal is-in relative space-y-4 rounded-2xl bg-surface-float/90 p-6 backdrop-blur-md sm:p-7"
+            className="glass beam-border reveal is-in space-y-4 rounded-2xl p-6 sm:p-7"
             style={{ boxShadow: "var(--elev-2)", ["--reveal-delay" as string]: "120ms" }}
           >
             <SchneiderMark className="text-brand-400 lg:hidden" />

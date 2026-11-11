@@ -52,7 +52,7 @@ function LinkProblem({ status }: { status: "expired" | "revoked" | "missing" }) 
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface-base p-6">
       <div
-        className="menu animate-pop w-full max-w-sm space-y-4 rounded-2xl p-6"
+        className="glass animate-pop w-full max-w-sm space-y-4 rounded-2xl p-6"
         style={{ boxShadow: "var(--elev-2)" }}
       >
         <SchneiderMark className="text-brand-400" />

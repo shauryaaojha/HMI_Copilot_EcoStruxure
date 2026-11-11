@@ -120,7 +120,7 @@ async function asRequest(params: URLSearchParams): Promise<Request> {
 function Frame({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface-base p-6">
-      <div className="menu animate-pop w-full max-w-md space-y-4 rounded-2xl p-6">
+      <div className="glass animate-pop w-full max-w-md space-y-4 rounded-2xl p-6">
         <SchneiderMark className="text-brand-400" />
         {children}
       </div>

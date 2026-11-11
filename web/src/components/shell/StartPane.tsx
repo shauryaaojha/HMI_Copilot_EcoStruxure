@@ -414,7 +414,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
                 type="button"
                 onClick={() => setPath(id)}
                 {...magnetic}
-                className="spotlight magnetic focus-ring group rounded-2xl border border-line bg-surface-raised/70 p-5 text-left backdrop-blur-sm hover:border-brand-500/50"
+                className="glass spotlight magnetic focus-ring group rounded-2xl p-5 text-left hover:border-brand-500/50"
               >
                 <Icon size={18} aria-hidden className="text-brand-400" />
                 <h2 className="mt-3 flex items-center gap-1.5 text-sm font-semibold">
@@ -427,7 +427,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
             <button
               type="button"
               onClick={() => filePicker.current?.click()}
-              className="spotlight lift focus-ring group flex items-center gap-3 rounded-xl border border-line-subtle bg-surface-raised/60 px-5 py-3.5 text-left hover:border-brand-500/50 sm:col-span-2"
+              className="glass spotlight lift focus-ring group flex items-center gap-3 rounded-2xl px-5 py-3.5 text-left hover:border-brand-500/50 sm:col-span-2"
             >
               <FolderOpen size={18} aria-hidden className="shrink-0 text-brand-400" />
               <span className="min-w-0 flex-1">
@@ -561,7 +561,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
             disabled={working}
             onClick={() => tagPicker.current?.click()}
             {...magnetic}
-            className="spotlight magnetic focus-ring group rounded-2xl border border-line bg-surface-raised/70 p-4 text-left backdrop-blur-sm hover:border-brand-500/50 disabled:opacity-50"
+            className="glass spotlight magnetic focus-ring group rounded-2xl p-4 text-left hover:border-brand-500/50 disabled:opacity-50"
           >
             <FileUp size={16} aria-hidden className="text-brand-400" />
             <h2 className="mt-2.5 flex items-center gap-1.5 text-sm font-semibold">
@@ -578,7 +578,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
             disabled={working}
             onClick={() => filePicker.current?.click()}
             {...magnetic}
-            className="spotlight magnetic focus-ring group rounded-2xl border border-line bg-surface-raised/70 p-4 text-left backdrop-blur-sm hover:border-brand-500/50 disabled:opacity-50"
+            className="glass spotlight magnetic focus-ring group rounded-2xl p-4 text-left hover:border-brand-500/50 disabled:opacity-50"
           >
             <FolderOpen size={16} aria-hidden className="text-brand-400" />
             <h2 className="mt-2.5 flex items-center gap-1.5 text-sm font-semibold">

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Bricolage_Grotesque, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { SignInPrompt } from "@/components/shell/SignInPrompt";
 import { THEME_BOOTSTRAP, ThemeGuard } from "@/components/shell/theme";
 import "./globals.css";
@@ -11,6 +11,8 @@ import "./globals.css";
  * request leaves the engineer's browser for a font.
  */
 const sans = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-plex-sans", display: "swap" });
+// Headings: a grotesque with an optical-size axis, tight at display sizes.
+const display = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-bricolage", display: "swap" });
 const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-plex-mono", display: "swap" });
 
 export const metadata: Metadata = {
@@ -20,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${sans.variable} ${mono.variable} ${display.variable}`}>
       <head>
         {/* Sets data-theme before first paint so the chrome never flashes. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />

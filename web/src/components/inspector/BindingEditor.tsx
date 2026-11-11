@@ -97,7 +97,7 @@ export function BindingEditor({
             onClick={() => setBinding(part.UniqueId, property, null)}
             title="Unbind"
             aria-label="Unbind"
-            className="focus-ring shrink-0 rounded-md p-1.5 text-text-faint transition hover:bg-surface-hover hover:text-status-warn disabled:opacity-50"
+            className="focus-ring shrink-0 rounded-lg p-1.5 text-text-faint transition hover:bg-surface-hover hover:text-status-warn disabled:opacity-50"
           >
             <Link2Off size={13} aria-hidden />
           </button>

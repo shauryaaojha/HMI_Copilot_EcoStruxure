@@ -92,7 +92,7 @@ export function SignInPrompt() {
         aria-modal="true"
         aria-label="Sign in"
         onKeyDown={keys}
-        className="menu beam-border animate-pop relative w-full max-w-sm rounded-2xl p-6 text-left"
+        className="glass beam-border animate-pop w-full max-w-sm rounded-2xl p-6 text-left"
         style={{ boxShadow: "var(--elev-3)" }}
       >
         <div aria-hidden className="copilot-aurora vivid pointer-events-none absolute inset-0 overflow-hidden rounded-2xl" />

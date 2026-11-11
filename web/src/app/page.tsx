@@ -1,14 +1,3 @@
-import {
-  CircleCheck,
-  FileInput,
-  Link2,
-  MessagesSquare,
-  Plug,
-  Ruler,
-  ScanEye,
-  ShieldCheck,
-  Users,
-} from "lucide-react";
 import { SchneiderMark } from "@/components/shell/SchneiderMark";
 import { AuthLinks } from "@/components/landing/AuthLinks";
 import { StartButtons } from "@/components/landing/StartButtons";
@@ -19,6 +8,7 @@ import { ConnectClaude } from "@/components/landing/ConnectClaude";
 import { WaveLines } from "@/components/motion/WaveLines";
 import { ScrambleText } from "@/components/motion/ScrambleText";
 import { Magnetic } from "@/components/motion/Magnetic";
+import { Glass } from "@/components/motion/Glass";
 
 /**
  * Landing page.
@@ -33,51 +23,34 @@ import { Magnetic } from "@/components/motion/Magnetic";
  * panel in a plant should not ship a WebGL runtime to its front door.
  */
 
+/**
+ * What the product does, in three groups of three. Each stamp is a fact taken
+ * from its own line, not a new claim.
+ */
 const CLAIMS = [
   {
-    icon: FileInput,
-    title: "Open what you already have",
-    note: "An existing .eote opens, edits and exports back with every entry byte-identical.",
+    group: "Reads your plant",
+    items: [
+      { title: "Open what you already have", stamp: "byte-identical", note: "An existing .eote opens, edits and exports back with every entry byte-identical." },
+      { title: "Tags become equipment", stamp: "ISA-5.1", note: "Pumps, tanks and valves inferred from ISA-5.1 names before any model runs." },
+      { title: "A standard, not a style", stamp: "ISA-101", note: "ISA-101 as data. The generator and the lint read the same document." },
+    ],
   },
   {
-    icon: Link2,
-    title: "Tags become equipment",
-    note: "Pumps, tanks and valves inferred from ISA-5.1 names before any model runs.",
+    group: "Checks its work",
+    items: [
+      { title: "It reviews its own screens", stamp: "every build", note: "Overlaps, faint symbols, unreadable text, caught on every build, keyless." },
+      { title: "Mistakes found at the desk", stamp: "before mount", note: "Type mismatches and unreachable screens, before a panel is ever mounted." },
+      { title: "Nothing happens without you", stamp: "review first", note: "An AI change opens as a review: what was asked, the screen now beside the screen after, and every change with a tick." },
+    ],
   },
   {
-    icon: Ruler,
-    title: "A standard, not a style",
-    note: "ISA-101 as data. The generator and the lint read the same document.",
-  },
-  {
-    icon: ScanEye,
-    title: "It reviews its own screens",
-    note: "Overlaps, faint symbols, unreadable text — caught on every build, keyless.",
-  },
-  {
-    icon: CircleCheck,
-    title: "Mistakes found at the desk",
-    note: "Type mismatches and unreachable screens, before a panel is ever mounted.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Nothing happens without you",
-    note: "An AI change opens as a review: what was asked, the screen now beside the screen after, and every change with a tick.",
-  },
-  {
-    icon: MessagesSquare,
-    title: "Say it, and it is drawn",
-    note: "Move, align, restyle, bind a tag, make a button change screen, add a tag: asked in words, done with the same ops as the mouse.",
-  },
-  {
-    icon: Users,
-    title: "Work on it together",
-    note: "Share a link, edit the same screen at once, comment on an object, and go back to any saved version.",
-  },
-  {
-    icon: Plug,
-    title: "Or let Claude drive",
-    note: "A connector for Claude with the app's own tools, and a live picture of the screen in the conversation.",
+    group: "Works with you",
+    items: [
+      { title: "Say it, and it is drawn", stamp: "same ops", note: "Move, align, restyle, bind a tag, make a button change screen, add a tag: asked in words, done with the same ops as the mouse." },
+      { title: "Work on it together", stamp: "shared link", note: "Share a link, edit the same screen at once, comment on an object, and go back to any saved version." },
+      { title: "Or let Claude drive", stamp: "MCP", note: "A connector for Claude with the app's own tools, and a live picture of the screen in the conversation." },
+    ],
   },
 ];
 
@@ -139,7 +112,7 @@ export default function Landing() {
             {/* the product's own output, building itself */}
             <div className="reveal is-in min-w-0" style={{ ["--reveal-delay" as string]: "180ms" }}>
               <Magnetic className="rounded-2xl">
-              <figure className="card overflow-hidden rounded-2xl">
+              <figure className="glass rounded-2xl">
                 <div className="flex items-center gap-1.5 border-b border-line-subtle px-3 py-2">
                   <span className="h-2 w-2 rounded-full bg-text-faint/40" />
                   <span className="h-2 w-2 rounded-full bg-text-faint/40" />
@@ -157,21 +130,40 @@ export default function Landing() {
             </div>
           </section>
 
-          {/* --- claims -------------------------------------------------- */}
-          <section className="mx-auto max-w-6xl px-8 py-16">
-            <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {CLAIMS.map(({ icon: Icon, title, note }) => (
-                <div key={title} className="card lift flex gap-3.5 p-5">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-400/25 to-brand-600/10 text-brand-400 ring-1 ring-brand-500/25">
-                    <Icon size={16} aria-hidden />
-                  </span>
-                  <div>
-                    <dt className="font-semibold">{title}</dt>
-                    <dd className="mt-1 text-sm leading-relaxed text-text-muted">{note}</dd>
+          {/* --- claims: a spec sheet, three columns on hairlines ---------- */}
+          <section aria-labelledby="claims-title" className="mx-auto max-w-6xl px-8 py-20">
+            <div>
+              <p className="label-eyebrow text-brand-400">What it does</p>
+              <h2 id="claims-title" className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
+                Nine things, each one a test holds it to.
+              </h2>
+            </div>
+            <Glass orbs className="mt-8 rounded-[1.75rem]">
+            <div className="grid lg:grid-cols-3">
+              {CLAIMS.map(({ group, items }, g) => (
+                <div key={group} className="spec-col px-6 pb-4 pt-7 sm:px-8">
+                  <div className="flex items-baseline gap-3">
+                    <span aria-hidden className="spec-num text-6xl leading-none">0{g + 1}</span>
+                    <span className="label-eyebrow">{group}</span>
                   </div>
+                  <dl className="mt-6">
+                    {items.map(({ title, stamp, note }, i) => (
+                      <div key={title} className="spec-row">
+                        <div aria-hidden className="flex items-center justify-between gap-3">
+                          <span className="font-mono text-[11px] text-text-faint">
+                            {g + 1}.{i + 1}
+                          </span>
+                          <span className="spec-stamp">{stamp}</span>
+                        </div>
+                        <dt className="mt-2 font-display text-lg font-semibold tracking-tight">{title}</dt>
+                        <dd className="mt-1.5 text-[13.5px] leading-relaxed text-text-muted">{note}</dd>
+                      </div>
+                    ))}
+                  </dl>
                 </div>
               ))}
-            </dl>
+            </div>
+            </Glass>
           </section>
 
           <Flow />

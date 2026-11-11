@@ -105,7 +105,7 @@ export function ScreenFigure({ replayEveryMs }: { replayEveryMs?: number }) {
     return () => clearInterval(timer);
   }, [replayEveryMs]);
   return (
-    <figure className="overflow-hidden rounded-xl border border-line-subtle bg-surface-raised shadow-2xl">
+    <figure className="glass rounded-2xl">
       <div className="flex items-center gap-1.5 border-b border-line-subtle px-3 py-2">
         <span className="h-2 w-2 rounded-full bg-text-faint/40" />
         <span className="h-2 w-2 rounded-full bg-text-faint/40" />
