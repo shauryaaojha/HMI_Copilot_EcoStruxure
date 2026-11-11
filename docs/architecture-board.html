@@ -372,8 +372,8 @@ N("d_tools",1870,640,145,70,"ai","tools","files 14 · project 12 · proof 4","li
 N("d_qjs",1710,725,150,62,"ai","run_script","QuickJS WASM · 64 MB · 10 s","JavaScript in a separate engine with its own heap: no require, network, file system or timers, only ws.* on the workspace.","lib/agent/script.ts"),
 N("d_sbx",1870,725,145,62,"ai","shell","Vercel Sandbox","bash in a microVM. Every file is hashed after a command, and changes come back through the workspace's checks.","lib/agent/sandbox.ts"),
 N("d_run",1710,802,305,52,"ai","run · the loop","Claude or Gemini · 40 steps by default","Claude: streaming, adaptive thinking, prompt caching, context editing. Gemini: function calling that waits out the per-minute quota.","lib/agent/run.ts"),
-G("z_mcp",1690,890,340,150,"ai","mcp/ · 23 tools","the claude.ai connector"),
-N("d_mcpsrv",1710,930,150,92,"ai","server · tools","read · write · manage","Read: list_projects, get_screens, get_layout, find_tags, components, kb_search. Write: apply_ops, place_component, propose, generate, import_tags, open_eote. Manage: create, rename, duplicate and delete projects, set_direct_writes, proposals.","lib/mcp/server.ts · tools.ts · write.ts"),
+G("z_mcp",1690,890,340,150,"ai","mcp/ · 29 tools","the claude.ai connector"),
+N("d_mcpsrv",1710,930,150,92,"ai","server · tools","guide · read · write · manage","guide first: the playbook Claude reads before any change (also a claude.ai Skill). Read: list_projects, get_screens, get_layout, find_tags, match_tags, components, kb_search. Write: apply_ops, replace_screen, place_component, propose, generate, import_tags, open_eote. Files: export_project (15-minute signed link), import_link. Manage: create, rename, duplicate and delete projects, set_direct_writes, proposals.","lib/mcp/guide.ts · screens.ts · port.ts · server.ts · tools.ts · write.ts"),
 N("d_cards",1870,930,145,92,"ai","cards","MCP Apps · live every 4 s","render_screen returns an inline card that redraws every 4 s. Rewritten to the 2026-01-26 spec; not yet seen drawing in claude.ai.","lib/mcp/cards.ts"),
 N("d_collab",1690,1060,340,62,"core","collab","changes · sync · proposal · realtime","Co-editing changes and sync, proposals as a queue, the realtime transport.","lib/collab/*"),
 N("d_server",1335,1140,695,68,"core","server · storage","Mongo, laptop-file and memory stores · pure reads outside transactions · snapshots v2","One storage seam with three stores that behave alike. Reads run outside transactions so they can go in parallel; snapshots are content-addressed pieces.","lib/server/storage.ts · repo.ts · snapshots.ts"),
@@ -418,7 +418,7 @@ edges:[
 ["c7","api_chat","ui_store","ops · one undo"],["c8","ui_store","api_proj","POST changes"],["c9","api_proj","d_server","transaction · revision"],
 ["c10","d_server","m_chg","op log"],["c11","api_proj","d_rtl","after commit"],["c11b","d_rtl","s_bc","hint"],["c12","s_bc","ui_sync","others refetch"],
 ["c13","d_server","m_obj","pieces"],["c14","d_server","m_ver","manifest"],
-["m1","claude","api_oauth","OAuth + PKCE"],["m2","claude","api_mcp","tools/call"],["m3","api_mcp","d_mcpsrv","23 tools"],
+["m1","claude","api_oauth","OAuth + PKCE"],["m2","claude","api_mcp","tools/call"],["m3","api_mcp","d_mcpsrv","29 tools"],
 ["m4","d_mcpsrv","d_ops","apply_ops"],["m5","d_mcpsrv","m_prop","proposal · via mcp"],["m6","s_bc","ui_mcp","new proposal"],
 ["m7","ui_mcp","ui_review","open review"],["m8","ui_review","api_proj","accept → changes"],["m9","d_cards","claude","inline screen card"],
 ["m10","api_oauth","d_auth","same accounts"],["m11","d_mcpsrv","d_kb","kb_search"],["m12","d_mcpsrv","m_gaps","refusal → gap log"],
@@ -441,7 +441,7 @@ flows:[
  {t:"61 route handlers",c:"Thin adapters. They check access, then call lib/. Generation and the agent stream; projects/[id] carries co-editing; mcp and oauth serve claude.ai.",n:["z_api"]},
  {t:"Domain core",c:"All logic lives in lib/. <code>core/ops</code> is the only write path: 26 ops, checked with zod, used by chat, inspector, connector and co-editing alike.",n:["z_core","d_ops"]},
  {t:"The file boundary",c:"ote/ reads and writes EcoStruxure's own .eote. Untouched entries go back byte-identical; Compound Objects are drawn from their definitions; preflight refuses what OTE would refuse.",n:["z_ote"]},
- {t:"Three AI paths",c:"ai/ plans screens and runs the chat loop. agent/ edits the raw file with 30 tools. mcp/ exposes 23 tools to Claude. A model proposes; code checks; a person accepts.",n:["z_ai","z_agent","z_mcp"]},
+ {t:"Three AI paths",c:"ai/ plans screens and runs the chat loop. agent/ edits the raw file with 30 tools. mcp/ exposes 29 tools to Claude, starting with a guide. A model proposes; code checks; a person accepts.",n:["z_ai","z_agent","z_mcp"]},
  {t:"Data and sync",c:"MongoDB holds every byte of project data, including binaries in GridFS. Supabase is used for one thing only: Realtime hints, because Vercel cut SSE streams at 60 s.",n:["z_mongo","z_supa"]},
  {t:"Models",c:"Gemini today, Claude through the same seam. The free-tier quota is the one hard limit for a live demo.",n:["z_ai_ext","quota"]},
  {t:"Ground truth",c:"A licensed OTE 4.4 opens and simulates what we write. Part types, graphics and the skeleton come from the install and are never committed.",n:["z_se"]},
@@ -467,8 +467,8 @@ flows:[
 ]},
 {id:"mcp",t:"Claude over MCP",steps:[
  {t:"claude.ai signs in",c:"Our own OAuth server: discovery, dynamic registration, authorize, token with PKCE, against the same accounts.",e:["m1","m10"]},
- {t:"A tool call",c:"Claude calls <code>/api/mcp</code> over Streamable HTTP. 23 tools read, write and manage projects.",e:["m2","m3","m11"]},
- {t:"Writes become proposals",c:"Unless direct writes are on, a write is stored as a proposal with via: mcp. A refused call goes to the gap log.",e:["m4","m5","m12"]},
+ {t:"A tool call",c:"Claude reads the guide first, then calls <code>/api/mcp</code> over Streamable HTTP. 29 tools read, write and manage projects; match_tags turns the engineer's words into tags.",e:["m2","m3","m11"]},
+ {t:"Writes become proposals",c:"Unless direct writes are on, a write is stored as a proposal with via: mcp. A proposal can build on one still waiting; it is accepted after it. A refused call goes to the gap log.",e:["m4","m5","m12"]},
  {t:"The engineer is told",c:"A Realtime hint puts it in the MCP tab's queue.",e:["m6"]},
  {t:"Reviewed, then accepted",c:"The review shows now beside after and every op. Accept sends it through the normal change path.",e:["m7","m8"]},
  {t:"Claude sees the screen",c:"render_screen returns an MCP Apps card in the chat.",e:["m9"]},
@@ -594,7 +594,7 @@ steps:[
  {t:"One model, two outputs",c:"The canvas and the packager read the same JSON. What the engineer approves is what OTE opens.",e:["o9","o10"]},
  {t:"Recorded",c:"Every applied batch is logged with a revision, which is what makes undo, history and co-editing work.",e:["o11"]},
 ]},
-{id:"mcp",t:"claude.ai connector",s:"OAuth, 23 tools, proposals and review",f:"app/api/mcp · app/api/oauth/* · lib/mcp/* · components/chat/ProposalReview.tsx",W:1600,H:760,
+{id:"mcp",t:"claude.ai connector",s:"OAuth, 29 tools, proposals and review",f:"app/api/mcp · app/api/oauth/* · lib/mcp/* · components/chat/ProposalReview.tsx",W:1600,H:760,
 nodes:[
 N("cl",40,290,210,130,"client","claude.ai","custom connector",null,null,{big:1}),
 N("disc",300,40,240,90,"api","Discovery","oauth/protected-resource · authorization-server"),
@@ -602,9 +602,9 @@ N("reg",300,150,240,85,"api","Register","dynamic client registration"),
 N("auth",300,255,240,90,"api","Authorize","sign in · consent"),
 N("tok",300,365,240,85,"api","Token","PKCE · bearer · revoke"),
 N("mcp",600,250,240,130,"api","/api/mcp","Streamable HTTP · body read once"),
-G("tools",900,40,370,470,"ai","lib/mcp","23 tools"),
-N("tr",920,85,330,85,"ai","Read","list_projects · get_screens · get_layout · find_tags · components · kb_search · kb_get · validate"),
-N("tw",920,185,330,85,"ai","Write","apply_ops · place_component · propose · generate · import_tags · open_eote"),
+G("tools",900,40,370,470,"ai","lib/mcp","29 tools · guide first"),
+N("tr",920,85,330,85,"ai","Guide + read","guide · list_projects · get_screens · get_layout · find_tags · match_tags · draft_tags · components · kb_search · validate"),
+N("tw",920,185,330,85,"ai","Write + files","apply_ops · replace_screen · place_component · propose · generate · import_tags · open_eote · export_project"),
 N("tm",920,285,330,85,"ai","Manage","create, rename, duplicate, delete project · set_direct_writes · proposals"),
 N("tc",920,385,330,100,"ai","render_screen","an MCP Apps card · redraws every 4 s"),
 N("gate",1330,170,240,120,"core","Write gate","direct writes off → proposal · refusals → gap log"),
@@ -1000,7 +1000,7 @@ const PHASES=[
 {d:"Oct 29–31",t:"A real project and an agent",items:["PLAN_FULL_ARCHITECTURE: data stays in Mongo, Supabase only for Realtime, Credentials sign-in","The first engineer-made .eote (HMI ST6600, M251, ATV340); PLC-symbol binding fixed","Lossless parts: fields lost on the corpus 7,500+ → 0; Compound Objects drawn from definitions","The agent: a working directory, 30 tools, QuickJS, then a Vercel Sandbox shell","MCP server and Supabase Realtime started on team branches"]},
 {d:"Nov 3",t:"Architecture lands",items:["Team branches s1–s7 merged: sign-in, live sync, plant brief, claude.ai connector, generate job, preview cards","Project-native work merged; server render fix; Realtime on Supabase's new keys"]},
 {d:"Nov 5–6",t:"Audit, Database v2, the rest",items:["An 84-row audit; 79 closed, five left for OTE bench work","Database v2: 74.77 MB → 3.86 MB on production; fewer database trips per request","Layout solver with nested cards; components by name; a knowledge index (kb_search)","Account management; the Realtime INSERT policy dropped"],m:"1,547 tests passing after the merge"},
-{d:"Nov 10–11",t:"Where we are now",now:1,items:["Connector: create, rename, duplicate and delete projects; new ops setStyle, setAction, addTag, setTag, deleteTag","Graphite UI with three Copilot modes; P&ID shapes (pump casing, valve, vessel level); the Evergreen theme","Chat as a tool loop on Gemini 3.8 Flash; MCP tab with past proposals and a gap log","Binding map; clarifying answers as buttons; proposals as a queue"],m:"373 commits on main · 1,776 tests on the last full run"},
+{d:"Nov 10–11",t:"Where we are now",now:1,items:["Connector: create, rename, duplicate and delete projects; new ops setStyle, setAction, addTag, setTag, deleteTag","Graphite UI with three Copilot modes; P&ID shapes (pump casing, valve, vessel level); the Evergreen theme","Chat as a tool loop on Gemini 3.8 Flash; MCP tab with past proposals and a gap log","Binding map; clarifying answers as buttons; proposals as a queue","From the connector's own logs (195 refusals): proposals stack on the open queue, a guide and claude.ai Skill, replace_screen, match_tags, draft_tags, export links"],m:"382 commits on main · 1,817 tests passing"},
 ];
 const COLS=["Sep 10","Sep 17","Oct 7","Oct 17","Oct 31","Nov 3","Nov 6","Nov 11"];
 // 1 present, b on a branch, x replaced at this column
@@ -1014,7 +1014,7 @@ const MX=[
 ["Agent: workspace, 30 tools, QuickJS","0000b111"],["Vercel Sandbox shell","0000b111"],
 ["claude.ai connector (MCP)","0000b111"],["Plant brief, reviewed first","0000b111"],
 ["Database v2 pieces","00000011"],["Layout solver","00000011"],["Knowledge index (kb_search)","00000011"],
-["Chat as a tool loop","00000001"],["Proposals queue + gap log","00000001"],
+["Chat as a tool loop","00000001"],["Proposals queue + gap log","00000001"],["Stacked proposals, guide + Skill, replace_screen","00000001"],
 ];
 const DEC=[
 {w:"Sep 17",t:"The model stops drawing",b:"Prompt → screen: the model chose coordinates",a:"A standards compiler: the model picks parts and intent, code does layout",y:"After two or three edits a small model doing geometry produced overlaps. Region slots and later a constraint solver fixed it."},
@@ -1029,11 +1029,13 @@ const DEC=[
 {w:"Oct 30",t:"An agent on the file",b:"A Copilot limited to fixed ops",a:"A working directory with 30 tools, scripts and a sandboxed shell",y:"Some jobs need the raw project: copy the engineer's own button and bind it the same way."},
 {w:"Nov 3",t:"Proposals by default",b:"Connector writes applied directly",a:"Writes become proposals; direct writes need manage rights",y:"An HMI is what an operator looks at during an upset. A person accepts every change."},
 {w:"Nov 5",t:"Store pieces, not copies",b:"Every version a full project copy",a:"Content-addressed, compressed pieces with a manifest",y:"97.6% of the database was versions; the free cluster would have filled with about 15 projects."},
+{w:"Nov 11",t:"Proposals build on the queue",b:"Every proposal worked out against the project alone",a:"Worked out on top of the waiting proposals, and accepted after them",y:"171 of 195 refusals in production were a screen's body sent while its shell still waited for review."},
+{w:"Nov 11",t:"A screen given again replaces itself",b:"A second copy added next to the first",a:"replace_screen: clear and redraw in one change, the same result every time",y:"Five clean-up proposals in a week only removed duplicates."},
 {w:"Nov 11",t:"Chat works like Claude over MCP",b:"One model call returns a fixed list of ops",a:"A tool loop: look up, try on a draft, look at a picture, validate, finish",y:"Claude over MCP made better screens than the in-app chat, because it could look and retry."},
 ];
 function buildJourney(){
   const J=document.getElementById("journey");
-  const stats=[["373","commits on main"],["61","API routes"],["26","ops in one write path"],["8","pipeline steps"],["30","agent tools"],["23","MCP tools"],["182","test files"],["~72.7k","lines of TypeScript"]];
+  const stats=[["373","commits on main"],["61","API routes"],["26","ops in one write path"],["8","pipeline steps"],["30","agent tools"],["29","MCP tools"],["184","test files"],["~72.7k","lines of TypeScript"]];
   J.innerHTML=`
   <section><h2>From a hackathon win to a product</h2><p class="lede">Built in about two months. Each phase below is taken from the merges on main; the matrix shows which parts existed at each point and which ones were replaced.</p>
   <div class="stats">${stats.map(s=>`<div><b>${s[0]}</b><span>${s[1]}</span></div>`).join("")}</div></section>
