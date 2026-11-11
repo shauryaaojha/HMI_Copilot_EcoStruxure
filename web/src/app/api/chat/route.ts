@@ -148,6 +148,8 @@ export async function POST(request: Request) {
   // answers in one call.
   const doc = body.doc && Array.isArray(body.doc.screens) && Array.isArray(body.doc.variables) ? body.doc : undefined;
 
+  /** The provider working at the moment, so a failure names the one that failed, not the one picked. */
+  let active: NonNullable<typeof choice.provider> = choice.provider;
   /** The turn as the JSON body, every step reported as it happens. Throws on a model failure. */
   const answer = async (onStep: (step: AgentStep) => void) => {
     let result: (Awaited<ReturnType<typeof converse>> & { steps?: AgentStep[] }) | null;
@@ -165,6 +167,7 @@ export async function POST(request: Request) {
         // installation: the same loop runs on Gemini, with its tools, and says so.
         if (loop === "openai" && (failed.code === "quota" || failed.code === "busy") && process.env.GEMINI_API_KEY?.trim()) {
           const geminiModel = process.env.GEMINI_LOOP_MODEL?.trim() || "gemini-3.8-flash";
+          active = "gemini";
           onStep({ tool: "fallback", summary: `${providerName("openai")} refused ${choice.model} (${failed.code === "quota" ? "budget or quota used up" : "overloaded"}), so ${geminiModel} on the Google key took the turn`, isError: true });
           result = await agentChat({ ...input, doc, onStep }, geminiModel, "gemini");
           return result
@@ -212,7 +215,7 @@ export async function POST(request: Request) {
   // The provider's own error is JSON or an SDK object; the engineer gets a
   // sentence, and the client gets a code it can act on (lib/ai/model-error).
   const failure = (error: unknown) => {
-    const failed = describeModelError(error, choice.provider ? providerName(choice.provider) : undefined);
+    const failed = describeModelError(error, providerName(active));
     return { error: failed.message, code: failed.code, retryable: failed.retryable };
   };
 
