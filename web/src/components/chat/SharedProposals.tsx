@@ -19,7 +19,7 @@ import { docOf } from "@/lib/collab/changes";
 import { previewOfChanges } from "@/lib/collab/proposal";
 import { useCan, useCanEdit } from "@/store/access";
 import { useProject } from "@/store/project";
-import { decideProposal, useProposals, type SharedProposal } from "@/store/proposals";
+import { decideProposal, queueOf, useProposals, type SharedProposal } from "@/store/proposals";
 import { cn } from "@/components/ui";
 import { openReview } from "./ProposalReview";
 
@@ -42,7 +42,7 @@ function outcome(p: SharedProposal): string {
 }
 
 /** One proposal: what was asked, the ops to tick, and the decision buttons. */
-function ProposalCard({ proposal }: { proposal: SharedProposal }) {
+function ProposalCard({ proposal, queue }: { proposal: SharedProposal; queue?: { position: number; total: number } }) {
   const canEdit = useCanEdit();
   const canComment = useCan("comment");
   const projectId = useProject((s) => s.id);
@@ -99,6 +99,17 @@ function ProposalCard({ proposal }: { proposal: SharedProposal }) {
       <div className="flex items-start gap-2">
         <Sparkles size={12} aria-hidden className="mt-0.5 shrink-0 text-brand-400" />
         <p className="min-w-0 flex-1 text-[11px] leading-snug text-text-secondary">
+          {queue && queue.total > 1 && (
+            <span
+              className={cn(
+                "mr-1.5 inline-block rounded-full border px-1.5 font-mono text-[9px] leading-4",
+                queue.position === 1 ? "border-brand-500/60 text-brand-400" : "border-line text-text-faint",
+              )}
+              title={queue.position === 1 ? "Next to decide" : `Number ${queue.position} in the queue`}
+            >
+              {queue.position === 1 ? "next" : `#${queue.position}`}
+            </span>
+          )}
           <span className="font-medium text-text-primary">{proposal.via === "mcp" ? "Claude over MCP" : "HMI Copilot"}</span> for {proposal.requestedByName}:{" "}
           {proposal.request || "a change"}
         </p>
@@ -213,8 +224,10 @@ export function SharedProposals({
   // `only` is a module-level function in practice, so the memo holds.
   const list = useMemo(() => all.filter(only), [all, only]);
   const steps = showSteps ? allSteps : [];
-  const ordered = useMemo(() => [...list.filter((p) => p.status === "open"), ...list.filter((p) => p.status !== "open").slice(0, 5)], [list]);
-  const newest = list.find((p) => p.status === "open");
+  // The open ones as a queue, first asked first; then the latest decided.
+  const queue = useMemo(() => queueOf(list), [list]);
+  const ordered = useMemo(() => [...queue, ...list.filter((p) => p.status !== "open").slice(0, 5)], [queue, list]);
+  const first = queue[0];
 
   // Ghosts of a proposal someone has just decided go away for everyone.
   useEffect(() => {
@@ -223,11 +236,12 @@ export function SharedProposals({
     if (shown && shown.status !== "open") store.setPreview(undefined);
   }, [list]);
 
-  // The newest open proposal is ghosted when it arrives, for whoever is looking.
+  // The first proposal in the queue is the one ghosted on the canvas; when it
+  // is decided, the next one takes its place.
   useEffect(() => {
     const store = useProject.getState();
-    if (newest && !store.preview) showGhosts(newest);
-  }, [newest]);
+    if (first && !store.preview) showGhosts(first);
+  }, [first]);
 
   if (ordered.length === 0 && steps.length === 0) return null;
   return (
@@ -243,7 +257,11 @@ export function SharedProposals({
         </ul>
       )}
       {ordered.map((proposal) => (
-        <ProposalCard key={`${proposal._id}:${proposal.updatedAt}`} proposal={proposal} />
+        <ProposalCard
+          key={`${proposal._id}:${proposal.updatedAt}`}
+          proposal={proposal}
+          queue={proposal.status === "open" ? { position: queue.indexOf(proposal) + 1, total: queue.length } : undefined}
+        />
       ))}
     </section>
   );

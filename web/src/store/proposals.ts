@@ -84,6 +84,15 @@ export const useProposals = create<ProposalsState>()((set) => ({
   clear: () => set({ projectId: null, list: [], steps: [] }),
 }));
 
+/**
+ * The open proposals in the order they are decided: first asked, first shown.
+ * The list itself stays newest first for the history; this is the queue the
+ * review dialog, the cards and the canvas ghosts all walk.
+ */
+export function queueOf(list: SharedProposal[], only: (p: SharedProposal) => boolean = () => true): SharedProposal[] {
+  return list.filter((p) => p.status === "open" && only(p)).sort((a, b) => a.createdAt - b.createdAt);
+}
+
 /** Load the project's proposals; a failure leaves the list empty, the stream fills it in. */
 export async function loadProposals(projectId: string) {
   try {

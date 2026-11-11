@@ -214,8 +214,13 @@ export const Turn = z.object({
   mode: TurnMode,
   /** What to say back. One or two sentences, engineering register. */
   reply: z.string(),
-  /** Only when mode is "clarify" - the specific things still unknown. */
+  /** Replies to offer as buttons. Older clarify turns put their questions here. */
   questions: z.array(z.string()).optional(),
+  /**
+   * Only when mode is "clarify": each question, with the answers to pick
+   * from. A question is read, not clicked; an answer is a button.
+   */
+  choices: z.array(z.object({ question: z.string(), options: z.array(z.string()) })).optional(),
   /**
    * What this project should be called, offered only while it is still
    * "Untitled". A new project cannot be named before there is a request to

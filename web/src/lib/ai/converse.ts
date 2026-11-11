@@ -355,7 +355,10 @@ Every turn you choose exactly one mode:
 - "edit"      change the project as it stands. Emit ops.
 - "startOver" they clearly want to discard what exists and begin again.
 - "clarify"   the request cannot be acted on without guessing. Ask at most two
-              specific questions in questions[].
+              specific questions in choices[], each with two to four short
+              answers the engineer can pick with one click (a few words each,
+              concrete to this project: real screen names, real colours, real
+              equipment). Leave questions[] empty.
 - "answer"    a question about the project. Explain, change nothing.
 
 If you are told the project has no name yet, set projectName as well.
@@ -490,7 +493,10 @@ engineer. Never describe your own reasoning process.`;
 const D = {
   mode: "clarify | build | extend | startOver | edit | answer",
   reply: "One or two sentences back to the engineer",
-  questions: "Only for clarify: at most two specific questions",
+  questions: "Leave empty; clarify asks through choices",
+  choices: "Only for clarify: at most two questions, each with two to four short answers to pick from",
+  question: "One specific question",
+  options: "Two to four short answers, a few words each, concrete to this project",
   projectName:
     "Only when told the project is unnamed: two or three words joined by underscores, " +
     "after the plant or area - Boiler_House, Transfer_Pump_Station",
@@ -558,6 +564,15 @@ export function geminiSchema() {
       mode: { type: "STRING", enum: ["clarify", "build", "extend", "startOver", "edit", "answer"], description: D.mode },
       reply: S(D.reply),
       questions: { type: "ARRAY", items: { type: "STRING" }, description: D.questions },
+      choices: {
+        type: "ARRAY",
+        description: D.choices,
+        items: {
+          type: "OBJECT",
+          properties: { question: S(D.question), options: { type: "ARRAY", items: { type: "STRING" }, description: D.options } },
+          required: ["question", "options"],
+        },
+      },
       projectName: S(D.projectName),
       buildIntent: S(D.buildIntent),
       ops: {
@@ -627,7 +642,7 @@ export function geminiSchema() {
       },
     },
     required: ["mode", "reply"],
-    propertyOrdering: ["mode", "reply", "projectName", "questions", "buildIntent", "ops"],
+    propertyOrdering: ["mode", "reply", "projectName", "questions", "choices", "buildIntent", "ops"],
   };
 }
 
@@ -638,6 +653,16 @@ const JSON_SCHEMA = {
     mode: { type: "string", enum: ["clarify", "build", "extend", "startOver", "edit", "answer"], description: D.mode },
     reply: { type: "string", description: D.reply },
     questions: { type: "array", items: { type: "string" }, description: D.questions },
+    choices: {
+      type: "array",
+      description: D.choices,
+      items: {
+        type: "object",
+        properties: { question: { type: "string", description: D.question }, options: { type: "array", items: { type: "string" }, description: D.options } },
+        required: ["question", "options"],
+        additionalProperties: false,
+      },
+    },
     projectName: { type: "string", description: D.projectName },
     buildIntent: { type: "string", description: D.buildIntent },
     ops: {

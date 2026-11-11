@@ -23,7 +23,7 @@ import { apply, docOf } from "@/lib/collab/changes";
 import type { Doc, StoreChange } from "@/lib/collab/types";
 import { useCanEdit } from "@/store/access";
 import { useProject } from "@/store/project";
-import { decideProposal, useProposals, type SharedProposal } from "@/store/proposals";
+import { decideProposal, queueOf, useProposals, type SharedProposal } from "@/store/proposals";
 
 /** Which proposal is being reviewed, and which have already been put in front of this person. */
 const useReview = create<{ open: string | null; seen: Record<string, true>; show: (id: string | null) => void; markSeen: (id: string) => void }>()((set) => ({
@@ -123,7 +123,19 @@ function Picture({ label, doc, screenId, empty }: { label: string; doc: Doc | nu
   );
 }
 
-export function ProposalReviewDialog({ proposal, onClose }: { proposal: SharedProposal; onClose: () => void }) {
+export function ProposalReviewDialog({
+  proposal,
+  onClose,
+  onDecided = onClose,
+  queue,
+}: {
+  proposal: SharedProposal;
+  onClose: () => void;
+  /** After a decision: the host moves on to the next proposal in the queue. */
+  onDecided?: () => void;
+  /** Where this one stands in the queue of open proposals. */
+  queue?: { position: number; total: number };
+}) {
   const canEdit = useCanEdit();
   const projectId = useProject((s) => s.id);
   const dialog = useRef<HTMLDivElement>(null);
@@ -163,7 +175,7 @@ export function ProposalReviewDialog({ proposal, onClose }: { proposal: SharedPr
     try {
       await decideProposal(projectId, proposal._id, action, action === "accept" && partial ? keep : undefined);
       if (useProject.getState().preview?.messageId === proposal._id) useProject.getState().setPreview(undefined);
-      onClose();
+      onDecided();
     } catch (e) {
       setError(e instanceof Error ? e.message : "The decision could not be recorded. Nothing has changed; try again.");
     } finally {
@@ -201,6 +213,11 @@ export function ProposalReviewDialog({ proposal, onClose }: { proposal: SharedPr
           <div className="min-w-0 flex-1">
             <h2 id="proposal-review-title" className="text-base font-semibold text-text-primary">
               {open ? "A change is waiting for you" : "A change that was decided"}
+              {open && queue && queue.total > 1 && (
+                <span className="ml-2 rounded-full border border-line px-2 py-px align-middle font-mono text-[10px] font-normal text-text-muted">
+                  {queue.position} of {queue.total} in queue
+                </span>
+              )}
             </h2>
             <p className="mt-0.5 text-xs text-text-muted">
               Made by the HMI Copilot for {proposal.requestedByName}, {ago(proposal.createdAt)}. Nothing in the project has changed yet.
@@ -340,7 +357,8 @@ export function ProposalReviewHost() {
   const canEdit = useCanEdit();
   const openId = useReview((s) => s.open);
   const seen = useReview((s) => s.seen);
-  const waiting = useMemo(() => list.filter((p) => p.status === "open"), [list]);
+  // First asked, first decided: the queue, not the newest.
+  const waiting = useMemo(() => queueOf(list), [list]);
   const reviewing = list.find((p) => p._id === openId);
 
   // A proposal that arrives for someone who can decide it is put in front of them, once.
@@ -350,7 +368,22 @@ export function ProposalReviewHost() {
     if (fresh) useReview.getState().show(fresh._id);
   }, [waiting, seen, canEdit, openId]);
 
-  if (reviewing) return <ProposalReviewDialog key={reviewing._id} proposal={reviewing} onClose={() => useReview.getState().show(null)} />;
+  if (reviewing) {
+    const position = waiting.findIndex((p) => p._id === reviewing._id);
+    return (
+      <ProposalReviewDialog
+        key={reviewing._id}
+        proposal={reviewing}
+        queue={position >= 0 ? { position: position + 1, total: waiting.length } : undefined}
+        onClose={() => useReview.getState().show(null)}
+        onDecided={() => {
+          // Straight on to the next one in the queue, seen before or not.
+          const next = queueOf(useProposals.getState().list).find((p) => p._id !== reviewing._id);
+          useReview.getState().show(next?._id ?? null);
+        }}
+      />
+    );
+  }
   if (waiting.length === 0) return null;
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-10 z-40 flex justify-center px-4">

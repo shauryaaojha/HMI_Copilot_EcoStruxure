@@ -91,6 +91,76 @@ const OPENERS = [
   "Add a high alarm on <tag>",
 ];
 
+/**
+ * A clarifying turn: each question as text, its answers as buttons. One
+ * question sends on the first click; two wait until both are picked. Typing
+ * an answer in the box works too.
+ */
+export function ClarifyChoices({
+  choices,
+  live,
+  onAnswer,
+}: {
+  choices: { question: string; options: string[] }[];
+  live: boolean;
+  onAnswer: (text: string) => void;
+}) {
+  const [picked, setPicked] = useState<Record<number, string>>({});
+  const many = choices.filter((c) => c.options.length > 0).length > 1;
+  const pick = (i: number, option: string) => {
+    if (!many) return onAnswer(option);
+    setPicked((p) => ({ ...p, [i]: p[i] === option ? "" : option }));
+  };
+  const ready = many && choices.every((c, i) => c.options.length === 0 || picked[i]);
+
+  return (
+    <div className="space-y-3">
+      {choices.map((choice, i) => (
+        <div key={i} className="space-y-1.5">
+          <p className="flex gap-2 text-[13px] font-medium leading-snug text-text-primary">
+            {choices.length > 1 && <span className="font-mono text-[11px] font-normal text-text-faint">{i + 1}.</span>}
+            {choice.question}
+          </p>
+          {choice.options.length > 0 && (
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label={choice.question}>
+              {choice.options.map((option) => {
+                const on = picked[i] === option;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    disabled={!live}
+                    aria-pressed={many ? on : undefined}
+                    onClick={() => pick(i, option)}
+                    className={cn(
+                      "focus-ring press rounded-full border px-3 py-1 text-xs transition disabled:cursor-default disabled:opacity-50",
+                      on
+                        ? "border-brand-400 bg-brand-500/20 text-text-primary"
+                        : "border-line bg-surface-raised/60 text-text-secondary hover:border-brand-500/60 hover:text-text-primary",
+                    )}
+                  >
+                    {option}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ))}
+      {live && ready && (
+        <button
+          type="button"
+          onClick={() => onAnswer(choices.map((c, i) => (picked[i] ? `${c.question} ${picked[i]}` : "")).filter(Boolean).join("\n"))}
+          className="focus-ring press inline-flex items-center gap-1.5 rounded-lg btn-primary px-3 py-1.5 text-xs font-medium text-text-onbrand hover:brightness-110"
+        >
+          <ArrowUp size={12} aria-hidden /> Send answers
+        </button>
+      )}
+      {live && <p className="text-[10px] text-text-faint">Or type your own answer below.</p>}
+    </div>
+  );
+}
+
 export function ChatPanel() {
   const [draft, setDraft] = useState("");
   /** The chat proposes ops for the canvas; the agent works on the opened file. */
@@ -194,6 +264,18 @@ export function ChatPanel() {
       if (sent === false) setDraft(text);
     });
   }
+
+  /** An answer picked from a clarifying question, sent as the next message. */
+  function answer(text: string) {
+    if (working) return;
+    pinned.current = true;
+    void send(text).then((sent) => {
+      if (sent === false) setDraft(text);
+    });
+  }
+
+  /** Only the newest reply's questions take answers; older ones are history. */
+  const lastAssistant = [...chat].reverse().find((m) => m.role === "assistant")?.id;
 
   return (
     <aside data-mode={mode} className="relative flex h-full w-full min-h-0 flex-col bg-surface-copilot">
@@ -421,6 +503,14 @@ export function ChatPanel() {
                     {message.text}
                   </p>
                 )
+              )}
+
+              {message.choices && message.choices.length > 0 && (
+                <ClarifyChoices
+                  choices={message.choices}
+                  live={message.id === lastAssistant && canEdit && !working}
+                  onAnswer={answer}
+                />
               )}
 
               {message.questions && message.questions.length > 0 && (

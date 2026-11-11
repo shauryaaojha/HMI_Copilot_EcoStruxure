@@ -195,8 +195,10 @@ export interface ChatMessage {
   text: string;
   /** Set while the turn is still streaming. */
   pending?: boolean;
-  /** The assistant is asking rather than building; these are its questions. */
+  /** Replies offered as buttons (a start-over confirmation; older clarify turns). */
   questions?: string[];
+  /** The assistant is asking: each question, with answers to pick. */
+  choices?: { question: string; options: string[] }[];
   /** What the turn actually did, in engineering language, for the history. */
   changes?: string[];
   /** The version stamp this turn produced, so History can jump back to it. */

@@ -286,7 +286,14 @@ export function useChat() {
 
         if (turn.mode === "clarify") {
           nameIfUnnamed(request, turn.projectName);
-          patch({ pending: false, questions: turn.questions ?? [], turn: { mode: "clarify", applied: [], rejected: [], renamed: [] } });
+          // A question is text and its answers are buttons. A model that still
+          // sends bare questions gets them shown as questions, not as buttons.
+          const choices = (turn.choices ?? [])
+            .filter((c) => c.question.trim())
+            .slice(0, 2)
+            .map((c) => ({ question: c.question.trim(), options: c.options.map((o) => o.trim()).filter(Boolean).slice(0, 4) }));
+          const asked = choices.length > 0 ? choices : (turn.questions ?? []).filter((q) => q.trim()).slice(0, 2).map((question) => ({ question, options: [] }));
+          patch({ pending: false, choices: asked, turn: { mode: "clarify", applied: [], rejected: [], renamed: [] } });
           return;
         }
 
