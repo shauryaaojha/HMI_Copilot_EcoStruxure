@@ -21,14 +21,14 @@ export function StartButtons({ compact = false }: { compact?: boolean }) {
   if (compact) {
     return (
       <>
-      <a href="/projects" className="focus-ring inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm font-medium text-text-secondary transition hover:border-line-strong hover:text-text-primary">
+      <a href="/projects" className="focus-ring inline-flex h-9 items-center gap-2 rounded-lg border border-line px-3 text-sm font-medium text-text-secondary transition hover:border-line-strong hover:text-text-primary">
         <LayoutGrid size={14} aria-hidden />
         Your projects
       </a>
       <button
         type="button"
         onClick={() => newProject()}
-        className="focus-ring ml-auto inline-flex h-9 items-center gap-2 rounded-md btn-primary px-4 text-sm font-medium text-text-onbrand transition hover:brightness-110"
+        className="focus-ring press ml-auto inline-flex h-9 items-center gap-2 rounded-lg btn-primary px-4 text-sm font-medium text-text-onbrand transition hover:brightness-110"
       >
         Get started
         <ArrowRight size={15} aria-hidden />
@@ -38,11 +38,11 @@ export function StartButtons({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <div className="mt-8 flex flex-wrap gap-3">
+    <div className="mt-8 flex flex-wrap gap-2.5">
       <button
         type="button"
         onClick={() => newProject()}
-        className="focus-ring inline-flex h-11 items-center gap-2 rounded-md btn-primary px-6 text-sm font-semibold text-text-onbrand transition hover:brightness-110"
+        className="focus-ring press inline-flex h-11 items-center gap-2 rounded-xl btn-primary px-5 text-sm font-semibold text-text-onbrand transition hover:brightness-110"
       >
         Start a project
         <ArrowRight size={16} aria-hidden />
@@ -50,14 +50,14 @@ export function StartButtons({ compact = false }: { compact?: boolean }) {
       <button
         type="button"
         onClick={() => newProject(undefined, { open: true })}
-        className="focus-ring inline-flex h-11 items-center gap-2 rounded-md border border-line px-6 text-sm font-medium text-text-secondary transition hover:border-line-strong hover:text-text-primary"
+        className="focus-ring press inline-flex h-11 items-center gap-2 rounded-xl border border-line bg-surface-raised/50 px-4 text-sm font-medium text-text-secondary backdrop-blur-sm transition hover:border-line-strong hover:text-text-primary"
       >
         <FolderOpen size={15} aria-hidden />
         Open an existing .eote
       </button>
       <a
         href="/projects"
-        className="focus-ring inline-flex h-11 items-center gap-2 rounded-md border border-line px-6 text-sm font-medium text-text-secondary transition hover:border-line-strong hover:text-text-primary"
+        className="focus-ring press inline-flex h-11 items-center gap-2 rounded-xl border border-line bg-surface-raised/50 px-4 text-sm font-medium text-text-secondary backdrop-blur-sm transition hover:border-line-strong hover:text-text-primary"
       >
         <LayoutGrid size={15} aria-hidden />
         Your projects

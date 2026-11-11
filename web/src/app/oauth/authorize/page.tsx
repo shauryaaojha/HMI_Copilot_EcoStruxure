@@ -66,7 +66,7 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
         Signed in as {user.name}
         {user.email ? ` (${user.email})` : ""}.
       </p>
-      <div className="space-y-2 rounded-lg border border-line bg-surface-raised p-3">
+      <div className="space-y-2 rounded-xl border border-line bg-surface-raised p-3.5">
         <p className="text-xs font-medium uppercase tracking-wide text-text-muted">This will be allowed to</p>
         <ul className="space-y-1.5 text-sm text-text-secondary">
           {approved.scopes.map(scope => (
@@ -120,7 +120,7 @@ async function asRequest(params: URLSearchParams): Promise<Request> {
 function Frame({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface-base p-6">
-      <div className="w-full max-w-md space-y-4 rounded-xl border border-line bg-surface-float p-6" style={{ boxShadow: "var(--elev-2)" }}>
+      <div className="menu animate-pop w-full max-w-md space-y-4 rounded-2xl p-6">
         <SchneiderMark className="text-brand-400" />
         {children}
       </div>

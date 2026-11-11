@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { WaveLines } from "@/components/motion/WaveLines";
 import { redirect } from "next/navigation";
 import { ArrowLeft, Cloud, Sparkles, Users } from "lucide-react";
 import { CursorLight } from "@/components/landing/CursorLight";
@@ -31,6 +32,7 @@ export async function AuthPage({ mode, next }: { mode: "in" | "up"; next: string
     <div className="relative h-full overflow-x-hidden overflow-y-auto bg-surface-base">
       <div aria-hidden className="pointer-events-none fixed inset-0 bg-grid mask-fade opacity-[0.35]" />
       <div aria-hidden className="copilot-aurora vivid pointer-events-none fixed inset-0 overflow-hidden" />
+      <div aria-hidden className="pointer-events-none fixed inset-0"><WaveLines className="mask-fade" opacity={0.18} /></div>
       <CursorLight />
 
       {/* This much markup reaches the browser in more than one piece. Without a boundary,
@@ -73,7 +75,7 @@ export async function AuthPage({ mode, next }: { mode: "in" | "up"; next: string
           {/* The form is the one thing on this page to do, so the light gathers behind it. */}
           <div aria-hidden className="pointer-events-none absolute -inset-x-4 -inset-y-10 rounded-full lg:-inset-x-10 bg-brand-500/20 blur-3xl" />
           <div
-            className="beam-border reveal is-in relative space-y-4 rounded-2xl border border-line bg-surface-float/95 p-6 sm:p-7"
+            className="menu beam-border reveal is-in relative space-y-4 rounded-2xl bg-surface-float/90 p-6 backdrop-blur-md sm:p-7"
             style={{ boxShadow: "var(--elev-2)", ["--reveal-delay" as string]: "120ms" }}
           >
             <SchneiderMark className="text-brand-400 lg:hidden" />

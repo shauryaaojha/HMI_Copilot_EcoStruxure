@@ -179,12 +179,12 @@ export function SignInForm({ next, compact = false, initialMode = "in", heading:
         </div>
       )}
       {error && (
-        <p role="alert" className="animate-rise rounded-md border border-status-warn/30 bg-status-warn/[0.08] px-2.5 py-2 text-xs leading-snug text-status-warn">
+        <p role="alert" className="animate-rise rounded-lg border border-status-warn/30 bg-status-warn/[0.08] px-2.5 py-2 text-xs leading-snug text-status-warn">
           {error}
         </p>
       )}
       {notice && (
-        <p role="status" className="animate-rise rounded-md border border-brand-500/30 bg-brand-500/[0.08] px-2.5 py-2 text-xs leading-snug text-text-primary">
+        <p role="status" className="animate-rise rounded-lg border border-brand-500/30 bg-brand-500/[0.08] px-2.5 py-2 text-xs leading-snug text-text-primary">
           {notice}
         </p>
       )}

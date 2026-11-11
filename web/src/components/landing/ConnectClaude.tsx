@@ -44,7 +44,7 @@ export function ConnectClaude() {
 
   return (
     <section id="connect" aria-labelledby="connect-title" className="mx-auto max-w-6xl scroll-mt-8 px-8 py-16">
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16">
         <div>
           <p className="label-eyebrow text-brand-400">Connector</p>
           <h2 id="connect-title" className="mt-3 text-3xl font-semibold tracking-tight">Work on your screens from Claude.</h2>
@@ -62,7 +62,7 @@ export function ConnectClaude() {
           </ul>
         </div>
 
-        <div className="rounded-xl border border-line-subtle bg-surface-raised/70 p-6">
+        <div className="card rounded-2xl p-6 sm:p-7">
           <ol className="space-y-5">
             {STEPS.map((step, i) => (
               <li key={step.title} className="flex gap-4">
@@ -74,14 +74,14 @@ export function ConnectClaude() {
                   <p className="mt-1 text-sm leading-relaxed text-text-muted">{step.note}</p>
                   {i === 1 && (
                     <div className="mt-3 flex items-center gap-2">
-                      <code className="min-w-0 flex-1 truncate rounded-md border border-line bg-surface-base px-3 py-2 font-mono text-xs text-text-primary" aria-label="Connector address">
+                      <code className="min-w-0 flex-1 truncate rounded-lg border border-line bg-surface-raised px-3 py-2 font-mono text-xs text-text-primary" aria-label="Connector address">
                         {address || "https://…/api/mcp"}
                       </code>
                       <button
                         type="button"
                         onClick={() => void copy()}
                         disabled={!address}
-                        className="focus-ring inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-line px-3 text-xs font-medium text-text-secondary transition hover:border-line-strong hover:text-text-primary disabled:opacity-50"
+                        className="focus-ring press inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line px-3 text-xs font-medium text-text-secondary transition hover:border-line-strong hover:text-text-primary disabled:opacity-50"
                       >
                         {copied ? <Check size={13} aria-hidden /> : <Copy size={13} aria-hidden />}
                         {copied ? "Copied" : "Copy"}

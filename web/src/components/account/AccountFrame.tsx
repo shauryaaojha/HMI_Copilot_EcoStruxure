@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { WaveLines } from "@/components/motion/WaveLines";
 import { ArrowLeft } from "lucide-react";
 import { SchneiderMark } from "@/components/shell/SchneiderMark";
 
@@ -13,6 +14,7 @@ export function AccountFrame({ title, lead, tabs, children }: { title: string; l
     <div className="relative min-h-screen overflow-x-hidden bg-surface-base">
       <div aria-hidden className="pointer-events-none fixed inset-0 bg-grid mask-fade opacity-[0.35]" />
       <div aria-hidden className="copilot-aurora pointer-events-none fixed inset-0 overflow-hidden" />
+      <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 h-[55vh]"><WaveLines className="mask-fade" opacity={0.12} /></div>
       <div className="relative mx-auto w-full max-w-2xl space-y-6 px-4 py-8 sm:px-6 sm:py-12">
         <header className="reveal is-in space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3">

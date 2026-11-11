@@ -8,6 +8,7 @@
  * file beside it is a different kind of claim.
  */
 
+import { magnetic } from "@/components/motion/useMagnetic";
 import {
   ArrowRight,
   FileUp,
@@ -117,7 +118,7 @@ export function Routes() {
 
   return (
     <section ref={section} className="reveal relative mx-auto max-w-5xl px-8 pb-28">
-      <div className="rounded-2xl border border-line-subtle bg-surface-raised/50 p-8">
+      <div className="card rounded-2xl p-8">
         <h2 className="text-2xl font-semibold">Three ways in. All of them end in a file the product opens.</h2>
         <p className="mt-2 max-w-2xl text-sm text-text-muted">
           Pick one — the workspace asks the same question and takes the same three answers.
@@ -129,7 +130,8 @@ export function Routes() {
               key={title}
               type="button"
               onClick={() => newProject()}
-              className="spotlight focus-ring lift group rounded-xl border border-line-subtle bg-surface-base p-5 text-left hover:border-brand-500/50 hover:bg-surface-hover"
+              {...magnetic}
+              className="spotlight magnetic focus-ring group rounded-xl border border-line bg-surface-raised/60 p-5 text-left hover:border-brand-500/50"
             >
               <Icon size={17} aria-hidden className="text-brand-400" />
               <h3 className="mt-3 flex items-center gap-1.5 font-semibold">

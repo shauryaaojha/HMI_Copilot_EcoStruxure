@@ -25,7 +25,7 @@ export function ConnectorSetup() {
           <li>Ask Claude about a project. Changes wait as proposals unless you turn on direct writes for that project.</li>
         </ol>
         <div className="flex items-center gap-2">
-          <code className="min-w-0 flex-1 truncate rounded-md border border-line-subtle px-2 py-1.5 font-mono text-xs">{address}</code>
+          <code className="min-w-0 flex-1 truncate rounded-lg border border-line bg-surface-raised px-2.5 py-1.5 font-mono text-xs">{address}</code>
           <Button size="sm" variant="secondary" disabled={!address} onClick={() => void copy()}>{copied ? "Copied" : "Copy"}</Button>
         </div>
       </div>

@@ -16,6 +16,9 @@ import { ScreenBuild } from "@/components/landing/ScreenBuild";
 import { Flow, Routes } from "@/components/landing/Sections";
 import { CursorLight } from "@/components/landing/CursorLight";
 import { ConnectClaude } from "@/components/landing/ConnectClaude";
+import { WaveLines } from "@/components/motion/WaveLines";
+import { ScrambleText } from "@/components/motion/ScrambleText";
+import { Magnetic } from "@/components/motion/Magnetic";
 
 /**
  * Landing page.
@@ -84,6 +87,10 @@ export default function Landing() {
       {/* the engineering grid the product lays everything out on */}
       <div aria-hidden className="pointer-events-none fixed inset-0 bg-grid mask-fade opacity-[0.35]" />
       <div aria-hidden className="copilot-aurora pointer-events-none fixed inset-0 overflow-hidden" />
+      {/* The hero's ground: the wave lines from the Animations folder, bending from the cursor. */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[100vh]">
+        <WaveLines className="mask-fade" opacity={0.2} />
+      </div>
       <CursorLight />
 
       <div className="relative">
@@ -104,10 +111,11 @@ export default function Landing() {
           {/* --- hero ---------------------------------------------------- */}
           <section className="mx-auto grid max-w-6xl items-center gap-12 px-8 pb-10 pt-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
             <div className="reveal is-in min-w-0">
-              <p className="text-xs font-semibold tracking-[0.2em] text-brand-400">
-                ECOSTRUXURE OPERATOR TERMINAL EXPERT 4.4
+              <p className="inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/[0.08] px-3 py-1 font-mono text-[11px] font-medium tracking-[0.14em] text-brand-400">
+                <span aria-hidden className="dot-live h-1.5 w-1.5 rounded-full bg-brand-400 text-brand-400" />
+                <ScrambleText text="ECOSTRUXURE OPERATOR TERMINAL EXPERT 4.4" delay={300} speed={22} />
               </p>
-              <h1 className="word-in mt-4 text-[clamp(2.25rem,5vw,3.5rem)] font-semibold leading-[1.05] tracking-tight">
+              <h1 className="word-in mt-5 text-[clamp(2.25rem,5vw,3.6rem)] font-semibold leading-[1.04] tracking-tight">
                 {"Turn engineering intent into industrial HMI screens.".split(" ").map((w, i) => (
                   <span key={i} style={{ ["--i" as string]: i }} className="mr-[0.22em]">
                     {w}
@@ -130,7 +138,8 @@ export default function Landing() {
 
             {/* the product's own output, building itself */}
             <div className="reveal is-in min-w-0" style={{ ["--reveal-delay" as string]: "180ms" }}>
-              <figure className="overflow-hidden rounded-xl border border-line-subtle bg-surface-raised shadow-2xl shadow-black/30">
+              <Magnetic className="rounded-2xl">
+              <figure className="card overflow-hidden rounded-2xl">
                 <div className="flex items-center gap-1.5 border-b border-line-subtle px-3 py-2">
                   <span className="h-2 w-2 rounded-full bg-text-faint/40" />
                   <span className="h-2 w-2 rounded-full bg-text-faint/40" />
@@ -141,6 +150,7 @@ export default function Landing() {
                 </div>
                 <ScreenBuild />
               </figure>
+              </Magnetic>
               <figcaption className="pt-2.5 text-center text-[11px] text-text-faint">
                 A generated L2 process screen, drawn from twenty tags.
               </figcaption>
@@ -149,10 +159,12 @@ export default function Landing() {
 
           {/* --- claims -------------------------------------------------- */}
           <section className="mx-auto max-w-6xl px-8 py-16">
-            <dl className="grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+            <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {CLAIMS.map(({ icon: Icon, title, note }) => (
-                <div key={title} className="flex gap-3">
-                  <Icon size={17} aria-hidden className="mt-0.5 shrink-0 text-brand-400" />
+                <div key={title} className="card lift flex gap-3.5 p-5">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-400/25 to-brand-600/10 text-brand-400 ring-1 ring-brand-500/25">
+                    <Icon size={16} aria-hidden />
+                  </span>
                   <div>
                     <dt className="font-semibold">{title}</dt>
                     <dd className="mt-1 text-sm leading-relaxed text-text-muted">{note}</dd>
