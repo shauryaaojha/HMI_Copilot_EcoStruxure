@@ -12,9 +12,9 @@ import { z } from "zod";
 import { Op } from "@/core/ops";
 import { resolveProvider } from "@/lib/ai/provider";
 import { selectedOps } from "@/lib/ai/review";
-import { dryRunOnSnapshot } from "@/lib/collab/proposal";
-import { docOf } from "@/lib/collab/changes";
-import type { StoreChange } from "@/lib/collab/types";
+import { dryRunOnSnapshot, dryRunToDoc } from "@/lib/collab/proposal";
+import { apply as applyChanges, docOf } from "@/lib/collab/changes";
+import type { Doc, StoreChange } from "@/lib/collab/types";
 import { can } from "./access";
 import { ServerError } from "./errors";
 import { repo, type Proposal, type Repo, type User } from "./repo";
@@ -63,6 +63,26 @@ export async function unlockScreen(user: User | null, projectId: string, screenI
 const Ops = z.array(Op).max(200);
 
 /**
+ * The project with every open proposal applied, oldest first: what it will be
+ * once the queue is accepted in order. A proposal that no longer applies is
+ * left out rather than failing the one being made.
+ */
+export async function openStack(projectId: string, doc: Doc, storage: Repo): Promise<{ doc: Doc; ids: string[] }> {
+  const open = (await storage.proposals.list(projectId)).filter((p) => p.status === "open").sort((a, b) => a.createdAt - b.createdAt);
+  let stacked = doc;
+  const ids: string[] = [];
+  for (const p of open) {
+    try {
+      stacked = p.groups ? applyChanges(stacked, p.groups.flat()) : dryRunToDoc(stacked, p.ops, p.screenId).after;
+      ids.push(p._id);
+    } catch {
+      // stale against the current project; it will say so when someone opens it
+    }
+  }
+  return { doc: stacked, ids };
+}
+
+/**
  * A chat edit becomes a proposal: its ops run against the server snapshot,
  * and what they would change is kept for everyone to see. The requester's
  * lock on the screen ends here.
@@ -75,7 +95,25 @@ export async function proposeEdit(user: User | null, projectId: string, body: Re
   const request = typeof body.request === "string" ? body.request.slice(0, 2000) : "";
   try {
     const { doc } = await latestDoc(projectId, storage);
-    const run = dryRunOnSnapshot(doc, parsed.data, screenId);
+    let run = dryRunOnSnapshot(doc, parsed.data, screenId);
+    let dependsOn: string[] = [];
+    // Claude splits big work over several calls: a screen's shell in one, its
+    // body in the next. Against the project alone the second refers to a
+    // screen that is still waiting in the queue, and every op was refused
+    // ("no screen called Home", 170 times in the first week). So when the
+    // project alone refuses something, the ops are worked out again on top of
+    // the open proposals, and if that refuses less, that run is the proposal
+    // and it waits for the ones it builds on.
+    if (run.outcome.rejected.length > 0) {
+      const stack = await openStack(projectId, doc, storage);
+      if (stack.ids.length > 0) {
+        const stacked = dryRunOnSnapshot(stack.doc, parsed.data, screenId);
+        if (stacked.outcome.rejected.length < run.outcome.rejected.length) {
+          run = stacked;
+          dependsOn = stack.ids;
+        }
+      }
+    }
     const proposal = await storage.proposals.create({
       projectId,
       ...(screenId ? { screenId } : {}),
@@ -89,6 +127,7 @@ export async function proposeEdit(user: User | null, projectId: string, body: Re
       rejected: run.outcome.problems,
       // Set by the caller, never read from the request body.
       ...(via ? { via } : {}),
+      ...(dependsOn.length ? { dependsOn } : {}),
     });
     announceProposals(projectId);
     return proposal;
@@ -147,6 +186,14 @@ export async function decideProposal(user: User | null, projectId: string, id: s
     return discarded;
   }
   if (body.action !== "accept") throw new ServerError(400, "invalid", "action is accept or discard");
+  if (proposal.dependsOn?.length) {
+    const list = await storage.proposals.list(projectId);
+    const waiting = list.filter((p) => proposal.dependsOn!.includes(p._id) && p.status === "open");
+    if (waiting.length > 0) {
+      const first = waiting.sort((a, b) => a.createdAt - b.createdAt)[0];
+      throw new ServerError(409, "depends", `This builds on "${(first.request || "an earlier proposal").slice(0, 120)}", which is still waiting. Accept that one first, or discard this one.`);
+    }
+  }
 
   const all = proposal.labels.map((_, i) => i);
   const wanted = Array.isArray(body.indexes) ? body.indexes.filter((i): i is number => Number.isInteger(i) && i >= 0 && i < all.length) : all;

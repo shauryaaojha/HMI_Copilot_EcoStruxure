@@ -38,6 +38,12 @@ export type Proposal = Row & {
   rejected: string[];
   /** "mcp" when Claude asked for it through the connector; unset for the chat and the agent. */
   via?: "mcp";
+  /**
+   * Open proposals this one was worked out on top of, oldest first. Set only
+   * when it needed them: its ops name a screen or object one of them creates.
+   * It cannot be accepted while any of them is still open.
+   */
+  dependsOn?: string[];
   createdAt: number;
   updatedAt: number;
   status: ProposalStatus;
@@ -81,7 +87,7 @@ export const LOCK_MS = 90_000;
 
 /** What creating a proposal needs; `Omit` would collapse over Row's index signature. */
 export type ProposalInput = Pick<Proposal, "projectId" | "requestedBy" | "requestedByName" | "request" | "author" | "ops" | "labels" | "changes" | "rejected"> &
-  Partial<Pick<Proposal, "screenId" | "groups" | "via">>;
+  Partial<Pick<Proposal, "screenId" | "groups" | "via" | "dependsOn">>;
 
 export interface ProposalsRepo {
   create(proposal: ProposalInput): Promise<Proposal>;

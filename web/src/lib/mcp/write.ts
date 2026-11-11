@@ -78,9 +78,12 @@ async function queue(caller: Caller, projectId: string, ops: z.infer<typeof Ops>
     text: [
       preamble ?? "",
       `Queued as proposal ${proposal._id} for an editor to accept. Nothing in the project has changed yet; ${proposal.labels.length} change(s) are waiting and the decision will be logged with the name of whoever makes it.`,
+      proposal.dependsOn?.length
+        ? `It was worked out on top of ${proposal.dependsOn.length} open proposal(s) it builds on (${proposal.dependsOn.join(", ")}), so it can be accepted only after them. Tell the engineer to accept the queue in order.`
+        : "",
       projectData("proposal", limited(lines, RESULT_LIMIT - 2_000)),
     ].filter(Boolean).join("\n"),
-    structured: { mode: "proposal", proposalId: proposal._id, waiting: proposal.labels.length, rejected: proposal.rejected.length },
+    structured: { mode: "proposal", proposalId: proposal._id, waiting: proposal.labels.length, rejected: proposal.rejected.length, ...(proposal.dependsOn?.length ? { dependsOn: proposal.dependsOn } : {}) },
     landed: { mode: "proposal" as const, proposalId: proposal._id, lines, applied: proposal.labels.length, rejected: proposal.rejected.length },
   };
 }
