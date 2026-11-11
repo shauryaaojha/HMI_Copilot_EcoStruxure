@@ -4,11 +4,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: an app frame. A header with three views; each view is a pannable board of nested boxes with a step player, or a scrolling journey. Palette: black and white with neutral greys, and one blue for whatever is active. */
+/* Layout: an app frame. A header with three views; each view is a pannable board of nested boxes with a step player, or a scrolling journey. Palette: black and white with neutral greys, and one light green for whatever is active. */
 :root{
   --bg:#f5f5f5; --stage:#ffffff; --panel:#ffffff; --panel2:#f0f0f0; --ink:#0a0a0a; --muted:#5c5c5c;
   --line:#d0d0d0; --line2:#e6e6e6; --edge:#9a9a9a; --grid:#f0f0f0;
-  --accent:#2b8cff; --flow:#2b8cff; --flow-soft:#2b8cff1f; --warn:#5c5c5c; --warn-soft:#f4f4f4;
+  --accent:#4ade80; --flow:#4ade80; --flow-soft:#4ade801f; --warn:#5c5c5c; --warn-soft:#f4f4f4;
   --k-client:#5c5c5c; --k-ui:#5c5c5c; --k-api:#5c5c5c; --k-core:#5c5c5c; --k-ai:#5c5c5c;
   --k-data:#5c5c5c; --k-rt:#5c5c5c; --k-compute:#5c5c5c; --k-se:#5c5c5c; --k-note:#5c5c5c;
   --f-display:"Inter", "Segoe UI", system-ui, sans-serif;
@@ -19,14 +19,14 @@
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
   --bg:#000000; --stage:#0a0a0a; --panel:#141414; --panel2:#1c1c1c; --ink:#fafafa; --muted:#a3a3a3;
   --line:#2e2e2e; --line2:#202020; --edge:#555555; --grid:#121212;
-  --accent:#2b8cff; --flow:#2b8cff; --flow-soft:#2b8cff26; --warn:#a3a3a3; --warn-soft:#161616;
+  --accent:#4ade80; --flow:#4ade80; --flow-soft:#4ade8026; --warn:#a3a3a3; --warn-soft:#161616;
   --k-client:#a3a3a3; --k-ui:#a3a3a3; --k-api:#a3a3a3; --k-core:#a3a3a3; --k-ai:#a3a3a3;
   --k-data:#a3a3a3; --k-rt:#a3a3a3; --k-compute:#a3a3a3; --k-se:#a3a3a3; --k-note:#a3a3a3;
   --shadow:none; color-scheme:dark }}
 :root[data-theme="dark"]{
   --bg:#000000; --stage:#0a0a0a; --panel:#141414; --panel2:#1c1c1c; --ink:#fafafa; --muted:#a3a3a3;
   --line:#2e2e2e; --line2:#202020; --edge:#555555; --grid:#121212;
-  --accent:#2b8cff; --flow:#2b8cff; --flow-soft:#2b8cff26; --warn:#a3a3a3; --warn-soft:#161616;
+  --accent:#4ade80; --flow:#4ade80; --flow-soft:#4ade8026; --warn:#a3a3a3; --warn-soft:#161616;
   --k-client:#a3a3a3; --k-ui:#a3a3a3; --k-api:#a3a3a3; --k-core:#a3a3a3; --k-ai:#a3a3a3;
   --k-data:#a3a3a3; --k-rt:#a3a3a3; --k-compute:#a3a3a3; --k-se:#a3a3a3; --k-note:#a3a3a3;
   --shadow:none; color-scheme:dark }
@@ -125,7 +125,7 @@ svg.top{z-index:4}
 .player{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
 .pl-btns{display:flex;gap:4px}
 .pl-btns button{width:36px;height:36px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;display:grid;place-items:center}
-.pl-btns button.play{background:var(--flow);border-color:var(--flow);color:var(--panel)}
+.pl-btns button.play{background:var(--flow);border-color:var(--flow);color:#0a0a0a}
 .pl-btns svg{width:15px;height:15px;fill:currentColor}
 .pl-text{min-width:0;display:flex;flex-direction:column;gap:2px}
 .pl-meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
