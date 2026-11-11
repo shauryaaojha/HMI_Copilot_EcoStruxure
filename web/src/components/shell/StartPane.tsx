@@ -344,16 +344,29 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
   return (
     <div
       ref={pane}
-      className="absolute inset-0 z-30 overflow-y-auto bg-surface-base"
+      className="absolute inset-0 z-30 overflow-hidden bg-surface-base"
       style={{
         clipPath: origin ? `circle(0px at ${origin.x}px ${origin.y}px)` : undefined,
         transition: `clip-path ${REVEAL_MS}ms cubic-bezier(0.7, 0, 0.2, 1)`,
       }}
     >
+      {/* The backdrop stays put and the content scrolls over it: inside the
+          scroller, these layers were one viewport tall, so scrolling past them
+          showed their hard bottom edge and a bare ground beneath. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 bg-grid mask-fade opacity-[0.3]" />
       <div aria-hidden className="copilot-aurora pointer-events-none absolute inset-0 overflow-hidden" />
       <div aria-hidden className="cursor-light pointer-events-none absolute inset-0 hidden md:block" />
 
+      {/* Nothing here is compulsory: an engineer who wants the empty canvas gets it. */}
+      <button
+        type="button"
+        onClick={() => reveal(centre())}
+        className="focus-ring absolute right-4 top-4 z-10 inline-flex items-center gap-1.5 rounded-lg border border-line-subtle bg-surface-raised/70 px-3 py-1.5 text-xs text-text-secondary backdrop-blur transition hover:border-line-strong hover:text-text-primary"
+      >
+        Skip to the empty canvas <ArrowRight size={12} aria-hidden />
+      </button>
+
+      <div className="absolute inset-0 overflow-y-auto">
       <div className="relative mx-auto flex min-h-full max-w-3xl flex-col justify-center px-6 py-12">
         <SignInNotice className="mb-6" reason="Sign in so the Copilot can draft the brief and generate the screens." />
         {/* --- the question -------------------------------------------- */}
@@ -408,9 +421,17 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
             <button
               type="button"
               onClick={() => filePicker.current?.click()}
-              className="focus-ring justify-self-center text-xs text-text-muted underline-offset-2 hover:text-text-primary hover:underline sm:col-span-2"
+              className="spotlight lift focus-ring group flex items-center gap-3 rounded-xl border border-line-subtle bg-surface-raised/60 px-5 py-3.5 text-left hover:border-brand-500/50 sm:col-span-2"
             >
-              Or open a project you already have
+              <FolderOpen size={18} aria-hidden className="shrink-0 text-brand-400" />
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5 text-sm font-semibold">
+                  Open a project you already have
+                  <ArrowRight size={13} aria-hidden className="opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
+                </span>
+                <span className="mt-0.5 block text-xs text-text-muted">An .eote, a .vxdz from 3.4.1 on, or a Vijeo Designer backup (.vdz) to migrate.</span>
+              </span>
+              <span className="hidden shrink-0 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-text-secondary group-hover:text-text-primary sm:inline">Browse…</span>
             </button>
           </div>
         )}
@@ -630,6 +651,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
             ))}
           </ol>
         </div>
+      </div>
       </div>
 
       <input

@@ -186,7 +186,8 @@ export function createProjectStore() {
       set((s) => {
         remember(s, label);
         restoreSlice(s, { label, ...patch });
-        s.handleSeq = Math.max(s.handleSeq, patch.handleSeq);
+        // Either side can be missing; ensureHandles rebuilds it from the handles if so.
+        s.handleSeq = Math.max(Number(s.handleSeq) || 0, Number(patch.handleSeq) || 0);
         ensureHandles(s);
       }),
 

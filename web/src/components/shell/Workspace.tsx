@@ -20,6 +20,7 @@
 import { ProposalReviewHost } from "@/components/chat/ProposalReview";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { useProject } from "@/store/project";
 import { useCanEdit } from "@/store/access";
 import { StartPane } from "./StartPane";
@@ -87,6 +88,16 @@ export function Workspace({ projectId }: { projectId: string }) {
       {/* Every answer the start pane offers builds something, so a viewer of
           an empty shared project lands on the empty canvas instead. */}
       {start && canEdit && <StartPane projectId={projectId} onDone={() => setStart(false)} />}
+      {/* Until the project has loaded it is not known whether the start pane
+          opens, so nothing underneath takes input yet: something typed into
+          the chat would be wiped by hydration, or covered by the start pane. */}
+      {start === null && (
+        <div aria-busy className="absolute inset-0 z-30 flex items-center justify-center bg-surface-base/80 backdrop-blur-sm">
+          <span className="inline-flex items-center gap-2 text-xs text-text-muted">
+            <Loader2 size={14} className="animate-spin" aria-hidden /> Opening the project…
+          </span>
+        </div>
+      )}
       <WorkspaceShell
       projectId={projectId}
       intent={<ChatPanel />}
