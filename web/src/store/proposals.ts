@@ -30,6 +30,8 @@ export interface SharedProposal {
   decidedByName?: string;
   decidedAt?: number;
   acceptedOpIndexes?: number[];
+  /** The revision the accepted changes landed at. */
+  rev?: number;
   /** Chat edits only: present when a subset can be run again. */
   ops?: unknown[];
   /** "mcp" when Claude asked for it through the connector. */

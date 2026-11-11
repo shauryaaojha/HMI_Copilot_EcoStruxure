@@ -26,6 +26,11 @@ import { useProject } from "@/store/project";
 import { useProposals } from "@/store/proposals";
 import { cn } from "@/components/ui";
 import { SharedProposals, fromMcp } from "./SharedProposals";
+import { McpHistory } from "./McpHistory";
+import type { SharedProposal } from "@/store/proposals";
+
+/** Open ones are decided here; decided ones are in the history below. */
+const openFromMcp = (p: SharedProposal) => fromMcp(p) && p.status === "open";
 
 const ASKS = [
   "List my HMI projects",
@@ -218,7 +223,8 @@ export function ConnectorPane({ projectId }: { projectId: string }) {
             </div>
           )}
 
-          <SharedProposals only={fromMcp} title="Proposals from MCP" showSteps={false} />
+          <SharedProposals only={openFromMcp} title="Waiting for you" showSteps={false} />
+          <McpHistory proposals={mcp} />
         </>
       )}
     </div>
