@@ -28,7 +28,7 @@ export interface EmptyStateProps {
 export function EmptyState({ icon: Icon, title, body, hints, className, children }: EmptyStateProps) {
   return (
     <div className={cn("flex h-full flex-col items-center justify-center px-6 py-10 text-center", className)}>
-      <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-line-subtle bg-surface-raised/50 text-text-faint">
+      <span className="empty-mark flex h-12 w-12 items-center justify-center rounded-2xl text-text-muted">
         <Icon size={18} aria-hidden />
       </span>
       <p className="mt-3.5 text-sm font-medium text-text-secondary">{title}</p>
@@ -39,7 +39,7 @@ export function EmptyState({ icon: Icon, title, body, hints, className, children
           {hints.map(({ key, label }) => (
             <div key={key} className="flex items-baseline gap-2.5 text-left">
               <dt className="shrink-0">
-                <kbd className="rounded border border-line-subtle bg-surface-raised px-1.5 py-0.5 font-mono text-[10px] text-text-muted">
+                <kbd className="kbd">
                   {key}
                 </kbd>
               </dt>

@@ -27,8 +27,8 @@ export function Select({ options, size = "md", className, ...rest }: SelectProps
     <div className="relative inline-flex w-full items-center">
       <select
         className={cn(
-          "focus-ring w-full appearance-none rounded-md border border-line bg-surface-raised",
-          "pr-7 text-text-primary transition focus:border-brand-500 focus:outline-none",
+          "field w-full appearance-none rounded-lg border border-line bg-surface-raised",
+          "pr-7 text-text-primary transition focus:outline-none",
           "disabled:opacity-50",
           size === "sm" ? "h-7 pl-2 text-xs" : "h-8 pl-2.5 text-sm",
           className,

@@ -56,7 +56,7 @@ export function Panel({
   }
 
   const header = title !== undefined && (
-    <div className="flex h-10 shrink-0 items-center gap-2 px-3">
+    <div className={cn("flex h-11 shrink-0 items-center gap-2 px-4", bordered && "border-b border-line-subtle")}>
       {leading}
       {collapsible ? (
         <button
@@ -90,13 +90,13 @@ export function Panel({
     <section
       className={cn(
         "flex min-h-0 flex-col",
-        bordered && "rounded-panel border border-line-subtle bg-surface-panel",
+        bordered && "card",
         className,
       )}
     >
       {header}
       {isOpen && (
-        <div className={cn("min-h-0", !flush && "px-3 pb-3", bodyClassName)}>
+        <div className={cn("min-h-0", !flush && (bordered ? "p-4" : "px-3 pb-3"), bodyClassName)}>
           {children}
         </div>
       )}

@@ -11,12 +11,12 @@ import { cn } from "./cn";
 export type BadgeTone = "neutral" | "brand" | "ok" | "warn" | "alarm" | "info";
 
 const TONE: Record<BadgeTone, string> = {
-  neutral: "bg-surface-active text-text-secondary",
-  brand: "bg-brand-500/15 text-brand-400",
-  ok: "bg-status-ok/15 text-status-ok",
-  warn: "bg-status-warn/15 text-status-warn",
-  alarm: "bg-status-alarm/15 text-status-alarm",
-  info: "bg-status-info/15 text-status-info",
+  neutral: "border-line bg-surface-raised text-text-secondary",
+  brand: "border-brand-500/30 bg-brand-500/10 text-brand-400",
+  ok: "border-status-ok/30 bg-status-ok/10 text-status-ok",
+  warn: "border-status-warn/30 bg-status-warn/10 text-status-warn",
+  alarm: "border-status-alarm/30 bg-status-alarm/10 text-status-alarm",
+  info: "border-status-info/30 bg-status-info/10 text-status-info",
 };
 
 export interface BadgeProps {
@@ -31,7 +31,7 @@ export function Badge({ tone = "neutral", dot, children, className }: BadgeProps
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium",
+        "inline-flex items-center gap-1.5 rounded-md border px-1.5 py-px text-[11px] font-medium leading-4",
         TONE[tone],
         className,
       )}

@@ -53,12 +53,12 @@ export function Toggle({
         className={cn(
           "relative shrink-0 rounded-full transition-colors peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-brand-400",
           track,
-          checked ? "bg-brand-500" : "bg-surface-active",
+          checked ? "bg-brand-500 shadow-[inset_0_1px_2px_rgba(0,0,0,0.25)]" : "bg-surface-active shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]",
         )}
       >
         <span
           className={cn(
-            "absolute left-0.5 top-1/2 -translate-y-1/2 rounded-full bg-white shadow transition-transform",
+            "absolute left-0.5 top-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.35)] transition-transform duration-200 ease-[var(--ease-spring)]",
             knob,
             checked && travel,
           )}

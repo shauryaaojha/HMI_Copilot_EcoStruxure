@@ -6,8 +6,8 @@ import type { ComponentPropsWithRef, ReactNode } from "react";
 import { cn } from "./cn";
 
 const SHARED =
-  "w-full rounded-md border border-line bg-surface-raised text-text-primary " +
-  "placeholder:text-text-faint transition focus:border-brand-500 focus:outline-none " +
+  "field w-full rounded-lg border border-line bg-surface-raised text-text-primary " +
+  "placeholder:text-text-faint transition focus:outline-none " +
   "disabled:opacity-50";
 
 export interface InputProps extends ComponentPropsWithRef<"input"> {

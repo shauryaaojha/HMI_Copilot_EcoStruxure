@@ -58,6 +58,8 @@ export function Tabs<T extends string>({
       className={cn(
         "no-scrollbar flex min-w-0 items-stretch overflow-x-auto",
         size === "sm" ? "gap-0.5" : "gap-1",
+        // A pill row is a segmented control: the tabs sit in a sunk track and the active one is a raised chip.
+        variant === "pill" && "rounded-lg border border-line-subtle bg-surface-raised p-0.5",
         className,
       )}
     >
@@ -77,18 +79,20 @@ export function Tabs<T extends string>({
               "disabled:pointer-events-none disabled:opacity-40",
               variant === "line"
                 ? cn(
-                    "border-b-2 py-2",
+                    // The active tab is said by a short green bar under it and full-strength text,
+                    // not by green text: green is for the one thing to press.
+                    "tab-line relative py-2",
                     size === "sm" ? "px-1.5" : "px-3",
                     active
-                      ? "border-brand-400 font-medium text-brand-400"
-                      : "border-transparent text-text-muted hover:text-text-secondary",
+                      ? "is-active font-medium text-text-primary"
+                      : "text-text-muted hover:text-text-secondary",
                   )
                 : cn(
-                    "rounded-md py-1.5",
-                    size === "sm" ? "px-2" : "px-3",
+                    "rounded-md",
+                    size === "sm" ? "px-2 py-1" : "px-3 py-1",
                     active
-                      ? "bg-surface-active font-medium text-text-primary"
-                      : "text-text-muted hover:bg-surface-hover hover:text-text-secondary",
+                      ? "bg-surface-panel font-medium text-text-primary shadow-[var(--elev-1)]"
+                      : "text-text-muted hover:text-text-secondary",
                   ),
             )}
           >

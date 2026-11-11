@@ -15,12 +15,14 @@ export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
 const VARIANT: Record<ButtonVariant, string> = {
+  // A lit top edge and a deeper bottom one, so the one green thing on a pane
+  // reads as a control you press rather than a label you read.
   primary:
-    "bg-brand-500 text-text-onbrand hover:bg-brand-600 active:bg-brand-700 shadow-sm shadow-brand-500/20",
+    "btn-primary text-text-onbrand hover:brightness-110 active:brightness-95",
   secondary:
-    "border border-line bg-surface-raised text-text-secondary hover:border-line-strong hover:text-text-primary",
+    "border border-line bg-surface-raised text-text-secondary shadow-[var(--elev-1)] hover:border-line-strong hover:bg-surface-hover hover:text-text-primary",
   ghost: "text-text-muted hover:bg-surface-hover hover:text-text-primary",
-  danger: "bg-status-alarm text-white hover:brightness-110 active:brightness-95",
+  danger: "bg-status-alarm text-white shadow-[var(--elev-1)] hover:brightness-110 active:brightness-95",
 };
 
 const SIZE: Record<ButtonSize, string> = {
@@ -54,7 +56,7 @@ export function Button({
     <button
       type={type}
       className={cn(
-        "focus-ring press inline-flex shrink-0 items-center justify-center rounded-md font-medium",
+        "focus-ring press inline-flex shrink-0 items-center justify-center rounded-lg font-medium",
         "disabled:pointer-events-none disabled:opacity-40",
         VARIANT[variant],
         SIZE[size],

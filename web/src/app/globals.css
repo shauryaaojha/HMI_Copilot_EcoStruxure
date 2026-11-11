@@ -224,6 +224,70 @@ body {
   overflow: hidden;
 }
 
+/* --- primitives (components/ui) ----------------------------------------- */
+
+/* The primary button: brand green with a lit top edge and a deeper base. */
+.btn-primary {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-brand-400) 70%, var(--color-brand-500)) 0%, var(--color-brand-500) 55%, var(--color-brand-600) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(0, 0, 0, 0.18), 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 12px -4px color-mix(in srgb, var(--color-brand-500) 55%, transparent);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
+}
+
+/* A line tab's active mark: a short rounded bar, centred, that grows in. */
+.tab-line::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  height: 2px;
+  width: 0;
+  border-radius: 999px;
+  background: var(--color-brand-400);
+  transform: translateX(-50%);
+  transition: width 220ms var(--ease-out);
+}
+.tab-line.is-active::after {
+  width: calc(100% - 1rem);
+}
+
+/* Text fields and selects: a soft brand halo on focus, not just a border colour. */
+.field:hover:not(:disabled):not(:focus) {
+  border-color: var(--color-line-strong);
+}
+.field:focus,
+.field:focus-visible {
+  border-color: var(--color-brand-500);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand-500) 20%, transparent);
+  outline: none;
+}
+
+/* A card inside an island or on a page: a sheet with an edge, not a box with a border. */
+.card {
+  background: var(--color-surface-panel);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--elev-island);
+}
+
+/* An empty panel's mark: a tile with a faint brand ring. */
+.empty-mark {
+  background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--color-brand-500) 14%, transparent), transparent 70%), var(--color-surface-raised);
+  box-shadow: inset 0 0 0 1px var(--color-line), 0 0 0 4px color-mix(in srgb, var(--color-brand-500) 6%, transparent);
+}
+
+/* A key on the keyboard. */
+.kbd {
+  display: inline-block;
+  border-radius: 0.3rem;
+  border: 1px solid var(--color-line);
+  border-bottom-width: 2px;
+  background: var(--color-surface-raised);
+  padding: 0 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
 /* The canvas backdrop grid, as in the reference renders. */
 .canvas-grid {
   background-color: var(--color-surface-canvas);
@@ -368,9 +432,10 @@ body {
 
 /* Small-caps section labels - the "modern tool" tell, used on every pane. */
 .label-eyebrow {
+  font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-text-faint);
 }
