@@ -16,6 +16,7 @@ import { useSignedOut } from "@/components/shell/SignInNotice";
 import { holdDraft, openSignIn, takeDraft } from "@/lib/client/sign-in";
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Check, CornerDownLeft, FileDiff, Square, Undo2, Wrench, X } from "lucide-react";
+import { useModelChoice } from "@/store/model-choice";
 import { useProject } from "@/store/project";
 import { cn } from "@/components/ui";
 
@@ -91,7 +92,7 @@ export function AgentPane({ canEdit = true, onRunning }: { canEdit?: boolean; on
       const response = await fetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: sourceId, message: text, history }),
+        body: JSON.stringify({ source: sourceId, message: text, history, model: useModelChoice.getState().id ?? undefined }),
         signal: controller.signal,
       });
       if (!response.ok || !response.body) {
@@ -122,6 +123,9 @@ export function AgentPane({ canEdit = true, onRunning }: { canEdit?: boolean; on
         return update((t) => ({ ...t, status: String(e.message) }));
       case "text":
         return update((t) => ({ ...t, text: t.text ? `${t.text}\n\n${e.text}` : String(e.text) }));
+      case "thought":
+        // What it reasoned before the next move, in the same run of steps.
+        return update((t) => ({ ...t, steps: [...t.steps, { id: `thought-${t.steps.length}`, name: "thought", input: String(e.text).replace(/\s+/g, " ").slice(0, 160), writes: false, ok: true, summary: String(e.text) }] }));
       case "tool":
         return update((t) => ({ ...t, steps: [...t.steps, { id: String(e.id), name: String(e.name), input: brief(e.input), writes: !!e.writes }] }));
       case "result":
@@ -243,8 +247,8 @@ export function AgentPane({ canEdit = true, onRunning }: { canEdit?: boolean; on
                       </span>
                       <details className="group/step">
                         <summary className="flex cursor-pointer list-none items-baseline gap-1.5 text-[11px] leading-snug">
-                          <span className={cn("text-ident shrink-0 rounded px-1 py-px", s.writes ? "bg-agent-500/15 text-agent-300" : "bg-surface-hover text-text-secondary")}>{s.name}</span>
-                          <span className="text-ident min-w-0 flex-1 truncate text-text-faint">{s.input}</span>
+                          <span className={cn("text-ident shrink-0 rounded px-1 py-px", s.name === "thought" ? "italic text-agent-300" : s.writes ? "bg-agent-500/15 text-agent-300" : "bg-surface-hover text-text-secondary")}>{s.name}</span>
+                          <span className={cn("min-w-0 flex-1 truncate text-text-faint", s.name === "thought" ? "italic" : "text-ident")}>{s.input}</span>
                           {s.ok === true && <Check size={10} aria-label="done" className="shrink-0 self-center text-text-faint" />}
                           {s.ok === false && <X size={10} aria-label="failed" className="shrink-0 self-center text-status-warn" />}
                         </summary>

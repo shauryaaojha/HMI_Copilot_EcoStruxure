@@ -128,8 +128,11 @@ describe("the chat loop on the gateway", () => {
     const result = await agentChat(before, "glm-test", "openai");
     expect(result).toMatchObject({ provider: "openai", model: "glm-test", usage: { input: 300, cached: 120, output: 30 } });
     expect(result?.turn).toMatchObject({ mode: "edit", ops: [GOOD] });
-    expect(result?.steps.map((s) => s.tool)).toEqual(["try_ops", "try_ops"]);
-    expect(result?.steps[0]).toMatchObject({ isError: true });
+    // What it reasoned before each call is a step of its own, in order.
+    expect(result?.steps.map((s) => s.tool)).toEqual(["thought", "try_ops", "thought", "try_ops", "thought"]);
+    expect(result?.steps[0]).toMatchObject({ tool: "thought", summary: "thought about it" });
+    const tools = result!.steps.filter((s) => s.tool !== "thought");
+    expect(tools[0]).toMatchObject({ tool: "try_ops", isError: true });
     // Every step is forced to be a tool call; the step is reasoned; the system prompt leads.
     expect(script.seen[0]).toMatchObject({ model: "glm-test", tool_choice: "required", reasoning_effort: "medium" });
     expect(messagesOf(0)[0].role).toBe("system");
@@ -146,7 +149,7 @@ describe("the chat loop on the gateway", () => {
     script.replies = [[finish([GOOD, BAD])], [finish([GOOD])]];
     const result = await agentChat(input(), "glm-test", "openai");
     expect(result?.turn.ops).toEqual([GOOD]);
-    expect(result?.steps).toEqual([expect.objectContaining({ tool: "finish", isError: true })]);
+    expect(result?.steps.filter((s) => s.tool !== "thought")).toEqual([expect.objectContaining({ tool: "finish", isError: true })]);
     expect(messagesOf(1).at(-1)).toMatchObject({ role: "tool", content: expect.stringContaining("Not finished") });
   });
 
@@ -172,7 +175,7 @@ describe("the chat loop on the gateway", () => {
       [{ name: "finish", args: { mode: "answer", reply: "Found them." } }],
     ];
     const result = await agentChat(input(), "glm-test", "openai");
-    expect(result?.steps.map((s) => s.tool)).toEqual(["find_tags", "get_screen"]);
+    expect(result?.steps.filter((s) => s.tool !== "thought").map((s) => s.tool)).toEqual(["find_tags", "get_screen"]);
     const answers = messagesOf(1).filter((m) => m.role === "tool");
     expect(answers.map((m) => m.tool_call_id)).toEqual(["call-1-0", "call-1-1"]);
     expect(String(answers[1].content)).toContain("Objects on it");
@@ -195,6 +198,31 @@ describe("the chat loop on the gateway", () => {
     const result = await agentChat(input(), "glm-test", "openai");
     expect(result?.turn.reply).toBe("Done.");
     expect(result?.steps[0]).toMatchObject({ tool: "wait", summary: expect.stringContaining("example.in") });
+  });
+
+  it("hands each step to the caller as it happens", async () => {
+    script.replies = [[{ name: "find_tags", args: { query: "PUMP" } }], [{ name: "finish", args: { mode: "answer", reply: "Found." } }]];
+    const seen: string[] = [];
+    const result = await agentChat({ ...input(), onStep: (s) => seen.push(s.tool) }, "glm-test", "openai");
+    expect(seen).toEqual(result?.steps.map((s) => s.tool));
+    expect(seen).toEqual(["thought", "find_tags", "thought"]);
+  });
+
+  it("drafts tags for a project with none and finishes with a build that carries them", async () => {
+    script.replies = [
+      [{ name: "draft_tags", args: { units: [{ kind: "pump", label: "Feed pump", count: 2 }, { kind: "tank", label: "Buffer tank", count: 1 }] } }],
+      [{ name: "finish", args: { mode: "build", reply: "Drafted 2 pumps and a tank; placeholders until the PLC program has the real tags.", buildIntent: "a pump station with two pumps and a tank", ops: [{ op: "addTag", name: "PMP_101_RUN", dataType: "BOOL", comment: "Pump 1 running" }] } }],
+    ];
+    const bare = input();
+    bare.doc = { ...bare.doc, variables: [] };
+    const result = await agentChat(bare, "glm-test", "openai");
+    expect(result?.turn).toMatchObject({ mode: "build", buildIntent: "a pump station with two pumps and a tank" });
+    expect(result?.turn.ops).toEqual([{ op: "addTag", name: "PMP_101_RUN", dataType: "BOOL", comment: "Pump 1 running" }]);
+    const answer = messagesOf(1).find((m) => m.role === "tool");
+    expect(String(answer?.content)).toContain("PMP_101_RUN");
+    expect(String(answer?.content)).toContain("LT_101_PV");
+    expect(String(answer?.content)).toContain('"op":"addTag"');
+    expect(result?.steps.find((s) => s.tool === "draft_tags")?.summary).toContain("tags drafted");
   });
 });
 
@@ -256,6 +284,7 @@ describe("the workspace agent on the gateway", () => {
     ]);
     const done = events.at(-1)!;
     expect(done).toMatchObject({ type: "done", text: "START now writes Run_CMD.", provider: "openai", model: "z-ai/glm-5.3-flash" });
+    expect(events.filter((e) => e.type === "thought").map((e) => e.type === "thought" && e.text)).toEqual(["thought about it", "thought about it"]);
     expect(done.type === "done" && done.changes.map((c) => c.path)).toContain("Bindings.dat");
     expect(events[0]).toMatchObject({ type: "status", message: expect.stringContaining("example.in (z-ai/glm-5.3-flash)") });
     // Claude's effort word became this dialect's; both results of the first turn were answered by id.

@@ -16,11 +16,13 @@ vi.mock("@/lib/server/model-gate", () => ({ modelCaller: async () => ({ id: "own
 vi.mock("@/lib/ai/provider", () => ({ resolveProvider: () => ({ provider: "gemini", model: "gemini-3.8-flash", reason: "test" }), providerName: () => "Gemini" }));
 vi.mock("@/lib/knowledge/store", async (original) => ({ ...await original<typeof import("@/lib/knowledge/store")>(), allKnowledge: async () => [] }));
 vi.mock("@/lib/ai/agent-chat", () => ({
-  agentChat: async () => {
+  agentChat: async (input: { onStep?: (step: unknown) => void }) => {
     state.calls.push("loop");
     if (state.loop === "quota") throw Object.assign(new Error('{"error":{"code":429,"message":"requests per day exceeded","status":"RESOURCE_EXHAUSTED"}}'), { status: 429 });
     if (state.loop === "broken") throw new Error("something else broke");
-    return { provider: "gemini", model: "gemini-3.8-flash", turn: { mode: "answer", reply: "from the loop" }, steps: [{ tool: "find_tags", summary: "find_tags(PUMP): 3 tags" }] };
+    const step = { tool: "find_tags", summary: "find_tags(PUMP): 3 tags" };
+    input.onStep?.(step);
+    return { provider: "gemini", model: "gemini-3.8-flash", turn: { mode: "answer", reply: "from the loop" }, steps: [step] };
   },
 }));
 vi.mock("@/lib/ai/converse", async (original) => ({
@@ -37,12 +39,12 @@ vi.mock("@/lib/ai/converse", async (original) => ({
 import { POST } from "@/app/api/chat/route";
 
 const DOC = { screens: [], variables: [] };
-const turn = (doc?: unknown) =>
+const turn = (doc?: unknown, extra: Record<string, unknown> = {}) =>
   POST(
     new Request("http://localhost:3000/api/chat", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ history: [{ role: "user", text: "Which tags are pumps?" }], digest: { name: "test" }, ...(doc ? { doc } : {}) }),
+      body: JSON.stringify({ history: [{ role: "user", text: "Which tags are pumps?" }], digest: { name: "test" }, ...(doc ? { doc } : {}), ...extra }),
     }),
   );
 
@@ -86,4 +88,19 @@ it("keeps the single call for a client that sends no project", async () => {
   const body = await (await turn()).json();
   expect(state.calls).toEqual(["single"]);
   expect(body.steps).toBeUndefined();
+});
+
+it("streams each step as it happens and the turn last, when asked to", async () => {
+  const response = await turn(DOC, { stream: true });
+  expect(response.headers.get("content-type")).toContain("x-ndjson");
+  const lines = (await response.text()).trim().split("\n").map((l) => JSON.parse(l));
+  expect(lines.map((l) => l.type)).toEqual(["step", "turn"]);
+  expect(lines[0].step).toEqual({ tool: "find_tags", summary: "find_tags(PUMP): 3 tags" });
+  expect(lines[1].turn.reply).toBe("from the loop");
+});
+
+it("reports a failure as the last line of the stream, with the same code the JSON path sends", async () => {
+  state.loop = "broken";
+  const lines = (await (await turn(DOC, { stream: true })).text()).trim().split("\n").map((l) => JSON.parse(l));
+  expect(lines).toEqual([{ type: "error", error: expect.stringContaining("something else broke"), code: "failed", retryable: false }]);
 });

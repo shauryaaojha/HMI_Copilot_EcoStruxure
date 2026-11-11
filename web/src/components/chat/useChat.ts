@@ -31,6 +31,7 @@ import { commit, dryRun, previewOf, type DryRun, type OpOutcome } from "@/core/o
 import { useProject } from "@/store/project";
 import { docOf } from "@/lib/collab/changes";
 import type { ChatMessage } from "@/store/types";
+import { useModelChoice } from "@/store/model-choice";
 import { loadProjects, touchProject } from "@/store/projects";
 import { useGeneration } from "@/components/generation/useGeneration";
 import { proposeShared, releaseScreen, runSharedAgent, sharedTurn, takeScreen } from "./shared";
@@ -104,8 +105,13 @@ export function useChat() {
     s.log(`Project named ${name}`);
   }, []);
 
-  /** Calls the route once. Throws on a transport failure. */
-  const ask = useCallback(async (history: HistoryItem[], request: string, repair: boolean) => {
+  /**
+   * Calls the route once. Throws on a transport failure. The route streams the
+   * loop's steps as it works, each handed to `onStep` as it lands, and the
+   * turn last; an older server answers with one JSON body, which is read the
+   * same way.
+   */
+  const ask = useCallback(async (history: HistoryItem[], request: string, repair: boolean, onStep?: (step: NonNullable<ChatMessage["steps"]>[number]) => void) => {
     const s = useProject.getState();
     const response = await fetch("/api/chat", {
       method: "POST",
@@ -113,6 +119,9 @@ export function useChat() {
       body: JSON.stringify({
         history,
         repair,
+        stream: true,
+        // The model picked in the header, by menu id; the server's default when unset.
+        model: useModelChoice.getState().id ?? undefined,
         // DDT instances, so the tools see the same equipment the generator does.
         structure: s.tagImport?.structure,
         // The file it was opened from, so the tools can say how it draws things.
@@ -157,13 +166,42 @@ export function useChat() {
       const message = body?.error ?? `the chat route answered ${response.status}`;
       throw isModelErrorCode(body?.code) ? new ModelCallFailed(message, body.code) : new Error(message);
     }
-    return (await response.json()) as {
-      provider: string | null;
-      model: string | null;
-      turn: Turn;
-      usage?: ChatMessage["usage"];
-      steps?: ChatMessage["steps"];
+    type Answer = { provider: string | null; model: string | null; turn: Turn; usage?: ChatMessage["usage"]; steps?: ChatMessage["steps"] };
+    if (!(response.headers.get("content-type") ?? "").includes("x-ndjson") || !response.body) return (await response.json()) as Answer;
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let streamed = 0;
+    let final: Answer | null = null;
+    const take = (line: string) => {
+      const event = JSON.parse(line) as { type: string; step?: NonNullable<ChatMessage["steps"]>[number]; error?: string; code?: unknown } & Partial<Answer>;
+      if (event.type === "step" && event.step) {
+        streamed++;
+        onStep?.(event.step);
+      } else if (event.type === "turn") {
+        final = event as Answer;
+      } else if (event.type === "error") {
+        const message = event.error ?? "the turn could not be completed";
+        throw isModelErrorCode(event.code) ? new ModelCallFailed(message, event.code) : new Error(message);
+      }
     };
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let nl = buffer.indexOf("\n");
+      while (nl >= 0) {
+        const line = buffer.slice(0, nl).trim();
+        buffer = buffer.slice(nl + 1);
+        if (line) take(line);
+        nl = buffer.indexOf("\n");
+      }
+    }
+    if (buffer.trim()) take(buffer.trim());
+    if (!final) throw new Error("the chat route ended without a turn");
+    // The steps already arrived one by one; the copy on the turn would show them twice.
+    return streamed > 0 ? { ...(final as Answer), steps: undefined } : final;
   }, []);
 
   const send = useCallback(
@@ -280,7 +318,10 @@ export function useChat() {
               : { role: "assistant", text: m.text, turn: m.turn },
           );
 
-        const first = await ask(history, request, false);
+        /** A step as it lands, under the answer that is still being worked out. */
+        const addStep = (step: NonNullable<ChatMessage["steps"]>[number]) =>
+          patch({ steps: [...(useProject.getState().chat.find((m) => m.id === answerId)?.steps ?? []), step] });
+        const first = await ask(history, request, false, addStep);
         let turn = first.turn;
         patch({ text: turn.reply, provider: first.provider ?? "local", usage: first.usage, ...(first.steps ? { steps: first.steps } : {}) });
 
@@ -324,6 +365,21 @@ export function useChat() {
         }
 
         if (turn.mode === "build" || turn.mode === "extend") {
+          // A build on a project with no tags may bring its own: the loop
+          // drafted them (draft_tags) and sent them as addTag ops. They are
+          // added first, as one version, and the application is laid out
+          // from them in the same turn.
+          const drafted = useProject.getState().variables.length === 0 ? (turn.ops ?? []).filter((o) => o.op === "addTag") : [];
+          if (drafted.length > 0) {
+            const run = dryRun(drafted);
+            if (run.outcome.applied.length > 0) {
+              commit(run, `Drafted ${run.outcome.applied.length} tags`);
+              const after = useProject.getState();
+              for (const line of run.outcome.applied) after.log(line);
+              after.snapshot(`Drafted ${run.outcome.applied.length} tags`);
+              patch({ changes: [`Added ${run.outcome.applied.length} placeholder tags; replace them with the PLC program's when it exists`] });
+            }
+          }
           if (useProject.getState().variables.length === 0) {
             patch({
               pending: false,
@@ -354,6 +410,7 @@ export function useChat() {
             [...history, { role: "user", text: request }, { role: "assistant", text: turn.reply, turn: record }],
             request,
             true,
+            addStep,
           );
           if (second.turn.mode === "edit" && second.turn.ops && second.turn.ops.length > 0) {
             turn = second.turn;

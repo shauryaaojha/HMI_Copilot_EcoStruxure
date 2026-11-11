@@ -30,9 +30,11 @@ import { takeDraft } from "@/lib/client/sign-in";
 import { SignInNotice } from "@/components/shell/SignInNotice";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ModelPicker } from "./ModelPicker";
 import {
   AlertTriangle,
   ArrowUp,
+  Brain,
   Check,
   ChevronRight,
   CornerDownLeft,
@@ -305,7 +307,8 @@ export function ChatPanel() {
             </span>
           )}
 
-          <div className="ml-auto flex items-center gap-0.5">
+          <div className="ml-auto flex items-center gap-1.5">
+            <ModelPicker />
             {mode === "chat" && chat.length > 0 && canEdit && (
               <button
                 type="button"
@@ -530,23 +533,52 @@ export function ChatPanel() {
                 </ul>
               )}
 
-              {message.steps && message.steps.length > 0 && (
-                <details className="group rounded-lg border border-line-subtle bg-surface-raised/30 px-2.5 py-1.5">
-                  <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[11px] text-text-muted hover:text-text-secondary">
-                    <ChevronRight size={11} aria-hidden className="transition-transform group-open:rotate-90" />
-                    Worked in {message.steps.length} step{message.steps.length === 1 ? "" : "s"}
-                    {message.steps.some((s) => s.tool === "render_screen") && <span className="text-text-faint">· looked at the screen</span>}
-                  </summary>
+              {/* The work, step by step: a thought is what the model reasoned before
+                  its next call, a tool line what it asked and what came back. Open
+                  while the turn is being worked out, folded once it is answered. */}
+              {message.steps && message.steps.length > 0 && (() => {
+                const steps = message.steps;
+                const calls = steps.filter((s) => s.tool !== "thought").length;
+                const thoughts = steps.length - calls;
+                const list = (
                   <ol className="mt-1.5 space-y-1 pb-1">
-                    {message.steps.map((step, i) => (
-                      <li key={i} className={cn("flex gap-2 font-mono text-[10px] leading-relaxed", step.isError ? "text-status-warn" : "text-text-faint")}>
-                        <span className="shrink-0 tabular-nums">{String(i + 1).padStart(2, "0")}</span>
-                        <span className="min-w-0 break-words">{step.summary}</span>
-                      </li>
-                    ))}
+                    {steps.map((step, i) =>
+                      step.tool === "thought" ? (
+                        <li key={i} className="animate-rise flex gap-2 text-[11px] italic leading-relaxed text-text-muted">
+                          <Brain size={11} aria-label="thought" className="mt-0.5 shrink-0 text-agent-400" />
+                          <span className="min-w-0 whitespace-pre-wrap break-words">{step.summary}</span>
+                        </li>
+                      ) : (
+                        <li key={i} className={cn("animate-rise flex gap-2 font-mono text-[10px] leading-relaxed", step.isError ? "text-status-warn" : "text-text-faint")}>
+                          <span className="shrink-0 tabular-nums">{String(steps.slice(0, i + 1).filter((s) => s.tool !== "thought").length).padStart(2, "0")}</span>
+                          <span className="min-w-0 break-words">{step.summary}</span>
+                        </li>
+                      ),
+                    )}
                   </ol>
-                </details>
-              )}
+                );
+                const title = (
+                  <>
+                    {message.pending ? "Working" : "Worked"} in {calls} step{calls === 1 ? "" : "s"}
+                    {thoughts > 0 && <span className="text-text-faint">· {thoughts} thought{thoughts === 1 ? "" : "s"}</span>}
+                    {steps.some((s) => s.tool === "render_screen") && <span className="text-text-faint">· looked at the screen</span>}
+                  </>
+                );
+                return message.pending ? (
+                  <div className="rounded-lg border border-line-subtle bg-surface-raised/30 px-2.5 py-1.5">
+                    <p className="is-thinking flex items-center gap-1.5 text-[11px] font-medium">{title}</p>
+                    {list}
+                  </div>
+                ) : (
+                  <details className="group rounded-lg border border-line-subtle bg-surface-raised/30 px-2.5 py-1.5">
+                    <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[11px] text-text-muted hover:text-text-secondary">
+                      <ChevronRight size={11} aria-hidden className="transition-transform group-open:rotate-90" />
+                      {title}
+                    </summary>
+                    {list}
+                  </details>
+                );
+              })()}
 
               {message.changes && message.changes.length > 0 && (
                 <ul className="space-y-1 rounded-lg border border-line-subtle bg-surface-raised/40 p-2.5">

@@ -38,6 +38,8 @@ import type { Change, Workspace } from "./workspace";
 export type AgentEvent =
   | { type: "status"; message: string }
   | { type: "text"; text: string }
+  /** What the model reasoned before its next move: Claude's thinking, Gemini's thought summary, a gateway model's reasoning_content. */
+  | { type: "thought"; text: string }
   | { type: "tool"; id: string; name: string; input: unknown; writes: boolean }
   | { type: "result"; id: string; name: string; ok: boolean; summary: string; image?: boolean }
   | { type: "usage"; input: number; output: number; cached: number }
@@ -55,6 +57,8 @@ export interface AgentOptions {
   /** Earlier turns of this conversation, as text. */
   history?: AgentTurn[];
   signal?: AbortSignal;
+  /** The model the engineer picked in the chat (lib/ai/menu.ts); the configured default otherwise. */
+  choice?: { provider: Provider; model: string };
   /** For tests: the provider client is injected rather than built from env. */
   claude?: Pick<Anthropic, "beta">;
   openai?: Pick<OpenAI, "chat">;
@@ -92,13 +96,14 @@ function summary(result: ToolResult): string {
 }
 
 export async function* runAgent(options: AgentOptions): AsyncGenerator<AgentEvent> {
-  const choice = resolveProvider();
+  const choice = options.choice ?? resolveProvider();
   const provider: Provider | null = options.claude ? "claude" : options.openai ? "openai" : choice.provider;
   if (!provider) {
-    yield { type: "error", message: `No model is configured for the agent: ${choice.reason}.` };
+    yield { type: "error", message: `No model is configured for the agent: ${"reason" in choice ? choice.reason : "no provider"}.` };
     return;
   }
-  const model = env("AGENT_MODEL") ?? (provider === "gemini" ? "gemini-flash-latest" : choice.model ?? (provider === "openai" ? "z-ai/glm-5.3-flash" : "claude-opus-5-5"));
+  // A pick made in the chat wins over AGENT_MODEL: the engineer chose it with the price in sight.
+  const model = options.choice?.model ?? env("AGENT_MODEL") ?? (provider === "gemini" ? "gemini-flash-latest" : choice.model ?? (provider === "openai" ? "z-ai/glm-5.3-flash" : "claude-opus-5-5"));
   yield { type: "status", message: `${providerName(provider)} (${model}) working in ${options.ws.fileName}` };
   const steps = Number(env("AGENT_STEPS") ?? 40);
   try {
@@ -162,6 +167,7 @@ async function* claudeLoop(options: AgentOptions, model: string, maxSteps: numbe
     const u = message.usage;
     yield { type: "usage", input: u.input_tokens, output: u.output_tokens, cached: u.cache_read_input_tokens ?? 0 };
 
+    for (const b of message.content) if (b.type === "thinking" && b.thinking.trim()) yield { type: "thought", text: b.thinking.trim() };
     const text = message.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n").trim();
     if (text) {
       finalText = text;
@@ -233,6 +239,8 @@ async function* geminiLoop(options: AgentOptions, model: string, maxSteps: numbe
           config: {
             systemInstruction: SYSTEM,
             tools: [{ functionDeclarations: declarations as never }],
+            // The thought summaries, so the chat can show what it reasoned; billed either way.
+            thinkingConfig: { includeThoughts: true },
             abortSignal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(CALL_MS)]) : AbortSignal.timeout(CALL_MS),
           },
         });
@@ -265,6 +273,7 @@ async function* geminiLoop(options: AgentOptions, model: string, maxSteps: numbe
       break;
     }
     contents.push({ role: "model", parts: content.parts });
+    for (const p of content.parts) if (p.thought && typeof p.text === "string" && p.text.trim()) yield { type: "thought", text: p.text.trim() };
     const text = content.parts.flatMap((p) => (typeof p.text === "string" && !p.thought ? [p.text] : [])).join("\n").trim();
     if (text) {
       finalText = text;
@@ -341,6 +350,9 @@ async function* openaiLoop(options: AgentOptions, model: string, maxSteps: numbe
     }
     // Whole, so a thinking model's reasoning_content goes back with its calls.
     messages.push(said as OpenAI.ChatCompletionMessageParam);
+    const reasoned = said as { reasoning_content?: string; reasoning?: string };
+    const thought = (reasoned.reasoning_content ?? reasoned.reasoning ?? "").trim();
+    if (thought) yield { type: "thought", text: thought };
     const text = (said.content ?? "").trim();
     if (text) {
       finalText = text;

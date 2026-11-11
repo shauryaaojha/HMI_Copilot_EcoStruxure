@@ -350,6 +350,10 @@ Every turn you choose exactly one mode:
 
 - "build"     lay out a whole application from the PLC tag list. ONLY when the
               project has no screens with content. Put the request in buildIntent.
+              When the project has no tags and the engineer describes the plant
+              or machine instead, the build's ops are addTag ops drafting the
+              tags (name, dataType, comment, in the <PREFIX>_<NNN>_<SIGNAL> form);
+              the application is then laid out from them.
 - "extend"    the project already has screens and they want more screens or
               more equipment laid out - "now do the dosing skid", "add an
               overview". Put the request in buildIntent. Never "build" here.
@@ -894,6 +898,8 @@ export interface ConverseResult {
   provider: Provider;
   model: string;
   usage?: Usage;
+  /** What the model reasoned before answering, when the provider hands it back (Claude's thinking). */
+  thoughts?: string[];
 }
 
 /** One call, no tools: the chat as it was, and the fallback when the agent loop's model is out of quota. */
@@ -1095,10 +1101,12 @@ async function withClaude(input: ConverseInput, model: string): Promise<Converse
   if (response.stop_reason === "refusal" || response.stop_reason === "max_tokens") return null;
   const turn = coerceTurn(response.parsed_output);
   if (!turn) return null;
+  const thoughts = response.content.flatMap((b) => (b.type === "thinking" && b.thinking.trim() ? [b.thinking.trim()] : []));
   return {
     turn,
     provider: "claude",
     model,
+    ...(thoughts.length ? { thoughts } : {}),
     usage: {
       input: response.usage.input_tokens + found.usage.input,
       cached: (response.usage.cache_read_input_tokens ?? 0) + found.usage.cached,

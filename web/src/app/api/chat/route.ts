@@ -1,14 +1,16 @@
 /**
  * One conversational turn.
  *
- * Not streamed, unlike /api/generate: a turn's whole value is the decision it
- * makes - clarify, build, extend, edit or answer - and a half-arrived op list
- * is worse than none. Generation still streams, because watching a screen
- * fill in object by object is the demo; this is the thing that decides
- * whether to run it.
+ * The decision is never streamed: a turn's whole value is what it decides -
+ * clarify, build, extend, edit or answer - and a half-arrived op list is
+ * worse than none. What the loop does on the way there is streamed when the
+ * client asks (`stream: true`): each lookup, try, look and thought as NDJSON
+ * lines as they happen, then the turn as the last line, whole. An older
+ * client gets the turn as one JSON body, as before.
  *
  * The body carries the structured history (what happened, not what was said)
- * and the digest; `repair` marks the one retry after rejected ops.
+ * and the digest; `repair` marks the one retry after rejected ops; `model` is
+ * a menu id from /api/provider (lib/ai/menu.ts).
  */
 
 import { modelCaller } from "@/lib/server/model-gate";
@@ -17,7 +19,8 @@ import { describeModelError } from "@/lib/ai/model-error";
 import { converse, withGemini, withOpenAI, type Catalog, type HistoryItem, type ProjectDigest } from "@/lib/ai/converse";
 import { agentChat, type AgentStep } from "@/lib/ai/agent-chat";
 import type { Doc } from "@/lib/collab/types";
-import { providerName, resolveProvider } from "@/lib/ai/provider";
+import { providerName } from "@/lib/ai/provider";
+import { chooseModel } from "@/lib/ai/menu";
 import type { Turn } from "@/core/ops";
 import type { StructureHint } from "@/lib/ai/infer";
 import { backendFor } from "@/lib/backend";
@@ -48,6 +51,10 @@ interface Body {
   source?: string;
   /** The whole project, for the agent loop's draft. Absent from an older client. */
   doc?: Doc;
+  /** Steps as NDJSON lines while the loop works, then the turn; one JSON body otherwise. */
+  stream?: boolean;
+  /** The model the engineer picked, by menu id; the configured default when absent or unknown. */
+  model?: string;
 }
 
 /**
@@ -94,7 +101,7 @@ export async function POST(request: Request) {
 
   const kb = loadKb();
   const trace = { kb: kb?.version ?? null };
-  const choice = resolveProvider();
+  const choice = chooseModel(body.model);
   if (!choice.provider) {
     // Not an error: the product runs without a model, it just cannot converse.
     // Saying which configuration is missing beats a 500.
@@ -115,37 +122,39 @@ export async function POST(request: Request) {
     );
   }
 
-  try {
-    const catalog =
-      body.catalog && Array.isArray(body.catalog.tags) && Array.isArray(body.catalog.objects)
-        ? body.catalog
-        : undefined;
-    // binding_precedent and example_screens read the caller's own scans until
-    // the corpus layer replaces them. Nobody else's scan ever reaches a turn, and
-    // a store that cannot be read costs the turn its precedents, never the turn.
-    const knowledge = (await allKnowledge().catch(() => [])).filter((record) => ownedBy(record, caller.id));
-    const own = await ownObjects(body.source, request);
-    const target = backendFor();
-    const input = {
-      history,
-      digest,
-      repair: body.repair === true,
-      catalog,
-      structure: Array.isArray(body.structure) ? body.structure : undefined,
-      knowledge,
-      kb,
-      own,
-      target: { name: target.name, parts: target.capabilities.parts },
-    };
-    // Gemini or the gateway with the project in hand works in a tool-calling
-    // loop; anything else (Claude, or an older client that sent no doc)
-    // answers in one call.
-    const doc = body.doc && Array.isArray(body.doc.screens) && Array.isArray(body.doc.variables) ? body.doc : undefined;
+  const catalog =
+    body.catalog && Array.isArray(body.catalog.tags) && Array.isArray(body.catalog.objects)
+      ? body.catalog
+      : undefined;
+  // binding_precedent and example_screens read the caller's own scans until
+  // the corpus layer replaces them. Nobody else's scan ever reaches a turn, and
+  // a store that cannot be read costs the turn its precedents, never the turn.
+  const knowledge = (await allKnowledge().catch(() => [])).filter((record) => ownedBy(record, caller.id));
+  const own = await ownObjects(body.source, request);
+  const target = backendFor();
+  const input = {
+    history,
+    digest,
+    repair: body.repair === true,
+    catalog,
+    structure: Array.isArray(body.structure) ? body.structure : undefined,
+    knowledge,
+    kb,
+    own,
+    target: { name: target.name, parts: target.capabilities.parts },
+  };
+  // Gemini or the gateway with the project in hand works in a tool-calling
+  // loop; anything else (Claude, or an older client that sent no doc)
+  // answers in one call.
+  const doc = body.doc && Array.isArray(body.doc.screens) && Array.isArray(body.doc.variables) ? body.doc : undefined;
+
+  /** The turn as the JSON body, every step reported as it happens. Throws on a model failure. */
+  const answer = async (onStep: (step: AgentStep) => void) => {
     let result: (Awaited<ReturnType<typeof converse>> & { steps?: AgentStep[] }) | null;
     if (doc && (choice.provider === "gemini" || choice.provider === "openai") && choice.model) {
       const loop = choice.provider;
       try {
-        result = await agentChat({ ...input, doc }, choice.model, loop);
+        result = await agentChat({ ...input, doc, onStep }, choice.model, loop);
       } catch (error) {
         // Out of quota or overloaded: the turn is still answered, in one call
         // on a model with its own quota, and says so. Anything else is a
@@ -154,41 +163,73 @@ export async function POST(request: Request) {
         const failed = describeModelError(error);
         const fallback = loop === "gemini" ? process.env.GEMINI_FALLBACK_MODEL?.trim() || "gemini-flash-lite-latest" : process.env.OPENAI_FALLBACK_MODEL?.trim();
         if (!fallback || (failed.code !== "quota" && failed.code !== "busy") || fallback === choice.model) throw error;
-        const single = loop === "gemini" ? await withGemini(input, fallback) : await withOpenAI(input, fallback);
-        result = single && {
-          ...single,
-          steps: [{ tool: "fallback", summary: `${choice.model} is ${failed.code === "quota" ? "out of quota" : "overloaded"}, so ${fallback} answered in one call, without tools`, isError: true }],
+        const step: AgentStep = {
+          tool: "fallback",
+          summary: `${choice.model} is ${failed.code === "quota" ? "out of quota" : "overloaded"}, so ${fallback} answered in one call, without tools`,
+          isError: true,
         };
+        onStep(step);
+        const single = loop === "gemini" ? await withGemini(input, fallback) : await withOpenAI(input, fallback);
+        result = single && { ...single, steps: [step] };
       }
     } else {
       result = await converse(input);
+      // Claude's thinking, when it came back, is shown the way the loop's thoughts are.
+      if (result?.thoughts?.length) {
+        const thoughts = result.thoughts.map((summary): AgentStep => ({ tool: "thought", summary }));
+        thoughts.forEach(onStep);
+        result = { ...result, steps: [...thoughts, ...(result.steps ?? [])] };
+      }
     }
     if (!result) {
-      return Response.json(
-        {
-          provider: choice.provider,
-          model: choice.model,
-          turn: {
-            mode: "answer",
-            reply: "The model answered with something I could not read as a turn.",
-          } satisfies Turn,
-          trace,
-        },
-        { status: 200 },
-      );
+      return {
+        provider: choice.provider,
+        model: choice.model,
+        turn: { mode: "answer", reply: "The model answered with something I could not read as a turn." } satisfies Turn,
+        trace,
+      };
     }
-    return Response.json({
+    return {
       provider: result.provider,
       model: result.model,
       turn: result.turn,
       usage: result.usage,
       ...(result.steps?.length ? { steps: result.steps } : {}),
       trace,
-    });
-  } catch (error) {
-    // The provider's own error is JSON or an SDK object; the engineer gets a
-    // sentence, and the client gets a code it can act on (lib/ai/model-error).
+    };
+  };
+
+  // The provider's own error is JSON or an SDK object; the engineer gets a
+  // sentence, and the client gets a code it can act on (lib/ai/model-error).
+  const failure = (error: unknown) => {
     const failed = describeModelError(error, choice.provider ? providerName(choice.provider) : undefined);
-    return Response.json({ error: failed.message, code: failed.code, retryable: failed.retryable }, { status: 502 });
+    return { error: failed.message, code: failed.code, retryable: failed.retryable };
+  };
+
+  if (body.stream !== true) {
+    try {
+      return Response.json(await answer(() => {}));
+    } catch (error) {
+      return Response.json(failure(error), { status: 502 });
+    }
   }
+
+  // Streamed: {type:"step"} lines as the loop works, then {type:"turn"} whole,
+  // or {type:"error"} with the same code the JSON path sends as a 502.
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (event: unknown) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      try {
+        send({ type: "turn", ...(await answer((step) => send({ type: "step", step }))) });
+      } catch (error) {
+        send({ type: "error", ...failure(error) });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+  return new Response(stream, {
+    headers: { "content-type": "application/x-ndjson; charset=utf-8", "cache-control": "no-store", "x-accel-buffering": "no" },
+  });
 }

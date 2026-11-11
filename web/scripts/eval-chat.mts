@@ -54,6 +54,9 @@ const PRICE_INR: Record<string, { in: number; out: number }> = {
   "anthropic/claude-opus-5.5": { in: 376, out: 1879 },
   "qwen/qwen3.8-flash": { in: 14.8, out: 46.4 },
   "deepseek/deepseek-v4.1-flash": { in: 29.6, out: 118.4 },
+  "minimax/minimax-m3.1-flash": { in: 14.1, out: 56.4 },
+  "xiaomi/mimo-v2.6-flash": { in: 13.2, out: 26.3 },
+  "openai/gpt-6-luna": { in: 9.4, out: 47 },
 };
 
 /** The jobs, on the demo pump station. Each names what a right answer must do, so a person can judge the rest. */

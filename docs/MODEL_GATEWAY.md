@@ -53,6 +53,22 @@ The Gemini baseline on the same jobs could not be run from this machine that nig
 
 **What is not yet known:** whether GLM-5.3-Flash lays out a real project as well as Gemini. The demo fixture has no room, so it tests honesty, not design. The next eval is the one that counts: 3–5 jobs on a real project (Panel-1 or a sample) on each model, judged by a person, with this script's numbers beside the judgment. Until then the gateway is a cost and a transport that work, not a quality claim.
 
+## Which model, decided 2026-11-11
+
+The same six jobs through the real loop on AICredits:
+
+| Model | Failed calls | Refused ops in answers | Edits that landed | Tool errors | Cost | Time |
+|---|---|---|---|---|---|---|
+| `anthropic/claude-haiku-5.5` | 0 | 0 | 2 | 3 | ₹5.04 | **55 s** |
+| `z-ai/glm-5.3-flash` | 0 | 0 | 0 | 13 | **₹2.28** | 208 s |
+| `qwen/qwen3.8-flash` | 2 | 1 | 2 | 8 | ₹5.04 | 298 s |
+
+MiniMax M3.1-Flash, MiMo-V2.6-Flash and GPT-6-Luna were queued but not run: the key's ₹50 budget ran out (402).
+
+**Default: Claude Haiku 5.5** (`AI_MODEL=anthropic/claude-haiku-5.5`). It finished the work on jobs where GLM gave up, with a quarter of the tool errors, four times faster. At about ₹0.85 a chat turn, a 15-turn project costs about ₹13, inside the ₹30 budget (₹50 ceiling). GLM-5.3-Flash stays in the chat's model menu for cheap work; Qwen and Gemini are there to compare.
+
+The chat header has a model menu (`ModelPicker`, served by `/api/provider` from `web/src/lib/ai/menu.ts`): only models the installation holds a key for, each with its rupees per agent run. The pick is sent with every chat and agent request and mapped on the server, so a browser cannot name a model off the list.
+
 ## Opus too
 
 Two ways:

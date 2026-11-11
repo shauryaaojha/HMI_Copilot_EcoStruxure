@@ -7,6 +7,7 @@
  */
 
 import { resolveProvider } from "@/lib/ai/provider";
+import { defaultMenuId, modelMenu } from "@/lib/ai/menu";
 
 export const runtime = "nodejs";
 
@@ -22,5 +23,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const { provider, model, reason } = resolveProvider();
-  return Response.json({ provider, model, reason });
+  // The menu the chat offers, and which entry the default is, so the picker
+  // can show it selected. Prices only; no key, no endpoint.
+  return Response.json({ provider, model, reason, menu: modelMenu(), chosen: defaultMenuId() });
 }

@@ -13,6 +13,7 @@
 
 import { modelCaller } from "@/lib/server/model-gate";
 import { runAgent, type AgentTurn } from "@/lib/agent/run";
+import { chooseModel } from "@/lib/ai/menu";
 import { Workspace } from "@/lib/agent/workspace";
 import { hasMongo } from "@/lib/db/mongo";
 import { getImport, importStore, putImport } from "@/lib/ote/imports";
@@ -32,6 +33,8 @@ interface Body {
   source?: string;
   message?: string;
   history?: AgentTurn[];
+  /** A menu id from /api/provider (lib/ai/menu.ts); unknown or absent means the default. */
+  model?: string;
 }
 
 export async function POST(request: Request) {
@@ -74,7 +77,9 @@ export async function POST(request: Request) {
     async start(controller) {
       const send = (event: unknown) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
       try {
-        for await (const event of runAgent({ ws, instruction: message, history, signal: request.signal })) {
+        const picked = chooseModel(body.model);
+        const choice = picked.provider && picked.model ? { provider: picked.provider, model: picked.model } : undefined;
+        for await (const event of runAgent({ ws, instruction: message, history, signal: request.signal, choice })) {
           send(event);
           if (event.type !== "done" || !event.changes.length) continue;
           const out = await ws.toBytes();

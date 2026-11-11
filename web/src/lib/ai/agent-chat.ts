@@ -58,16 +58,24 @@ import {
   type Usage,
 } from "./converse";
 import { TOOLS, describeTool, runTool } from "./tools";
+import { Brief, problemsWith, tagsFromBrief } from "@/lib/brief/brief";
+import { CATALOGUE, KIND_IDS } from "@/lib/brief/catalogue";
 
 /** Model steps before the loop asks for an answer with what it has. */
 const MAX_STEPS = 10;
 /** Characters of one tool result the model is shown. */
 const RESULT_MAX = 6_000;
 
-/** One thing the loop did, for the chat to show under the answer. */
+/**
+ * One thing the loop did, for the chat to show under the answer. A step whose
+ * tool is "thought" is what the model reasoned before its next call, when the
+ * provider hands it back (Gemini's thought summary, a gateway model's
+ * reasoning_content); "wait" is a rate limit sat out; "finish" an answer
+ * sent back for refused ops.
+ */
 export interface AgentStep {
   tool: string;
-  /** One line: what it asked and what came back. */
+  /** One line: what it asked and what came back. A thought is its text, whole. */
   summary: string;
   isError?: boolean;
 }
@@ -75,6 +83,8 @@ export interface AgentStep {
 export interface AgentChatInput extends ConverseInput {
   /** The whole project as the browser holds it; the draft starts from this. */
   doc: Doc;
+  /** Called with each step as it happens, so the route can stream them; the result carries them all regardless. */
+  onStep?: (step: AgentStep) => void;
 }
 
 export interface AgentChatResult extends ConverseResult {
@@ -101,6 +111,15 @@ How to work:
 - Questions about the project: look it up, then finish with mode answer.
 - Do not loop: two failed tries at the same thing means finish and say what
   could not be done.
+- A project with no tags and no screens, and an engineer describing a plant
+  or machine ("a water plant with two pumps and a tank"): call draft_tags
+  with the units you infer, with counts the engineer gave or the obvious
+  ones, then finish with mode build, the request in buildIntent, and the
+  addTag ops draft_tags returned as the ops. The browser adds the tags and
+  lays out the application from them, in this one turn. Tell the engineer
+  in the reply that the tags are placeholders until the PLC program has the
+  real ones. Ask only when the count or the kind of equipment is genuinely
+  unclear.
 `.trim();
 
 /** The extra tools of the loop, beside the lookup registry. */
@@ -142,6 +161,41 @@ const LOOP_TOOLS: FunctionDeclaration[] = [
     description:
       "Runs the app's design-time checks on the current draft - naming, binding integrity, type mismatch, completeness, standards - and returns the findings.",
     parametersJsonSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "draft_tags",
+    description:
+      `Turns a plant described as units into a PLC tag list with the product's naming rule, <PREFIX>_<NNN>_<SIGNAL> (PMP_101_RUN, LT_101_PV), numbering from 101, and returns the addTag ops that add them. Nothing is written: the ops go in a build turn's ops. Only for a project with no tags; when it has them, find_tags reads them. Kinds: ${CATALOGUE.map((k) => `${k.id} (${k.prefix}: ${k.signals.map((s) => s.id).join("/")})`).join("; ")}. A unit outside the catalogue is kind custom with its signals written out.`,
+    parametersJsonSchema: {
+      type: "object",
+      properties: {
+        units: {
+          type: "array",
+          description: "The equipment, one entry per kind of unit.",
+          items: {
+            type: "object",
+            properties: {
+              kind: { type: "string", description: `One of ${KIND_IDS.join(", ")}, or custom.` },
+              label: { type: "string", description: "What the engineer calls it, e.g. Feed pump." },
+              count: { type: "integer", description: "How many. Ask when the engineer did not say and it matters." },
+              signals: { type: "array", items: { type: "string" }, description: "Signal ids from the kind's list; the kind's usual set if left out." },
+              customSignals: {
+                type: "array",
+                description: "For kind custom only: each signal with its id (upper case), type and meaning.",
+                items: {
+                  type: "object",
+                  properties: { id: { type: "string" }, type: { type: "string", enum: ["BOOL", "INT", "DINT", "REAL", "LREAL", "STRING"] }, what: { type: "string" } },
+                  required: ["id", "type"],
+                },
+              },
+            },
+            required: ["kind", "label", "count"],
+          },
+        },
+        start: { type: "integer", description: "The first unit number; 101 if left out." },
+      },
+      required: ["units"],
+    },
   },
 ];
 
@@ -228,6 +282,12 @@ class Session {
     this.draft = docOf(input.doc);
   }
 
+  /** Records a step and tells the caller at once, so the route can stream it. */
+  note(step: AgentStep) {
+    this.steps.push(step);
+    this.input.onStep?.(step);
+  }
+
   /** The screen the engineer has open, by the handle the digest names it with. */
   private activeId() {
     const handle = this.input.digest.screens.find((d) => d.active)?.handle;
@@ -286,6 +346,39 @@ class Session {
         panel: { width: this.draft.target.width, height: this.draft.target.height },
       });
       return { text: `Screen ${this.draft.handles?.[screen.UniqueId] ?? "?"} "${screen.Name}", ${size.width}x${size.height}, as the draft stands${this.tried.length ? " after your last clean try" : ""}.`, image };
+    }
+
+    if (name === "draft_tags") {
+      const units = Array.isArray(args.units) ? (args.units as Record<string, unknown>[]) : [];
+      if (units.length === 0) return { text: "draft_tags needs units: [{kind, label, count}].", isError: true };
+      const parsed = Brief.safeParse({
+        units: units.map((u, i) => {
+          const kind = CATALOGUE.find((k) => k.id === u.kind);
+          const signals = Array.isArray(u.signals) ? (u.signals as string[]) : [];
+          const custom = Array.isArray(u.customSignals) ? (u.customSignals as { id: string; type: string; what?: string }[]) : [];
+          return {
+            id: `u${i + 1}`,
+            kind: kind ? kind.id : "custom",
+            label: u.label,
+            count: u.count,
+            signals: kind ? (signals.length ? signals : kind.defaultSignals) : custom.map((s) => s.id),
+            ...(kind ? {} : { customSignals: custom.map((s) => ({ ...s, what: s.what ?? "" })) }),
+          };
+        }),
+        ...(typeof args.start === "number" ? { naming: { pattern: "<PREFIX>_<NNN>_<SIGNAL>", start: args.start } } : {}),
+      });
+      if (!parsed.success) return { text: `These units cannot be drafted: ${parsed.error.issues[0]?.message ?? "invalid"}.`, isError: true };
+      const problems = problemsWith(parsed.data);
+      if (problems.length) return { text: `These units cannot be drafted yet: ${problems.map((p) => p.message).join("; ")}.`, isError: true };
+      const { variables } = tagsFromBrief(parsed.data);
+      const ops = variables.map((v) => ({ op: "addTag", name: v.Name, dataType: v.DataType, comment: v.Comments ?? "" }));
+      return {
+        text: [
+          `${variables.length} tags drafted: ${variables.map((v) => v.Name).join(", ")}.`,
+          "They are placeholders until the PLC program has the real ones; say so in the reply. To use them, finish with mode build, the request in buildIntent, and exactly these ops:",
+          JSON.stringify(ops),
+        ].join("\n"),
+      };
     }
 
     if (name === "validate") {
@@ -361,7 +454,7 @@ async function agentChatGemini(input: AgentChatInput, model: string): Promise<Ag
         const wait = retryAfter(error);
         if (wait === null || waited + wait > WAIT_BUDGET_MS) throw error;
         waited += wait;
-        session.steps.push({ tool: "wait", summary: `Rate limited by Gemini; waited ${Math.round(wait / 1000)} s`, isError: true });
+        session.note({ tool: "wait", summary: `Rate limited by Gemini; waited ${Math.round(wait / 1000)} s`, isError: true });
         await new Promise((resolve) => setTimeout(resolve, wait));
       }
     }
@@ -379,6 +472,8 @@ async function agentChatGemini(input: AgentChatInput, model: string): Promise<Ag
         toolConfig: {
           functionCallingConfig: { mode: FunctionCallingConfigMode.ANY, ...(last ? { allowedFunctionNames: ["finish"] } : {}) },
         },
+        // The thought summaries, so the chat can show what it reasoned; billed either way.
+        thinkingConfig: { includeThoughts: true },
         temperature: 0.2,
       },
     });
@@ -399,6 +494,7 @@ async function agentChatGemini(input: AgentChatInput, model: string): Promise<Ag
     // The model's own content goes back verbatim: it carries the thought
     // signatures Gemini needs to keep reasoning across tool calls.
     contents.push(said);
+    for (const p of said.parts ?? []) if (p.thought && typeof p.text === "string" && p.text.trim()) session.note({ tool: "thought", summary: p.text.trim() });
 
     const finish = calls.find((c) => c.name === "finish");
     if (finish) {
@@ -413,7 +509,7 @@ async function agentChatGemini(input: AgentChatInput, model: string): Promise<Ag
         checkedFinish = true;
         const check = await session.run("try_ops", { ops: turn.ops });
         if (/^\d+ applied, [1-9]/.test(check.text)) {
-          session.steps.push({ tool: "finish", summary: `Checked the answer: ${check.text.split("\n")[0]}`, isError: true });
+          session.note({ tool: "finish", summary: `Checked the answer: ${check.text.split("\n")[0]}`, isError: true });
           contents.push({
             role: "user",
             parts: [{ functionResponse: { id: finish.id, name: "finish", response: { output: `Not finished: some of these ops are refused.\n${cut(check.text)}\nFix them and call finish again with the whole list.` } } }],
@@ -434,7 +530,7 @@ async function agentChatGemini(input: AgentChatInput, model: string): Promise<Ag
       } catch (error) {
         result = { text: `${name} failed: ${error instanceof Error ? error.message : String(error)}`, isError: true };
       }
-      session.steps.push({ tool: name, summary: summarise(name, args, result.text), ...(result.isError ? { isError: true } : {}) });
+      session.note({ tool: name, summary: summarise(name, args, result.text), ...(result.isError ? { isError: true } : {}) });
       replies.push({
         functionResponse: {
           id: call.id,
@@ -519,7 +615,7 @@ async function agentChatOpenAI(input: AgentChatInput, model: string): Promise<Ag
       () => client.chat.completions.create(params),
       (ms) => {
         waited += ms;
-        session.steps.push({ tool: "wait", summary: `Rate limited by ${gatewayName()}; waited ${Math.round(ms / 1000)} s`, isError: true });
+        session.note({ tool: "wait", summary: `Rate limited by ${gatewayName()}; waited ${Math.round(ms / 1000)} s`, isError: true });
       },
       WAIT_BUDGET_MS,
     );
@@ -553,6 +649,9 @@ async function agentChatOpenAI(input: AgentChatInput, model: string): Promise<Ag
     // The message goes back whole: a thinking model's reasoning_content rides
     // along with its tool calls, the way Gemini's thought signatures do.
     messages.push(said as Message);
+    const reasoned = said as { reasoning_content?: string; reasoning?: string };
+    const thought = (reasoned.reasoning_content ?? reasoned.reasoning ?? "").trim();
+    if (thought) session.note({ tool: "thought", summary: thought });
 
     const finish = calls.find((c) => c.type === "function" && c.function.name === "finish");
     if (finish) {
@@ -567,7 +666,7 @@ async function agentChatOpenAI(input: AgentChatInput, model: string): Promise<Ag
         checkedFinish = true;
         const check = await session.run("try_ops", { ops: turn.ops });
         if (/^\d+ applied, [1-9]/.test(check.text)) {
-          session.steps.push({ tool: "finish", summary: `Checked the answer: ${check.text.split("\n")[0]}`, isError: true });
+          session.note({ tool: "finish", summary: `Checked the answer: ${check.text.split("\n")[0]}`, isError: true });
           messages.push({ role: "tool", tool_call_id: finish.id, content: `Not finished: some of these ops are refused.\n${cut(check.text)}\nFix them and call finish again with the whole list.` });
           answerRest(calls, finish);
           continue;
@@ -589,7 +688,7 @@ async function agentChatOpenAI(input: AgentChatInput, model: string): Promise<Ag
           result = { text: `${name} failed: ${error instanceof Error ? error.message : String(error)}`, isError: true };
         }
       }
-      session.steps.push({ tool: name, summary: summarise(name, args ?? {}, result.text), ...(result.isError ? { isError: true } : {}) });
+      session.note({ tool: name, summary: summarise(name, args ?? {}, result.text), ...(result.isError ? { isError: true } : {}) });
       messages.push({ role: "tool", tool_call_id: c.id, content: result.isError ? `Error: ${cut(result.text)}` : cut(result.text) });
       if (result.image) images.push(imagePart(result.image));
     }

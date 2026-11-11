@@ -59,7 +59,7 @@ export function describeModelError(error: unknown, provider = "The model"): Mode
   const code: ModelErrorCode =
     status === 503 || status === 529 || status === 500 || /unavailable|overloaded|high demand/.test(said)
       ? "busy"
-      : status === 429 || /resource_exhausted|rate.?limit|quota/.test(said)
+      : status === 429 || status === 402 || /resource_exhausted|rate.?limit|quota|budget exceeded|insufficient/.test(said)
         ? "quota"
         : status === 401 || status === 403 || /permission_denied|unauthenticated|api key|authentication/.test(said)
           ? "auth"
