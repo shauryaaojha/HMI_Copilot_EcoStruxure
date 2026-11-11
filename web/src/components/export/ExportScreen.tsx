@@ -271,7 +271,7 @@ export function ExportScreen() {
                   className={cn(
                     "focus-ring inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition",
                     artifact.kind === "zip"
-                      ? "bg-brand-500 text-text-onbrand hover:bg-brand-600"
+                      ? "btn-primary text-text-onbrand hover:brightness-110"
                       : "border border-line text-text-secondary hover:border-line-strong hover:text-text-primary",
                   )}
                 >

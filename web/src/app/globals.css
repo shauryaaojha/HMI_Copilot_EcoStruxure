@@ -329,6 +329,21 @@ body {
   background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--color-brand-500) 7%, transparent), transparent 55%);
 }
 
+/* --- copilot (components/chat) ------------------------------------------ */
+
+/* What the engineer asked: in the hue of the mode it was asked in. */
+.bubble-user {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--mode) 22%, var(--color-surface-raised)), color-mix(in srgb, var(--mode) 10%, var(--color-surface-raised)));
+  border: 1px solid color-mix(in srgb, var(--mode) 30%, transparent);
+  box-shadow: var(--elev-1);
+}
+
+/* The composer: a halo in the mode's hue while it has focus. */
+.composer:focus-within {
+  border-color: color-mix(in srgb, var(--mode) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mode) 16%, transparent), var(--elev-1);
+}
+
 /* The canvas backdrop grid, as in the reference renders. */
 .canvas-grid {
   background-color: var(--color-surface-canvas);
@@ -714,9 +729,9 @@ body {
   background: linear-gradient(
     100deg,
     transparent 20%,
-    color-mix(in srgb, var(--color-brand-400) 55%, transparent) 42%,
-    color-mix(in srgb, var(--color-brand-400) 85%, transparent) 50%,
-    color-mix(in srgb, var(--color-brand-400) 55%, transparent) 58%,
+    color-mix(in srgb, var(--mode) 55%, transparent) 42%,
+    color-mix(in srgb, var(--mode) 85%, transparent) 50%,
+    color-mix(in srgb, var(--mode) 55%, transparent) 58%,
     transparent 80%
   );
   background-size: 200% auto;

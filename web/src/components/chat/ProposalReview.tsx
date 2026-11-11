@@ -112,7 +112,7 @@ function Picture({ label, doc, screenId, empty }: { label: string; doc: Doc | nu
   return (
     <figure className="min-w-0 flex-1 space-y-1.5">
       <figcaption className="label-eyebrow">{label}</figcaption>
-      <div className="overflow-hidden rounded-md border border-line-subtle bg-surface-raised" style={{ aspectRatio: doc ? `${doc.target.width} / ${doc.target.height}` : "16 / 10" }}>
+      <div className="overflow-hidden rounded-lg border border-line-subtle bg-surface-raised shadow-[var(--elev-1)]" style={{ aspectRatio: doc ? `${doc.target.width} / ${doc.target.height}` : "16 / 10" }}>
         {screen && doc ? (
           <StaticScreen screen={screen} foreign={doc.foreign?.[screenId]} panel={{ width: doc.target.width, height: doc.target.height }} />
         ) : (
@@ -191,10 +191,10 @@ export function ProposalReviewDialog({ proposal, onClose }: { proposal: SharedPr
         aria-modal="true"
         aria-labelledby="proposal-review-title"
         onKeyDown={keys}
-        className="reveal is-in relative my-auto flex max-h-[calc(100vh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-line bg-surface-float text-left"
+        className="menu animate-pop relative my-auto flex max-h-[calc(100vh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl text-left"
         style={{ boxShadow: "var(--elev-2)" }}
       >
-        <header className="flex items-start gap-3 border-b border-line-subtle px-6 py-4">
+        <header className="page-head flex items-start gap-3 border-b border-line-subtle px-6 py-5">
           <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-500/15 text-brand-400">
             <Sparkles size={15} aria-hidden />
           </span>

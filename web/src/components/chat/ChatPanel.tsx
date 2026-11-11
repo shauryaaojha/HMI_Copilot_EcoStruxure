@@ -191,18 +191,18 @@ export function ChatPanel() {
         className="copilot-aurora pointer-events-none absolute inset-0 overflow-hidden"
       />
 
-      <header className="relative shrink-0 border-b border-line-subtle px-3 pb-2 pt-2.5">
+      <header className="relative shrink-0 px-3 pb-2.5 pt-3">
         <div className="flex h-6 items-center gap-2">
           <span
             className={cn(
-              "flex h-5 w-5 items-center justify-center rounded-md transition-colors duration-300",
+              "flex h-6 w-6 items-center justify-center rounded-lg transition-colors duration-300",
               (working || agentRunning) && "animate-breathe",
             )}
             style={{ color: "var(--mode)", background: "color-mix(in srgb, var(--mode) 16%, transparent)" }}
           >
             <Sparkles size={12} aria-hidden />
           </span>
-          <h2 className="text-[13px] font-semibold tracking-tight text-text-primary">
+          <h2 className="text-sm font-semibold tracking-tight text-text-primary">
             Copilot
           </h2>
           {(working || agentRunning) && (
@@ -239,10 +239,10 @@ export function ChatPanel() {
         </div>
 
         {/* Who is working. The thumb slides to the mode in use and takes its hue. */}
-        <div role="tablist" aria-label="Copilot mode" className="relative mt-2 grid grid-cols-3 rounded-lg border border-line-subtle bg-surface-base/60 p-0.5">
+        <div role="tablist" aria-label="Copilot mode" className="relative mt-2.5 grid grid-cols-3 rounded-xl border border-line-subtle bg-surface-base/70 p-1">
           <span
             aria-hidden
-            className="absolute inset-y-0.5 left-0.5 w-[calc((100%-0.25rem)/3)] rounded-md border transition-transform duration-300 ease-out motion-reduce:transition-none"
+            className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-lg border shadow-[var(--elev-1)] transition-transform duration-300 ease-[var(--ease-out)] motion-reduce:transition-none"
             style={{
               transform: `translateX(${MODES.findIndex((m) => m.id === mode) * 100}%)`,
               background: "color-mix(in srgb, var(--mode) 14%, var(--color-surface-raised))",
@@ -335,19 +335,22 @@ export function ChatPanel() {
             <div>
               <p className="label-eyebrow pb-2">Try</p>
               <ul className="space-y-1.5">
-                {openers.map((opener) => (
+                {openers.map((opener, n) => (
                   <li key={opener}>
                     <button
                       type="button"
                       onClick={() => setDraft(opener)}
-                      className="focus-ring group flex w-full items-start gap-2 rounded-lg border border-line-subtle bg-surface-raised/50 px-3 py-2 text-left text-xs leading-relaxed text-text-secondary transition hover:border-brand-500/40 hover:bg-surface-raised hover:text-text-primary"
+                      className="focus-ring lift group flex w-full items-start gap-2.5 rounded-xl border border-line-subtle bg-surface-raised/60 px-3 py-2.5 text-left text-xs leading-relaxed text-text-secondary hover:border-brand-500/40 hover:bg-surface-raised hover:text-text-primary"
                     >
+                      <span aria-hidden className="mt-px shrink-0 font-mono text-[10px] text-text-faint transition group-hover:text-brand-400">
+                        {String(n + 1).padStart(2, "0")}
+                      </span>
+                      <span className="min-w-0 flex-1">{opener}</span>
                       <CornerDownLeft
                         size={12}
                         aria-hidden
-                        className="mt-0.5 shrink-0 text-text-faint transition group-hover:text-brand-400"
+                        className="mt-0.5 shrink-0 text-transparent transition group-hover:text-brand-400"
                       />
-                      <span className="min-w-0">{opener}</span>
                     </button>
                   </li>
                 ))}
@@ -390,7 +393,7 @@ export function ChatPanel() {
         {chat.map((message) =>
           message.role === "user" ? (
             <div key={message.id} className="animate-rise flex justify-end">
-              <p className="max-w-[88%] whitespace-pre-wrap rounded-2xl rounded-br-md border border-brand-500/25 bg-brand-500/12 px-3 py-2 text-[12.5px] leading-relaxed text-text-primary">
+              <p className="bubble-user max-w-[88%] whitespace-pre-wrap rounded-2xl rounded-br-md px-3.5 py-2 text-[12.5px] leading-relaxed text-text-primary">
                 {message.text}
               </p>
             </div>
@@ -506,7 +509,7 @@ export function ChatPanel() {
                           accept(message.id, n > 1 ? keptFor(message.id, n) : undefined);
                         }}
                         disabled={(message.proposal.ops?.length ?? 0) > 1 && keptFor(message.id, message.proposal.ops!.length).length === 0}
-                        className="focus-ring rounded-md bg-brand-500 px-2.5 py-1 text-[11px] font-medium text-text-onbrand transition hover:bg-brand-600 disabled:opacity-40"
+                        className="focus-ring rounded-md btn-primary px-2.5 py-1 text-[11px] font-medium text-text-onbrand transition hover:brightness-110 disabled:opacity-40"
                       >
                         {(message.proposal.ops?.length ?? 0) > 1
                           ? `Apply ${keptFor(message.id, message.proposal.ops!.length).length} of ${message.proposal.ops!.length}`
@@ -575,14 +578,14 @@ export function ChatPanel() {
 
       {/* A read-only project has no composer, only a line saying why. */}
       {!canEdit && (
-        <p className="relative shrink-0 border-t border-line-subtle px-3 py-3 text-[11px] text-text-muted">
+        <p className="relative mx-3 mb-3 shrink-0 rounded-xl border border-line-subtle bg-surface-raised/60 px-3 py-2.5 text-[11px] text-text-muted">
           View only — ask an editor for changes.
         </p>
       )}
 
       {/* The composer, pinned to the foot of the same column. */}
       {canEdit && (
-        <div className="relative shrink-0 border-t border-line-subtle p-3">
+        <div className="relative shrink-0 p-3 pt-2">
           {missing && chat.length > 0 && (
             <p className="pb-2 text-[11px] leading-snug text-text-faint">
               {requirements
@@ -594,10 +597,10 @@ export function ChatPanel() {
 
           <div
             className={cn(
-              "relative rounded-xl border bg-surface-raised transition",
-              working ? "border-brand-500/40" : "border-line focus-within:border-brand-500/60",
+              "composer beam-border relative rounded-2xl border bg-surface-raised transition",
+              working ? "border-brand-500/40" : "border-line",
             )}
-            style={{ boxShadow: working ? "var(--glow-brand)" : "var(--elev-1)" }}
+            style={working ? { boxShadow: "var(--glow-brand)" } : undefined}
           >
             <textarea
               value={draft}
@@ -631,7 +634,7 @@ export function ChatPanel() {
               className={cn(
                 "focus-ring press absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-lg",
                 draft.trim() && !working
-                  ? "bg-brand-500 text-text-onbrand shadow-md shadow-brand-500/30 hover:bg-brand-600"
+                  ? "btn-primary text-text-onbrand hover:brightness-110"
                   : "bg-surface-hover text-text-faint",
               )}
             >
@@ -644,10 +647,10 @@ export function ChatPanel() {
           </div>
 
           <p className="pt-1.5 text-[10px] text-text-faint">
-            <kbd className="rounded border border-line-subtle px-1">Enter</kbd> to send
+            <kbd className="kbd">Enter</kbd> to send
             {" · "}
-            <kbd className="rounded border border-line-subtle px-1">Shift</kbd>+
-            <kbd className="rounded border border-line-subtle px-1">Enter</kbd> for a new
+            <kbd className="kbd">Shift</kbd>+
+            <kbd className="kbd">Enter</kbd> for a new
             line
           </p>
         </div>

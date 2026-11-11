@@ -497,7 +497,7 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
               type="button"
               disabled={working || draft.trim().length === 0}
               onClick={(e) => build(e)}
-              className="focus-ring ml-auto inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3.5 py-1.5 text-xs font-semibold text-text-onbrand transition hover:bg-brand-600 disabled:opacity-40"
+              className="focus-ring ml-auto inline-flex items-center gap-1.5 rounded-lg btn-primary px-3.5 py-1.5 text-xs font-semibold text-text-onbrand transition hover:brightness-110 disabled:opacity-40"
             >
               {working ? <Loader2 size={13} className="animate-spin" aria-hidden /> : <Send size={13} aria-hidden />}
               {brief.asking ? "Answer" : "Build it"}

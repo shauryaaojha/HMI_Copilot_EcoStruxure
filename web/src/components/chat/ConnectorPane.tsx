@@ -116,7 +116,7 @@ export function ConnectorPane({ projectId }: { projectId: string }) {
           <p className="label-eyebrow pb-2">Ask Claude</p>
           <ul className="space-y-1.5">
             {ASKS.map((ask) => (
-              <li key={ask} className="rounded-lg border border-line-subtle px-3 py-2 text-xs leading-relaxed text-text-secondary">
+              <li key={ask} className="rounded-xl border border-line-subtle bg-surface-raised/60 px-3 py-2.5 text-xs leading-relaxed text-text-secondary">
                 {ask}
               </li>
             ))}

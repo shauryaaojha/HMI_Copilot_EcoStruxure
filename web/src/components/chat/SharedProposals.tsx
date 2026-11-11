@@ -156,7 +156,7 @@ function ProposalCard({ proposal }: { proposal: SharedProposal }) {
             type="button"
             disabled={busy || keep.length === 0}
             onClick={() => void decide("accept")}
-            className="focus-ring rounded-md bg-brand-500 px-2.5 py-1 text-[11px] font-medium text-text-onbrand transition hover:bg-brand-600 disabled:opacity-40"
+            className="focus-ring rounded-md btn-primary px-2.5 py-1 text-[11px] font-medium text-text-onbrand transition hover:brightness-110 disabled:opacity-40"
           >
             {many ? `Accept ${keep.length} of ${proposal.labels.length}` : "Accept"}
           </button>

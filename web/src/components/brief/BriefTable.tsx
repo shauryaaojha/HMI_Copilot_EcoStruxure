@@ -380,7 +380,7 @@ export function BriefTable({
           disabled={busy || problems.length > 0}
           onClick={onConfirm}
           title={problems.length > 0 ? problems[0].message : undefined}
-          className="focus-ring inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3.5 py-1.5 text-xs font-semibold text-text-onbrand transition hover:bg-brand-600 disabled:opacity-40"
+          className="focus-ring inline-flex items-center gap-1.5 rounded-lg btn-primary px-3.5 py-1.5 text-xs font-semibold text-text-onbrand transition hover:brightness-110 disabled:opacity-40"
         >
           {busy ? <Loader2 size={13} className="animate-spin" aria-hidden /> : <Check size={13} aria-hidden />}
           Confirm and build

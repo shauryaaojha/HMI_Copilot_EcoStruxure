@@ -28,7 +28,7 @@ export function StartButtons({ compact = false }: { compact?: boolean }) {
       <button
         type="button"
         onClick={() => newProject()}
-        className="focus-ring ml-auto inline-flex h-9 items-center gap-2 rounded-md bg-brand-500 px-4 text-sm font-medium text-text-onbrand transition hover:bg-brand-600"
+        className="focus-ring ml-auto inline-flex h-9 items-center gap-2 rounded-md btn-primary px-4 text-sm font-medium text-text-onbrand transition hover:brightness-110"
       >
         Get started
         <ArrowRight size={15} aria-hidden />
@@ -42,7 +42,7 @@ export function StartButtons({ compact = false }: { compact?: boolean }) {
       <button
         type="button"
         onClick={() => newProject()}
-        className="focus-ring inline-flex h-11 items-center gap-2 rounded-md bg-brand-500 px-6 text-sm font-semibold text-text-onbrand transition hover:bg-brand-600"
+        className="focus-ring inline-flex h-11 items-center gap-2 rounded-md btn-primary px-6 text-sm font-semibold text-text-onbrand transition hover:brightness-110"
       >
         Start a project
         <ArrowRight size={16} aria-hidden />

@@ -205,7 +205,7 @@ export function AgentPane({ canEdit = true, onRunning }: { canEdit?: boolean; on
                     <button
                       type="button"
                       onClick={() => setDraft(idea)}
-                      className="focus-ring press group flex w-full items-start gap-2 rounded-lg border border-line-subtle bg-surface-raised/50 px-3 py-2 text-left text-xs leading-relaxed text-text-secondary hover:border-agent-500/40 hover:bg-surface-raised hover:text-text-primary"
+                      className="focus-ring press lift group flex w-full items-start gap-2 rounded-xl border border-line-subtle bg-surface-raised/60 px-3 py-2.5 text-left text-xs leading-relaxed text-text-secondary hover:border-agent-500/40 hover:bg-surface-raised hover:text-text-primary"
                     >
                       <CornerDownLeft size={12} aria-hidden className="mt-0.5 shrink-0 text-text-faint transition group-hover:text-agent-400" />
                       <span className="min-w-0">{idea}</span>
@@ -220,7 +220,7 @@ export function AgentPane({ canEdit = true, onRunning }: { canEdit?: boolean; on
         {turns.map((t, i) =>
           t.role === "user" ? (
             <div key={i} className="animate-rise flex justify-end">
-              <p className="max-w-[88%] whitespace-pre-wrap rounded-2xl rounded-br-md border border-agent-500/25 bg-agent-500/12 px-3 py-2 text-[12.5px] leading-relaxed text-text-primary">
+              <p className="bubble-user max-w-[88%] whitespace-pre-wrap rounded-2xl rounded-br-md px-3.5 py-2 text-[12.5px] leading-relaxed text-text-primary">
                 {t.text}
               </p>
             </div>
@@ -294,9 +294,9 @@ export function AgentPane({ canEdit = true, onRunning }: { canEdit?: boolean; on
         )}
       </div>
 
-      <div className="relative shrink-0 border-t border-line-subtle p-3">
+      <div className="relative shrink-0 p-3 pt-2">
         <div
-          className={cn("relative rounded-xl border bg-surface-raised transition", running ? "border-agent-500/50" : "border-line focus-within:border-agent-500/60")}
+          className={cn("composer beam-border relative rounded-2xl border bg-surface-raised transition", running ? "border-agent-500/50" : "border-line")}
           style={{ boxShadow: running ? "0 0 0 1px color-mix(in srgb, var(--mode) 30%, transparent), 0 0 24px color-mix(in srgb, var(--mode) 16%, transparent)" : "var(--elev-1)" }}
         >
           <textarea

@@ -33,7 +33,7 @@ export function TagsScreen({ projectId }: { projectId: string }) {
           // screen appears object by object as it is built.
           <Link
             href={`/project/${projectId}`}
-            className="focus-ring inline-flex h-9 items-center gap-2 rounded-md bg-brand-500 px-3.5 text-sm font-medium text-text-onbrand shadow-sm transition hover:bg-brand-600"
+            className="focus-ring inline-flex h-9 items-center gap-2 rounded-md btn-primary px-3.5 text-sm font-medium text-text-onbrand shadow-sm transition hover:brightness-110"
           >
             Generate a screen
             <ArrowRight size={16} aria-hidden />
