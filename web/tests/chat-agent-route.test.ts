@@ -104,3 +104,28 @@ it("reports a failure as the last line of the stream, with the same code the JSO
   const lines = (await (await turn(DOC, { stream: true })).text()).trim().split("\n").map((l) => JSON.parse(l));
   expect(lines).toEqual([{ type: "error", error: expect.stringContaining("something else broke"), code: "failed", retryable: false }]);
 });
+
+it("moves a gateway turn that ran out of budget onto the Google key, with its tools", async () => {
+  vi.resetModules();
+  vi.doMock("@/lib/ai/menu", () => ({ chooseModel: () => ({ provider: "openai", model: "anthropic/claude-haiku-5.5", reason: "test" }) }));
+  vi.doMock("@/lib/ai/agent-chat", () => ({
+    agentChat: async (_input: unknown, model: string, provider: string) => {
+      state.calls.push(`${provider}:${model}`);
+      if (provider === "openai") throw Object.assign(new Error("402 API Key Budget Exceeded"), { status: 402 });
+      return { provider: "gemini", model, turn: { mode: "answer", reply: "from gemini" }, steps: [] };
+    },
+  }));
+  process.env.GEMINI_API_KEY = "g";
+  const { POST: post } = await import("@/app/api/chat/route");
+  const response = await post(
+    new Request("http://localhost:3000/api/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ history: [{ role: "user", text: "hi" }], digest: { name: "test" }, doc: DOC }),
+    }),
+  );
+  const body = await response.json();
+  delete process.env.GEMINI_API_KEY;
+  expect(state.calls).toEqual(["openai:anthropic/claude-haiku-5.5", "gemini:gemini-3.8-flash"]);
+  expect(body.turn.reply).toBe("from gemini");
+});

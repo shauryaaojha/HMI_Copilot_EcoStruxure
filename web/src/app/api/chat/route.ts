@@ -161,6 +161,16 @@ export async function POST(request: Request) {
         // real failure and goes to the handler below. The gateway has no
         // fallback unless OPENAI_FALLBACK_MODEL names one of its models.
         const failed = describeModelError(error);
+        // The gateway out of budget or overloaded, with a Google key on the
+        // installation: the same loop runs on Gemini, with its tools, and says so.
+        if (loop === "openai" && (failed.code === "quota" || failed.code === "busy") && process.env.GEMINI_API_KEY?.trim()) {
+          const geminiModel = process.env.GEMINI_LOOP_MODEL?.trim() || "gemini-3.8-flash";
+          onStep({ tool: "fallback", summary: `${providerName("openai")} refused ${choice.model} (${failed.code === "quota" ? "budget or quota used up" : "overloaded"}), so ${geminiModel} on the Google key took the turn`, isError: true });
+          result = await agentChat({ ...input, doc, onStep }, geminiModel, "gemini");
+          return result
+            ? { provider: result.provider, model: result.model, turn: result.turn, usage: result.usage, ...(result.steps?.length ? { steps: result.steps } : {}), trace }
+            : { provider: "gemini" as const, model: geminiModel, turn: { mode: "answer", reply: "The model answered with something I could not read as a turn." } satisfies Turn, trace };
+        }
         const fallback = loop === "gemini" ? process.env.GEMINI_FALLBACK_MODEL?.trim() || "gemini-flash-lite-latest" : process.env.OPENAI_FALLBACK_MODEL?.trim();
         if (!fallback || (failed.code !== "quota" && failed.code !== "busy") || fallback === choice.model) throw error;
         const step: AgentStep = {
