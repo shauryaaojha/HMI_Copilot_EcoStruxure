@@ -24,6 +24,7 @@
 
 import type { OwnObject } from "@/lib/ote/exemplars";
 import type Anthropic from "@anthropic-ai/sdk";
+import type OpenAI from "openai";
 import { rootBox } from "@/lib/ote/schema";
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
 import { regionOf, regionsOf, roomReport } from "@/lib/ote/regions";
@@ -736,6 +737,9 @@ const JSON_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+/** The whole turn as JSON Schema: what the gateway loop's finish tool takes as its parameters. */
+export const TURN_SCHEMA: Record<string, unknown> = JSON_SCHEMA;
+
 /** One op as the model is asked to write it: the same schema, for the agent loop's edit tool (lib/copilot). */
 export const OP_ITEM_SCHEMA = JSON_SCHEMA.properties.ops.items;
 
@@ -1103,11 +1107,62 @@ async function withClaude(input: ConverseInput, model: string): Promise<Converse
   };
 }
 
+/**
+ * One call, no tools, on an OpenAI-compatible endpoint (lib/ai/openai.ts):
+ * the same context Gemini gets, the turn as a json_schema answer. The chat
+ * route uses it as the gateway loop's fallback, and the pipeline agent
+ * (lib/agent/loop.ts) for its repair rounds.
+ */
+export async function withOpenAI(input: ConverseInput, model: string): Promise<ConverseResult | null> {
+  const { openaiClient, reasoning, usageOf } = await import("./openai");
+  const client = openaiClient();
+  const { anchor, recent } = splitHistory(input.history);
+  const routed = routedLines(input, toolContext(input));
+
+  const messages: OpenAI.ChatCompletionMessageParam[] = [
+    { role: "system", content: SYSTEM },
+    {
+      role: "user",
+      content:
+        projectContext(input.digest) +
+        "\n\n" +
+        volatileContext(input.digest) +
+        (routed.length ? `\n\n${routed.join("\n\n")}` : "") +
+        (anchor ? `\n\n${anchor}` : ""),
+    },
+  ];
+  for (const item of recent) {
+    messages.push(item.role === "user" ? { role: "user", content: item.text } : { role: "assistant", content: recordText(item) });
+  }
+  if (input.repair) messages.push({ role: "user", content: REPAIR_NOTE });
+
+  const response = await client.chat.completions.create({
+    model,
+    messages,
+    max_tokens: 8192,
+    temperature: 0.2,
+    ...reasoning(input.repair ? "low" : "medium"),
+    response_format: { type: "json_schema", json_schema: { name: "turn", schema: TURN_SCHEMA } },
+  });
+  const choice = response.choices[0];
+  const text = choice?.message.content;
+  if (!text || choice.finish_reason === "length") return null;
+  try {
+    const turn = coerceTurn(JSON.parse(text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "")));
+    if (!turn) return null;
+    return { turn, provider: "openai", model, usage: usageOf(response.usage) };
+  } catch {
+    return null;
+  }
+}
+
 /** Null when no provider is configured, so the caller can say so rather than fail. */
 export async function converse(input: ConverseInput): Promise<ConverseResult | null> {
   const choice = resolveProvider();
   if (!choice.provider || !choice.model) return null;
   return choice.provider === "gemini"
     ? withGemini(input, choice.model)
-    : withClaude(input, choice.model);
+    : choice.provider === "openai"
+      ? withOpenAI(input, choice.model)
+      : withClaude(input, choice.model);
 }

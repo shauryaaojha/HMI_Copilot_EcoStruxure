@@ -22,9 +22,16 @@
  *
  * Function calling is forced (mode ANY): every step is a tool call, and the
  * answer is the arguments of `finish`, so there is no free text to parse.
+ *
+ * The same loop runs on an OpenAI-compatible endpoint (`agentChatOpenAI`,
+ * lib/ai/openai.ts): the tools in the Chat Completions dialect, every step
+ * forced with tool_choice "required", the picture a user message after the
+ * tool results because a tool message in that dialect carries text only.
+ * What the loop does with a tool call is the Session either way.
  */
 
 import type { Content, FunctionDeclaration, Part } from "@google/genai";
+import type OpenAI from "openai";
 import { coerceTurn, type Op, type Turn } from "@/core/ops";
 import { docOf } from "@/lib/collab/changes";
 import { dryRunToDoc } from "@/lib/collab/proposal";
@@ -36,6 +43,7 @@ import { validateInput } from "@/lib/server/validate";
 import {
   REPAIR_NOTE,
   SYSTEM,
+  TURN_SCHEMA,
   describeOp,
   digestOf,
   geminiSchema,
@@ -295,14 +303,23 @@ class Session {
 function summarise(name: string, args: Record<string, unknown>, text: string): string {
   const first = text.split("\n")[0].slice(0, 140);
   const arg = Object.values(args).find((v) => typeof v === "string") as string | undefined;
-  if (name === "try_ops") return `Tried ${Array.isArray(args.ops) ? args.ops.length : 0} op(s): ${first}`;
+  if (name === "try_ops") {
+    // The first refusal's reason rides along, so the chat (and an eval) can see why a try failed without the whole answer.
+    const refused = text.split("\n").find((line) => line.startsWith("refused: "));
+    return `Tried ${Array.isArray(args.ops) ? args.ops.length : 0} op(s): ${first}${refused ? ` ${refused.slice(0, 160)}` : ""}`;
+  }
   if (name === "render_screen") return `Looked at ${arg ?? "the active screen"}`;
   if (name === "get_screen") return `Read screen ${arg ?? ""}`.trim();
   if (name === "validate") return `Checked the draft: ${first}`;
   return `${name}${arg ? `(${arg.slice(0, 60)})` : ""}: ${first}`;
 }
 
-export async function agentChat(input: AgentChatInput, model: string): Promise<AgentChatResult | null> {
+/** The loop on the provider the route resolved; Gemini unless said otherwise, as the tests and older callers expect. */
+export async function agentChat(input: AgentChatInput, model: string, provider: "gemini" | "openai" = "gemini"): Promise<AgentChatResult | null> {
+  return provider === "openai" ? agentChatOpenAI(input, model) : agentChatGemini(input, model);
+}
+
+async function agentChatGemini(input: AgentChatInput, model: string): Promise<AgentChatResult | null> {
   const { GoogleGenAI, FunctionCallingConfigMode } = await import("@google/genai");
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY!.trim() });
   const session = new Session(input);
@@ -428,6 +445,155 @@ export async function agentChat(input: AgentChatInput, model: string): Promise<A
       });
     }
     contents.push({ role: "user", parts: replies });
+  }
+  return null;
+}
+
+/* ---------------------------------------------------------------------- */
+/* The same loop, Chat Completions dialect                                 */
+/* ---------------------------------------------------------------------- */
+
+type Message = OpenAI.ChatCompletionMessageParam;
+
+/** The loop's tools, including the registry, as the dialect takes them. */
+function openaiTools(): OpenAI.ChatCompletionTool[] {
+  return [...LOOKUP_DECLARATIONS, ...LOOP_TOOLS].map((d) => ({
+    type: "function",
+    function: { name: d.name!, description: d.description, parameters: d.parametersJsonSchema as Record<string, unknown> },
+  }));
+}
+
+/** finish in this dialect; built on first use, like FINISH, because the chat route imports this module. */
+let openaiFinish: OpenAI.ChatCompletionTool | undefined;
+const OPENAI_FINISH = () =>
+  (openaiFinish ??= {
+    type: "function",
+    function: {
+      name: "finish",
+      description: "Ends the turn with your answer: the mode, the reply to the engineer, and for an edit the ops. Call it exactly once, last.",
+      parameters: TURN_SCHEMA,
+    },
+  });
+
+/** The arguments of a call, or null when they are not JSON. */
+function argsOf(call: OpenAI.ChatCompletionMessageToolCall): Record<string, unknown> | null {
+  if (call.type !== "function") return null;
+  try {
+    const parsed: unknown = JSON.parse(call.function.arguments || "{}");
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function agentChatOpenAI(input: AgentChatInput, model: string): Promise<AgentChatResult | null> {
+  const { openaiClient, reasoning, usageOf, withRetry, imagePart, gatewayName } = await import("./openai");
+  const client = openaiClient();
+  const session = new Session(input);
+  const usage: Usage = { input: 0, cached: 0, output: 0 };
+  const { anchor, recent } = splitHistory(input.history);
+  const routed = routedLines(input, toolContext(input));
+
+  const messages: Message[] = [
+    { role: "system", content: `${SYSTEM}\n\n${AGENT_GUIDE}` },
+    {
+      role: "user",
+      content:
+        projectContext(input.digest) +
+        "\n\n" +
+        volatileContext(input.digest) +
+        (routed.length ? `\n\n${routed.join("\n\n")}` : "") +
+        (anchor ? `\n\n${anchor}` : ""),
+    },
+  ];
+  for (const item of recent) {
+    messages.push(item.role === "user" ? { role: "user", content: item.text } : { role: "assistant", content: recordText(item) });
+  }
+  if (input.repair) messages.push({ role: "user", content: REPAIR_NOTE });
+
+  const tools = [...openaiTools(), OPENAI_FINISH()];
+  let checkedFinish = false;
+  let waited = 0;
+  const call = (params: OpenAI.ChatCompletionCreateParamsNonStreaming) =>
+    withRetry(
+      () => client.chat.completions.create(params),
+      (ms) => {
+        waited += ms;
+        session.steps.push({ tool: "wait", summary: `Rate limited by ${gatewayName()}; waited ${Math.round(ms / 1000)} s`, isError: true });
+      },
+      WAIT_BUDGET_MS,
+    );
+  /** Every call of one step is answered, or the dialect refuses the next request. */
+  const answerRest = (calls: OpenAI.ChatCompletionMessageToolCall[], except: OpenAI.ChatCompletionMessageToolCall) => {
+    for (const other of calls) if (other !== except) messages.push({ role: "tool", tool_call_id: other.id, content: "Not run: finish was called in the same step." });
+  };
+
+  for (let step = 0; step <= MAX_STEPS; step++) {
+    const last = step === MAX_STEPS || (waited > WAIT_BUDGET_MS * 0.6 && step > 0);
+    const response = await call({
+      model,
+      messages,
+      max_tokens: 8192,
+      temperature: 0.2,
+      ...reasoning("medium"),
+      tools: last ? [OPENAI_FINISH()] : tools,
+      tool_choice: last ? { type: "function", function: { name: "finish" } } : "required",
+    });
+    const u = usageOf(response.usage);
+    usage.input += u.input;
+    usage.cached += u.cached;
+    usage.output += u.output;
+    const said = response.choices[0]?.message;
+    const calls = said?.tool_calls ?? [];
+    if (!said || calls.length === 0) {
+      if (step === MAX_STEPS) return null;
+      messages.push({ role: "user", content: "Call a tool, or finish." });
+      continue;
+    }
+    // The message goes back whole: a thinking model's reasoning_content rides
+    // along with its tool calls, the way Gemini's thought signatures do.
+    messages.push(said as Message);
+
+    const finish = calls.find((c) => c.type === "function" && c.function.name === "finish");
+    if (finish) {
+      const args = argsOf(finish);
+      const turn = args ? coerceTurn(args) : null;
+      if (!turn) {
+        messages.push({ role: "tool", tool_call_id: finish.id, content: "That turn did not match the schema. Call finish again with mode and reply set." });
+        answerRest(calls, finish);
+        continue;
+      }
+      if (turn.mode === "edit" && turn.ops?.length && !checkedFinish && !last) {
+        checkedFinish = true;
+        const check = await session.run("try_ops", { ops: turn.ops });
+        if (/^\d+ applied, [1-9]/.test(check.text)) {
+          session.steps.push({ tool: "finish", summary: `Checked the answer: ${check.text.split("\n")[0]}`, isError: true });
+          messages.push({ role: "tool", tool_call_id: finish.id, content: `Not finished: some of these ops are refused.\n${cut(check.text)}\nFix them and call finish again with the whole list.` });
+          answerRest(calls, finish);
+          continue;
+        }
+      }
+      return { turn: turn as Turn, provider: "openai", model, usage, steps: session.steps };
+    }
+
+    const images: OpenAI.ChatCompletionContentPart[] = [];
+    for (const c of calls) {
+      const name = c.type === "function" ? c.function.name : "";
+      const args = argsOf(c);
+      let result: { text: string; image?: Uint8Array; isError?: boolean };
+      if (!args) result = { text: `${name}: the arguments were not valid JSON. Send them again.`, isError: true };
+      else {
+        try {
+          result = await session.run(name, args);
+        } catch (error) {
+          result = { text: `${name} failed: ${error instanceof Error ? error.message : String(error)}`, isError: true };
+        }
+      }
+      session.steps.push({ tool: name, summary: summarise(name, args ?? {}, result.text), ...(result.isError ? { isError: true } : {}) });
+      messages.push({ role: "tool", tool_call_id: c.id, content: result.isError ? `Error: ${cut(result.text)}` : cut(result.text) });
+      if (result.image) images.push(imagePart(result.image));
+    }
+    if (images.length) messages.push({ role: "user", content: [{ type: "text", text: "The picture render_screen returned:" }, ...images] });
   }
   return null;
 }

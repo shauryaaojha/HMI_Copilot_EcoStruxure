@@ -38,6 +38,7 @@ import {
   type Provider,
   type ScreenPlan,
 } from "./plan";
+import { providerName } from "./provider";
 
 const now = () => new Date().toLocaleTimeString("en-GB", { hour12: false });
 
@@ -82,10 +83,8 @@ export interface PipelineInput {
   programs?: ScreenProgram[];
 }
 
-const PROVIDER_NAME: Record<Provider, string> = {
-  gemini: "Gemini",
-  claude: "Claude",
-};
+/** The provider's name in the build timeline; for the gateway, its host (lib/ai/provider.ts). */
+const PROVIDER_NAME = (provider: Provider): string => providerName(provider);
 
 export async function* runPipeline(
   input: PipelineInput,
@@ -169,7 +168,7 @@ export async function* runPipeline(
     // everything else. Saying which provider is being asked keeps that gap
     // legible instead of looking like a stall. It states what is happening, not
     // what anything is thinking.
-    yield log(`Asking ${waitingOn === "gemini" ? "Gemini" : "Claude"} to read the request`);
+    yield log(`Asking ${waitingOn ? providerName(waitingOn) : "the model"} to read the request`);
     try {
       const planned = await planScreen(intent, planAll ? equipment : toPlan, limits);
       if (planned) {
@@ -250,7 +249,7 @@ export async function* runPipeline(
 
   yield log(
     provider
-      ? `${PROVIDER_NAME[provider]} read the request: ${plan.rationale}`
+      ? `${PROVIDER_NAME(provider)} read the request: ${plan.rationale}`
       : configured
         ? `Laid out from the tag names: ${plan.rationale}`
         : `No model key set — laid out from the tag names: ${plan.rationale}`,

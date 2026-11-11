@@ -17,7 +17,7 @@ import { useProject } from "@/store/project";
 import { cn } from "@/components/ui";
 
 interface ProviderInfo {
-  provider: "claude" | "gemini" | null;
+  provider: "claude" | "gemini" | "openai" | null;
   model: string | null;
   reason: string;
 }

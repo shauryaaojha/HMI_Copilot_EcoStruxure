@@ -19,7 +19,7 @@ import { useProject } from "@/store/project";
 import { Badge, Button, Select, cn } from "@/components/ui";
 
 interface Answer {
-  provider: "claude" | "gemini" | null;
+  provider: "claude" | "gemini" | "openai" | null;
   model?: string;
   reason?: string;
   report: CriticReport | null;

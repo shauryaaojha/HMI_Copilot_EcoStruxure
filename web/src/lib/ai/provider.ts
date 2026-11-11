@@ -7,17 +7,23 @@
  * on the smallest model available and nobody had chosen that. This module
  * makes the choice explicit:
  *
- *   AI_PROVIDER=claude | gemini | none   the provider, stated
- *   AI_MODEL=<model id>                  optional override of the default model
+ *   AI_PROVIDER=claude | gemini | openai | none   the provider, stated
+ *   AI_MODEL=<model id>                           optional override of the default model
  *
  * With AI_PROVIDER unset, a Claude key selects Claude. A Gemini key on its own
  * selects nothing - Gemini is available, but only by asking for it - and the
  * reason is returned so the UI can say so instead of silently degrading.
  *
+ * `openai` is any endpoint that speaks the Chat Completions dialect (lib/ai/
+ * openai.ts): OPENAI_BASE_URL says which, OPENAI_API_KEY opens it, and the
+ * model id is whatever that gateway lists. It is how GLM, Qwen, DeepSeek or
+ * Opus-through-a-gateway are used, and it needs both variables: the SDK's
+ * own default URL would send a GLM model id to OpenAI.
+ *
  * docs/LLD.md §2 F1.
  */
 
-export type Provider = "gemini" | "claude";
+export type Provider = "gemini" | "claude" | "openai";
 
 export interface ProviderChoice {
   provider: Provider | null;
@@ -34,6 +40,9 @@ const DEFAULT_MODEL: Record<Provider, string> = {
   // Gemini 3.8 Flash: fast enough for the chat's tool-calling loop, and
   // able to read the screens it renders. Checked against the model list.
   gemini: "gemini-3.8-flash",
+  // GLM-5.3-Flash: passed every loop check through a gateway (tools, parallel
+  // calls, a picture, json_schema) at a tenth of Gemini Flash's price.
+  openai: "z-ai/glm-5.3-flash",
 };
 
 const env = (name: string) => process.env[name]?.trim() || undefined;
@@ -41,6 +50,7 @@ const env = (name: string) => process.env[name]?.trim() || undefined;
 const KEY: Record<Provider, string> = {
   claude: "ANTHROPIC_API_KEY",
   gemini: "GEMINI_API_KEY",
+  openai: "OPENAI_API_KEY",
 };
 
 export function resolveProvider(): ProviderChoice {
@@ -53,20 +63,23 @@ export function resolveProvider(): ProviderChoice {
       override ??
       (provider === "gemini" ? env("GEMINI_MODEL") : undefined) ??
       DEFAULT_MODEL[provider],
-    reason: `${provider === "claude" ? "Claude" : "Gemini"} (${asked ? "AI_PROVIDER" : "default"})`,
+    reason: `${providerName(provider)} (${asked ? "AI_PROVIDER" : "default"})`,
   });
 
   if (asked === "none") {
     return { provider: null, model: null, reason: "AI_PROVIDER=none: no model is used" };
   }
 
-  if (asked === "claude" || asked === "gemini") {
+  if (asked === "claude" || asked === "gemini" || asked === "openai") {
     if (!env(KEY[asked])) {
       return {
         provider: null,
         model: null,
         reason: `AI_PROVIDER=${asked} but ${KEY[asked]} is not set`,
       };
+    }
+    if (asked === "openai" && !env("OPENAI_BASE_URL")) {
+      return { provider: null, model: null, reason: "AI_PROVIDER=openai but OPENAI_BASE_URL is not set (the gateway's endpoint)" };
     }
     return choose(asked);
   }
@@ -75,7 +88,7 @@ export function resolveProvider(): ProviderChoice {
     return {
       provider: null,
       model: null,
-      reason: `AI_PROVIDER=${asked} is not one of claude, gemini, none`,
+      reason: `AI_PROVIDER=${asked} is not one of claude, gemini, openai, none`,
     };
   }
 
@@ -99,5 +112,13 @@ export const activeProvider = (): Provider | null => resolveProvider().provider;
 
 export const hasApiKey = (): boolean => activeProvider() !== null;
 
-export const providerName = (provider: Provider) =>
-  provider === "claude" ? "Claude" : "Gemini";
+/** For the gateway, the host the key talks to ("aicredits.in"), because "OpenAI" would be untrue. */
+export const providerName = (provider: Provider): string => {
+  if (provider === "claude") return "Claude";
+  if (provider === "gemini") return "Gemini";
+  try {
+    return new URL(env("OPENAI_BASE_URL") ?? "").hostname.replace(/^api\./, "") || "the gateway";
+  } catch {
+    return "the gateway";
+  }
+};

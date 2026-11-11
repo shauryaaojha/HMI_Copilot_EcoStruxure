@@ -357,6 +357,23 @@ async function planWithClaude(
   return coerce(response.parsed_output);
 }
 
+async function planWithOpenAI(
+  intent: string,
+  equipment: InferredEquipment[],
+  limits: Limits,
+): Promise<ScreenPlan | null> {
+  const { askJsonOpenAI, DEFAULT_OPENAI_MODEL } = await import("./openai");
+  // The same intelligence-sensitive call as Claude's, so the same effort.
+  const answer = await askJsonOpenAI({
+    model: resolveProvider().model ?? DEFAULT_OPENAI_MODEL,
+    system: system(limits),
+    user: prompt(intent, equipment),
+    schema: JSON_SCHEMA as unknown as Record<string, unknown>,
+    effort: "high",
+  });
+  return answer ? coerce(answer) : null;
+}
+
 /**
  * A plan good enough to build from when no key is configured, or when the model
  * could not be reached.
@@ -494,7 +511,9 @@ export async function planScreen(
   const plan =
     provider === "gemini"
       ? await planWithGemini(intent, equipment, limits)
-      : await planWithClaude(intent, equipment, limits);
+      : provider === "openai"
+        ? await planWithOpenAI(intent, equipment, limits)
+        : await planWithClaude(intent, equipment, limits);
 
   if (!plan) return null;
   return { provider, plan: finishPlan(plan, equipment, limits) };

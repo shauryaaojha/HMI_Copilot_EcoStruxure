@@ -15,16 +15,23 @@
  *            request falls back server-side to another model
  *   gemini   function calling, the model's content passed back whole so its
  *            thought signatures survive
+ *   openai   any Chat Completions endpoint (lib/ai/openai.ts): GLM, Qwen,
+ *            DeepSeek, or Opus through a gateway; reasoning_effort sent, the
+ *            assistant message passed back whole so reasoning_content survives
  *
  *   AGENT_MODEL    the model id (default: the provider's, Gemini Flash rather
- *                  than Flash Lite, which is too small for a tool loop)
- *   AGENT_EFFORT   Claude's effort, default high
+ *                  than Flash Lite, which is too small for a tool loop; on the
+ *                  gateway, AI_MODEL - set it to anthropic/claude-opus-5.5 to
+ *                  give the agent Opus while the chat stays on GLM)
+ *   AGENT_EFFORT   Claude's effort, default high; the gateway maps it to
+ *                  reasoning_effort low | medium | high
  *   AGENT_STEPS    most model turns per request, default 40
  */
 
 import type Anthropic from "@anthropic-ai/sdk";
+import type OpenAI from "openai";
 import type { Kb } from "@/lib/kb";
-import { resolveProvider, type Provider } from "@/lib/ai/provider";
+import { providerName, resolveProvider, type Provider } from "@/lib/ai/provider";
 import { TOOLS, availableTools, closeShell, contextFor, inputSchema, runAgentTool, type ToolResult } from "./tools";
 import type { Change, Workspace } from "./workspace";
 
@@ -50,6 +57,7 @@ export interface AgentOptions {
   signal?: AbortSignal;
   /** For tests: the provider client is injected rather than built from env. */
   claude?: Pick<Anthropic, "beta">;
+  openai?: Pick<OpenAI, "chat">;
 }
 
 export const SYSTEM = `You are the HMI Copilot agent. You work inside one EcoStruxure Operator Terminal Expert (OTE) project, opened as a working directory, for a controls engineer. You have tools to read, search and edit its files, to work with its screens, objects, bindings and tags, to check it, to look at a screen, and to run a script in a sandbox. Where the shell tool is offered, a Linux shell with Python holds a copy of the project, for bulk work and analysis.
@@ -85,16 +93,16 @@ function summary(result: ToolResult): string {
 
 export async function* runAgent(options: AgentOptions): AsyncGenerator<AgentEvent> {
   const choice = resolveProvider();
-  const provider = options.claude ? "claude" : choice.provider;
+  const provider: Provider | null = options.claude ? "claude" : options.openai ? "openai" : choice.provider;
   if (!provider) {
     yield { type: "error", message: `No model is configured for the agent: ${choice.reason}.` };
     return;
   }
-  const model = env("AGENT_MODEL") ?? (provider === "gemini" ? "gemini-flash-latest" : choice.model ?? "claude-opus-5-5");
-  yield { type: "status", message: `${provider === "claude" ? "Claude" : "Gemini"} (${model}) working in ${options.ws.fileName}` };
+  const model = env("AGENT_MODEL") ?? (provider === "gemini" ? "gemini-flash-latest" : choice.model ?? (provider === "openai" ? "z-ai/glm-5.3-flash" : "claude-opus-5-5"));
+  yield { type: "status", message: `${providerName(provider)} (${model}) working in ${options.ws.fileName}` };
   const steps = Number(env("AGENT_STEPS") ?? 40);
   try {
-    yield* provider === "claude" ? claudeLoop(options, model, steps) : geminiLoop(options, model, steps);
+    yield* provider === "claude" ? claudeLoop(options, model, steps) : provider === "openai" ? openaiLoop(options, model, steps) : geminiLoop(options, model, steps);
   } finally {
     // A sandbox the run started is stopped with it, however the run ends.
     await closeShell(options.ws);
@@ -280,4 +288,92 @@ async function* geminiLoop(options: AgentOptions, model: string, maxSteps: numbe
     if (step === maxSteps) yield { type: "error", message: `Stopped after ${maxSteps} steps; say "continue" to go on.` };
   }
   yield { type: "done", text: finalText, changes: options.ws.changes(), steps: contents.length, provider: "gemini", model, kbVersion: ctx.kb?.version };
+}
+
+/* ------------------------------------------------------------------ openai */
+
+async function* openaiLoop(options: AgentOptions, model: string, maxSteps: number): AsyncGenerator<AgentEvent> {
+  const { openaiClient, reasoning, usageOf, retryWaitMs, imagePart, effortOf, gatewayName } = await import("@/lib/ai/openai");
+  const client = options.openai ?? openaiClient();
+  const ctx = contextFor(options.ws);
+  const tools: OpenAI.ChatCompletionTool[] = availableTools().map((t) => ({
+    type: "function",
+    function: { name: t.name, description: t.description, parameters: inputSchema(t) as Record<string, unknown> },
+  }));
+  const messages: OpenAI.ChatCompletionMessageParam[] = [
+    { role: "system", content: SYSTEM },
+    ...(options.history ?? []).map((h): OpenAI.ChatCompletionMessageParam => ({ role: h.role, content: h.text })),
+    { role: "user", content: options.instruction },
+  ];
+  const effort = reasoning(effortOf(env("AGENT_EFFORT"), "high"));
+  let finalText = "";
+
+  for (let step = 1; step <= maxSteps; step++) {
+    if (options.signal?.aborted) break;
+    let response: OpenAI.ChatCompletion;
+    // The gateway answers 429 and 5xx under load; a short wait usually clears it.
+    for (let attempt = 0; ; attempt++) {
+      try {
+        response = await client.chat.completions.create(
+          { model, messages, tools, max_tokens: 16_000, ...effort },
+          { signal: options.signal, timeout: CALL_MS },
+        );
+        break;
+      } catch (e) {
+        if (options.signal?.aborted) return;
+        const wait = retryWaitMs(e, attempt);
+        if (wait === null) {
+          yield { type: "error", message: `The model call failed: ${(e as Error).message.slice(0, 300)}` };
+          return;
+        }
+        yield { type: "status", message: `${gatewayName()} is busy; trying again in ${Math.round(wait / 1000)} s` };
+        await new Promise((r) => setTimeout(r, wait));
+      }
+    }
+    const u = usageOf(response.usage);
+    yield { type: "usage", input: u.input, output: u.output, cached: u.cached };
+
+    const choice = response.choices[0];
+    const said = choice?.message;
+    if (!said) {
+      yield { type: "error", message: `The model returned nothing (${choice?.finish_reason ?? "no choice"}).` };
+      break;
+    }
+    // Whole, so a thinking model's reasoning_content goes back with its calls.
+    messages.push(said as OpenAI.ChatCompletionMessageParam);
+    const text = (said.content ?? "").trim();
+    if (text) {
+      finalText = text;
+      yield { type: "text", text };
+    }
+    const calls = (said.tool_calls ?? []).filter((c): c is OpenAI.ChatCompletionMessageFunctionToolCall => c.type === "function");
+    if (calls.length === 0) break;
+    if (choice.finish_reason === "length") {
+      yield { type: "error", message: "A tool call was cut off at the output limit; ask for a smaller step." };
+      break;
+    }
+
+    const images: OpenAI.ChatCompletionContentPart[] = [];
+    for (const call of calls) {
+      const tool = TOOLS.find((t) => t.name === call.function.name);
+      let input: unknown;
+      try {
+        input = JSON.parse(call.function.arguments || "{}");
+      } catch {
+        yield { type: "tool", id: call.id, name: call.function.name, input: call.function.arguments, writes: Boolean(tool?.writes) };
+        yield { type: "result", id: call.id, name: call.function.name, ok: false, summary: "the arguments were not valid JSON" };
+        messages.push({ role: "tool", tool_call_id: call.id, content: "Error: the arguments were not valid JSON. Send the call again." });
+        continue;
+      }
+      yield { type: "tool", id: call.id, name: call.function.name, input, writes: Boolean(tool?.writes) };
+      const r = await runAgentTool(ctx, call.function.name, input);
+      yield { type: "result", id: call.id, name: call.function.name, ok: !r.isError, summary: summary(r), image: Boolean(r.image) };
+      messages.push({ role: "tool", tool_call_id: call.id, content: r.isError ? `Error: ${r.text}` : r.text });
+      if (r.image) images.push(imagePart(r.image));
+    }
+    // A tool message carries text only in this dialect; the picture follows as the user.
+    if (images.length) messages.push({ role: "user", content: [{ type: "text", text: "The picture view_screen returned:" }, ...images] });
+    if (step === maxSteps) yield { type: "error", message: `Stopped after ${maxSteps} steps; say "continue" to go on.` };
+  }
+  yield { type: "done", text: finalText, changes: options.ws.changes(), steps: messages.length, provider: "openai", model, kbVersion: ctx.kb?.version };
 }

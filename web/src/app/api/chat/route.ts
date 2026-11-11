@@ -14,7 +14,7 @@
 import { modelCaller } from "@/lib/server/model-gate";
 import { errorResponse, json } from "@/lib/server/http";
 import { describeModelError } from "@/lib/ai/model-error";
-import { converse, withGemini, type Catalog, type HistoryItem, type ProjectDigest } from "@/lib/ai/converse";
+import { converse, withGemini, withOpenAI, type Catalog, type HistoryItem, type ProjectDigest } from "@/lib/ai/converse";
 import { agentChat, type AgentStep } from "@/lib/ai/agent-chat";
 import type { Doc } from "@/lib/collab/types";
 import { providerName, resolveProvider } from "@/lib/ai/provider";
@@ -137,21 +137,24 @@ export async function POST(request: Request) {
       own,
       target: { name: target.name, parts: target.capabilities.parts },
     };
-    // Gemini with the project in hand works in a tool-calling loop; anything
-    // else (Claude, or an older client that sent no doc) answers in one call.
+    // Gemini or the gateway with the project in hand works in a tool-calling
+    // loop; anything else (Claude, or an older client that sent no doc)
+    // answers in one call.
     const doc = body.doc && Array.isArray(body.doc.screens) && Array.isArray(body.doc.variables) ? body.doc : undefined;
     let result: (Awaited<ReturnType<typeof converse>> & { steps?: AgentStep[] }) | null;
-    if (doc && choice.provider === "gemini" && choice.model) {
+    if (doc && (choice.provider === "gemini" || choice.provider === "openai") && choice.model) {
+      const loop = choice.provider;
       try {
-        result = await agentChat({ ...input, doc }, choice.model);
+        result = await agentChat({ ...input, doc }, choice.model, loop);
       } catch (error) {
         // Out of quota or overloaded: the turn is still answered, in one call
         // on a model with its own quota, and says so. Anything else is a
-        // real failure and goes to the handler below.
+        // real failure and goes to the handler below. The gateway has no
+        // fallback unless OPENAI_FALLBACK_MODEL names one of its models.
         const failed = describeModelError(error);
-        const fallback = process.env.GEMINI_FALLBACK_MODEL?.trim() || "gemini-flash-lite-latest";
-        if ((failed.code !== "quota" && failed.code !== "busy") || fallback === choice.model) throw error;
-        const single = await withGemini(input, fallback);
+        const fallback = loop === "gemini" ? process.env.GEMINI_FALLBACK_MODEL?.trim() || "gemini-flash-lite-latest" : process.env.OPENAI_FALLBACK_MODEL?.trim();
+        if (!fallback || (failed.code !== "quota" && failed.code !== "busy") || fallback === choice.model) throw error;
+        const single = loop === "gemini" ? await withGemini(input, fallback) : await withOpenAI(input, fallback);
         result = single && {
           ...single,
           steps: [{ tool: "fallback", summary: `${choice.model} is ${failed.code === "quota" ? "out of quota" : "overloaded"}, so ${fallback} answered in one call, without tools`, isError: true }],

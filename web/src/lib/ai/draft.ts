@@ -47,6 +47,10 @@ export async function askJson(system: string, prompt: string, schema: Record<str
       });
       return response.text ? JSON.parse(response.text) : null;
     }
+    if (provider === "openai") {
+      const { askJsonOpenAI, DEFAULT_OPENAI_MODEL } = await import("./openai");
+      return askJsonOpenAI({ model: resolveProvider().model ?? DEFAULT_OPENAI_MODEL, system, user: prompt, schema, effort: "medium", maxTokens: 16000 });
+    }
     const { default: Anthropic } = await import("@anthropic-ai/sdk");
     const { betaJSONSchemaOutputFormat } = await import("@anthropic-ai/sdk/helpers/beta/json-schema");
     const response = await new Anthropic().beta.messages.parse({

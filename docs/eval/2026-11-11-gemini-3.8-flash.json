@@ -1,0 +1,52 @@
+{
+  "provider": "gemini",
+  "model": "gemini-3.8-flash",
+  "at": "2026-11-11T16:42:26.486Z",
+  "rows": [
+    {
+      "job": "move",
+      "mode": "-",
+      "ops": 0,
+      "refused": 0,
+      "steps": 0,
+      "toolErrors": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "cached": 0,
+      "inr": 0,
+      "seconds": 275.103,
+      "reply": "",
+      "error": "fetch failed"
+    },
+    {
+      "job": "display",
+      "mode": "-",
+      "ops": 0,
+      "refused": 0,
+      "steps": 0,
+      "toolErrors": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "cached": 0,
+      "inr": 0,
+      "seconds": 10.518,
+      "reply": "",
+      "error": "fetch failed"
+    },
+    {
+      "job": "question",
+      "mode": "-",
+      "ops": 0,
+      "refused": 0,
+      "steps": 0,
+      "toolErrors": 0,
+      "tokensIn": 0,
+      "tokensOut": 0,
+      "cached": 0,
+      "inr": 0,
+      "seconds": 57.95,
+      "reply": "",
+      "error": "fetch failed"
+    }
+  ]
+}

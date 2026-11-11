@@ -43,7 +43,7 @@ export type CriticReport = z.infer<typeof CriticReport>;
 
 export interface CriticResult {
   report: CriticReport;
-  provider: "claude" | "gemini";
+  provider: "claude" | "gemini" | "openai";
   model: string;
 }
 
@@ -209,6 +209,21 @@ async function withGemini(png: Uint8Array, screen: Screen, model: string, pack: 
   }
 }
 
+/** The gateway: the picture as a data URL beside the inventory, the report as a json_schema answer. */
+async function withOpenAI(png: Uint8Array, screen: Screen, model: string, pack: StandardPack): Promise<CriticResult | null> {
+  const { askJsonOpenAI, imagePart } = await import("@/lib/ai/openai");
+  const answer = await askJsonOpenAI({
+    model,
+    system: checklist(pack),
+    user: [imagePart(png), { type: "text", text: inventory(screen) }],
+    schema: JSON_SCHEMA as unknown as Record<string, unknown>,
+    effort: "medium",
+    maxTokens: 4096,
+  });
+  const parsed = CriticReport.safeParse(answer);
+  return parsed.success ? { report: parsed.data, provider: "openai", model } : null;
+}
+
 /**
  * Review one screen. Findings that name an object the screen does not have
  * are dropped here, whatever the model said: a critic that invents objects
@@ -221,7 +236,9 @@ export async function critique(screen: Screen, pack: StandardPack = DEFAULT_PACK
   const result =
     choice.provider === "gemini"
       ? await withGemini(png, screen, choice.model, pack)
-      : await withClaude(png, screen, choice.model, pack);
+      : choice.provider === "openai"
+        ? await withOpenAI(png, screen, choice.model, pack)
+        : await withClaude(png, screen, choice.model, pack);
   if (!result) return null;
   const names = new Set(screen.Children[0].Children.map((p) => p.Name));
   const labels = new Map(

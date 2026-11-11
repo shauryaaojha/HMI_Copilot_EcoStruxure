@@ -21,7 +21,8 @@
     "realtime:check": "tsx --tsconfig scripts/tsconfig.json scripts/realtime-check.mts",
     "db": "tsx --tsconfig scripts/tsconfig.json scripts/db.mts",
     "hmi": "tsx --tsconfig scripts/tsconfig.json bin/hmi.mts",
-    "skill:build": "tsx --tsconfig scripts/tsconfig.json scripts/skill-build.mts"
+    "skill:build": "tsx --tsconfig scripts/tsconfig.json scripts/skill-build.mts",
+    "eval:chat": "tsx --tsconfig scripts/tsconfig.json scripts/eval-chat.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
@@ -40,6 +41,7 @@
     "mongodb": "^7.7.0",
     "next": "^15.5.4",
     "next-auth": "^5.0.0-beta.32",
+    "openai": "^7.55.0",
     "quickjs-emscripten": "^0.32.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
