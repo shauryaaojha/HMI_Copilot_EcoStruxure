@@ -630,6 +630,29 @@ describe("a file through the connector", () => {
     expect((await snapshotOf(id)).snapshot.screens.map(s => s.Name)).toEqual(["Overview"]);
   });
 
+  it("create_project keeps the colours Claude draws with unless asked for the standard's, and validate follows", async () => {
+    const draw = async (name: string, colours?: "own" | "standard") => {
+      const made = await call("create_project", { name, directWrites: true, ...(colours ? { colours } : {}) });
+      const id = made.structured!.projectId as string;
+      await call("apply_ops", {
+        projectId: id,
+        ops: [
+          { op: "addScreen", name: "Home" },
+          { op: "addObject", screen: "Home", type: "Rectangle", name: "Card", left: 40, top: 40, width: 200, height: 120, color: "teal" },
+        ],
+      });
+      return { id, validation: (await call("validate", { projectId: id })).text };
+    };
+
+    const own = await draw("Own colours");
+    expect((await snapshotOf(own.id)).snapshot.standards?.colours).toBe("own");
+    expect(own.validation).not.toContain("colour.abnormalOnly");
+
+    const standard = await draw("Standard colours", "standard");
+    expect((await snapshotOf(standard.id)).snapshot.standards?.colours).toBe("standard");
+    expect(standard.validation).toContain("colour.abnormalOnly");
+  });
+
   it("create_project makes nothing when a tag cannot be used, and says which", async () => {
     const before = (await state.repo.projects.list("alice")).length;
     const refused = await call("create_project", { name: "Bad", tags: [{ name: "Boiler temp", dataType: "REAL" }, { name: "OK_1", dataType: "BOOL" }, { name: "OK_1", dataType: "BOOL" }] });

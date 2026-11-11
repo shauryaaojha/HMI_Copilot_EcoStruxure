@@ -59,8 +59,12 @@ const createProject = tool({
       .optional()
       .describe("The PLC tags, when the engineer gave them or agreed to a set. A project can also start with none: generate takes a plant brief and makes placeholder tags."),
     directWrites: z.boolean().optional().describe("True only when the engineer has said changes may land without their accepting each one. Left out, every change waits as a proposal."),
+    colours: z
+      .enum(["own", "standard"])
+      .optional()
+      .describe("Whose colours the screens wear. own (the default) keeps the colours you draw with and validation raises no colour warnings; standard holds every screen to the ISA-101 pack, neutral faces with colour only for alarms, and warns on anything else."),
   },
-  async run({ name: asked, panel, tags, directWrites: direct }, { caller }) {
+  async run({ name: asked, panel, tags, directWrites: direct, colours }, { caller }) {
     const name = projectName(asked);
     if (!name) return refusal("That name has no letters or digits in it. Give the project a name such as Coffee_Machine.", "invalid");
     const variables: Variable[] = [];
@@ -90,7 +94,9 @@ const createProject = tool({
       v: 3, id: crypto.randomUUID(), name: freeName(name, new Set(mine.map((p) => p.name.toLowerCase()))),
       target: { model: target.model, width: target.width, height: target.height },
       screens: [], variables, alarms: [], bindings: [],
-      objectMeta: {}, screenPlacement: {}, standards: DEFAULT_STANDARDS, versions: [], chat: [], foreign: {},
+      // A project made through the connector is drawn by Claude in colours it
+      // chose, which the colour rule would warn about on every screen (types.ts).
+      objectMeta: {}, screenPlacement: {}, standards: { ...DEFAULT_STANDARDS, colours: colours ?? "own" }, versions: [], chat: [], foreign: {},
     } as never);
     if (direct === true) await storage.projects.connector(project._id, { directWrites: true });
     return {
