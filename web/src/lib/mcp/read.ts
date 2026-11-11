@@ -78,11 +78,14 @@ const listProjects = tool({
       const counts = snapshot
         ? `${snapshot.screens.length} screens, ${snapshot.variables.length} tags, ${snapshot.alarms.length} alarms`
         : "not opened yet";
+      // The screens by name: what tells one project from another, and which is worth reading as an example.
+      const named = snapshot?.screens.slice(0, 12).map((screen) => field(screen.Name, 40)).join(", ");
       lines.push(
         [
           `${project._id}  "${field(project.name, 120)}"`,
           `panel ${field(project.target?.model, 40)} ${project.target?.width}x${project.target?.height}`,
           counts,
+          ...(named ? [`screens: ${named}${snapshot!.screens.length > 12 ? ", …" : ""}`] : []),
           `your role: ${access?.role ?? "none"}`,
           `changes land ${directWrites(project) ? "directly" : "as proposals an editor accepts"}`,
           `last change ${new Date(project.updatedAt).toISOString()}`,

@@ -15,7 +15,7 @@
 import { useSignedOut } from "@/components/shell/SignInNotice";
 import { holdDraft, openSignIn, takeDraft } from "@/lib/client/sign-in";
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Check, Square, Undo2, Wrench, X } from "lucide-react";
+import { ArrowUp, Check, CornerDownLeft, FileDiff, Square, Undo2, Wrench, X } from "lucide-react";
 import { useProject } from "@/store/project";
 import { cn } from "@/components/ui";
 
@@ -53,7 +53,7 @@ function brief(input: unknown): string {
   return text === "{}" ? "" : text.length > 90 ? `${text.slice(0, 90)}…` : text;
 }
 
-export function AgentPane() {
+export function AgentPane({ canEdit = true, onRunning }: { canEdit?: boolean; onRunning?: (running: boolean) => void }) {
   const sourceId = useProject((s) => s.sourceId);
   const hydrate = useProject((s) => s.hydrate);
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -63,6 +63,16 @@ export function AgentPane() {
   const abort = useRef<AbortController | null>(null);
   const thread = useRef<HTMLDivElement>(null);
   const running = turns.some((t) => t.running);
+  // The pane stays mounted behind the other modes, so the header can say it is still at work.
+  useEffect(() => onRunning?.(running), [running, onRunning]);
+  /** Seconds the job in hand has been running, so a long step is not mistaken for a stall. */
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!running) return;
+    setElapsed(0);
+    const timer = window.setInterval(() => setElapsed((n) => n + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, [running]);
 
   useEffect(() => {
     const el = thread.current;
@@ -158,85 +168,137 @@ export function AgentPane() {
     void run(text);
   }
 
+  if (!canEdit) {
+    return <p className="relative p-4 text-[12px] leading-relaxed text-text-muted">View only — the agent changes the project, so it needs an editor.</p>;
+  }
+
   if (!sourceId) {
     return (
-      <p className="relative p-4 text-[12px] leading-relaxed text-text-muted">
-        The agent works on a project file: open an .eote from the start page, and it can read every screen, copy your own objects, bind tags and check the result.
-      </p>
+      <div className="relative m-3 space-y-2 rounded-xl border border-agent-500/30 bg-agent-500/[0.07] p-3 text-[12px] leading-relaxed">
+        <p className="flex items-center gap-1.5 font-medium text-text-primary">
+          <Wrench size={13} aria-hidden className="text-agent-400" /> The agent works on a project file
+        </p>
+        <p className="text-text-muted">
+          Open an .eote from the start page and it can read every screen, copy your own objects, bind tags and check the result. For a project
+          built here from tags, use Chat.
+        </p>
+      </div>
     );
   }
 
   return (
     <>
-      <div ref={thread} className="relative min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3">
+      <div ref={thread} className="relative min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4">
         {turns.length === 0 && (
-          <div className="space-y-2">
-            <p className="text-[12px] leading-relaxed text-text-muted">
-              The agent opens this project&apos;s file, looks at how it is built, and changes it the way you would in the editor. You see every step; a change comes back as a new file, and you can put the old one back.
+          <div className="space-y-3">
+            <p className="text-[13px] leading-relaxed text-text-secondary">
+              Give it a job, not a sentence to draw.
+              <span className="mt-1 block text-text-muted">
+                It opens this project&apos;s file, works step by step where you can see, and hands back a new file. One click puts the old one back.
+              </span>
             </p>
-            {IDEAS.map((idea) => (
-              <button
-                key={idea}
-                type="button"
-                onClick={() => setDraft(idea)}
-                className="focus-ring block w-full rounded-lg border border-line-subtle px-2.5 py-1.5 text-left text-[12px] text-text-secondary transition hover:border-line hover:bg-surface-hover"
-              >
-                {idea}
-              </button>
-            ))}
+            <div>
+              <p className="label-eyebrow pb-2">Jobs it does well</p>
+              <ul className="space-y-1.5">
+                {IDEAS.map((idea) => (
+                  <li key={idea}>
+                    <button
+                      type="button"
+                      onClick={() => setDraft(idea)}
+                      className="focus-ring press group flex w-full items-start gap-2 rounded-lg border border-line-subtle bg-surface-raised/50 px-3 py-2 text-left text-xs leading-relaxed text-text-secondary hover:border-agent-500/40 hover:bg-surface-raised hover:text-text-primary"
+                    >
+                      <CornerDownLeft size={12} aria-hidden className="mt-0.5 shrink-0 text-text-faint transition group-hover:text-agent-400" />
+                      <span className="min-w-0">{idea}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         )}
 
         {turns.map((t, i) =>
           t.role === "user" ? (
-            <p key={i} className="ml-6 rounded-lg bg-brand-500/10 px-2.5 py-1.5 text-[12.5px] text-text-primary">
-              {t.text}
-            </p>
+            <div key={i} className="animate-rise flex justify-end">
+              <p className="max-w-[88%] whitespace-pre-wrap rounded-2xl rounded-br-md border border-agent-500/25 bg-agent-500/12 px-3 py-2 text-[12.5px] leading-relaxed text-text-primary">
+                {t.text}
+              </p>
+            </div>
           ) : (
-            <div key={i} className="space-y-1.5">
+            <div key={i} className="animate-rise space-y-2">
+              {/* The work, as a run of steps on one line down the side: a read is a
+                  ring, a write is filled, and the one in hand turns. */}
               {t.steps.length > 0 && (
-                <ol className="space-y-0.5 rounded-lg border border-line-subtle bg-surface-raised/60 p-2 font-mono text-[10.5px] leading-snug">
+                <ol className="relative space-y-1.5 pl-4 before:absolute before:bottom-2 before:left-[5px] before:top-2 before:w-px before:bg-line">
                   {t.steps.map((s) => (
-                    <li key={s.id} title={s.summary} className="flex gap-1.5">
-                      {s.ok === undefined ? (
-                        <span className="mt-0.5 h-2.5 w-2.5 shrink-0 animate-spin rounded-full border border-current border-t-transparent text-text-faint" />
-                      ) : s.ok ? (
-                        <Check size={11} className="mt-0.5 shrink-0 text-emerald-400" aria-label="done" />
-                      ) : (
-                        <X size={11} className="mt-0.5 shrink-0 text-amber-400" aria-label="failed" />
-                      )}
-                      <span className={cn("shrink-0", s.writes ? "text-brand-400" : "text-text-secondary")}>{s.name}</span>
-                      <span className="truncate text-text-faint">{s.input}</span>
+                    <li key={s.id} className="animate-rise relative">
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "absolute -left-4 top-1 flex h-[11px] w-[11px] items-center justify-center rounded-full border bg-surface-copilot",
+                          s.ok === undefined ? "border-agent-400" : s.ok ? (s.writes ? "border-agent-400 bg-agent-400" : "border-line-strong") : "border-status-warn bg-status-warn",
+                        )}
+                      >
+                        {s.ok === undefined && <span className="h-[5px] w-[5px] animate-ping rounded-full bg-agent-400" />}
+                      </span>
+                      <details className="group/step">
+                        <summary className="flex cursor-pointer list-none items-baseline gap-1.5 text-[11px] leading-snug">
+                          <span className={cn("text-ident shrink-0 rounded px-1 py-px", s.writes ? "bg-agent-500/15 text-agent-300" : "bg-surface-hover text-text-secondary")}>{s.name}</span>
+                          <span className="text-ident min-w-0 flex-1 truncate text-text-faint">{s.input}</span>
+                          {s.ok === true && <Check size={10} aria-label="done" className="shrink-0 self-center text-text-faint" />}
+                          {s.ok === false && <X size={10} aria-label="failed" className="shrink-0 self-center text-status-warn" />}
+                        </summary>
+                        {s.summary && <p className="mt-1 whitespace-pre-wrap rounded-md bg-surface-raised/70 px-2 py-1.5 text-[11px] leading-relaxed text-text-muted">{s.summary}</p>}
+                      </details>
                     </li>
                   ))}
                 </ol>
               )}
-              {t.status && t.running && <p className="is-thinking text-[10.5px]">{t.status}</p>}
-              {t.text && <p className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-text-primary">{t.text}</p>}
-              {t.error && <p className="text-[11.5px] text-amber-400">{t.error}</p>}
+              {t.running && (
+                <p className="flex items-center gap-2 text-[11px]">
+                  <span className="is-thinking font-medium">{t.status ?? (t.steps.length ? "Working…" : "Opening the project file…")}</span>
+                  <span className="text-figure text-text-faint">{elapsed}s</span>
+                </p>
+              )}
+              {t.text && <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-text-secondary">{t.text}</p>}
+              {t.error && (
+                <p className="rounded-lg border border-status-warn/30 bg-status-warn/[0.08] px-2.5 py-2 text-[11px] leading-snug text-status-warn">{t.error}</p>
+              )}
               {t.changed && t.changed.length > 0 && (
-                <p className="text-[10.5px] text-text-faint">Changed: {t.changed.join(", ")}</p>
+                <ul className="flex flex-wrap gap-1">
+                  {t.changed.map((c) => (
+                    <li key={c} className="text-ident inline-flex items-center gap-1 rounded-md border border-agent-500/30 bg-agent-500/[0.08] px-1.5 py-0.5 text-agent-300">
+                      <FileDiff size={10} aria-hidden /> {c}
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
           ),
         )}
 
         {before && !running && (
-          <button
-            type="button"
-            onClick={() => {
-              hydrate(before);
-              setBefore(null);
-            }}
-            className="focus-ring flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-text-muted transition hover:bg-surface-hover hover:text-text-primary"
-          >
-            <Undo2 size={12} aria-hidden /> Put back the project as it was before the agent&apos;s change
-          </button>
+          <div className="animate-rise flex items-center gap-2 rounded-xl border border-line-subtle bg-surface-raised/60 p-2.5">
+            <p className="min-w-0 flex-1 text-[11px] leading-snug text-text-muted">The project was reloaded from the agent&apos;s file.</p>
+            <button
+              type="button"
+              onClick={() => {
+                hydrate(before);
+                setBefore(null);
+              }}
+              className="focus-ring press flex shrink-0 items-center gap-1 rounded-md border border-line px-2 py-1 text-[11px] font-medium text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+            >
+              <Undo2 size={12} aria-hidden /> Put it back
+            </button>
+          </div>
         )}
       </div>
 
       <div className="relative shrink-0 border-t border-line-subtle p-3">
-        <div className={cn("relative rounded-xl border bg-surface-raised transition", running ? "border-brand-500/40" : "border-line focus-within:border-brand-500/60")}>
+        <div
+          className={cn("relative rounded-xl border bg-surface-raised transition", running ? "border-agent-500/50" : "border-line focus-within:border-agent-500/60")}
+          style={{ boxShadow: running ? "0 0 0 1px color-mix(in srgb, var(--mode) 30%, transparent), 0 0 24px color-mix(in srgb, var(--mode) 16%, transparent)" : "var(--elev-1)" }}
+        >
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -260,8 +322,8 @@ export function AgentPane() {
             aria-label={running ? "Stop" : "Send"}
             title={running ? "Stop the agent" : "Send (Enter)"}
             className={cn(
-              "focus-ring absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-lg transition",
-              running || draft.trim() ? "bg-brand-500 text-text-onbrand hover:bg-brand-600" : "bg-surface-hover text-text-faint",
+              "focus-ring press absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-lg",
+              running || draft.trim() ? "bg-agent-500 text-white shadow-md shadow-agent-500/30 hover:brightness-110" : "bg-surface-hover text-text-faint",
             )}
           >
             {running ? <Square size={11} aria-hidden /> : <ArrowUp size={14} aria-hidden />}

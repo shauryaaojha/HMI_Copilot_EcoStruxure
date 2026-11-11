@@ -80,10 +80,18 @@ export const viewOf = (screen: Screen) => screen.Children[0];
  * saved before handles existed gets them without a migration.
  */
 export function ensureHandles(s: Draft) {
+  // The counter can arrive missing - a saved or shared document without it, a
+  // patch that left it out - and `++undefined` is NaN, after which every new
+  // handle was "sNaN" or "oNaN". It is rebuilt from the handles that exist, and
+  // any handle already spoiled that way is given a real number again.
+  const numbered = Object.values(s.handles).map((h) => Number(/^[a-z](\d+)$/.exec(h ?? "")?.[1] ?? 0));
+  const floor = Math.max(0, ...numbered);
+  if (!Number.isSafeInteger(s.handleSeq) || s.handleSeq < floor) s.handleSeq = floor;
+  const usable = (h: string | undefined) => !!h && !h.endsWith("NaN");
   for (const screen of s.screens) {
-    if (!s.handles[screen.UniqueId]) s.handles[screen.UniqueId] = `s${++s.handleSeq}`;
+    if (!usable(s.handles[screen.UniqueId])) s.handles[screen.UniqueId] = `s${++s.handleSeq}`;
     for (const part of viewOf(screen).Children) {
-      if (!s.handles[part.UniqueId]) s.handles[part.UniqueId] = `o${++s.handleSeq}`;
+      if (!usable(s.handles[part.UniqueId])) s.handles[part.UniqueId] = `o${++s.handleSeq}`;
     }
   }
 }

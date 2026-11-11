@@ -30,85 +30,107 @@
   --color-brand-600: #008a3e;
   --color-brand-700: #006c30;
 
-  --color-chrome-950: #0b0f14;
-  --color-chrome-900: #0f1419;
-  --color-chrome-850: #151b23;
-  --color-chrome-800: #1c2430;
-  --color-chrome-700: #263141;
-  --color-chrome-600: #33415a;
+  /*
+   * Graphite. A warm neutral ramp rather than the blue-grey every developer
+   * tool wears: the HMI screen on the canvas is cool grey by standard, and an
+   * application frame in the same cool grey gave the work no edge to sit
+   * against. Warm chrome, cool work.
+   */
+  --color-chrome-950: #0c0c0b;
+  --color-chrome-900: #121211;
+  --color-chrome-850: #181817;
+  --color-chrome-800: #1f1f1d;
+  --color-chrome-700: #2a2a27;
+  --color-chrome-600: #3b3b37;
 
-  --color-ink-100: #e6edf3;
-  --color-ink-300: #b3c0cc;
-  --color-ink-500: #7d8b99;
-  --color-ink-700: #4a5764;
+  --color-ink-100: #edece8;
+  --color-ink-300: #b9b7b0;
+  --color-ink-500: #85837c;
+  --color-ink-700: #55534e;
 
   /* status colours, shared with the HMI conventions */
-  --color-status-alarm: #f04438;
+  --color-status-alarm: #f0483e;
   --color-status-warn: #e3a008;
   --color-status-ok: #3dcd58;
-  --color-status-info: #3b9eff;
+  --color-status-info: #4c9ffe;
+
+  /*
+   * Who is working. Three things edit a project - the chat, the agent on the
+   * file, and Claude through the connector - and at once. Each has one hue of
+   * its own, used only on its own surface, so a change can be told by colour
+   * before it is read: green is the chat, violet the agent, cyan the connector.
+   */
+  --color-agent-300: #c4b5fd;
+  --color-agent-400: #a78bfa;
+  --color-agent-500: #7c5cf5;
+  --color-connector-300: #7fdcec;
+  --color-connector-400: #38c4dc;
+  --color-connector-500: #0e9fb8;
 
   /* ------------------------------------------------------------------ */
   /* Semantic chrome tokens. Components use only these, so a theme is a   */
   /* remap of eighteen variables rather than a rewrite of every class.    */
   /* Values here are the dark theme; [data-theme="light"] overrides them. */
+  /* In the dark, height is said with a lighter surface, not a shadow: a  */
+  /* shadow on near-black is not seen.                                    */
   /* ------------------------------------------------------------------ */
 
-  --color-surface-base: #0b0f14; /* app background, behind everything */
-  --color-surface-panel: #0f1419; /* the three panes */
-  --color-surface-raised: #151b23; /* cards, inputs, inert controls */
-  --color-surface-hover: #1c2430; /* hover and pressed states */
-  --color-surface-active: #263141; /* selected rows, active chips */
-  --color-surface-canvas: #0b0f14; /* the backdrop the HMI screen floats on */
+  --color-surface-base: #0c0c0b; /* app background, behind everything */
+  --color-surface-panel: #141413; /* the three panes */
+  --color-surface-raised: #1b1b1a; /* cards, inputs, inert controls */
+  --color-surface-hover: #242422; /* hover and pressed states */
+  --color-surface-active: #2e2e2b; /* selected rows, active chips */
+  --color-surface-canvas: #0f0f0e; /* the backdrop the HMI screen floats on */
 
-  --color-line-subtle: #1c2430; /* pane dividers */
-  --color-line: #263141; /* control borders */
-  --color-line-strong: #33415a; /* focus-adjacent, emphasised borders */
+  --color-line-subtle: #222220; /* pane dividers */
+  --color-line: #2e2e2b; /* control borders */
+  --color-line-strong: #45443f; /* focus-adjacent, emphasised borders */
 
-  --color-text-primary: #e6edf3;
-  --color-text-secondary: #b3c0cc;
-  --color-text-muted: #7d8b99;
-  --color-text-faint: #4a5764;
+  --color-text-primary: #edece8;
+  --color-text-secondary: #b9b7b0;
+  --color-text-muted: #8a8880;
+  --color-text-faint: #5d5b55;
   --color-text-onbrand: #ffffff;
 
-  /* ------------------------------------------------------------------ */
-  /* Surfaces by role, not by depth.                                      */
-  /*                                                                      */
-  /* Everything used to be surface-panel or surface-raised, which is why  */
-  /* the app read as one undifferentiated field: the frame, the canvas    */
-  /* and the copilot are three different kinds of thing and they looked   */
-  /* identical. These three give each one its own ground.                 */
-  /* ------------------------------------------------------------------ */
+  /* Surfaces by role, not by depth: the frame, the copilot and a floating control each have their own ground. */
 
   /* App chrome - the top bar and the nav rail. Recedes; never competes. */
-  --color-surface-frame: #080b0f;
-  /* The copilot pane. Warmer and lifted, because it is where work starts. */
-  --color-surface-copilot: #10171d;
+  --color-surface-frame: #090908;
+  /* The copilot pane. Lifted, because it is where work starts. */
+  --color-surface-copilot: #121311;
   /* A floating control over the canvas: toolbars, overlays, menus. */
-  --color-surface-float: #1a222c;
+  --color-surface-float: #212120;
 
-  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-mono: "Cascadia Code", Consolas, ui-monospace, monospace;
+  --font-sans: "Inter Variable", "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, ui-monospace, monospace;
 
-  --radius-panel: 0.5rem;
+  /* One step rounder than the framework's, everywhere at once. */
+  --radius-md: 0.5rem;
+  --radius-lg: 0.7rem;
+  --radius-xl: 0.9rem;
+  --radius-2xl: 1.25rem;
+  --radius-panel: 0.7rem;
 }
 
 :root {
   color-scheme: dark;
-  --canvas-grid-line: rgba(255, 255, 255, 0.035);
-  --canvas-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  --canvas-grid-line: rgba(255, 255, 255, 0.04);
+  --canvas-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 24px 60px rgba(0, 0, 0, 0.6);
+  /* The hue of whoever is working in the copilot pane; the pane sets it (data-mode). */
+  --mode: var(--color-brand-400);
+  --mode-strong: var(--color-brand-500);
 
   /*
    * Elevation. A flat interface has to say "this is above that" with a border,
    * and a border is also what separates two things side by side - so
    * everything ends up looking like a card. These say it with light instead.
    */
-  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --elev-2: 0 4px 12px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.5);
-  --elev-3: 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.45);
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  --elev-2: 0 6px 16px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --elev-3: 0 18px 44px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 
   /* The copilot's accent glow, used only where something is happening. */
-  --glow-brand: 0 0 0 1px rgba(61, 205, 88, 0.25), 0 0 24px rgba(61, 205, 88, 0.14);
+  --glow-brand: 0 0 0 1px color-mix(in srgb, var(--mode) 30%, transparent), 0 0 24px color-mix(in srgb, var(--mode) 16%, transparent);
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -118,7 +140,6 @@
   --elev-1: 0 1px 2px rgba(13, 20, 27, 0.08);
   --elev-2: 0 4px 14px rgba(13, 20, 27, 0.1), 0 1px 2px rgba(13, 20, 27, 0.06);
   --elev-3: 0 14px 36px rgba(13, 20, 27, 0.14), 0 2px 6px rgba(13, 20, 27, 0.08);
-  --glow-brand: 0 0 0 1px rgba(0, 176, 80, 0.28), 0 0 22px rgba(0, 176, 80, 0.12);
 }
 
 /*
@@ -137,35 +158,39 @@
    * built from, so the two themes are the same design at different weights
    * rather than two designs.
    */
-  --color-surface-base: #e8ecf1; /* app background, behind everything */
-  --color-surface-panel: #f7f9fb; /* the panes */
-  --color-surface-raised: #f1f4f8; /* cards, inputs, inert controls */
-  --color-surface-hover: #e7ecf3;
-  --color-surface-active: #dbe3ed;
-  --color-surface-canvas: #dfe4eb; /* the backdrop the HMI screen floats on */
+  --color-surface-base: #eceae4; /* app background, behind everything */
+  --color-surface-panel: #faf9f6; /* the panes */
+  --color-surface-raised: #f3f1ec; /* cards, inputs, inert controls */
+  --color-surface-hover: #ebe8e1;
+  --color-surface-active: #dfdbd2;
+  --color-surface-canvas: #e4e1da; /* the backdrop the HMI screen floats on */
 
-  /*
-   * The three surfaces by role. Without these the frame, the copilot and every
-   * floating control kept the dark theme's values, so light mode had a black
-   * top bar, a black rail and a black conversation pane - which is what a
-   * missing override looks like rather than a design.
-   */
-  --color-surface-frame: #e3e8ef; /* chrome: a step darker, so it recedes */
-  --color-surface-copilot: #f4f8f5; /* a whisper of the brand green */
-  --color-surface-float: #ffffff; /* floating things are the white ones */
+  /* The three surfaces by role, in the light: the frame recedes, floating things are the white ones. */
+  --color-surface-frame: #e6e3dc;
+  --color-surface-copilot: #f6f6f1;
+  --color-surface-float: #ffffff;
 
-  --color-line-subtle: #e2e7ee;
-  --color-line: #d1d9e3;
-  --color-line-strong: #b4bfcd;
+  --color-line-subtle: #e6e2da;
+  --color-line: #d6d1c7;
+  --color-line-strong: #b8b2a6;
 
-  --color-text-primary: #0d141b;
-  --color-text-secondary: #3a4854;
-  --color-text-muted: #66747f;
-  --color-text-faint: #97a3ad;
+  --color-text-primary: #191816;
+  --color-text-secondary: #46433d;
+  --color-text-muted: #6e6a62;
+  --color-text-faint: #a19c92;
   --color-text-onbrand: #ffffff;
 
+  /* The actor hues, a step deeper so they hold on paper. */
+  --color-agent-400: #6d4fe0;
+  --color-agent-300: #5b3fd0;
+  --color-connector-400: #0b879d;
+  --color-connector-300: #086f82;
+  --color-brand-400: #00994a;
+  --color-status-info: #1f6fd6;
+  --color-status-warn: #b97a00;
+
   --canvas-grid-line: rgba(13, 20, 27, 0.06);
-  --canvas-shadow: 0 18px 40px rgba(13, 20, 27, 0.18);
+  --canvas-shadow: 0 0 0 1px rgba(25, 24, 22, 0.08), 0 18px 40px rgba(25, 24, 22, 0.16);
 }
 
 html,
@@ -211,18 +236,18 @@ body {
 }
 
 /*
- * Scrollbars, in the product's own colour rather than the browser's.
- *
- * Every pane in this app scrolls - the conversation, the layers list, the
- * symbol grid, the tag table - so the default grey bar appeared a dozen times
- * over and was the one piece of chrome that belonged to nobody. Brand green,
- * dim at rest so it does not compete with the content it sits beside, full
- * strength under the pointer.
+ * Scrollbars. Every pane in this app scrolls, so the bar appears a dozen times
+ * over: quiet at rest, the pane's own line colour, and the brand only under
+ * the pointer. A bar that is brand green everywhere says a dozen things are
+ * selected.
  */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--color-brand-500) 55%, transparent)
-    transparent;
+/* Only where the pseudo-elements below do not exist: a browser given both
+   takes these and draws its own bar, arrows and all. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
 }
 
 ::-webkit-scrollbar {
@@ -233,24 +258,31 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--color-brand-500) 45%, transparent);
+  background: var(--color-line-strong);
   border-radius: 999px;
   /* Inset with a transparent border, so the bar reads as a slim pill rather
      than a full-width slab against the pane edge. */
-  border: 2px solid transparent;
+  border: 3px solid transparent;
   background-clip: content-box;
-  transition: background 140ms var(--ease-out);
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-brand-500);
   background-clip: content-box;
 }
-::-webkit-scrollbar-thumb:active {
-  background: var(--color-brand-400);
-  background-clip: content-box;
-}
 ::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+/* A strip that scrolls sideways under the wheel and says so with a fade, not a bar. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-brand-500) 35%, transparent);
 }
 
 /* react-resizable-panels puts no chrome on its separators; the renders show a
@@ -322,7 +354,7 @@ body {
   background-image: linear-gradient(
     100deg,
     var(--color-text-faint) 30%,
-    var(--color-brand-400) 50%,
+    var(--mode) 50%,
     var(--color-text-faint) 70%
   );
   background-size: 180% 100%;
@@ -557,7 +589,134 @@ body {
   animation-delay: calc(var(--i) * 55ms + var(--word-delay, 0ms));
 }
 
+/* --- state changes -------------------------------------------------------
+   The workspace used to cut from one state to the next: a tab swapped, a pane
+   shut, a run started, and nothing said that anything had happened. Each of
+   these is one short movement tied to one real change of state. */
+
+/* A view replacing another in the same place: a tab's body, a page, a mode. */
+@keyframes swap {
+  from { opacity: 0; transform: translateY(4px) scale(0.995); }
+  to { opacity: 1; transform: none; }
+}
+.animate-swap {
+  animation: swap 220ms var(--ease-out) both;
+}
+
+/* A dialog, a menu, a popover arriving from where it was asked for. */
+@keyframes pop {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+.animate-pop {
+  animation: pop 200ms var(--ease-out) both;
+}
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fade {
+  animation: fade 180ms ease-out both;
+}
+
+/* A pane's content coming back after the pane was shut. */
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-slide-left { animation: slide-in-left 240ms var(--ease-out) both; }
+.animate-slide-right { animation: slide-in-right 240ms var(--ease-out) both; }
+
+/* Something is being worked on: a hairline of light under the top bar, in the
+   hue of whoever is working. There only while the work is. */
+@keyframes run-line {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+.run-line {
+  position: relative;
+  height: 2px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--mode) 18%, transparent);
+}
+.run-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 28%;
+  background: linear-gradient(90deg, transparent, var(--mode), transparent);
+  animation: run-line 1.25s ease-in-out infinite;
+}
+
+/* Content that has not arrived yet, in the shape it will arrive in. */
+.skeleton {
+  border-radius: 0.5rem;
+  background: linear-gradient(100deg, var(--color-surface-raised) 30%, var(--color-surface-hover) 50%, var(--color-surface-raised) 70%);
+  background-size: 220% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* A dot that is live: saving, connected, running. */
+@keyframes ping-soft {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 55%, transparent); }
+  100% { box-shadow: 0 0 0 6px transparent; }
+}
+.dot-live {
+  animation: ping-soft 1.6s ease-out infinite;
+}
+
+/* A tick being drawn when something finished. */
+@keyframes tick-draw {
+  from { stroke-dashoffset: 24; }
+  to { stroke-dashoffset: 0; }
+}
+.tick-draw {
+  stroke-dasharray: 24;
+  animation: tick-draw 360ms var(--ease-out) 80ms both;
+}
+
+/* The canvas while it is being driven by simulated values rather than designed. */
+.sim-live {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-status-ok) 55%, transparent), inset 0 0 48px color-mix(in srgb, var(--color-status-ok) 8%, transparent);
+  transition: box-shadow 320ms var(--ease-out);
+}
+
+/* The copilot pane takes the hue of whoever is working in it. */
+[data-mode="agent"] {
+  --mode: var(--color-agent-400);
+  --mode-strong: var(--color-agent-500);
+}
+[data-mode="connector"] {
+  --mode: var(--color-connector-400);
+  --mode-strong: var(--color-connector-500);
+}
+[data-mode] .copilot-aurora::before {
+  background: radial-gradient(closest-side, var(--mode-strong), transparent 70%);
+  transition: background 400ms ease;
+}
+
+/* A pressed control gives a little. */
+.press {
+  transition: transform 120ms var(--ease-out), background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+.press:active {
+  transform: scale(0.97);
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .animate-swap,
+  .animate-pop,
+  .animate-fade,
+  .animate-slide-left,
+  .animate-slide-right,
+  .run-line::after,
+  .skeleton,
+  .dot-live,
+  .tick-draw,
   .is-thinking,
   .copilot-aurora::before,
   .copilot-aurora::after,
@@ -583,7 +742,8 @@ body {
   .draw {
     stroke-dashoffset: 0;
   }
-  .lift:hover {
+  .lift:hover,
+  .press:active {
     transform: none;
   }
   .is-thinking {

@@ -152,7 +152,7 @@ export function compileProgram(
       const graphic = e?.symbol && units.find((u) => u.id === p.id)?.libraryIcon ? graphics.get(e.symbol) : undefined;
       place.composite(
         "EquipmentSymbol",
-        { label: e?.label ?? p.id, runTag, faultTag, graphic },
+        { label: e?.label ?? p.id, runTag, faultTag, graphic, kind: e?.class },
         box,
         `Sym_${safe(p.id)}`,
       );

@@ -63,7 +63,13 @@ export function ScreenStrip() {
     <div className="flex h-9 shrink-0 items-center gap-1.5 border-b border-line-subtle bg-surface-panel px-2">
       <span className="label-eyebrow shrink-0 pr-1">Screens</span>
 
-      <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+      <div
+        className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
+        // A wheel mouse sends only deltaY, and this row scrolls sideways.
+        onWheel={(e) => {
+          if (e.deltaY !== 0 && e.deltaX === 0) e.currentTarget.scrollLeft += e.deltaY;
+        }}
+      >
         {screens.map((screen, index) => {
           const isActive = screen.UniqueId === active;
           const count = screen.Children[0].Children.length;

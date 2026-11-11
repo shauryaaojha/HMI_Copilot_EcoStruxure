@@ -1,6 +1,7 @@
 import type { Part } from "@/lib/ote/schema";
 import type { Expanded } from "@/lib/composites";
 import { fillBar, lamp, numericDisplay, rectangle, textBox, type Box } from "@/lib/ote/parts";
+import { circle, diamond, fit, hexagon, maskPart, motorFrame, pumpArrow, pumpCasing, shapePart, triangle, valveBody, type Shape } from "@/lib/ote/shapes";
 import type { ComponentUse } from "../types";
 import type { Theme } from "../theme";
 
@@ -85,4 +86,81 @@ export function barParts(
     add(rectangle(`${name}_Setpoint`, tick, { fill: theme.tokens.setpoint, border: theme.tokens.setpoint }));
   }
   return { parts, wires };
+}
+
+/* --- shapes that carry a state ----------------------------------------- */
+
+const paint = (index: number) => ({ Color: { Value: index } });
+
+/**
+ * A lamp of any shape: the product's Lamp, seen through a plate cut to the
+ * shape. `ground` is what the plate is painted, so it has to be what the lamp
+ * stands on: the screen's ground, or the tile it is in.
+ */
+export function shapedLamp(
+  name: string, shape: Shape, box: Box, theme: Theme,
+  options: { tag?: string; on: number; off?: number; ground?: number; outlined?: boolean },
+): Expanded {
+  const { parts, wires, add } = assembly();
+  const ground = options.ground ?? theme.tokens.ground;
+  const light = lamp(name, "", "", box);
+  if (light.Type === "Lamp") {
+    // At rest it is the ground's own colour unless it is given one: a fault that is not there shows nothing.
+    light.Off = { ...light.Off, Fill: paint(options.off ?? ground), Border: { Type: 0 }, Thickness: 0 };
+    light.On = { ...light.On, Fill: paint(options.on), Border: { Type: 0 }, Thickness: 0 };
+  }
+  add(light, options.tag);
+  add(maskPart(`${name}_Plate`, shape, box, { fill: ground, inset: 0 }));
+  if (options.outlined) add(shapePart(`${name}_Edge`, shape, box, { border: theme.tokens.equipmentLine, thickness: box.width >= 32 ? theme.stroke.equipment : theme.stroke.hairline }));
+  return { parts, wires };
+}
+
+/** What a fault bit, a high limit, a low limit and a running bit each look like. Shape first, colour second. */
+export const INDICATOR = { fault: diamond, high: () => triangle("up"), low: () => triangle("down"), state: circle } as const;
+
+export type SymbolKind = "Pump" | "Valve" | "Motor" | "Generic";
+const SILHOUETTE: Record<SymbolKind, () => Shape> = { Pump: pumpCasing, Valve: valveBody, Motor: motorFrame, Generic: hexagon };
+
+/**
+ * A machine the way a P&ID draws it: the pump's casing, the valve's two
+ * triangles, the motor on its feet. With a state tag the body is a lamp seen
+ * through the outline, so it fills when the machine runs; without one it is the
+ * resting grey, because a body bound to nothing must not claim a state.
+ */
+export function symbolParts(stem: string, kind: SymbolKind, box: Box, theme: Theme, options: { state?: string; ground?: number } = {}): Expanded {
+  const { parts, wires, add } = assembly();
+  const shape = SILHOUETTE[kind]();
+  const ground = options.ground ?? theme.tokens.ground;
+  if (options.state) {
+    const body = lamp(`${stem}_Body`, "", "", box);
+    if (body.Type === "Lamp") {
+      body.Off = { ...body.Off, Fill: paint(theme.tokens.equipmentStopped), Border: { Type: 0 }, Thickness: 0 };
+      body.On = { ...body.On, Fill: paint(theme.tokens.equipmentRunning), Border: { Type: 0 }, Thickness: 0 };
+    }
+    add(body, options.state);
+  } else {
+    const body = rectangle(`${stem}_Body`, box, { fill: theme.tokens.equipmentStopped, border: theme.tokens.equipmentStopped });
+    if (body.Type === "Rectangle") body.Thickness = 0;
+    add(body);
+  }
+  add(maskPart(`${stem}_Plate`, shape, box, { fill: ground, inset: 0 }));
+  add(shapePart(`${stem}_Edge`, shape, box, { border: theme.tokens.equipmentLine, thickness: theme.stroke.equipment }));
+  const drawn = fit(shape, box);
+  if (kind === "Pump" && drawn.width >= 32) {
+    // The casing spans y 0.12..1 of its own drawing; the arrow is placed in the same terms.
+    add(shapePart(`${stem}_Glyph`, pumpArrow(), boxAt(drawn, drawn.width * 0.26, drawn.height * 0.26, drawn.width * 0.44, drawn.height * 0.5), { fill: theme.tokens.equipmentLine }));
+  }
+  if (kind === "Motor" && drawn.width >= 32) {
+    const glyph = textBox(`${stem}_Glyph`, "M", boxAt(drawn, drawn.width * 0.25, drawn.height * 0.2, drawn.width * 0.5, drawn.height * 0.5), { size: theme.type.regular.title, colour: theme.tokens.ink, bold: true });
+    if (glyph.Type === "TextBox") glyph.TextLayout = { HorizontalAlignment: 2, VerticalAlignment: 64 };
+    add(glyph);
+  }
+  return { parts, wires };
+}
+
+/** Folds another expansion's parts and wires into an assembly. */
+export function merge(into: { parts: Part[]; wires: Expanded["wires"] }, from: Expanded): void {
+  const start = into.parts.length;
+  into.parts.push(...from.parts);
+  into.wires.push(...from.wires.map((wire) => ({ ...wire, index: wire.index + start })));
 }

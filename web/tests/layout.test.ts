@@ -231,7 +231,8 @@ describe("a faceplate carrying the installation's own symbol", () => {
     built.parts.filter((p) => p.Name.startsWith(prefix)).map(boxOf);
 
   it("places a Path part per unit, which the packager can emit", () => {
-    const symbols = built.parts.filter((p) => p.Type === "Path");
+    // The library's picture, one per unit; the fault diamond beside it is a Path too (lib/ote/shapes.ts).
+    const symbols = built.parts.filter((p) => p.Type === "Path" && /_Icon(_\d+)?$/.test(p.Name));
     expect(symbols).toHaveLength(units.length);
     for (const symbol of symbols) {
       expect(symbol.Type === "Path" && symbol.Path?.Commands?.length).toBeGreaterThan(0);
@@ -280,7 +281,8 @@ describe("a faceplate carrying the installation's own symbol", () => {
       units.map(({ graphic: _graphic, ...rest }) => rest),
       PANEL,
     );
-    expect(plain.parts.some((p) => p.Type === "Path")).toBe(false);
-    expect(plain.wires.length).toBe(built.wires.length);
+    expect(plain.parts.some((p) => /_Icon(_\d+)?$/.test(p.Name))).toBe(false);
+    // A drawn body fills while its machine runs, which is one binding the library's picture does not have.
+    expect(plain.wires.length).toBeGreaterThanOrEqual(built.wires.length);
   });
 });

@@ -57,7 +57,8 @@ function seeded(kind: Transcript["seed"]) {
 
 type Store = ReturnType<typeof seeded>;
 
-const isBackground = (p: Part) => p.Type === "Rectangle";
+// A shaped symbol is a stack: its cut plate, outline and glyph lie on its body by design (lib/ote/shapes.ts).
+const isBackground = (p: Part) => p.Type === "Rectangle" || /_(Plate|Edge|Glyph|Ring)(_\d+)?$/.test(p.Name);
 
 const overlap = (a: Part, b: Part) =>
   a.Location.Left < b.Location.Left + (b.Width ?? 0) &&

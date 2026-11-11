@@ -32,6 +32,8 @@ import {
 import type { Scale } from "@/lib/ote/converters";
 import { DEFAULT_PACK } from "@/lib/standard/pack";
 import { DEFAULT_THEME } from "../components/theme";
+import { INDICATOR, shapedLamp, symbolParts, type SymbolKind } from "../components/catalogue/shared";
+import { maskPart, shapePart, vessel } from "@/lib/ote/shapes";
 
 const T = DEFAULT_PACK.tokens;
 
@@ -220,6 +222,8 @@ export const KpiTile: CompositeDef<KpiTileProps> = {
     const wires: Expanded["wires"] = [];
     const { left: x, top: y, width: w, height: h } = box;
     parts.push(surface(`${name}`, box));
+    // The live-value colour along the top: this tile is a number, not a state.
+    parts.push(surface(`${name}_Stripe`, { left: x, top: y, width: w, height: 4 }, T.process));
     parts.push(textBox(`${name}_Lbl`, p.label, { left: x + 8, top: y + 4, width: w - 16, height: 20 }, { size: 12, bold: true, colour: T.ink }));
     const value = numericDisplay(`${name}_Val`, { left: x + 8, top: y + 28, width: Math.max(64, w - 16 - 48), height: 36 }, p.decimals);
     if (value.Type === "NumericDisplay") value.Font = { ...value.Font!, Size: 24 };
@@ -243,6 +247,8 @@ export const EquipmentSymbolProps = z.object({
   faultTag: z.string().optional(),
   /** The shipped graphic's geometry, from the library. Absent draws an outline. */
   graphic: z.object({ Commands: z.string(), Points: z.string() }).optional(),
+  /** What kind of machine it is (pump, valve, motor, tank), which chooses the drawing. */
+  kind: z.string().optional(),
 });
 export type EquipmentSymbolProps = z.infer<typeof EquipmentSymbolProps>;
 
@@ -268,21 +274,39 @@ export const EquipmentSymbol: CompositeDef<EquipmentSymbolProps> = {
     const symbolBox = { left: x + dot + 4, top: y + 4, width: Math.max(GRID, w - 2 * (dot + 4)), height: Math.max(GRID, h - 32) };
     // The library's path is one filled shape; the outline is what makes it
     // read on the grey ground, and a 2px one is what the handbook draws.
-    const symbol = p.graphic
-      ? pathPart(`${name}`, p.graphic, symbolBox, { fill: T.equipmentFill, border: T.equipmentLine })
-      : rectangle(`${name}`, symbolBox, { fill: T.equipmentFill, border: T.equipmentLine });
-    if ("Thickness" in symbol) symbol.Thickness = 2;
-    parts.push(symbol);
+    // The product's own picture when the library gave one; otherwise the
+    // machine as a P&ID draws it, its body filling while it runs.
+    if (p.graphic) {
+      const symbol = pathPart(`${name}`, p.graphic, symbolBox, { fill: T.equipmentFill, border: T.equipmentLine });
+      if ("Thickness" in symbol) symbol.Thickness = 2;
+      parts.push(symbol);
+    } else if (p.kind === "tank" || p.kind === "reactor") {
+      const outline = vessel(symbolBox.width / symbolBox.height);
+      parts.push(rectangle(`${name}`, symbolBox, { fill: T.white, border: T.white }));
+      parts.push(maskPart(`${name}_Plate`, outline, symbolBox, { fill: T.ground, inset: 0 }));
+      parts.push(shapePart(`${name}_Edge`, outline, symbolBox, { border: T.equipmentLine, thickness: 2 }));
+    } else {
+      const kind: SymbolKind = p.kind === "pump" || p.kind === "doser" || p.kind === "compressor" ? "Pump" : p.kind === "valve" ? "Valve" : p.kind === "motor" || p.kind === "fan" || p.kind === "conveyor" ? "Motor" : "Generic";
+      const drawn = symbolParts(name, kind, symbolBox, DEFAULT_THEME, { state: p.runTag, ground: T.ground });
+      // The first part carries the composite's own name: it is what a click selects.
+      drawn.parts[0].Name = name;
+      const start = parts.length;
+      parts.push(...drawn.parts);
+      wires.push(...drawn.wires.map((wire) => ({ ...wire, index: wire.index + start })));
+    }
     parts.push(textBox(`${name}_Lbl`, p.label, { left: x, top: y + h - 24, width: w, height: 20 }, { size: 12, bold: true, colour: T.ink }));
-    if (p.runTag) {
-      const run = lamp(`${name}_RUN`, "", "", { left: x + w - dot, top: y, width: dot, height: dot });
-      parts.push(run);
-      wires.push({ index: parts.indexOf(run), tag: p.runTag, property: "CurrentValue" });
+    // Running, as a dot in the corner, for a picture that cannot change colour itself.
+    if (p.runTag && (p.graphic || p.kind === "tank" || p.kind === "reactor")) {
+      const run = shapedLamp(`${name}_RUN`, INDICATOR.state(), { left: x + w - dot, top: y, width: dot, height: dot }, DEFAULT_THEME, { tag: p.runTag, on: DEFAULT_THEME.tokens.equipmentRunning, off: T.equipmentFill, ground: T.ground, outlined: true });
+      const start = parts.length;
+      parts.push(...run.parts);
+      wires.push(...run.wires.map((wire) => ({ ...wire, index: wire.index + start })));
     }
     if (p.faultTag) {
-      const fault = alarmLamp(`${name}_FLT`, "", "", { left: x, top: y, width: dot, height: dot });
-      parts.push(fault);
-      wires.push({ index: parts.indexOf(fault), tag: p.faultTag, property: "CurrentValue" });
+      const fault = shapedLamp(`${name}_FLT`, INDICATOR.fault(), { left: x, top: y, width: dot, height: dot }, DEFAULT_THEME, { tag: p.faultTag, on: T.alarmP1, ground: T.ground });
+      const start = parts.length;
+      parts.push(...fault.parts);
+      wires.push(...fault.wires.map((wire) => ({ ...wire, index: wire.index + start })));
     }
     return { parts, wires };
   },

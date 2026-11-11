@@ -2,24 +2,30 @@
 
 exports[`a recorded session: add a pump for PMP_101 next to the tank > draws the same parts every time, with no number and no colour asked for > parts 1`] = `
 [
-  "Tank_1_Body Rectangle 12 80 60 100",
-  "Tank_1_Level_Fill Rectangle 20 88 44 84",
-  "Tank_1_Level_Band Rectangle 20 104 44 52",
+  "Tank_1_Level_Fill Rectangle 12 80 60 100",
+  "Tank_1_Level_Band Rectangle 12 100 60 60",
+  "Tank_1_Plate Path 12 80 60 100",
+  "Tank_1_Body Path 12 80 60 100",
   "Tank_1_Label TextBox 8 180 96 20",
   "Tank_1_Value NumericDisplay 8 200 68 24",
   "Tank_1_Unit TextBox 76 204 28 20",
   "Tank_1_Alarm Lamp 76 80 24 24",
-  "Pump_1_Body Rectangle 108 80 36 44",
-  "Pump_1_Glyph TextBox 112 84 28 36",
+  "Tank_1_Alarm_Plate Path 76 80 24 24",
+  "Pump_1_Body Lamp 108 80 36 44",
+  "Pump_1_Plate Path 108 80 36 44",
+  "Pump_1_Edge Path 108 88 36 28",
+  "Pump_1_Glyph Path 120 96 12 16",
   "Pump_1_Label TextBox 104 124 64 20",
   "Pump_1_State Lamp 104 148 64 20",
   "Pump_1_Alarm Lamp 148 80 16 16",
+  "Pump_1_Alarm_Plate Path 148 80 16 16",
 ]
 `;
 
 exports[`a recorded session: add a pump for PMP_101 next to the tank > draws the same parts every time, with no number and no colour asked for > wires 1`] = `
 [
   "Pump_1_Alarm.CurrentValue=PMP_101_FAULT",
+  "Pump_1_Body.CurrentValue=PMP_101_RUN",
   "Pump_1_State.CurrentValue=PMP_101_RUN",
   "Tank_1_Alarm.CurrentValue=TNK_101_HIGH",
   "Tank_1_Level_Fill.Animation.FillLevel.VerticalFill=TNK_101_LEVEL",

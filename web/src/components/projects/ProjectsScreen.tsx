@@ -251,7 +251,7 @@ export function ProjectsScreen() {
 
   return (
     <div className="space-y-6">
-      <AccountControl />
+      <AccountControl signIn={false} />
       <SignInNotice reason="Sign in to see the projects saved on the server. The ones listed here are stored in this browser." />
       {cloud && <section className="space-y-3" aria-label="Cloud projects">
         <h2 className="text-sm font-semibold">Saved on the server</h2>

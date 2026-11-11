@@ -189,7 +189,7 @@ export function Inspector() {
         <Tabs items={tabs} value={tab} onChange={setTab} size="sm" aria-label="Inspector" />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div key={tab} className="animate-swap min-h-0 flex-1 overflow-y-auto">
         {tab === "tags" ? (
           <TagTable
             variables={variables}

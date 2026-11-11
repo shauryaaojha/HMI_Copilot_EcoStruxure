@@ -63,7 +63,7 @@ export const createObjectsSlice: SliceOf<ObjectsSlice> = (set, get) => ({
         part.Name = uniqueName(takenNames(s), part.Name);
         viewOf(screen).Children.push(part);
         s.objectMeta[part.UniqueId] = { ...s.objectMeta[part.UniqueId], origin: "manual" };
-        s.handles[part.UniqueId] ??= `o${++s.handleSeq}`;
+        ensureHandles(s);
       }),
 
     updateObject: (id, patch) =>
@@ -278,7 +278,7 @@ export const createObjectsSlice: SliceOf<ObjectsSlice> = (set, get) => ({
         for (const screen of s.screens) {
           if (viewOf(screen).UniqueId !== viewBoxId) continue;
           viewOf(screen).Children.push(part);
-          s.handles[part.UniqueId] ??= `o${++s.handleSeq}`;
+          ensureHandles(s);
           return;
         }
       }),

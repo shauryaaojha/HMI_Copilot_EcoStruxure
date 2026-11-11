@@ -1,9 +1,9 @@
-import { lamp, nStateLamp, type Box } from "@/lib/ote/parts";
+import { nStateLamp, type Box } from "@/lib/ote/parts";
 import type { Theme } from "../theme";
-import { assembly } from "./shared";
+import { assembly, INDICATOR, merge, shapedLamp } from "./shared";
 
-/** A square priority badge. Shape layers stay gated until Polygon and Ellipse are benched. */
-export function alarmIndicator(name: string, box: Box, theme: Theme, tags: { fault?: string; priority?: string }) {
+/** A fault is a diamond that is only there while the fault is; a priority is a numbered square. `ground` is what it stands on. */
+export function alarmIndicator(name: string, box: Box, theme: Theme, tags: { fault?: string; priority?: string }, ground?: number) {
   const { parts, wires, add } = assembly();
   if (tags.priority) {
     const part = nStateLamp(name, ["", "1", "2", "3", "4"], box);
@@ -17,12 +17,7 @@ export function alarmIndicator(name: string, box: Box, theme: Theme, tags: { fau
     }
     add(part, tags.priority);
   } else if (tags.fault) {
-    const part = lamp(name, "", "1", box);
-    if (part.Type === "Lamp") {
-      part.Off = { ...part.Off, Fill: { Type: 0 }, Border: { Type: 0 }, Thickness: 0 };
-      part.On = { ...part.On, Fill: { Color: { Value: theme.tokens.alarmP1 } }, Border: { Color: { Value: theme.tokens.ink } }, TextColor: { Color: { Value: theme.tokens.onAlarm } }, Thickness: 1 };
-    }
-    add(part, tags.fault);
+    merge({ parts, wires }, shapedLamp(name, INDICATOR.fault(), box, theme, { tag: tags.fault, on: theme.tokens.alarmP1, ground }));
   }
   return { parts, wires };
 }

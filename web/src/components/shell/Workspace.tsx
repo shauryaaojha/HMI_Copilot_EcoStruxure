@@ -20,6 +20,7 @@
 import { ProposalReviewHost } from "@/components/chat/ProposalReview";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { useProject } from "@/store/project";
 import { useCanEdit } from "@/store/access";
 import { StartPane } from "./StartPane";
@@ -34,8 +35,30 @@ const WorkspaceShell = dynamic(
   () => import("./WorkspaceShell").then((m) => m.WorkspaceShell),
   {
     ssr: false,
-    // Matches the shell's own ground, so the swap is not a flash of white.
-    loading: () => <div className="min-h-0 flex-1 bg-surface-base" />,
+    // The shell's own shape, so the workspace arrives into its place rather than out of a blank page.
+    loading: () => (
+      <div aria-busy className="flex h-screen flex-col bg-surface-base">
+        <div className="h-11 shrink-0 border-b border-line-subtle bg-surface-frame" />
+        <div className="flex min-h-0 flex-1">
+          <div className="w-14 shrink-0 border-r border-line-subtle bg-surface-frame" />
+          <div className="w-[22%] min-w-64 space-y-3 border-r border-line-subtle bg-surface-copilot p-3">
+            <div className="skeleton h-7 w-2/3" />
+            <div className="skeleton h-16" />
+            <div className="skeleton h-10" />
+            <div className="skeleton h-10" />
+          </div>
+          <div className="canvas-grid flex min-w-0 flex-1 items-center justify-center p-10">
+            <div className="skeleton aspect-[1024/600] w-full max-w-3xl" />
+          </div>
+          <div className="hidden w-[23%] min-w-60 space-y-3 border-l border-line-subtle bg-surface-panel p-3 xl:block">
+            <div className="skeleton h-7" />
+            <div className="skeleton h-24" />
+            <div className="skeleton h-24" />
+          </div>
+        </div>
+        <div className="h-7 shrink-0 border-t border-line-subtle bg-surface-panel" />
+      </div>
+    ),
   },
 );
 
@@ -65,6 +88,16 @@ export function Workspace({ projectId }: { projectId: string }) {
       {/* Every answer the start pane offers builds something, so a viewer of
           an empty shared project lands on the empty canvas instead. */}
       {start && canEdit && <StartPane projectId={projectId} onDone={() => setStart(false)} />}
+      {/* Until the project has loaded it is not known whether the start pane
+          opens, so nothing underneath takes input yet: something typed into
+          the chat would be wiped by hydration, or covered by the start pane. */}
+      {start === null && (
+        <div aria-busy className="absolute inset-0 z-30 flex items-center justify-center bg-surface-base/80 backdrop-blur-sm">
+          <span className="inline-flex items-center gap-2 text-xs text-text-muted">
+            <Loader2 size={14} className="animate-spin" aria-hidden /> Opening the project…
+          </span>
+        </div>
+      )}
       <WorkspaceShell
       projectId={projectId}
       intent={<ChatPanel />}

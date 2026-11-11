@@ -122,6 +122,16 @@ const TEXT_TYPES = new Set<Part["Type"]>(["TextBox", "NumericDisplay", "StringDi
  */
 const isRoute = (p: Part) => p.Type === "Pipe";
 
+/**
+ * A shaped symbol is a stack (lib/ote/shapes.ts): the lamp or the level, a
+ * plate with the shape cut out of it, the outline, a glyph. The plate is the
+ * colour of what it stands on and is meant not to be seen; the outline and the
+ * glyph lie on the body by design.
+ */
+// A second use of a name on another screen is numbered: Sym_PMP101_Plate_2.
+const isPlate = (p: Part) => /_Plate(_\d+)?$/.test(p.Name);
+const isLayer = (p: Part) => /_(Plate|Edge|Glyph|Ring)(_\d+)?$/.test(p.Name);
+
 /* --- the critic -------------------------------------------------------- */
 
 export interface GeometryReport {
@@ -164,6 +174,9 @@ export function critiqueGeometry(screen: Screen, pack: StandardPack = DEFAULT_PA
     const holders = containers
       .filter((c) => c !== part && holds(box(c), box(part)))
       .sort((a, b) => areaOf(box(a)) - areaOf(box(b)));
+    // An outline over a cut plate is read against the plate, not against the lamp under it.
+    const plate = holders.find(isPlate);
+    if (plate) return hexOf(plate, "Fill", pack) ?? ground;
     for (const h of holders) {
       const hex = hexOf(h, "Fill", pack);
       if (hex) return hex;
@@ -212,7 +225,7 @@ export function critiqueGeometry(screen: Screen, pack: StandardPack = DEFAULT_PA
   // under a pixel wide is not an outline. This is the defect the model found
   // as "the symbols are nearly invisible".
   for (const part of body) {
-    if (part.Type !== "Path") continue;
+    if (part.Type !== "Path" || isPlate(part)) continue;
     const on = behind(part);
     const fill = hexOf(part, "Fill", pack);
     const border = hexOf(part, "Border", pack);
@@ -294,7 +307,7 @@ export function critiqueGeometry(screen: Screen, pack: StandardPack = DEFAULT_PA
 
   // --- geom.nearMiss ----------------------------------------------------
   // A single slipped label matters; compare edges and centres on all parts.
-  for (const miss of nearMisses(all, g.alignmentSlop)) {
+  for (const miss of nearMisses(all.filter((part) => !isLayer(part)), g.alignmentSlop)) {
     const a = all.find((part) => part.UniqueId === miss.a)!;
     const other = all.find((part) => part.UniqueId === miss.b)!;
     findings.push({

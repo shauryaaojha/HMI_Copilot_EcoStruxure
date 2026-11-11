@@ -95,7 +95,17 @@ export interface Standards {
    * Optional: older saves have none and keep the default, off.
    */
   reviewAiEdits?: boolean;
+  /**
+   * Whose colours the screens wear. "standard" holds them to the pack -
+   * neutral faces, colour only for alarms - and validation warns on anything
+   * else; "own" keeps the colours a screen was drawn with (the connector's
+   * Claude draws good ones) and the colour rule does not run. Optional: older
+   * saves have none and keep the default, standard.
+   */
+  colours?: ColourMode;
 }
+
+export type ColourMode = "standard" | "own";
 
 export const DEFAULT_STANDARDS: Standards = {
   gridSize: 4,

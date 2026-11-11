@@ -36,11 +36,14 @@ import {
   Check,
   CornerDownLeft,
   Info,
+  MessagesSquare,
+  Plug,
   Plus,
   RotateCcw,
   Sparkles,
   SquarePen,
   Trash2,
+  Wrench,
 } from "lucide-react";
 import Link from "next/link";
 import { useProject } from "@/store/project";
@@ -52,6 +55,8 @@ import { anythingMissing, requirementsOf } from "./requirements";
 import { useChat } from "./useChat";
 import { SharedProposals } from "./SharedProposals";
 import { AgentPane } from "./AgentPane";
+import { ConnectorPane } from "./ConnectorPane";
+import { useProposals } from "@/store/proposals";
 
 const MAX_INTENT = 600;
 
@@ -62,6 +67,22 @@ const MAX_INTENT = 600;
  * project opened suggesting equipment it did not have. These are phrased so
  * they read as a form to fill in against whatever tags were imported.
  */
+type Mode = "chat" | "agent" | "connector";
+
+/**
+ * Three ways of working on one project, and they are not the same kind of
+ * thing: the chat proposes changes on the canvas, the agent does a job on the
+ * project's file step by step, and the connector is Claude working from
+ * outside. Each keeps its own hue (globals.css, data-mode) and its own pane,
+ * and all three stay mounted, so a job the agent is doing carries on while the
+ * chat is asked for something else.
+ */
+const MODES: { id: Mode; label: string; icon: typeof Sparkles; title: string }[] = [
+  { id: "chat", label: "Chat", icon: MessagesSquare, title: "Ask for a change and see it on the canvas before it is applied" },
+  { id: "agent", label: "Agent", icon: Wrench, title: "Give a job on the opened project file; it works step by step" },
+  { id: "connector", label: "Claude", icon: Plug, title: "What Claude has done to this project through the connector" },
+];
+
 const OPENERS = [
   "Create a screen for <equipment>, showing status and readings",
   "Add a plant overview above the screens I have",
@@ -72,7 +93,10 @@ const OPENERS = [
 export function ChatPanel() {
   const [draft, setDraft] = useState("");
   /** The chat proposes ops for the canvas; the agent works on the opened file. */
-  const [mode, setMode] = useState<"chat" | "agent">("chat");
+  const [mode, setMode] = useState<Mode>("chat");
+  const [agentRunning, setAgentRunning] = useState(false);
+  /** Changes waiting for a decision, whoever asked for them. */
+  const waiting = useProposals((s) => s.list.filter((p) => p.status === "open").length);
   const chat = useProject((s) => s.chat);
   const generating = useProject((s) => s.generating);
   const variables = useProject((s) => s.variables);
@@ -160,81 +184,113 @@ export function ChatPanel() {
   }
 
   return (
-    <aside className="relative flex h-full w-full min-h-0 flex-col bg-surface-copilot">
-      {/* Two slow brand-coloured blooms, behind everything, at 16% and 10%. */}
+    <aside data-mode={mode} className="relative flex h-full w-full min-h-0 flex-col bg-surface-copilot">
+      {/* Two slow blooms behind everything, in the hue of the mode in use. */}
       <div
         aria-hidden
         className="copilot-aurora pointer-events-none absolute inset-0 overflow-hidden"
       />
 
-      <header className="relative flex h-10 shrink-0 items-center gap-2 border-b border-line-subtle px-3">
-        <span
-          className={cn(
-            "flex h-5 w-5 items-center justify-center rounded-md bg-brand-500/15 text-brand-400",
-            working && "animate-breathe",
-          )}
-          style={working ? { boxShadow: "var(--glow-brand)" } : undefined}
-        >
-          <Sparkles size={12} aria-hidden />
-        </span>
-        <h2 className="text-[13px] font-semibold tracking-tight text-text-primary">
-          Copilot
-        </h2>
-        {working && (
-          <span className="is-thinking text-[10px] font-medium uppercase tracking-wider">
-            working
+      <header className="relative shrink-0 border-b border-line-subtle px-3 pb-2 pt-2.5">
+        <div className="flex h-6 items-center gap-2">
+          <span
+            className={cn(
+              "flex h-5 w-5 items-center justify-center rounded-md transition-colors duration-300",
+              (working || agentRunning) && "animate-breathe",
+            )}
+            style={{ color: "var(--mode)", background: "color-mix(in srgb, var(--mode) 16%, transparent)" }}
+          >
+            <Sparkles size={12} aria-hidden />
           </span>
-        )}
-        {canEdit && (
-          <div role="tablist" aria-label="Copilot mode" className="ml-1 flex rounded-md border border-line-subtle p-0.5 text-[10.5px] font-medium">
-            {(["chat", "agent"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                role="tab"
-                aria-selected={mode === m}
-                onClick={() => setMode(m)}
-                title={m === "chat" ? "Propose changes on the canvas" : "Work on the opened project file, step by step"}
-                className={cn(
-                  "focus-ring rounded px-1.5 py-0.5 capitalize transition",
-                  mode === m ? "bg-surface-hover text-text-primary" : "text-text-faint hover:text-text-secondary",
-                )}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
-        )}
+          <h2 className="text-[13px] font-semibold tracking-tight text-text-primary">
+            Copilot
+          </h2>
+          {(working || agentRunning) && (
+            <span className="is-thinking text-[10px] font-medium uppercase tracking-wider">
+              {working && agentRunning ? "chat and agent working" : agentRunning ? "agent working" : "working"}
+            </span>
+          )}
 
-        <div className="ml-auto flex items-center gap-0.5">
-          {chat.length > 0 && canEdit && (
+          <div className="ml-auto flex items-center gap-0.5">
+            {mode === "chat" && chat.length > 0 && canEdit && (
+              <button
+                type="button"
+                onClick={clearChat}
+                title="Clear the conversation. The screens stay."
+                className="focus-ring press rounded-md p-1.5 text-text-faint hover:bg-surface-hover hover:text-text-secondary"
+                aria-label="Clear the conversation"
+              >
+                <Trash2 size={12} aria-hidden />
+              </button>
+            )}
+            {/* Starts a project, not just a thread: a conversation and the screens
+                it built are the same piece of work, so "new chat" that left the
+                old screens on the canvas would be the confusing half-measure. */}
             <button
               type="button"
-              onClick={clearChat}
-              title="Clear the conversation. The screens stay."
-              className="focus-ring rounded-md p-1.5 text-text-faint transition hover:bg-surface-hover hover:text-text-secondary"
-              aria-label="Clear the conversation"
+              onClick={() => newProject()}
+              title="New chat - a blank canvas and an empty conversation. This project stays on the Projects page."
+              className="focus-ring press flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-text-muted hover:bg-surface-hover hover:text-text-primary"
             >
-              <Trash2 size={12} aria-hidden />
+              <SquarePen size={12} aria-hidden />
+              New
             </button>
-          )}
-          {/* Starts a project, not just a thread: a conversation and the screens
-              it built are the same piece of work, so "new chat" that left the
-              old screens on the canvas would be the confusing half-measure. */}
-          <button
-            type="button"
-            onClick={() => newProject()}
-            title="New chat - a blank canvas and an empty conversation. This project stays on the Projects page."
-            className="focus-ring flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-text-muted transition hover:bg-surface-hover hover:text-text-primary"
-          >
-            <SquarePen size={12} aria-hidden />
-            New
-          </button>
+          </div>
+        </div>
+
+        {/* Who is working. The thumb slides to the mode in use and takes its hue. */}
+        <div role="tablist" aria-label="Copilot mode" className="relative mt-2 grid grid-cols-3 rounded-lg border border-line-subtle bg-surface-base/60 p-0.5">
+          <span
+            aria-hidden
+            className="absolute inset-y-0.5 left-0.5 w-[calc((100%-0.25rem)/3)] rounded-md border transition-transform duration-300 ease-out motion-reduce:transition-none"
+            style={{
+              transform: `translateX(${MODES.findIndex((m) => m.id === mode) * 100}%)`,
+              background: "color-mix(in srgb, var(--mode) 14%, var(--color-surface-raised))",
+              borderColor: "color-mix(in srgb, var(--mode) 40%, transparent)",
+            }}
+          />
+          {MODES.map(({ id, label, icon: Icon, title }) => {
+            const busy = id === "chat" ? working : id === "agent" ? agentRunning : waiting > 0;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={mode === id}
+                onClick={() => setMode(id)}
+                title={title}
+                className={cn(
+                  "focus-ring relative flex h-7 items-center justify-center gap-1.5 rounded-md text-[11.5px] font-medium transition-colors duration-200",
+                  mode === id ? "text-text-primary" : "text-text-muted hover:text-text-secondary",
+                )}
+              >
+                <Icon size={12} aria-hidden style={mode === id ? { color: "var(--mode)" } : undefined} />
+                {label}
+                {/* A dot on a mode that is not the one in view: it is still at work there. */}
+                {busy && (
+                  <span
+                    aria-label={id === "connector" ? `${waiting} waiting` : "working"}
+                    className={cn(
+                      "dot-live h-1.5 w-1.5 rounded-full",
+                      id === "chat" ? "bg-brand-400 text-brand-400" : id === "agent" ? "bg-agent-400 text-agent-400" : "bg-connector-400 text-connector-400",
+                    )}
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
       </header>
 
-      <SignInNotice className="relative mx-3 mt-2 shrink-0" reason="Sign in to use the Copilot." />
-      {mode === "agent" && canEdit ? <AgentPane /> : (<>
+      {/* The connector's pane says what signing in does for it in its own words. */}
+      {mode !== "connector" && <SignInNotice className="relative mx-3 mt-2 shrink-0" reason="Sign in to use the Copilot." />}
+      <div className={cn("relative flex min-h-0 flex-1 flex-col", mode !== "agent" && "hidden")}>
+        <AgentPane canEdit={canEdit} onRunning={setAgentRunning} />
+      </div>
+      <div className={cn("relative flex min-h-0 flex-1 flex-col", mode !== "connector" && "hidden")}>
+        <ConnectorPane projectId={projectId} />
+      </div>
+      <div className={cn("relative flex min-h-0 flex-1 flex-col", mode !== "chat" && "hidden")}>
       {/* The thread. Takes whatever height is left and scrolls on its own. */}
       <div
         ref={thread}
@@ -334,7 +390,7 @@ export function ChatPanel() {
         {chat.map((message) =>
           message.role === "user" ? (
             <div key={message.id} className="animate-rise flex justify-end">
-              <p className="max-w-[92%] rounded-xl rounded-br-sm border border-brand-500/20 bg-brand-500/10 px-3 py-2 text-xs leading-relaxed text-text-primary">
+              <p className="max-w-[88%] whitespace-pre-wrap rounded-2xl rounded-br-md border border-brand-500/25 bg-brand-500/12 px-3 py-2 text-[12.5px] leading-relaxed text-text-primary">
                 {message.text}
               </p>
             </div>
@@ -346,7 +402,7 @@ export function ChatPanel() {
                 </p>
               ) : (
                 message.text && (
-                  <p className="text-[13px] leading-relaxed text-text-secondary">
+                  <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-text-secondary">
                     {message.text}
                   </p>
                 )
@@ -573,9 +629,9 @@ export function ChatPanel() {
               aria-label="Send"
               title="Send (Enter)"
               className={cn(
-                "focus-ring absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-lg transition",
+                "focus-ring press absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-lg",
                 draft.trim() && !working
-                  ? "bg-brand-500 text-text-onbrand hover:bg-brand-600"
+                  ? "bg-brand-500 text-text-onbrand shadow-md shadow-brand-500/30 hover:bg-brand-600"
                   : "bg-surface-hover text-text-faint",
               )}
             >
@@ -596,7 +652,7 @@ export function ChatPanel() {
           </p>
         </div>
       )}
-      </>)}
+      </div>
     </aside>
   );
 }

@@ -165,8 +165,8 @@ export function TopBar({ onExport, className }: TopBarProps) {
         )}
       >
         <Link
-          href="/"
-          title="HMI Copilot"
+          href="/projects"
+          title="Your projects"
           className="focus-ring flex shrink-0 items-center gap-2 rounded-md px-1.5 py-1 transition hover:bg-surface-hover"
         >
           <SchneiderMark className="text-brand-400" />

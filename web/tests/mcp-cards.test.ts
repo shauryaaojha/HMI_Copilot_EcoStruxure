@@ -100,7 +100,8 @@ describe("how the host finds a card", () => {
   it("serves both cards as ui:// resources with the MCP App MIME type", async () => {
     const { body } = await rpc("resources/list");
     const resources = body.result.resources as { uri: string; mimeType?: string }[];
-    expect(resources.map(r => r.uri).sort()).toEqual([SCREEN_CARD_URI, VALIDATION_CARD_URI]);
+    // The caller's projects are resources too (lib/mcp/resources.ts); the cards are the ui:// ones.
+    expect(resources.map(r => r.uri).filter(uri => uri.startsWith("ui://")).sort()).toEqual([SCREEN_CARD_URI, VALIDATION_CARD_URI]);
     for (const uri of [SCREEN_CARD_URI, VALIDATION_CARD_URI]) {
       expect(uri.startsWith("ui://")).toBe(true);
       const read = await rpc("resources/read", { uri });

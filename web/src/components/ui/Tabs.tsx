@@ -51,8 +51,12 @@ export function Tabs<T extends string>({
       aria-label={ariaLabel}
       // Scrolls rather than clips, so a long label or a fifth tab degrades
       // into something reachable instead of something invisible.
+      // A wheel mouse sends only deltaY, and this row scrolls sideways.
+      onWheel={(e) => {
+        if (e.deltaY !== 0 && e.deltaX === 0) e.currentTarget.scrollLeft += e.deltaY;
+      }}
       className={cn(
-        "flex min-w-0 items-stretch overflow-x-auto",
+        "no-scrollbar flex min-w-0 items-stretch overflow-x-auto",
         size === "sm" ? "gap-0.5" : "gap-1",
         className,
       )}

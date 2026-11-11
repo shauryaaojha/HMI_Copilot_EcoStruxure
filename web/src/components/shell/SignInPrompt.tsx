@@ -48,6 +48,16 @@ export function SignInPrompt() {
     };
   }, [open]);
 
+  // The page behind a dialog does not scroll under it.
+  useEffect(() => {
+    if (!open) return;
+    const before = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = before;
+    };
+  }, [open]);
+
   if (!ask) return null;
 
   function keys(event: KeyboardEvent) {
@@ -71,7 +81,7 @@ export function SignInPrompt() {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
+      className="animate-fade fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) setAsk(null);
       }}
@@ -82,8 +92,8 @@ export function SignInPrompt() {
         aria-modal="true"
         aria-label="Sign in"
         onKeyDown={keys}
-        className="beam-border reveal is-in relative w-full max-w-sm rounded-2xl border border-line bg-surface-float p-6 text-left"
-        style={{ boxShadow: "var(--elev-2)" }}
+        className="beam-border animate-pop relative w-full max-w-sm rounded-2xl border border-line bg-surface-float p-6 text-left"
+        style={{ boxShadow: "var(--elev-3)" }}
       >
         <div aria-hidden className="copilot-aurora vivid pointer-events-none absolute inset-0 overflow-hidden rounded-2xl" />
         <Button

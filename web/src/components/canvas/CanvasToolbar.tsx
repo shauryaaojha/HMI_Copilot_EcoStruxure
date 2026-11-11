@@ -204,10 +204,103 @@ export function CanvasToolbar({
   );
 
   return (
-    <div className="flex h-11 shrink-0 items-center border-b border-line-subtle bg-surface-panel">
+    <div className="flex shrink-0 flex-col border-b border-line-subtle bg-surface-panel">
+      {/* What is being looked at, and in which state: its own row, in the same
+          place at any width. It used to share one row with the tools, kept its
+          width, and left them 379 of the 1339 pixels they need. */}
+      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line-subtle px-2">
+        <div className="mr-auto min-w-0">{tabs}</div>
+        {/* Board or one screen. Pinned outside the scrolling half, because
+            losing the way back to the whole project behind a scrollbar is the
+            fault this bar was already fixed for once. */}
+        {canEdit && canBoard && rearranged && view === "board" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={tidyBoard}
+            title="Put every screen back in the automatic grid"
+          >
+            Tidy
+          </Button>
+        )}
+
+        {canBoard && (
+          <div className="flex items-center rounded-md border border-line-subtle p-0.5">
+            {(["board", "screen"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => onView(mode)}
+                aria-pressed={view === mode}
+                title={
+                  mode === "board"
+                    ? "Every screen, side by side"
+                    : "Only the screen being edited"
+                }
+                className={cn(
+                  "focus-ring rounded px-2 py-0.5 text-[11px] font-medium capitalize transition",
+                  view === mode
+                    ? "bg-surface-active text-text-primary"
+                    : "text-text-muted hover:text-text-secondary",
+                )}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {some && (
+          <Badge tone="brand">
+            {selectedIds.length === 1
+              ? "1 selected"
+              : `${selectedIds.length} selected`}
+          </Badge>
+        )}
+        <Badge tone={simulating ? "ok" : "neutral"} dot={simulating}>
+          {simulating ? `Simulated · ${elapsed.toFixed(0)}s` : "Design"}
+        </Badge>
+        {simulating && activeAlarms > 0 && (
+          <Badge tone="alarm" dot>
+            {activeAlarms} active
+          </Badge>
+        )}
+        {onCommenting && (
+          <Button
+            variant={commenting ? "secondary" : "ghost"}
+            size="sm"
+            aria-pressed={commenting}
+            onClick={() => onCommenting(!commenting)}
+            icon={<MessageSquare size={14} />}
+            title={commenting ? "Leave comments mode" : "Comments: read the threads on this screen, or click the canvas to start one"}
+          >
+            Comments
+            {openComments > 0 && (
+              <span className="text-figure rounded-full bg-brand-500/15 px-1.5 text-[10px] text-brand-400">
+                {openComments}
+              </span>
+            )}
+          </Button>
+        )}
+
+        <Button
+          variant={simulating ? "secondary" : "ghost"}
+          size="sm"
+          aria-pressed={simulating}
+          onClick={() => onSimulate(!simulating)}
+          icon={simulating ? <Square size={13} /> : <Play size={14} />}
+          title={
+            simulating
+              ? "Return the screen to its design state"
+              : "Drive the screen from synthetic tag values: it exercises the HMI - lamps, bars, alarms - not the PLC's logic"
+          }
+        >
+          {simulating ? "Stop" : "Simulate"}
+        </Button>
+      </div>
       {/* Everything that acts on the drawing. `min-w-0` is what lets this
           shrink below its content width so the pinned half keeps its room. */}
-      <div className="relative flex min-w-0 flex-1">
+      <div className="relative flex h-10 min-w-0 shrink-0">
         <div
           ref={scroller}
           onScroll={measureEdges}
@@ -217,7 +310,7 @@ export function CanvasToolbar({
             if (e.deltaY === 0 || e.deltaX !== 0) return;
             e.currentTarget.scrollLeft += e.deltaY;
           }}
-          className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-2 [scrollbar-width:thin]"
+          className="flex min-w-0 flex-1 items-center gap-0.5 no-scrollbar overflow-x-auto px-2"
         >
           {/* --- pointer and tools ------------------------------------------ */}
           {icon("Select (V)", MousePointer2, () => {
@@ -370,98 +463,6 @@ export function CanvasToolbar({
         )}
       </div>
 
-      {/* Pinned: outside the scroll, so it is in the same place at any width. */}
-      <div className="flex shrink-0 items-center gap-2 border-l border-line-subtle px-2">
-        {/* Board or one screen. Pinned outside the scrolling half, because
-            losing the way back to the whole project behind a scrollbar is the
-            fault this bar was already fixed for once. */}
-        {canEdit && canBoard && rearranged && view === "board" && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={tidyBoard}
-            title="Put every screen back in the automatic grid"
-          >
-            Tidy
-          </Button>
-        )}
-
-        {canBoard && (
-          <div className="flex items-center rounded-md border border-line-subtle p-0.5">
-            {(["board", "screen"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => onView(mode)}
-                aria-pressed={view === mode}
-                title={
-                  mode === "board"
-                    ? "Every screen, side by side"
-                    : "Only the screen being edited"
-                }
-                className={cn(
-                  "focus-ring rounded px-2 py-0.5 text-[11px] font-medium capitalize transition",
-                  view === mode
-                    ? "bg-surface-active text-text-primary"
-                    : "text-text-muted hover:text-text-secondary",
-                )}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {some && (
-          <Badge tone="brand">
-            {selectedIds.length === 1
-              ? "1 selected"
-              : `${selectedIds.length} selected`}
-          </Badge>
-        )}
-        <Badge tone={simulating ? "ok" : "neutral"} dot={simulating}>
-          {simulating ? `Simulated · ${elapsed.toFixed(0)}s` : "Design"}
-        </Badge>
-        {simulating && activeAlarms > 0 && (
-          <Badge tone="alarm" dot>
-            {activeAlarms} active
-          </Badge>
-        )}
-        {tabs}
-
-        {onCommenting && (
-          <Button
-            variant={commenting ? "secondary" : "ghost"}
-            size="sm"
-            aria-pressed={commenting}
-            onClick={() => onCommenting(!commenting)}
-            icon={<MessageSquare size={14} />}
-            title={commenting ? "Leave comments mode" : "Comments: read the threads on this screen, or click the canvas to start one"}
-          >
-            Comments
-            {openComments > 0 && (
-              <span className="text-figure rounded-full bg-brand-500/15 px-1.5 text-[10px] text-brand-400">
-                {openComments}
-              </span>
-            )}
-          </Button>
-        )}
-
-        <Button
-          variant={simulating ? "secondary" : "ghost"}
-          size="sm"
-          aria-pressed={simulating}
-          onClick={() => onSimulate(!simulating)}
-          icon={simulating ? <Square size={13} /> : <Play size={14} />}
-          title={
-            simulating
-              ? "Return the screen to its design state"
-              : "Drive the screen from synthetic tag values: it exercises the HMI - lamps, bars, alarms - not the PLC's logic"
-          }
-        >
-          {simulating ? "Stop" : "Simulate"}
-        </Button>
-      </div>
     </div>
   );
 }

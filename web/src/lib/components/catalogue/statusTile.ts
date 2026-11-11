@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { screenSwitch, surface } from "@/lib/ote/parts";
+import { lamp, screenSwitch, surface } from "@/lib/ote/parts";
 import type { ComponentDef } from "../types";
 import { alarmIndicator } from "./alarmIndicator";
-import { assembly, boxAt, equipmentBadge, label, reading, stemOf } from "./shared";
+import { assembly, boxAt, equipmentBadge, label, merge, reading, stemOf } from "./shared";
 
 const Props = z.object({ label: z.string().default("Unit"), units: z.string().default(""), destination: z.string().optional(),
   words: z.tuple([z.string(), z.string()]).optional() });
@@ -19,12 +19,22 @@ export const StatusTile: ComponentDef<z.infer<typeof Props>> = {
     const { parts, wires, add } = assembly();
     const stem = stemOf(use);
     add(surface(stem, box, theme.tokens.field));
+    // The tile's edge is its state: a stripe that fills while the unit runs, or the live-value colour on a number.
+    const stateTag = use.variant === "state" ? use.tags.running : undefined;
+    if (stateTag) {
+      const stripe = lamp(`${stem}_Stripe`, "", "", boxAt(box, 0, 0, 4, box.height));
+      if (stripe.Type === "Lamp") {
+        stripe.Off = { ...stripe.Off, Fill: { Color: { Value: theme.tokens.equipmentDisabled } }, Border: { Type: 0 }, Thickness: 0 };
+        stripe.On = { ...stripe.On, Fill: { Color: { Value: theme.tokens.equipmentRunning } }, Border: { Type: 0 }, Thickness: 0 };
+      }
+      add(stripe, stateTag);
+    } else {
+      add(surface(`${stem}_Stripe`, boxAt(box, 0, 0, 4, box.height), theme.tokens.processValue));
+    }
     const fault = use.tags.fault;
     add(label(`${stem}_Label`, use.props.label, boxAt(box, 8, 4, box.width - 16 - (fault ? 28 : 0), 24), theme));
     if (fault) {
-      const alarm = alarmIndicator(`${stem}_FLT`, boxAt(box, box.width - 28, 4, 24, 24), theme, { fault });
-      parts.push(...alarm.parts);
-      wires.push(...alarm.wires.map((wire) => ({ ...wire, index: wire.index + parts.length - alarm.parts.length })));
+      merge({ parts, wires }, alarmIndicator(`${stem}_FLT`, boxAt(box, box.width - 28, 4, 24, 24), theme, { fault }, theme.tokens.field));
     }
     const running = use.variant === "state" ? use.tags.running : undefined;
     let row = 32;
