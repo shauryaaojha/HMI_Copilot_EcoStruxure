@@ -150,7 +150,7 @@ export function NavRail({ projectId }: { projectId: string }) {
   return (
     <nav
       aria-label="Sections"
-      className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-line-subtle bg-surface-frame py-2"
+      className="flex w-14 shrink-0 flex-col items-center gap-1 bg-surface-frame pb-2 pt-1"
     >
       {render(HOME)}
       <span aria-hidden className="my-1 h-px w-6 bg-line-subtle" />

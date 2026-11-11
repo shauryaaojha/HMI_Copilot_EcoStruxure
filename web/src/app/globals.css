@@ -31,22 +31,24 @@
   --color-brand-700: #006c30;
 
   /*
-   * Graphite. A warm neutral ramp rather than the blue-grey every developer
-   * tool wears: the HMI screen on the canvas is cool grey by standard, and an
-   * application frame in the same cool grey gave the work no edge to sit
-   * against. Warm chrome, cool work.
+   * Evergreen. The neutrals are drawn from Schneider's green rather than from
+   * a warm or a cool grey: a deep green-black in the dark, a sage paper in the
+   * light. The brand green then reads as the accent it is, instead of one more
+   * green on near-black, and the app has a colour of its own before anything
+   * is on the canvas. The HMI screen stays cool grey by standard, so the work
+   * still has an edge to sit against. docs/NEW_THEME.md.
    */
-  --color-chrome-950: #0c0c0b;
-  --color-chrome-900: #121211;
-  --color-chrome-850: #181817;
-  --color-chrome-800: #1f1f1d;
-  --color-chrome-700: #2a2a27;
-  --color-chrome-600: #3b3b37;
+  --color-chrome-950: #070d0a;
+  --color-chrome-900: #0d1712;
+  --color-chrome-850: #142019;
+  --color-chrome-800: #1a281f;
+  --color-chrome-700: #24352b;
+  --color-chrome-600: #36493e;
 
-  --color-ink-100: #edece8;
-  --color-ink-300: #b9b7b0;
-  --color-ink-500: #85837c;
-  --color-ink-700: #55534e;
+  --color-ink-100: #e8f1ec;
+  --color-ink-300: #b4c4ba;
+  --color-ink-500: #7f9287;
+  --color-ink-700: #536359;
 
   /* status colours, shared with the HMI conventions */
   --color-status-alarm: #f0483e;
@@ -75,46 +77,46 @@
   /* shadow on near-black is not seen.                                    */
   /* ------------------------------------------------------------------ */
 
-  --color-surface-base: #0c0c0b; /* app background, behind everything */
-  --color-surface-panel: #141413; /* the three panes */
-  --color-surface-raised: #1b1b1a; /* cards, inputs, inert controls */
-  --color-surface-hover: #242422; /* hover and pressed states */
-  --color-surface-active: #2e2e2b; /* selected rows, active chips */
-  --color-surface-canvas: #0f0f0e; /* the backdrop the HMI screen floats on */
+  --color-surface-base: #050a07; /* the ground the islands float on; the top bar and rail sit on it too */
+  --color-surface-panel: #0f1a14; /* an island: the copilot, the inspector, a page's body */
+  --color-surface-raised: #142019; /* cards, inputs, inert controls inside an island */
+  --color-surface-hover: #1a281f; /* hover and pressed states */
+  --color-surface-active: #223428; /* selected rows, active chips */
+  --color-surface-canvas: #0a130f; /* the canvas island, behind the HMI screen */
 
-  --color-line-subtle: #222220; /* pane dividers */
-  --color-line: #2e2e2b; /* control borders */
-  --color-line-strong: #45443f; /* focus-adjacent, emphasised borders */
+  --color-line-subtle: #19271f; /* dividers inside an island */
+  --color-line: #24362b; /* control borders, island edges */
+  --color-line-strong: #38503f; /* focus-adjacent, emphasised borders */
 
-  --color-text-primary: #edece8;
-  --color-text-secondary: #b9b7b0;
-  --color-text-muted: #8a8880;
-  --color-text-faint: #5d5b55;
+  --color-text-primary: #e8f1ec;
+  --color-text-secondary: #b4c4ba;
+  --color-text-muted: #82968a;
+  --color-text-faint: #566a5e;
   --color-text-onbrand: #ffffff;
 
-  /* Surfaces by role, not by depth: the frame, the copilot and a floating control each have their own ground. */
-
-  /* App chrome - the top bar and the nav rail. Recedes; never competes. */
-  --color-surface-frame: #090908;
-  /* The copilot pane. Lifted, because it is where work starts. */
-  --color-surface-copilot: #121311;
+  /* Surfaces by role. The frame is the ground itself: chrome that steps back. */
+  --color-surface-frame: #050a07;
+  /* The copilot island, a breath lighter: work starts there. */
+  --color-surface-copilot: #111e17;
   /* A floating control over the canvas: toolbars, overlays, menus. */
-  --color-surface-float: #212120;
+  --color-surface-float: #172419;
 
-  --font-sans: "Inter Variable", "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, ui-monospace, monospace;
+  --font-sans: var(--font-plex-sans), "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
 
   /* One step rounder than the framework's, everywhere at once. */
   --radius-md: 0.5rem;
-  --radius-lg: 0.7rem;
-  --radius-xl: 0.9rem;
-  --radius-2xl: 1.25rem;
-  --radius-panel: 0.7rem;
+  --radius-lg: 0.65rem;
+  --radius-xl: 0.85rem;
+  --radius-2xl: 1.15rem;
+  /* An island's corner. Pages' inner panels use it too. */
+  --radius-panel: 0.85rem;
+  --radius-island: 0.9rem;
 }
 
 :root {
   color-scheme: dark;
-  --canvas-grid-line: rgba(255, 255, 255, 0.04);
+  --canvas-grid-line: rgba(196, 230, 208, 0.045);
   --canvas-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 24px 60px rgba(0, 0, 0, 0.6);
   /* The hue of whoever is working in the copilot pane; the pane sets it (data-mode). */
   --mode: var(--color-brand-400);
@@ -128,6 +130,8 @@
   --elev-1: 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.03);
   --elev-2: 0 6px 16px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   --elev-3: 0 18px 44px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  /* An island: its edge and a lit top, so it reads as a sheet above the ground. */
+  --elev-island: 0 0 0 1px rgba(150, 210, 172, 0.1), inset 0 1px 0 rgba(200, 240, 214, 0.05), 0 10px 30px -14px rgba(0, 0, 0, 0.7);
 
   /* The copilot's accent glow, used only where something is happening. */
   --glow-brand: 0 0 0 1px color-mix(in srgb, var(--mode) 30%, transparent), 0 0 24px color-mix(in srgb, var(--mode) 16%, transparent);
@@ -137,9 +141,10 @@
 }
 
 [data-theme="light"] {
-  --elev-1: 0 1px 2px rgba(13, 20, 27, 0.08);
-  --elev-2: 0 4px 14px rgba(13, 20, 27, 0.1), 0 1px 2px rgba(13, 20, 27, 0.06);
-  --elev-3: 0 14px 36px rgba(13, 20, 27, 0.14), 0 2px 6px rgba(13, 20, 27, 0.08);
+  --elev-1: 0 1px 2px rgba(14, 26, 19, 0.07);
+  --elev-2: 0 4px 14px rgba(14, 26, 19, 0.09), 0 1px 2px rgba(14, 26, 19, 0.06);
+  --elev-3: 0 14px 36px rgba(14, 26, 19, 0.13), 0 2px 6px rgba(14, 26, 19, 0.08);
+  --elev-island: 0 0 0 1px rgba(14, 26, 19, 0.06), 0 1px 2px rgba(14, 26, 19, 0.05), 0 8px 24px -12px rgba(14, 26, 19, 0.14);
 }
 
 /*
@@ -158,26 +163,25 @@
    * built from, so the two themes are the same design at different weights
    * rather than two designs.
    */
-  --color-surface-base: #eceae4; /* app background, behind everything */
-  --color-surface-panel: #faf9f6; /* the panes */
-  --color-surface-raised: #f3f1ec; /* cards, inputs, inert controls */
-  --color-surface-hover: #ebe8e1;
-  --color-surface-active: #dfdbd2;
-  --color-surface-canvas: #e4e1da; /* the backdrop the HMI screen floats on */
+  --color-surface-base: #e6ece7; /* sage paper: the ground */
+  --color-surface-panel: #ffffff; /* islands are white sheets on it */
+  --color-surface-raised: #f3f6f4;
+  --color-surface-hover: #eaf0ec;
+  --color-surface-active: #dbe6de;
+  --color-surface-canvas: #eef2ef; /* the canvas island, behind the HMI screen */
 
-  /* The three surfaces by role, in the light: the frame recedes, floating things are the white ones. */
-  --color-surface-frame: #e6e3dc;
-  --color-surface-copilot: #f6f6f1;
+  --color-surface-frame: #e6ece7;
+  --color-surface-copilot: #fbfdfb;
   --color-surface-float: #ffffff;
 
-  --color-line-subtle: #e6e2da;
-  --color-line: #d6d1c7;
-  --color-line-strong: #b8b2a6;
+  --color-line-subtle: #e4eae5;
+  --color-line: #d2dcd4;
+  --color-line-strong: #a9b8ad;
 
-  --color-text-primary: #191816;
-  --color-text-secondary: #46433d;
-  --color-text-muted: #6e6a62;
-  --color-text-faint: #a19c92;
+  --color-text-primary: #0e1a13;
+  --color-text-secondary: #344239;
+  --color-text-muted: #5b6a61;
+  --color-text-faint: #8e9c93;
   --color-text-onbrand: #ffffff;
 
   /* The actor hues, a step deeper so they hold on paper. */
@@ -189,8 +193,8 @@
   --color-status-info: #1f6fd6;
   --color-status-warn: #b97a00;
 
-  --canvas-grid-line: rgba(13, 20, 27, 0.06);
-  --canvas-shadow: 0 0 0 1px rgba(25, 24, 22, 0.08), 0 18px 40px rgba(25, 24, 22, 0.16);
+  --canvas-grid-line: rgba(14, 40, 24, 0.07);
+  --canvas-shadow: 0 0 0 1px rgba(14, 26, 19, 0.08), 0 18px 40px rgba(14, 26, 19, 0.16);
 }
 
 html,
@@ -206,6 +210,18 @@ body {
      scrolling regions, opts out in its layout. */
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+/*
+ * An island: one of the sheets the workspace is made of (the Copilot, the
+ * canvas, the inspector, a page's body). A rounded surface with a lit edge,
+ * floating on the ground with a gutter round it. docs/NEW_THEME.md decision 1.
+ */
+.island {
+  background: var(--color-surface-panel);
+  border-radius: var(--radius-island);
+  box-shadow: var(--elev-island);
+  overflow: hidden;
 }
 
 /* The canvas backdrop grid, as in the reference renders. */
@@ -314,6 +330,37 @@ body {
   outline: none;
 }
 
+/* Between islands the separator is the gutter itself: empty ground, with a
+ * short brand pill in its middle that shows where to grab, and lights up
+ * while it is held. */
+[data-separator].gutter,
+[data-separator].gutter:hover,
+[data-separator].gutter[data-state="dragging"],
+[data-separator].gutter:focus-visible {
+  background: transparent;
+}
+[data-separator].gutter::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3px;
+  height: 36px;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  background: var(--color-line-strong);
+  opacity: 0;
+  transition: opacity 160ms ease, height 200ms var(--ease-out), background 160ms ease;
+}
+[data-separator].gutter:hover::before,
+[data-separator].gutter:focus-visible::before {
+  opacity: 1;
+}
+[data-separator].gutter[data-state="dragging"]::before {
+  opacity: 1;
+  height: 72px;
+  background: var(--color-brand-500);
+}
 
 /* ---------------------------------------------------------------------- */
 /* Type. A scale rather than a pile of arbitrary text-[11px].              */

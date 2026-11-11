@@ -160,7 +160,7 @@ export function TopBar({ onExport, className }: TopBarProps) {
     <>
       <header
         className={cn(
-          "flex h-11 shrink-0 items-center gap-1 border-b border-line-subtle bg-surface-frame px-2",
+          "flex h-12 shrink-0 items-center gap-1 bg-surface-frame px-2",
           className,
         )}
       >

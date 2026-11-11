@@ -89,7 +89,7 @@ function CollapsedRail({
       title={`Show ${label}`}
       aria-label={`Show ${label}`}
       className={cn(
-        "focus-ring group animate-fade flex h-full w-full items-center gap-2 bg-surface-panel text-text-muted transition hover:bg-surface-hover hover:text-text-secondary",
+        "island focus-ring group animate-fade flex h-full w-full items-center gap-2 text-text-muted transition hover:bg-surface-hover hover:text-text-secondary",
         vertical ? "flex-col justify-start py-3" : "justify-start px-4",
       )}
     >
@@ -139,7 +139,8 @@ function CollapseButton({
         "focus-ring press absolute top-1/2 z-20 flex h-12 w-4 -translate-y-1/2 items-center justify-center",
         "rounded-md border border-line bg-surface-float text-text-muted opacity-0",
         "hover:text-text-primary focus-visible:opacity-100 group-hover/pane:opacity-100",
-        side === "left" ? "right-0 translate-x-1/2" : "left-0 -translate-x-1/2",
+        // Centred in the gutter beside the island, not over its edge.
+        side === "left" ? "-right-1 translate-x-1/2" : "-left-1 -translate-x-1/2",
       )}
       style={{ boxShadow: "var(--elev-2)" }}
     >
@@ -242,7 +243,8 @@ export function WorkspaceShell({
     <div className="flex h-screen flex-col bg-surface-base">
       <TopBar onExport={onExport} />
 
-      <div className="relative flex min-h-0 flex-1">
+      {/* The ground: the rail sits on it, and the three islands float on it with a gutter round them. */}
+      <div className="relative flex min-h-0 flex-1 pb-2 pr-2">
         {/* Something is being built or answered: a line of light under the bar, there only while it is. */}
         {working && <div aria-hidden className="run-line animate-fade absolute inset-x-0 top-0 z-30" />}
         <NavRail projectId={projectId} />
@@ -271,7 +273,7 @@ export function WorkspaceShell({
                 collapsible
                 collapsedSize={RAIL}
                 onResize={sync("intent", intentRef)}
-                className="group/pane relative min-w-0 bg-surface-panel"
+                className="group/pane relative min-w-0"
                 // The collapse control straddles the divider. A pane that scrolls its own
                 // overflow counted that half button as content and grew a scrollbar for it.
                 style={{ overflow: "visible" }}
@@ -290,18 +292,18 @@ export function WorkspaceShell({
                       onCollapse={() => toggle("intent", intentRef)}
                     />
                     {/* Coming back from its rail, the pane's content arrives from the side it was put away to. */}
-                    <div className="animate-slide-left h-full">{intent}</div>
+                    <div className="island animate-slide-left h-full bg-surface-copilot">{intent}</div>
                   </>
                 )}
               </Panel>
 
-              <Separator className="w-px" aria-label="Resize the intent pane" />
+              <Separator className="gutter w-2" aria-label="Resize the intent pane" />
 
-              <Panel id="canvas" minSize="20rem" className="min-w-0 bg-surface-panel">
-                {canvas}
+              <Panel id="canvas" minSize="20rem" className="min-w-0">
+                <div className="island h-full">{canvas}</div>
               </Panel>
 
-              <Separator className="w-px" aria-label="Resize the inspector" />
+              <Separator className="gutter w-2" aria-label="Resize the inspector" />
 
               <Panel
                 id="inspector"
@@ -314,7 +316,7 @@ export function WorkspaceShell({
                 collapsible
                 collapsedSize={RAIL}
                 onResize={sync("inspector", inspectorRef)}
-                className="group/pane relative min-w-0 bg-surface-panel"
+                className="group/pane relative min-w-0"
                 // The collapse control straddles the divider. A pane that scrolls its own
                 // overflow counted that half button as content and grew a scrollbar for it.
                 style={{ overflow: "visible" }}
@@ -332,7 +334,7 @@ export function WorkspaceShell({
                       side="right"
                       onCollapse={() => toggle("inspector", inspectorRef)}
                     />
-                    <div className="animate-slide-right h-full">{inspector}</div>
+                    <div className="island animate-slide-right h-full">{inspector}</div>
                   </>
                 )}
               </Panel>

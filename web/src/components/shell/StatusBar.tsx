@@ -59,7 +59,7 @@ export function StatusBar() {
       : undefined;
 
   return (
-    <footer className="flex h-7 shrink-0 items-center gap-3 border-t border-line-subtle bg-surface-panel px-3 text-[11px] text-text-muted">
+    <footer className="flex h-7 shrink-0 items-center gap-3 bg-surface-frame px-4 text-[11px] text-text-muted">
       <span className="font-medium text-text-secondary">HMI Copilot</span>
 
       {provider && (
