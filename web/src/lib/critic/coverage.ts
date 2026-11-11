@@ -17,10 +17,17 @@ import { roleMatched } from "@/lib/ai/infer";
 import { headlineRolesFor } from "@/lib/plant/classes";
 
 /**
- * A screen an operator cannot open. The navigation strip names its
- * destinations in `NavLbl_*` labels, so reachability is a walk from the first
- * screen through those names - and a screen nobody can reach is worse than a
- * screen with a defect on it, because nobody will ever see the defect.
+ * A screen an operator cannot open. Two things open one: the navigation strip,
+ * which names its destinations in `NavLbl_*` labels, and a Switch whose touch
+ * changes screen (setAction goToScreen, stored as ClickTrigger.ScreenName
+ * until the packager turns the name into the screen's number). Reachability is
+ * a walk from the home screen through both - and a screen nobody can reach is
+ * worse than a screen with a defect on it, because nobody will ever see the
+ * defect.
+ *
+ * A Switch in a project read from a file carries the target's number, not its
+ * name, and the number is not mapped back to a screen here, so those buttons
+ * are not followed.
  */
 export function critiqueNavigation(all: Screen[]): Finding[] {
   // A content screen is shown inside another, never navigated to.
@@ -28,12 +35,18 @@ export function critiqueNavigation(all: Screen[]): Finding[] {
   if (screens.length === 0) return [];
   const byName = new Map(screens.map((s) => [s.Name, s]));
   const linksFrom = (screen: Screen) =>
-    screen.Children[0].Children.flatMap((p) =>
-      p.Type === "TextBox" && p.Name.startsWith("NavLbl_") && byName.has(p.Text) ? [p.Text] : [],
-    );
+    screen.Children[0].Children.flatMap((p) => {
+      if (p.Type === "TextBox" && p.Name.startsWith("NavLbl_") && byName.has(p.Text)) return [p.Text];
+      const to = p.Type === "Switch" ? p.ClickTrigger?.ScreenName : undefined;
+      return to !== undefined && byName.has(to) ? [to] : [];
+    });
 
-  const seen = new Set<string>([screens[0].Name]);
-  const queue = [screens[0]];
+  // The screen called Home when there is one; otherwise the first, as before.
+  // Screens are listed in the order they were made, which is not the order an
+  // operator meets them.
+  const start = screens.find((s) => s.Name.toLowerCase() === "home") ?? screens[0];
+  const seen = new Set<string>([start.Name]);
+  const queue = [start];
   while (queue.length) {
     for (const name of linksFrom(queue.shift()!)) {
       if (seen.has(name)) continue;
@@ -47,8 +60,8 @@ export function critiqueNavigation(all: Screen[]): Finding[] {
     .map((s) => ({
       severity: "error" as const,
       rule: "nav.reachable",
-      message: `${s.Name} cannot be reached from ${screens[0].Name}: no navigation strip names it.`,
-      suggestion: `Add ${s.Name} to a navigation strip, or delete it.`,
+      message: `${s.Name} cannot be reached from ${start.Name}: no navigation strip names it and no button opens it.`,
+      suggestion: `Add ${s.Name} to a navigation strip or give a button the action goToScreen ${s.Name}, or delete it.`,
     }));
 }
 

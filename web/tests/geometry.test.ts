@@ -16,7 +16,7 @@ import { contrastRatio, critiqueGeometry, critiqueScreens, scoreOf } from "@/lib
 import { critiqueHeadlines, critiqueNavigation, critiqueRoleCoverage } from "@/lib/critic/coverage";
 import { ISA101, tokenHex } from "@/lib/standard/pack";
 import { lintPack } from "@/lib/standard/lint";
-import { lamp, numericDisplay, pathPart, rectangle, screenOf, textBox } from "@/lib/ote/parts";
+import { lamp, numericDisplay, pathPart, rectangle, screenOf, switchPart, textBox } from "@/lib/ote/parts";
 import { modelPlant } from "@/lib/plant/model";
 import { inferEquipment } from "@/lib/ai/infer";
 import { fallbackPlan } from "@/lib/ai/plan";
@@ -213,6 +213,37 @@ describe("a screen nobody can open", () => {
     expect(found.map((f) => f.rule)).toEqual(["nav.reachable"]);
     expect(found[0].severity).toBe("error");
     expect(found[0].message).toMatch(/Area2 cannot be reached from Overview/);
+  });
+
+  /** A button that opens a screen, the way setAction goToScreen leaves it. */
+  const opens = (name: string, to: string) =>
+    ({ ...switchPart(name, "GO", { left: 8, top: 8, width: 80, height: 40 }), ClickTrigger: { OperationType: 4, Operation: 1, ScreenName: to } }) as Part;
+
+  it("counts a button that opens a screen as a way to it", () => {
+    const home = screenOf("Home", [opens("Go_Lights", "Lights"), opens("Go_Charging", "Charging")], PANEL);
+    const lights = screenOf("Lights", [opens("Go_Home", "Home")], PANEL);
+    const charging = screenOf("Charging", [opens("Go_Home", "Home")], PANEL);
+    expect(critiqueNavigation([home, lights, charging])).toEqual([]);
+  });
+
+  it("starts from the screen called Home, not the one made first", () => {
+    const lights = screenOf("Lights", [opens("Go_Home", "Home")], PANEL);
+    const home = screenOf("Home", [opens("Go_Lights", "Lights")], PANEL);
+    // Lights was made first and Home links to it: both are reachable from Home.
+    expect(critiqueNavigation([lights, home])).toEqual([]);
+    // The first screen alone would have made Home look stranded in this one.
+    const stranded = screenOf("Climate", [], PANEL);
+    const found = critiqueNavigation([lights, home, stranded]);
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toMatch(/Climate cannot be reached from Home/);
+  });
+
+  it("still calls a screen no button opens an error, and ignores a button to nowhere", () => {
+    const home = screenOf("Home", [opens("Go_Missing", "Nowhere")], PANEL);
+    const orphan = screenOf("Lights_2", [], PANEL);
+    const found = critiqueNavigation([home, orphan]);
+    expect(found.map((f) => f.severity)).toEqual(["error"]);
+    expect(found[0].message).toMatch(/Lights_2 cannot be reached from Home/);
   });
 });
 
