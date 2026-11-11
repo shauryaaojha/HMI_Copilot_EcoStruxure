@@ -146,7 +146,7 @@ export function SharedProjectView({ token, projectId }: { token: string; project
 
   return (
     <div className="flex h-screen flex-col bg-surface-base">
-      <header className="flex h-11 shrink-0 items-center gap-2 border-b border-line-subtle bg-surface-frame px-3">
+      <header className="flex h-12 shrink-0 items-center gap-2 bg-surface-frame px-3">
         <SchneiderMark className="shrink-0 text-brand-400" />
         <Eye size={14} aria-hidden className="shrink-0 text-text-muted" />
         <h1 className="min-w-0 truncate text-sm font-semibold text-text-primary">
@@ -168,10 +168,10 @@ export function SharedProjectView({ token, projectId }: { token: string; project
 
       {stage.kind === "ready" ? (
         <div className="flex min-h-0 flex-1">
-          <div className="min-w-0 flex-1 bg-surface-panel">
+          <div className="island mb-2 ml-2 min-w-0 flex-1">
             <CanvasPane defaultCommenting />
           </div>
-          <div className="w-80 shrink-0 border-l border-line-subtle bg-surface-panel">
+          <div className="island mx-2 mb-2 w-80 shrink-0">
             <Inspector />
           </div>
         </div>
@@ -194,7 +194,7 @@ export function SharedProjectView({ token, projectId }: { token: string; project
 export function ShareSignInPrompt({ token, role, canSignIn }: { token: string; role: string; canSignIn: boolean }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface-base p-6">
-      <div className="w-full max-w-sm space-y-4 rounded-xl border border-line bg-surface-float p-6" style={{ boxShadow: "var(--elev-2)" }}>
+      <div className="menu animate-pop w-full max-w-sm space-y-4 rounded-2xl p-6">
         <SchneiderMark className="text-brand-400" />
         <h1 className="text-base font-semibold text-text-primary">Sign in to open this project</h1>
         <p className="text-sm text-text-secondary">

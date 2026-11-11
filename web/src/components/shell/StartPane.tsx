@@ -34,6 +34,8 @@
  */
 
 import { SignInNotice } from "./SignInNotice";
+import { WaveLines } from "@/components/motion/WaveLines";
+import { magnetic } from "@/components/motion/useMagnetic";
 import { fitsOneRequest, importFile, uploadParts } from "@/lib/client/upload";
 import { expectJson } from "@/lib/ingest/client";
 import { useGeneration } from "@/components/generation/useGeneration";
@@ -353,8 +355,11 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
       {/* The backdrop stays put and the content scrolls over it: inside the
           scroller, these layers were one viewport tall, so scrolling past them
           showed their hard bottom edge and a bare ground beneath. */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 bg-grid mask-fade opacity-[0.3]" />
-      <div aria-hidden className="copilot-aurora pointer-events-none absolute inset-0 overflow-hidden" />
+      {/* Fine lines that ripple and bend away from the cursor (motion/WaveLines,
+          after the waves background in the Animations folder), faded toward the
+          edges so the question in the middle stays the brightest thing. */}
+      <WaveLines className="mask-fade" opacity={0.22} />
+      <div aria-hidden className="copilot-aurora vivid pointer-events-none absolute inset-0 overflow-hidden opacity-60" />
       <div aria-hidden className="cursor-light pointer-events-none absolute inset-0 hidden md:block" />
 
       {/* Nothing here is compulsory: an engineer who wants the empty canvas gets it. */}
@@ -408,7 +413,8 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
                 key={id}
                 type="button"
                 onClick={() => setPath(id)}
-                className="spotlight lift focus-ring group rounded-xl border border-line-subtle bg-surface-raised/60 p-5 text-left hover:border-brand-500/50"
+                {...magnetic}
+                className="spotlight magnetic focus-ring group rounded-2xl border border-line bg-surface-raised/70 p-5 text-left backdrop-blur-sm hover:border-brand-500/50"
               >
                 <Icon size={18} aria-hidden className="text-brand-400" />
                 <h2 className="mt-3 flex items-center gap-1.5 text-sm font-semibold">
@@ -554,7 +560,8 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
             type="button"
             disabled={working}
             onClick={() => tagPicker.current?.click()}
-            className="spotlight lift focus-ring group rounded-xl border border-line-subtle bg-surface-raised/60 p-4 text-left hover:border-brand-500/50 disabled:opacity-50"
+            {...magnetic}
+            className="spotlight magnetic focus-ring group rounded-2xl border border-line bg-surface-raised/70 p-4 text-left backdrop-blur-sm hover:border-brand-500/50 disabled:opacity-50"
           >
             <FileUp size={16} aria-hidden className="text-brand-400" />
             <h2 className="mt-2.5 flex items-center gap-1.5 text-sm font-semibold">
@@ -570,7 +577,8 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
             type="button"
             disabled={working}
             onClick={() => filePicker.current?.click()}
-            className="spotlight lift focus-ring group rounded-xl border border-line-subtle bg-surface-raised/60 p-4 text-left hover:border-brand-500/50 disabled:opacity-50"
+            {...magnetic}
+            className="spotlight magnetic focus-ring group rounded-2xl border border-line bg-surface-raised/70 p-4 text-left backdrop-blur-sm hover:border-brand-500/50 disabled:opacity-50"
           >
             <FolderOpen size={16} aria-hidden className="text-brand-400" />
             <h2 className="mt-2.5 flex items-center gap-1.5 text-sm font-semibold">

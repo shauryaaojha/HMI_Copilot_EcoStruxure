@@ -96,7 +96,7 @@ export function BriefTable({
   const alarmable = [...new Set(brief.units.flatMap((u) => u.signals))];
 
   return (
-    <div className="reveal is-in mt-7 rounded-2xl border border-line-subtle bg-surface-raised shadow-xl shadow-black/20">
+    <div className="card reveal is-in mt-7 rounded-2xl">
       <div className="border-b border-line-subtle px-4 py-3">
         <h2 className="text-sm font-semibold">The plant brief</h2>
         <p className="mt-1 text-xs leading-relaxed text-text-muted">{by ? SOURCE[by] : ""}</p>
@@ -107,14 +107,14 @@ export function BriefTable({
             aria-label="What the plant is called"
             placeholder="Transfer station"
             onChange={(e) => onPlant({ name: e.target.value })}
-            className="focus-ring rounded-md border border-line-subtle bg-surface-base px-2 py-1.5 text-xs text-text-primary placeholder:text-text-faint"
+            className="focus-ring field rounded-lg border border-line bg-surface-raised px-2 py-1.5 text-xs text-text-primary placeholder:text-text-faint"
           />
           <input
             value={brief.plant.purpose}
             aria-label="What the plant does"
             placeholder="Moves water from the sump to the break tank"
             onChange={(e) => onPlant({ purpose: e.target.value })}
-            className="focus-ring rounded-md border border-line-subtle bg-surface-base px-2 py-1.5 text-xs text-text-primary placeholder:text-text-faint"
+            className="focus-ring field rounded-lg border border-line bg-surface-raised px-2 py-1.5 text-xs text-text-primary placeholder:text-text-faint"
           />
         </div>
       </div>
@@ -170,7 +170,7 @@ export function BriefTable({
                       value={brief.flow.find((f) => f.from === unit.id)?.to ?? ""}
                       aria-label={`What ${unit.label} feeds`}
                       onChange={(e) => onFlow(unit.id, e.target.value || undefined)}
-                      className="focus-ring rounded-md border border-line-subtle bg-surface-base px-1.5 py-1 text-xs text-text-primary"
+                      className="focus-ring field rounded-lg border border-line bg-surface-raised px-1.5 py-1 text-xs text-text-primary"
                     >
                       <option value="">nothing yet</option>
                       {brief.units
@@ -356,7 +356,7 @@ export function BriefTable({
               value={brief.naming.start}
               aria-label="The number the first unit of each kind gets"
               onChange={(e) => onNamingStart(Math.max(1, Number(e.target.value) || 1))}
-              className="focus-ring w-16 rounded-md border border-line-subtle bg-surface-base px-2 py-1 text-xs text-text-primary"
+              className="focus-ring field w-16 rounded-lg border border-line bg-surface-raised px-2 py-1 text-xs text-text-primary"
             />
           </label>
         </div>

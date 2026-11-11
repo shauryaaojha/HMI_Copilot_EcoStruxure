@@ -238,7 +238,7 @@ export function ShareDialog({ projectId, onClose }: { projectId: string; onClose
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 pt-16"
+      className="animate-fade fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/45 p-4 pt-16 backdrop-blur-[3px]"
       onPointerDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -246,10 +246,10 @@ export function ShareDialog({ projectId, onClose }: { projectId: string; onClose
       <section
         role="dialog"
         aria-label="Share this project"
-        className="flex w-[34rem] max-w-full flex-col overflow-hidden rounded-xl border border-line bg-surface-float"
+        className="menu animate-pop flex w-[34rem] max-w-full flex-col overflow-hidden rounded-2xl"
         style={{ boxShadow: "var(--elev-3)" }}
       >
-        <header className="flex h-11 shrink-0 items-center gap-2 border-b border-line-subtle px-4">
+        <header className="page-head flex h-12 shrink-0 items-center gap-2 border-b border-line-subtle px-5">
           <Users size={14} aria-hidden className="text-brand-400" />
           <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">Share</h2>
           <button
@@ -264,7 +264,7 @@ export function ShareDialog({ projectId, onClose }: { projectId: string; onClose
 
         <div className="max-h-[70vh] space-y-5 overflow-y-auto p-4 text-xs">
           {error && (
-            <p role="alert" className="rounded-md border border-status-warn/30 bg-status-warn/[0.06] p-2 text-status-warn">
+            <p role="alert" className="rounded-lg border border-status-warn/30 bg-status-warn/[0.06] p-2.5 text-status-warn">
               {error}
             </p>
           )}
@@ -272,7 +272,7 @@ export function ShareDialog({ projectId, onClose }: { projectId: string; onClose
           {/* --- members ---------------------------------------------------- */}
           <div className="space-y-2">
             <p className="label-eyebrow">People with access</p>
-            <ul className="divide-y divide-line-subtle rounded-md border border-line-subtle">
+            <ul className="divide-y divide-line-subtle rounded-xl border border-line-subtle bg-surface-raised/40">
               {members.map((member) => (
                 <li key={member.userId} className="flex items-center gap-2 px-3 py-2">
                   <div className="min-w-0 flex-1">
@@ -318,7 +318,7 @@ export function ShareDialog({ projectId, onClose }: { projectId: string; onClose
                 {shares.length === 0 ? (
                   <p className="text-text-muted">No links yet.</p>
                 ) : (
-                  <ul className="divide-y divide-line-subtle rounded-md border border-line-subtle">
+                  <ul className="divide-y divide-line-subtle rounded-xl border border-line-subtle bg-surface-raised/40">
                     {shares.map((share) => {
                       const token = tokens[share.id];
                       const expired = share.expiresAt <= now;
@@ -375,7 +375,7 @@ export function ShareDialog({ projectId, onClose }: { projectId: string; onClose
               </div>
 
               {/* --- new link ---------------------------------------------- */}
-              <div className="space-y-3 rounded-md border border-line-subtle p-3">
+              <div className="space-y-3 rounded-xl border border-line-subtle bg-surface-raised/40 p-3.5">
                 <p className="label-eyebrow">New link</p>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Role" layout="stack">
@@ -420,7 +420,7 @@ export function ShareDialog({ projectId, onClose }: { projectId: string; onClose
                 </div>
 
                 {created && (
-                  <div className="space-y-1.5 rounded-md border border-brand-500/30 bg-brand-500/[0.06] p-2">
+                  <div className="space-y-1.5 rounded-xl border border-brand-500/30 bg-brand-500/[0.06] p-2.5">
                     <p className="text-[11px] text-text-secondary">
                       Link created. It is shown in full only now; this browser remembers it for Copy.
                     </p>

@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { WaveLines } from "@/components/motion/WaveLines";
+import { ScrambleText } from "@/components/motion/ScrambleText";
 import { ArrowLeft } from "lucide-react";
 import { ProjectsScreen } from "@/components/projects/ProjectsScreen";
 import { SchneiderMark } from "@/components/shell/SchneiderMark";
@@ -17,6 +19,7 @@ export default function ProjectsPage() {
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-surface-base">
       <div aria-hidden className="pointer-events-none fixed inset-0 bg-grid mask-fade opacity-[0.35]" />
+      <div aria-hidden className="pointer-events-none fixed inset-0 h-[60vh]"><WaveLines className="mask-fade" opacity={0.16} /></div>
       <div aria-hidden className="copilot-aurora pointer-events-none fixed inset-0 overflow-hidden" />
       <div className="relative mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:px-8 sm:py-10">
         <header className="space-y-6">
@@ -31,7 +34,8 @@ export default function ProjectsPage() {
             </a>
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Your projects</h1>
+            <p className="label-eyebrow">Workspace</p>
+            <h1 className="text-[2rem] font-semibold leading-tight tracking-tight text-text-primary"><ScrambleText text="Your projects" /></h1>
             <p className="text-sm text-text-secondary">Open one you have been working on, or start a new one. Signed in, the projects saved on the server are here too, including any Claude made through the connector.</p>
           </div>
         </header>

@@ -10,6 +10,7 @@
  * Phase 9 of docs/BUILD_PLAN.md.
  */
 
+import { magnetic } from "@/components/motion/useMagnetic";
 import { SignInNotice } from "@/components/shell/SignInNotice";
 import { AccountControl } from "@/components/shell/AccountControl";
 import type { Project } from "@/lib/server/repo";
@@ -256,7 +257,7 @@ export function ProjectsScreen() {
       {cloud && <section className="space-y-3" aria-label="Cloud projects">
         <h2 className="text-sm font-semibold">Saved on the server</h2>
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {cloudProjects.map(p => <li key={p._id} className="rounded-panel border border-line-subtle bg-surface-raised p-4">
+          {cloudProjects.map(p => <li key={p._id} className="card p-5">
             <Link className="focus-ring text-sm font-semibold hover:text-brand-400" href={`/project/${p._id}`}>{p.name}</Link>
             <p className="mt-2 text-xs text-text-muted">Version {p.rev} · {p.target.model}</p>
             <div className="mt-2 flex gap-3 text-xs">
@@ -315,7 +316,7 @@ export function ProjectsScreen() {
       )}
 
       {creating && (
-        <div className="flex items-center gap-2 rounded-panel border border-line bg-surface-raised p-3">
+        <div className="card flex items-center gap-2 p-3">
           <Input
             autoFocus
             value={name}
@@ -342,14 +343,14 @@ export function ProjectsScreen() {
           <li key={project.id} className="group relative">
             <Link
               href={`/project/${project.id}`}
+              {...magnetic}
               className={cn(
-                "focus-ring flex min-h-40 flex-col rounded-panel border border-line-subtle bg-surface-raised p-4 transition",
-                "hover:-translate-y-0.5 hover:border-brand-500/50",
+                "card spotlight magnetic focus-ring flex min-h-44 flex-col p-5",
+                "hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-brand-500)_45%,transparent),var(--elev-3)]",
               )}
-              style={{ boxShadow: "var(--elev-1)" }}
             >
               <div className="flex items-start gap-2.5">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500/12 text-brand-400">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-400/25 to-brand-600/10 text-brand-400 ring-1 ring-brand-500/25">
                   <FolderOpen size={16} aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1 truncate pt-1 text-sm font-semibold">
@@ -427,7 +428,7 @@ export function ProjectsScreen() {
         ))}
 
         {shown.length === 0 && (
-          <li className="col-span-full rounded-panel border border-dashed border-line">
+          <li className="col-span-full rounded-2xl border border-dashed border-line-strong bg-surface-panel/40">
             <EmptyState
               icon={FolderPlus}
               title="No projects yet"

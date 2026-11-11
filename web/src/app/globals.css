@@ -370,6 +370,18 @@ body {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand-500) 20%, transparent);
 }
 
+/* A card that leans toward the cursor (components/motion/useMagnetic). */
+.magnetic {
+  transition: transform 260ms var(--ease-out), box-shadow 260ms var(--ease-out), border-color 200ms ease;
+  will-change: transform;
+}
+.magnetic:hover {
+  box-shadow: var(--elev-3);
+}
+@media (prefers-reduced-motion: reduce) {
+  .magnetic { transition: none; }
+}
+
 /* The canvas backdrop grid, as in the reference renders. */
 .canvas-grid {
   background-color: var(--color-surface-canvas);
