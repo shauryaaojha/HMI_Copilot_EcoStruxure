@@ -31,7 +31,8 @@ import { runScript } from "./script";
 import { Shell, shellAvailable, type Box } from "./sandbox";
 import { loadKb, type Kb } from "@/lib/kb";
 import { canServe, getEntry, searchEntries } from "@/lib/kb/serve";
-import { applyOps, type Op } from "@/core/ops";
+import { applyOps, coerceTurn, Op as OpSchema, OP_NAMES, type Op } from "@/core/ops";
+import { layoutTree, nestingProblems } from "@/lib/ote/nesting";
 import { COMPONENT_KINDS } from "@/lib/components/types";
 import { componentCatalogue } from "@/lib/components/place";
 import { inputOf, storeOf } from "./store-input";
@@ -513,6 +514,67 @@ export const TOOLS: AgentTool[] = [
     params: {},
     run() {
       return ok(JSON.stringify(componentCatalogue(), null, 1));
+    },
+  },
+  {
+    name: "apply_ops",
+    description:
+      `Change the project with the ops the chat uses, checked and written the way the product writes them: ${OP_NAMES.join(", ")}. ` +
+      "Use it for anything those ops cover instead of hand-editing files or SQL: a new screen (addScreen {name}), an object (addObject {type, name, screen, left, top, width, height, text, tag}), " +
+      "a tag (addTag {name, dataType, comment}; setTag; deleteTag), an alarm (addAlarm), navigation (setAction {target, action: \"goToScreen\", toScreen}), a binding (bindTag {target, tag}), " +
+      "a move or resize (moveObject / resizeObject {target, left, top, width, height}), text, colour, style, delete. Objects are named by name. " +
+      "Ops that are refused are reported with the reason and nothing of theirs is written; the rest are written together. The answer lists what landed and any layout problems it made.",
+    writes: true,
+    params: {
+      ops: { type: "any", description: "A JSON array of ops, e.g. [{\"op\":\"addTag\",\"name\":\"PMP_101_AUTO\",\"dataType\":\"BOOL\"}]" },
+    },
+    async run(ctx, i) {
+      const read = await ctx.read();
+      const raw = typeof i.ops === "string" ? (() => { try { return JSON.parse(i.ops as string); } catch { return null; } })() : i.ops;
+      if (!Array.isArray(raw) || raw.length === 0) return { text: "apply_ops needs ops: a JSON array of ops", isError: true };
+      // Each op alone, so one bad field is named rather than sinking the rest;
+      // geometry is kept (placed), as the agent works in pixels.
+      const ops: Op[] = [];
+      const bad: string[] = [];
+      raw.forEach((one, n) => {
+        const kept = coerceTurn({ mode: "edit", reply: "", ops: [one] }, { placed: true })?.ops ?? [];
+        if (kept.length) ops.push(kept[0] as Op);
+        else bad.push(`not usable: op ${n + 1} (${String((one as { op?: unknown })?.op ?? "?")}): ${OpSchema.safeParse(one).error?.issues.slice(0, 2).map((x) => `${x.path.join(".") || "op"} ${x.message}`).join("; ") ?? "it names nothing to act on"}`);
+      });
+      if (ops.length === 0) return { text: ["No usable ops.", ...bad].join("\n"), isError: true };
+      const store = storeOf(read);
+      const before = new Set(store.getState().screens.flatMap((x) => nestingProblems(x.Children[0].Children).map((l) => `${x.Name}: ${l}`)));
+      const outcome = applyOps(ops, store);
+      if (outcome.applied.length === 0) return { text: ["Nothing applied.", ...bad, ...outcome.rejected.map((r) => `refused: ${r.op.op} - ${r.reason}`)].join("\n"), isError: true };
+      await ctx.ws.load(await packageProject({ ...read, ...inputOf(store) }, undefined, read.preserved));
+      const made = store.getState().screens.flatMap((x) => nestingProblems(x.Children[0].Children).map((l) => `${x.Name}: ${l}`)).filter((l) => !before.has(l));
+      return ok([
+        `${outcome.applied.length} applied, ${outcome.rejected.length + bad.length} refused.`,
+        ...outcome.applied.map((l) => `done: ${l}`),
+        ...outcome.created.map((c) => `created: ${c.name} (${c.type}) on ${c.screen}`),
+        ...bad,
+        ...outcome.rejected.map((r) => `refused: ${r.op.op} - ${r.reason}`),
+        ...(made.length ? ["Layout problems this made (fix them):", ...made.slice(0, 12)] : []),
+      ].join("\n"));
+    },
+  },
+  {
+    name: "layout",
+    description:
+      "A screen as nested cards: each object under the card (rectangle) that holds it, in pixels, with the free space inside each card and outside them all, and the layout problems (an object across a card's edge, objects on one card covering each other). Read it before placing anything: a card is a surface to put things on, not an obstacle.",
+    params: { screen: { type: "string", description: "Screen name or id" } },
+    async run(ctx, i) {
+      const read = await ctx.read();
+      const info = screenByName(ctx.ws, String(i.screen));
+      const screen = read.screens.find((x) => x.UniqueId === info.id);
+      if (!screen) return { text: `${info.name} is carried whole; its layout is not modelled`, isError: true };
+      const parts = screen.Children[0].Children;
+      const problems = nestingProblems(parts);
+      return ok([
+        `${screen.Name}, ${parts.length} objects:`,
+        layoutTree(parts, (p) => p.Name, 16, { width: read.target.width, height: read.target.height }) || "- empty",
+        problems.length ? `Layout problems:\n${problems.join("\n")}` : "Layout problems: none",
+      ].join("\n"));
     },
   },
   {

@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Check, CornerDownLeft, FileDiff, Square, Undo2, Wrench, X } from "lucide-react";
 import { useModelChoice } from "@/store/model-choice";
 import { useProject } from "@/store/project";
+import { packageInputOf } from "@/lib/collab/package";
 import { cn } from "@/components/ui";
 
 interface Step {
@@ -47,6 +48,7 @@ const IDEAS = [
   "Add a RESET push button made like START, bound to Flt_Reset",
   "Which tags are not shown on any screen?",
   "Check the project and tell me what would break in the editor",
+  "Add an AUTO mode button on every screen, on the card of the unit it runs",
 ];
 
 function brief(input: unknown): string {
@@ -56,6 +58,8 @@ function brief(input: unknown): string {
 
 export function AgentPane({ canEdit = true, onRunning }: { canEdit?: boolean; onRunning?: (running: boolean) => void }) {
   const sourceId = useProject((s) => s.sourceId);
+  // A project built here has no file, but it has screens: the agent works on it too.
+  const hasProject = useProject((s) => s.screens.some((x) => x.Children[0].Children.length > 0));
   const hydrate = useProject((s) => s.hydrate);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
@@ -83,7 +87,7 @@ export function AgentPane({ canEdit = true, onRunning }: { canEdit?: boolean; on
   const update = (fn: (t: Turn) => Turn) => setTurns((all) => all.map((t, i) => (i === all.length - 1 ? fn(t) : t)));
 
   async function run(text: string) {
-    if (!sourceId || running) return;
+    if ((!sourceId && !hasProject) || running) return;
     const history = turns.map((t) => ({ role: t.role, text: t.text }));
     setTurns((all) => [...all, { role: "user", text, steps: [] }, { role: "assistant", text: "", steps: [], running: true }]);
     const controller = new AbortController();
@@ -92,7 +96,16 @@ export function AgentPane({ canEdit = true, onRunning }: { canEdit?: boolean; on
       const response = await fetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: sourceId, message: text, history, model: useModelChoice.getState().id ?? undefined }),
+        // The project as it stands here, every change made in the app included,
+        // so the agent never works on a stale file and its save never drops
+        // them. Placeholder tags go too: the agent binds to them like real ones.
+        body: JSON.stringify({
+          source: sourceId,
+          project: packageInputOf({ ...useProject.getState(), tagImport: undefined }),
+          message: text,
+          history,
+          model: useModelChoice.getState().id ?? undefined,
+        }),
         signal: controller.signal,
       });
       if (!response.ok || !response.body) {
@@ -176,15 +189,15 @@ export function AgentPane({ canEdit = true, onRunning }: { canEdit?: boolean; on
     return <p className="relative p-4 text-[12px] leading-relaxed text-text-muted">View only — the agent changes the project, so it needs an editor.</p>;
   }
 
-  if (!sourceId) {
+  if (!sourceId && !hasProject) {
     return (
       <div className="relative m-3 space-y-2 rounded-xl border border-agent-500/30 bg-agent-500/[0.07] p-3 text-[12px] leading-relaxed">
         <p className="flex items-center gap-1.5 font-medium text-text-primary">
-          <Wrench size={13} aria-hidden className="text-agent-400" /> The agent works on a project file
+          <Wrench size={13} aria-hidden className="text-agent-400" /> The agent works on a project
         </p>
         <p className="text-text-muted">
-          Open an .eote from the start page and it can read every screen, copy your own objects, bind tags and check the result. For a project
-          built here from tags, use Chat.
+          Open an .eote from the start page, or build screens with Chat first. Then it can read every screen, add screens, tags, alarms and
+          navigation, copy your own objects, bind tags and check the result.
         </p>
       </div>
     );

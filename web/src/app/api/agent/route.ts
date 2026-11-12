@@ -1,7 +1,7 @@
 /**
  * The agent: one job on an opened project, streamed step by step.
  *
- * POST { source, message, history? } -> NDJSON, one AgentEvent per line
+ * POST { source?, project?, message, history? } -> NDJSON, one AgentEvent per line
  * (lib/agent/run.ts). The project file the engineer opened is loaded into a
  * working directory with the same access check the export makes; the agent
  * reads, edits and checks it with its tools. When it changed anything, the
@@ -9,6 +9,12 @@
  * { type: "saved", sourceId, project } - the project read back the way
  * /api/import reads one, so the UI opens it in place. The opened file itself
  * is never changed.
+ *
+ * `project` is the project as the app holds it now (what /api/export takes).
+ * With it, the agent works on that: the opened file with every change made in
+ * the app since, or a project built here with no file at all. Without it, on
+ * the file as it was opened - and a save from there would drop the app's
+ * changes, which is why the pane always sends it.
  */
 
 import { modelCaller } from "@/lib/server/model-gate";
@@ -24,6 +30,27 @@ import { errorResponse, sameOrigin, json } from "@/lib/server/http";
 import { repo } from "@/lib/server/repo";
 import { currentUser } from "@/lib/server/session";
 import { shareTokens } from "@/lib/server/shares";
+import { backendFor } from "@/lib/backend";
+import { preflight } from "@/lib/ote/preflight";
+import type { PackageInput } from "@/lib/ote/packager";
+
+/** The project as the app holds it, written as the export writes it: into its own file when it has one. */
+async function liveBytes(input: PackageInput & { source?: string }, request: Request, user: Awaited<ReturnType<typeof currentUser>>) {
+  const problems = preflight(input);
+  if (problems.length) throw new Error(`the project has ${problems.length} problem${problems.length === 1 ? "" : "s"} to fix first: ${problems.slice(0, 3).map((x) => (typeof x === "string" ? x : JSON.stringify(x))).join("; ")}`);
+  const backend = backendFor("eote");
+  if (input.source && /^[0-9a-f-]{36}$/i.test(input.source)) {
+    const stored = hasMongo() || !process.env.VERCEL ? await readSource(input.source, user, "read", undefined, shareTokens(request)).catch(() => null) : null;
+    const original = stored?.bytes ?? (await getImport(input.source));
+    if (original) {
+      const read = await readProject(original);
+      return { bytes: await backend.write(input, read.preserved), fileName: stored?.meta.fileName ?? `${safeName(input.name)}.eote` };
+    }
+  }
+  return { bytes: await backend.write(input), fileName: `${safeName(input.name)}.eote` };
+}
+
+const safeName = (name: string) => name.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^_+|_+$/g, "") || "project";
 
 export const runtime = "nodejs";
 /** A job is many model calls; the plan's Function limit, not one call's. */
@@ -31,6 +58,8 @@ export const maxDuration = 300;
 
 interface Body {
   source?: string;
+  /** The project as the app holds it now, as /api/export takes it. */
+  project?: PackageInput & { source?: string };
   message?: string;
   history?: AgentTurn[];
   /** A menu id from /api/provider (lib/ai/menu.ts); unknown or absent means the default. */
@@ -50,15 +79,26 @@ export async function POST(request: Request) {
   } catch (e) {
     return errorResponse(e);
   }
-  const { source, message } = body;
-  if (!source || !/^[0-9a-f-]{36}$/i.test(source)) return Response.json({ error: "open a project file first: the agent works on its file" }, { status: 400 });
+  const { source, message, project } = body;
+  const live = project && Array.isArray(project.screens) && project.screens.length > 0;
+  if (!live && (!source || !/^[0-9a-f-]{36}$/i.test(source))) return Response.json({ error: "open or build a project first: the agent works on it" }, { status: 400 });
   if (!message?.trim()) return Response.json({ error: "say what the agent should do" }, { status: 400 });
 
   const user = await currentUser();
-  const stored = hasMongo() || !process.env.VERCEL ? await readSource(source, user, "read", undefined, shareTokens(request)).catch(() => null) : null;
-  const bytes = stored?.bytes ?? (await getImport(source));
+  let bytes: Uint8Array | null;
+  let fileName: string;
+  if (live) {
+    try {
+      ({ bytes, fileName } = await liveBytes(project, request, user));
+    } catch (e) {
+      return Response.json({ error: `the project could not be written for the agent: ${(e as Error).message}` }, { status: 422 });
+    }
+  } else {
+    const stored = hasMongo() || !process.env.VERCEL ? await readSource(source!, user, "read", undefined, shareTokens(request)).catch(() => null) : null;
+    bytes = stored?.bytes ?? (await getImport(source!));
+    fileName = stored?.meta.fileName ?? "project.eote";
+  }
   if (!bytes) return Response.json({ error: "that project file is gone or not yours; open it again" }, { status: 404 });
-  const fileName = stored?.meta.fileName ?? "project.eote";
 
   let ws: Workspace;
   try {

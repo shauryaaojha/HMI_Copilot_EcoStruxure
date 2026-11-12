@@ -57,6 +57,12 @@ The job was "Use the shell with Python to count the objects of each Type and lis
 - It used about 56k input tokens.
 - A sandbox starts in about 1 s; one round of start, command and stop takes about 5 to 9 s.
 
+## What it works on, and the ops (2026-11-12)
+
+- **The project as the app holds it.** The pane sends the project the way `/api/export` takes it, and the route writes it the way the export does: into the opened file's own entries, or from the skeleton for a project built in the app. So the agent sees every change made in Chat or on the canvas since the file was opened, and its save no longer drops them. A project built in the app with no file can use the agent too. Placeholder tags are sent, so the agent can bind to them. A call with only `source` still works on the file as opened.
+- **`apply_ops`**: the chat's ops on the file (addScreen, addObject with pixels, addTag/setTag/deleteTag, addAlarm, setAction goToScreen, bindTag, move, resize, text, colour, style, delete, and the rest of `OP_NAMES`). It runs them through the same store and packager as `place_component`, so they are written the way the product writes them. Each refused op comes back with its reason while the rest still land, and the answer lists the layout problems the change made. The prompt tells the agent to use it rather than hand-edit JSON or SQL for anything an op covers.
+- **`layout`**: a screen as nested cards (lib/ote/nesting.ts). Each object is listed under the card that holds it, with the free space inside each card and outside them all, plus the objects that cross a card's edge or cover each other on one card. A card is a surface, not an obstacle.
+
 ## Configure
 
 - `AI_PROVIDER` and the key, as for the chat: `ANTHROPIC_API_KEY` or `GEMINI_API_KEY`, in Vercel env or `.env.local`.
