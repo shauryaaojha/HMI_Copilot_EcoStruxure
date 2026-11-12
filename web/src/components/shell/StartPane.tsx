@@ -143,31 +143,18 @@ export function StartPane({ projectId, onDone }: { projectId: string; onDone: ()
       // a new description - the same way the box behaves in the chat after a
       // clarify turn.
       if (brief.asking) return void answerBrief(text);
-      return void screensFirst(text, originOf(e));
+      // A description goes straight to the Copilot, which works the way the
+      // connector does: it decides the screens, drafts the placeholder tags
+      // and draws every screen in one turn, without a round of questions.
+      // The brief table is still there for an engineer who fills in the form.
+      reveal(originOf(e));
+      void send(text);
+      return;
     }
     reveal(originOf(e));
     // The run starts behind the reveal, so the first objects land as the canvas
     // appears rather than after an empty pause.
     void send(text);
-  }
-
-  /**
-   * Screens first: a brief from the description, for review. The build waits
-   * for `confirmBrief` - which is the point of the step, so the pane stays
-   * where it is and the table appears beneath the description.
-   */
-  async function screensFirst(text: string, from: Origin) {
-    setBusy("the description");
-    setError(null);
-    try {
-      const drafted = await brief.draft(text);
-      // A failure is the brief's own error, shown below: this render's copy is from before the await.
-      if (!drafted) return;
-      // `from` is not used yet: nothing is revealed until the brief is confirmed.
-      void from;
-    } finally {
-      setBusy(null);
-    }
   }
 
   /** The answer to a clarify question: the brief is drafted again from both. */

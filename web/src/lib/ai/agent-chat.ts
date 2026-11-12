@@ -142,8 +142,25 @@ export function loopSystem(doc: Doc): string {
         .replaceAll("{BT}", String(b.top)).replaceAll("{BB}", String(b.top + b.height));
     })(),
     AGENT_GUIDE,
-  ].join("\n\n");
+    doc.variables.length === 0 ? NO_EXPORT : "",
+  ].filter(Boolean).join("\n\n");
 }
+
+/**
+ * The project has no tags: the engineer started without a tag export. Here
+ * the guide's "ask for an export first, use drafted tags only after the
+ * engineer agrees" is overridden: the connector builds straight away, and so
+ * does this loop. The drafted tags are placeholders the real export is
+ * matched to later, so nothing is lost by not asking.
+ */
+const NO_EXPORT = `
+This project has no tags: the engineer chose to start without a tag export.
+Do not ask for an export, and do not wait for them to agree to drafted tags.
+In this one turn: plan_screens from what you know of this kind of machine,
+draft_tags with the units you infer, draw every screen with replace_screen,
+look at one with render_screen, then finish. Ask (mode clarify) only when you
+cannot tell what kind of machine it is at all. In the reply, say the tags are
+placeholders and that importing the real export later rebinds the screens.`;
 
 const DESIGN_PROTOCOL = `
 How a turn works in the app: every step is one or more tool calls, and the
