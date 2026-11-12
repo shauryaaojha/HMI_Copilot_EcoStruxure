@@ -129,24 +129,65 @@ function isBackground(part: Part, region: Box): boolean {
   return area(inter) >= 0.85 * area(region);
 }
 
-/** The boxes a new object must keep clear of, inside one region. */
-function obstaclesIn(parts: Part[], region: Box, exceptId?: string): Box[] {
-  return parts
-    .filter((p) => p.UniqueId !== exceptId && !isBackground(p, region))
-    .map(boxOf)
-    .filter((b) => overlaps(b, region));
+/** How far a part placed on a card keeps from the card's edge. */
+const SURFACE_PAD = 8;
+
+/**
+ * A surface is a rectangle other parts are meant to sit on: a card, a panel,
+ * a band inside the body. Only a band that fills its region used to count, so
+ * a body laid out as two white cards side by side - each about half of it -
+ * read as full, and every placement on it was refused while most of each
+ * card stood empty. A rectangle is a surface once it holds a smaller part: a
+ * card with its title on it. An empty rectangle may as well be a drawn shape,
+ * so it still blocks (tests/audit-fixes S5-09), and a button's backing pill
+ * under a Switch of the same size holds nothing smaller and stays content.
+ */
+function isSurface(part: Part, parts: Part[]): boolean {
+  if (part.Type !== "Rectangle") return false;
+  const b = boxOf(part);
+  return parts.some((q) => {
+    if (q.UniqueId === part.UniqueId) return false;
+    const qb = boxOf(q);
+    return area(qb) < area(b) && contains(b, qb);
+  });
 }
 
 /**
+ * What a new object meets inside one region: `taken`, the content it must
+ * keep clear of, and `surfaces`, the cards it may sit on but must not
+ * straddle. A background band that fills the region is neither: it is the
+ * region.
+ */
+function roomIn(parts: Part[], region: Box, exceptId?: string): { taken: Box[]; surfaces: Box[] } {
+  const taken: Box[] = [];
+  const surfaces: Box[] = [];
+  for (const p of parts) {
+    if (p.UniqueId === exceptId || isBackground(p, region)) continue;
+    const b = boxOf(p);
+    if (!overlaps(b, region)) continue;
+    (isSurface(p, parts) ? surfaces : taken).push(b);
+  }
+  return { taken, surfaces };
+}
+
+const inset = (b: Box, pad: number): Box => ({ left: b.left + pad, top: b.top + pad, width: b.width - 2 * pad, height: b.height - 2 * pad });
+
+/** Off every card, or wholly on one, clear of its edge: never half on and half off. */
+const sitsWell = (candidate: Box, surfaces: Box[]) =>
+  surfaces.every((s) => !overlaps(candidate, s) || contains(inset(s, SURFACE_PAD), candidate));
+
+/**
  * The first clear position for a box of this size in a region, reading order.
- * Clearance first, then a tight fit; never on top of content, never a
- * "least overlap" guess. Null means the region has no room.
+ * Clearance first, then a tight fit; never on top of content, never across the
+ * edge of a card, never a "least overlap" guess. Null means the region has no
+ * room.
  */
 export function firstFree(
   region: Box,
   taken: Box[],
   size: { width: number; height: number },
   margin: number = MARGIN,
+  surfaces: Box[] = [],
 ): { left: number; top: number } | null {
   const width = size.width;
   const height = size.height;
@@ -159,7 +200,7 @@ export function firstFree(
     for (let top = firstTop; top <= lastTop; top += GRID) {
       for (let left = firstLeft; left <= lastLeft; left += GRID) {
         const candidate = { left, top, width, height };
-        if (!taken.some((b) => overlaps(candidate, b, clearance))) return { left, top };
+        if (!taken.some((b) => overlaps(candidate, b, clearance)) && sitsWell(candidate, surfaces)) return { left, top };
       }
     }
   }
@@ -223,21 +264,22 @@ export function resolveSlot(
 
     if (slot.side === "inside") {
       // Inside the anchor: the anchor is the region and its own box is not an
-      // obstacle. What is already inside it is.
-      const taken = parts
-        .filter((p) => p.UniqueId !== options.anchorId && p.UniqueId !== options.exceptId)
-        .map(boxOf)
-        .filter((b) => overlaps(b, a));
-      const at = firstFree(a, taken, fits, GAP / 2);
+      // obstacle. What is already inside it is. What the anchor itself sits
+      // on - the page, a band - covers it entirely and is not in the way:
+      // counted as an obstacle, it made every "inside" on a framed screen fail.
+      const within = parts.filter((p) => p.UniqueId !== options.anchorId && !contains(boxOf(p), a));
+      const room = roomIn(within, a, options.exceptId);
+      const at = firstFree(a, room.taken, fits, GAP / 2, room.surfaces);
       if (!at) {
         return { ok: false, reason: `${slot.anchor} on ${label} has no room inside it for a ${fits.width}x${fits.height} object` };
       }
       return { ok: true, box: { ...at, ...fits }, region: regionName };
     }
 
-    const taken = obstaclesIn(parts, region, options.exceptId).filter(
-      (b) => !(b.left === a.left && b.top === a.top && b.width === a.width && b.height === a.height),
-    );
+    const room = roomIn(parts, region, options.exceptId);
+    const same = (b: Box) => b.left === a.left && b.top === a.top && b.width === a.width && b.height === a.height;
+    const taken = room.taken.filter((b) => !same(b));
+    const surfaces = room.surfaces.filter((b) => !same(b));
     const start: Box = {
       width: fits.width,
       height: fits.height,
@@ -262,7 +304,7 @@ export function resolveSlot(
       if (!contains(region, candidate)) break;
       // The anchor itself is not an obstacle, but it must not be covered either.
       if (overlaps(candidate, a)) continue;
-      if (!taken.some((b) => overlaps(candidate, b))) return { ok: true, box: candidate, region: regionName };
+      if (!taken.some((b) => overlaps(candidate, b)) && sitsWell(candidate, surfaces)) return { ok: true, box: candidate, region: regionName };
     }
     return {
       ok: false,
@@ -276,8 +318,8 @@ export function resolveSlot(
     return { ok: false, reason: `${label} has no ${regionName} region; add an alarm banner first` };
   }
   const fits = fitTo(fitsPanel, region);
-  const taken = obstaclesIn(parts, region, options.exceptId);
-  const at = firstFree(region, taken, fits);
+  const room = roomIn(parts, region, options.exceptId);
+  const at = firstFree(region, room.taken, fits, MARGIN, room.surfaces);
   if (!at) {
     return {
       ok: false,
@@ -302,7 +344,7 @@ export function roomReport(parts: Part[], panel: Panel): string {
   const body = regions.body!;
   const columns = Math.max(1, Math.floor((panel.width - MARGIN * 2 + GAP) / (CARD.width + GAP)));
   const rows = Math.max(0, Math.floor((body.height + GAP) / (CARD.height + GAP)));
-  const bodyTaken = obstaclesIn(parts, body);
+  const { taken: bodyTaken, surfaces: bodySurfaces } = roomIn(parts, body);
   let freeCells = 0;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < columns; c++) {
@@ -312,11 +354,11 @@ export function roomReport(parts: Part[], panel: Panel): string {
         width: CARD.width,
         height: CARD.height,
       };
-      if (!bodyTaken.some((b) => overlaps(cell, b))) freeCells++;
+      if (!bodyTaken.some((b) => overlaps(cell, b)) && sitsWell(cell, bodySurfaces)) freeCells++;
     }
   }
   const small = { width: 160, height: 28 };
-  const smallFree = firstFree(body, bodyTaken, small) !== null;
+  const smallFree = firstFree(body, bodyTaken, small, MARGIN, bodySurfaces) !== null;
   lines.push(
     `body: ${freeCells} of ${rows * columns} card cells free` +
       (freeCells === 0 && smallFree ? " (room only for small objects)" : "") +
@@ -325,11 +367,11 @@ export function roomReport(parts: Part[], panel: Panel): string {
 
   for (const name of ["header", "nav", "footer"] as const) {
     const region = regions[name]!;
-    const taken = obstaclesIn(parts, region);
+    const room = roomIn(parts, region);
     let n = 0;
-    const filled: Box[] = [...taken];
+    const filled: Box[] = [...room.taken];
     for (;;) {
-      const at = firstFree(region, filled, small);
+      const at = firstFree(region, filled, small, MARGIN, room.surfaces);
       if (!at || n >= 6) break;
       filled.push({ ...at, ...small });
       n++;

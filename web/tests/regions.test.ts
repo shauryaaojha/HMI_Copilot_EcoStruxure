@@ -163,6 +163,105 @@ describe("resolveSlot", () => {
   });
 });
 
+/**
+ * The Labeller screen the in-app copilot refused to add to: a paper page, a
+ * navy header, two cards that each take half the body, a few readings in the
+ * left one, three command buttons in the right one, and a pill navigation bar.
+ * Most of both cards is empty.
+ */
+function labeller() {
+  const button = (name: string, top: number) => [
+    rectangle(`${name}_bg`, { left: 552, top, width: 200, height: 60 }, {}),
+    textBox(name, name, { left: 552, top, width: 200, height: 60 }, {}),
+  ];
+  return [
+    rectangle("Page", { left: 0, top: 0, width: 1024, height: 600 }, {}),
+    rectangle("Header", { left: 0, top: 0, width: 1024, height: 88 }, {}),
+    textBox("Title", "Labeller", { left: 36, top: 8, width: 560, height: 44 }, {}),
+    rectangle("Card_Status", { left: 36, top: 108, width: 464, height: 376 }, {}),
+    textBox("Card_Status_Title", "Labeller", { left: 64, top: 140, width: 240, height: 36 }, {}),
+    lamp("Lamp_Run", "OFF", "ON", { left: 64, top: 196, width: 40, height: 40 }),
+    lamp("Lamp_Fault", "OFF", "ON", { left: 64, top: 250, width: 40, height: 40 }),
+    numericDisplay("Num_Speed", { left: 64, top: 330, width: 160, height: 44 }),
+    numericDisplay("Num_Count", { left: 254, top: 330, width: 160, height: 44 }),
+    rectangle("Card_Commands", { left: 524, top: 108, width: 464, height: 376 }, {}),
+    textBox("Card_Commands_Title", "Commands", { left: 552, top: 140, width: 240, height: 36 }, {}),
+    ...button("Start", 196),
+    ...button("Stop", 276),
+    ...button("Reset", 356),
+    ...Array.from({ length: 8 }, (_, i) => rectangle(`Nav_${i}`, { left: 36 + i * 120, top: 516, width: 112, height: 56 }, {})),
+  ];
+}
+
+describe("a body laid out as cards", () => {
+  const cards = [
+    { left: 36, top: 108, width: 464, height: 376 },
+    { left: 524, top: 108, width: 464, height: 376 },
+  ];
+  const content = labeller().filter((p) => !/^(Page|Header|Card_Status|Card_Commands)$/.test(p.Name)).map((p) => ({ left: p.Location.Left, top: p.Location.Top, width: p.Width ?? 0, height: p.Height ?? 0 }));
+  const onOneCard = (b: Box) => cards.some((c) => b.left >= c.left && b.top >= c.top && b.left + b.width <= c.left + c.width && b.top + b.height <= c.top + c.height);
+  const offEveryCard = (b: Box) => cards.every((c) => !overlap(b, c));
+
+  it("finds room on a card instead of calling the body full", () => {
+    for (const size of [{ width: 200, height: 40 }, { width: 200, height: 56 }]) {
+      const r = resolveSlot({ region: "body" }, labeller(), PANEL, size, { screenLabel: "s181 Labeller" });
+      expect(r.ok, r.ok ? "" : r.reason).toBe(true);
+      if (!r.ok) continue;
+      expect(content.some((c) => overlap(r.box, c))).toBe(false);
+      expect(onOneCard(r.box) || offEveryCard(r.box)).toBe(true);
+    }
+  });
+
+  it("never puts a thing half on a card and half off it", () => {
+    const parts = labeller();
+    for (const size of [{ width: 160, height: 28 }, { width: 300, height: 120 }, { width: 440, height: 60 }]) {
+      const r = resolveSlot({ region: "body" }, parts, PANEL, size);
+      if (!r.ok) continue;
+      expect(onOneCard(r.box) || offEveryCard(r.box)).toBe(true);
+    }
+  });
+
+  it("places inside a card on a framed screen, where the page behind it used to block everything", () => {
+    const parts = labeller();
+    const card = parts.find((p) => p.Name === "Card_Commands")!;
+    const r = resolveSlot({ anchor: "Card_Commands", side: "inside" }, parts, PANEL, { width: 160, height: 40 }, { anchorBox: cards[1], anchorId: card.UniqueId });
+    expect(r.ok, r.ok ? "" : r.reason).toBe(true);
+    if (!r.ok) return;
+    expect(onOneCard(r.box)).toBe(true);
+    expect(content.some((c) => overlap(r.box, c))).toBe(false);
+  });
+
+  it("puts a thing right of a reading on the same card, not across its edge", () => {
+    const parts = labeller();
+    const run = parts.find((p) => p.Name === "Lamp_Run")!;
+    const r = resolveSlot({ anchor: "Lamp_Run", side: "rightOf" }, parts, PANEL, { width: 120, height: 40 }, { anchorBox: { left: 64, top: 196, width: 40, height: 40 }, anchorId: run.UniqueId });
+    expect(r.ok, r.ok ? "" : r.reason).toBe(true);
+    if (!r.ok) return;
+    expect(r.box.top).toBe(196);
+    expect(onOneCard(r.box)).toBe(true);
+  });
+
+  it("keeps an empty rectangle as something to avoid: it may be a drawn shape, not a card", () => {
+    const parts = [
+      rectangle("Page", { left: 0, top: 0, width: 1024, height: 600 }, {}),
+      rectangle("Shape", { left: 36, top: 108, width: 464, height: 376 }, {}),
+    ];
+    const r = resolveSlot({ region: "body" }, parts, PANEL, { width: 200, height: 56 });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(overlap(r.box, { left: 36, top: 108, width: 464, height: 376 })).toBe(false);
+  });
+
+  it("still refuses when a card truly has no room for the thing", () => {
+    const r = resolveSlot({ region: "body" }, labeller(), PANEL, { width: 470, height: 380 }, { screenLabel: "s181 Labeller" });
+    expect(r.ok).toBe(false);
+  });
+
+  it("reports room on the cards rather than a full body", () => {
+    expect(roomReport(labeller(), PANEL)).not.toMatch(/full: a new object needs a new screen/);
+  });
+});
+
 describe("roomReport", () => {
   it("counts free card cells rather than declaring the screen full", () => {
     const report = roomReport(chrome(), PANEL);
