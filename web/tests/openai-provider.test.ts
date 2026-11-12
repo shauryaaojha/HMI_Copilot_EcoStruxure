@@ -19,7 +19,7 @@ import { packageProject } from "@/lib/ote/packager";
 import { screenOf, switchPart } from "@/lib/ote/parts";
 
 type Call = { name: string; args: Record<string, unknown>; id?: string };
-type Reply = Call[] | { text: string } | Error;
+type Reply = Call[] | { text: string } | { cut: true } | Error;
 const script = vi.hoisted(() => ({ replies: [] as Reply[], seen: [] as Record<string, unknown>[] }));
 
 vi.mock("openai", () => {
@@ -41,6 +41,7 @@ vi.mock("openai", () => {
           if (!next) throw new Error("the script ran out");
           if (next instanceof Error) throw next;
           const n = script.seen.length;
+          if ("cut" in next) return { choices: [{ index: 0, message: { role: "assistant", content: null }, finish_reason: "length" }], usage: { prompt_tokens: 100, completion_tokens: 16000 } };
           const message = Array.isArray(next)
             ? {
                 role: "assistant",
@@ -48,7 +49,7 @@ vi.mock("openai", () => {
                 reasoning_content: "thought about it",
                 tool_calls: next.map((c, i) => ({ id: c.id ?? `call-${n}-${i}`, type: "function", function: { name: c.name, arguments: JSON.stringify(c.args) } })),
               }
-            : { role: "assistant", content: next.text };
+            : { role: "assistant", content: (next as { text: string }).text };
           return {
             choices: [{ index: 0, message, finish_reason: Array.isArray(next) ? "tool_calls" : "stop" }],
             usage: { prompt_tokens: 100, completion_tokens: 10, prompt_tokens_details: { cached_tokens: 40 } },
@@ -206,6 +207,33 @@ describe("the chat loop on the gateway", () => {
     const result = await agentChat({ ...input(), onStep: (s) => seen.push(s.tool) }, "glm-test", "openai");
     expect(seen).toEqual(result?.steps.map((s) => s.tool));
     expect(seen).toEqual(["thought", "find_tags", "thought"]);
+  });
+
+  it("does not let a model stop after drafting tags: the next call is replace_screen, forced, and a cut-off answer is said", async () => {
+    const body = (screen: string) => Array.from({ length: 6 }, (_, i) => ({ op: "addObject", type: "TextBox", name: `${screen}_T${i}`, left: 60, top: 110 + i * 50, width: 300, height: 40, text: `Line ${i}` }));
+    script.replies = [
+      [{ name: "plan_screens", args: { screens: [{ name: "Overview", purpose: "the plant" }, { name: "Alarms", purpose: "alarms" }] } }],
+      [{ name: "draft_tags", args: { units: [{ kind: "pump", label: "Intake pump", count: 1 }] } }],
+      [{ name: "find_tags", args: { query: "pump run" } }],
+      [{ name: "finish", args: { mode: "answer", reply: "Tags drafted." } }],
+      { cut: true },
+      [{ name: "replace_screen", args: { screen: "Overview", ops: body("Overview") } }],
+      [{ name: "finish", args: { mode: "answer", reply: "One done." } }],
+      [{ name: "replace_screen", args: { screen: "Alarms", ops: [{ op: "addObject", type: "AlarmSummary", name: "Alarms_List", left: 36, top: 100, width: 952, height: 404 }] } }],
+      [{ name: "finish", args: { mode: "build", reply: "Built." } }],
+    ];
+    const bare = input();
+    bare.doc = { ...bare.doc, variables: [] };
+    const result = await agentChat(bare, "glm-test", "openai");
+    // find_tags sees the drafted tags.
+    expect(String(messagesOf(3).filter((m) => m.role === "tool").at(-1)?.content)).toContain("PMP_101_RUN");
+    // After the bounce, the request names replace_screen; after the cut-off, it still does.
+    expect(script.seen[4].tool_choice).toEqual({ type: "function", function: { name: "replace_screen" } });
+    expect(script.seen[5].tool_choice).toEqual({ type: "function", function: { name: "replace_screen" } });
+    expect(script.seen[7].tool_choice).toEqual({ type: "function", function: { name: "replace_screen" } });
+    expect(result?.steps.some((s) => s.tool === "cut off")).toBe(true);
+    const ops = result!.turn.ops as { op: string; name?: string }[];
+    expect(ops.filter((o) => o.op === "addScreen").map((o) => o.name)).toEqual(["Overview", "Alarms"]);
   });
 
   it("builds a tagless project the connector's way: tags, each screen drawn whole, navigation, one edit", async () => {

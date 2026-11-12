@@ -153,6 +153,9 @@ export function loopSystem(doc: Doc): string {
  * does this loop. The drafted tags are placeholders the real export is
  * matched to later, so nothing is lost by not asking.
  */
+const CUT_OFF =
+  "Your last answer was cut off at the output limit before the tool call was complete, so nothing was drawn. Think less and draw smaller: one screen per replace_screen call, at most 30 objects, short names and no repeated styling ops. Call it again now.";
+
 const NO_EXPORT = `
 This project has no tags: the engineer chose to start without a tag export.
 Do not ask for an export, and do not wait for them to agree to drafted tags.
@@ -553,12 +556,26 @@ class Session {
   /** The screens plan_screens named, by lower-case name. */
   planned: { name: string; purpose: string }[] = [];
 
+  /** A tool the next request must call, once: set when a finish is sent back for screens not drawn. */
+  nextTool: string | undefined;
+
+  /** Takes the forced tool for one request. */
+  takeNextTool(): string | undefined {
+    const t = this.nextTool;
+    this.nextTool = undefined;
+    return t;
+  }
+
   unfinished(turn?: { mode: string }): string | null {
     const drewScreen = this.segments.some((g) => g.key.startsWith("screen:"));
     const drawnNames = new Set(this.segments.filter((g) => g.key.startsWith("screen:")).map((g) => g.key.slice(7)));
     const missing = this.planned.filter((p) => !drawnNames.has(p.name.toLowerCase()));
     if (missing.length) {
-      return `Not finished: you planned ${this.planned.length} screens and these are not drawn yet: ${missing.map((p) => `${p.name} (${p.purpose})`).join("; ")}. Draw each whole with replace_screen in the house style, then wire navigation, look, and finish.`;
+      // The next call is replace_screen, forced: a model that answered a
+      // list of every missing screen with finish again would only do it again.
+      this.nextTool = "replace_screen";
+      const [next, ...rest] = missing;
+      return `Not finished: ${missing.length} of the ${this.planned.length} planned screens are not drawn. The tags are already in the draft. Call replace_screen now for ${next.name} (${next.purpose}): its title, subtitle, and the body ops, every object with left, top, width, height, binding the drafted tags.${rest.length ? ` Then the same for ${rest.map((p) => p.name).join(", ")}, one replace_screen each.` : ""} Then finish.`;
     }
     type Screenish = { Name: string; Children: { Children: { Name: string; Type?: string }[] }[] };
     const bodyOfScreen = (x: Screenish) => x.Children[0].Children.filter((o) => !o.Name.startsWith(`${x.Name.replace(/[^A-Za-z0-9_]/g, "_")}_Frame_`));
@@ -575,6 +592,7 @@ class Session {
       return "Not finished: the project is empty and the engineer asked you to build. Do not ask them to design it. Decide the screens this machine needs from what you know of it, draft_tags if there are no tags, draw every screen with replace_screen in the house style, wire navigation, look, then finish. Ask only if the kind of machine itself is unknown.";
     }
     if (this.segments.some((g) => g.key === "tags") && !drewScreen) {
+      this.nextTool = "replace_screen";
       return "Not finished: you drafted the tags but drew no screen. Do not stop to confirm. Draw every screen now with replace_screen, wire navigation with apply_ops, look with render_screen, then finish.";
     }
     return null;
@@ -662,6 +680,20 @@ class Session {
       if (screens.length === 0) return { text: "plan_screens needs screens: [{name, purpose}].", isError: true };
       this.planned = screens;
       return { text: `Planned ${screens.length} screens: ${screens.map((x) => x.name).join(", ")}. Now draft_tags if the project has none, then draw each with replace_screen using exactly these names, then wire navigation between them.` };
+    }
+
+    // Tags drafted this turn are in the draft, not in the project the registry
+    // was built from: searched here, or find_tags says "no tags match" right
+    // after draft_tags and the model concludes it has nothing to bind.
+    if (name === "find_tags" && this.segments.some((g) => g.key === "tags")) {
+      const words = String(args.query ?? "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+      const all = this.draft.variables;
+      const hits = all.filter((v) => {
+        const hay = `${v.Name} ${v.Comments ?? ""}`.toLowerCase();
+        return words.length === 0 || words.some((w) => hay.includes(w));
+      });
+      const list = (hits.length ? hits : all).slice(0, 60).map((v) => `${v.Name} ${v.DataType} (${v.Comments ?? ""})`);
+      return { text: `${hits.length ? `${hits.length} tags match` : "None match those words; every tag in the draft"}: ${list.join(", ")}` };
     }
 
     // The connector's names for what this loop already knows: answered, not refused.
@@ -837,6 +869,7 @@ async function agentChatGemini(input: AgentChatInput, model: string): Promise<Ag
   for (let step = 0; step <= MAX_STEPS; step++) {
     // Out of waiting time with work done: answer with what it has rather than fail.
     const last = step === MAX_STEPS || (waited > WAIT_BUDGET_MS * 0.6 && step > 0);
+    const forced = last ? "finish" : session.takeNextTool();
     const response = await call({
       model,
       contents,
@@ -844,13 +877,21 @@ async function agentChatGemini(input: AgentChatInput, model: string): Promise<Ag
         systemInstruction: loopSystem(input.doc),
         tools: [{ functionDeclarations: last ? [FINISH()] : declarations }],
         toolConfig: {
-          functionCallingConfig: { mode: FunctionCallingConfigMode.ANY, ...(last ? { allowedFunctionNames: ["finish"] } : {}) },
+          functionCallingConfig: { mode: FunctionCallingConfigMode.ANY, ...(forced ? { allowedFunctionNames: [forced] } : {}) },
         },
         // The thought summaries, so the chat can show what it reasoned; billed either way.
         thinkingConfig: { includeThoughts: true },
+        // A whole screen is a long call; thinking comes out of the same budget.
+        maxOutputTokens: 32000,
         temperature: 0.2,
       },
     });
+    if (String(response.candidates?.[0]?.finishReason ?? "") === "MAX_TOKENS") {
+      session.note({ tool: "cut off", summary: "The answer hit the output limit before its tool call was complete.", isError: true });
+      contents.push({ role: "user", parts: [{ text: CUT_OFF }] });
+      if (forced && forced !== "finish") session.nextTool = forced;
+      continue;
+    }
     const u = response.usageMetadata;
     if (u) {
       usage.input += u.promptTokenCount ?? 0;
@@ -877,7 +918,7 @@ async function agentChatGemini(input: AgentChatInput, model: string): Promise<Ag
         contents.push({ role: "user", parts: [{ functionResponse: { id: finish.id, name: "finish", response: { error: "That turn did not match the schema. Call finish again with mode and reply set." } } }] });
         continue;
       }
-      const pending = bounced < 3 && !last ? session.unfinished(turn) : null;
+      const pending = bounced < 3 + session.planned.length && !last ? session.unfinished(turn) : null;
       if (pending) {
         bounced++;
         session.note({ tool: "finish", summary: pending, isError: true });
@@ -1009,21 +1050,39 @@ async function agentChatOpenAI(input: AgentChatInput, model: string): Promise<Ag
 
   for (let step = 0; step <= MAX_STEPS; step++) {
     const last = step === MAX_STEPS || (waited > WAIT_BUDGET_MS * 0.6 && step > 0);
-    const response = await call({
+    const forced = last ? "finish" : session.takeNextTool();
+    const params: OpenAI.ChatCompletionCreateParamsNonStreaming = {
       model,
       messages,
-      max_tokens: 8192,
+      // A whole screen is a long tool call; thinking comes out of the same budget.
+      max_tokens: 16000,
       temperature: 0.2,
       ...reasoning("medium"),
       tools: last ? [OPENAI_FINISH()] : tools,
-      tool_choice: last ? { type: "function", function: { name: "finish" } } : "required",
-    });
+      tool_choice: forced ? { type: "function", function: { name: forced } } : "required",
+    };
+    let response: OpenAI.ChatCompletion;
+    try {
+      response = await call(params);
+    } catch (error) {
+      // Some hosts refuse a named tool while the model is thinking; "any tool" is the next best.
+      if (!forced || last || (error as { status?: number })?.status !== 400) throw error;
+      response = await call({ ...params, tool_choice: "required" });
+    }
     const u = usageOf(response.usage);
     usage.input += u.input;
     usage.cached += u.cached;
     usage.output += u.output;
     const said = response.choices[0]?.message;
     const calls = said?.tool_calls ?? [];
+    if (response.choices[0]?.finish_reason === "length") {
+      // Cut off mid-call: the arguments are broken JSON or missing. Said out
+      // loud, so it shows in the steps, and the model is told to draw smaller.
+      session.note({ tool: "cut off", summary: "The answer hit the output limit before its tool call was complete.", isError: true });
+      messages.push({ role: "user", content: CUT_OFF });
+      if (forced && forced !== "finish") session.nextTool = forced;
+      continue;
+    }
     if (!said || calls.length === 0) {
       if (step === MAX_STEPS) return null;
       messages.push({ role: "user", content: "Call a tool, or finish." });
@@ -1045,7 +1104,7 @@ async function agentChatOpenAI(input: AgentChatInput, model: string): Promise<Ag
         answerRest(calls, finish);
         continue;
       }
-      const pending = bounced < 3 && !last ? session.unfinished(turn) : null;
+      const pending = bounced < 3 + session.planned.length && !last ? session.unfinished(turn) : null;
       if (pending) {
         bounced++;
         session.note({ tool: "finish", summary: pending, isError: true });
