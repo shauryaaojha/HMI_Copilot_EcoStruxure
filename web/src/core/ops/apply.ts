@@ -697,6 +697,13 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
         s.appendObject(screen.UniqueId, part);
         const after = store.getState();
         const landed = viewOf(after.screens.find((x) => x.UniqueId === screen.UniqueId)!).Children.at(-1) ?? part;
+        // A tag named on the addObject binds it, as bindTag would: a lamp drawn
+        // with its tag and left unbound was the connector's commonest surprise.
+        if (op.tag) {
+          const bound = after.variables.find((v) => v.Name === op.tag);
+          const property = valuePropertyOf(landed);
+          if (bound && property && !(landed.Type === "StringDisplay" && bound.DataType !== "STRING")) after.setBinding(landed.UniqueId, property, bound.Name);
+        }
         const h = handleOf(after, landed.UniqueId);
         created.push({ asked: askedName, name: landed.Name, type: landed.Type, id: landed.UniqueId });
         out.created.push({ handle: h, name: landed.Name, type: landed.Type, screen: handleOf(after, screen.UniqueId) });

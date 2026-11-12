@@ -245,7 +245,13 @@ export type Turn = z.infer<typeof Turn>;
  * Anything that is not a turn is treated as no turn, so a provider that drifts
  * degrades to "I did not understand that" rather than to a broken screen.
  */
-export function coerceTurn(value: unknown): Turn | null {
+/**
+ * `placed`: the ops come from a tool that draws a screen with explicit
+ * geometry (the chat loop's replace_screen and apply_ops, as the connector's
+ * do), so an addObject keeps its left and top. Everywhere else a model's
+ * numbers are dropped and the slot resolver places.
+ */
+export function coerceTurn(value: unknown, options: { placed?: boolean } = {}): Turn | null {
   const parsed = Turn.safeParse(value);
   if (!parsed.success) return null;
   // Ops that name no target for an op that needs one are dropped rather than
@@ -272,7 +278,7 @@ export function coerceTurn(value: unknown): Turn | null {
     // here so the slot resolver decides; only moveObject keeps them, for the
     // case where the engineer typed a number.
     .map((op) =>
-      op.op === "addObject" || op.op === "addEquipment"
+      (op.op === "addObject" || op.op === "addEquipment") && !(options.placed && op.op === "addObject")
         ? { ...op, left: undefined, top: undefined }
         : op.op === "arrange"
           // An arrangement states relationships. Coordinates would bypass the
@@ -300,6 +306,9 @@ export function buildsInstead(turn: Turn, project: { hasContent: boolean; hasTag
     turn.mode === "edit" &&
     !project.hasContent &&
     project.hasTags &&
-    (turn.ops ?? []).some((o) => o.op === "addEquipment" || o.op === "bindTag")
+    (turn.ops ?? []).some((o) => o.op === "addEquipment" || o.op === "bindTag") &&
+    // A turn that draws its own screens (the loop's replace_screen) is the
+    // application already; laying it out again from the tags would discard it.
+    !(turn.ops ?? []).some((o) => o.op === "addScreen")
   );
 }

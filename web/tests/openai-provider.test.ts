@@ -183,7 +183,7 @@ describe("the chat loop on the gateway", () => {
 
   it("forces finish on the last step, and honours the reasoning override", async () => {
     vi.stubEnv("AI_REASONING", "high");
-    script.replies = [...Array.from({ length: 10 }, () => [{ name: "try_ops", args: { ops: [GOOD] } }]), [finish([GOOD])]];
+    script.replies = [...Array.from({ length: 24 }, () => [{ name: "try_ops", args: { ops: [GOOD] } }]), [finish([GOOD])]];
     const result = await agentChat(input(), "glm-test", "openai");
     expect(result?.turn.ops).toEqual([GOOD]);
     const last = script.seen.at(-1)!;
@@ -208,21 +208,56 @@ describe("the chat loop on the gateway", () => {
     expect(seen).toEqual(["thought", "find_tags", "thought"]);
   });
 
-  it("drafts tags for a project with none and finishes with a build that carries them", async () => {
+  it("builds a tagless project the connector's way: tags, each screen drawn whole, navigation, one edit", async () => {
+    // The body only: the frame (background, header, navigation) is drawn by the loop.
+    const card = (screen: string, tag: string) => [
+      { op: "addObject", type: "Rectangle", name: `${screen}_P1_Card`, left: 36, top: 100, width: 300, height: 200, color: "white", radius: 18 },
+      { op: "addObject", type: "TextBox", name: `${screen}_P1_Title`, left: 60, top: 116, width: 240, height: 36, text: "Feed pump", fontSize: 22 },
+      { op: "addObject", type: "Lamp", name: `${screen}_Run`, left: 60, top: 170, width: 40, height: 40, tag },
+      { op: "addObject", type: "TextBox", name: `${screen}_P1_RunLbl`, left: 112, top: 176, width: 160, height: 28, text: "Running" },
+      { op: "addObject", type: "Switch", name: `${screen}_Open`, left: 60, top: 230, width: 160, height: 48, text: "OPEN" },
+      { op: "addObject", type: "TextBox", name: `${screen}_P1_Note`, left: 230, top: 240, width: 90, height: 28, text: "Pump" },
+      // A model's own header is dropped: the frame has one.
+      { op: "addObject", type: "Rectangle", name: "Header_BG", left: 0, top: 0, width: 1024, height: 88, color: "navy" },
+    ];
     script.replies = [
-      [{ name: "draft_tags", args: { units: [{ kind: "pump", label: "Feed pump", count: 2 }, { kind: "tank", label: "Buffer tank", count: 1 }] } }],
-      [{ name: "finish", args: { mode: "build", reply: "Drafted 2 pumps and a tank; placeholders until the PLC program has the real tags.", buildIntent: "a pump station with two pumps and a tank", ops: [{ op: "addTag", name: "PMP_101_RUN", dataType: "BOOL", comment: "Pump 1 running" }] } }],
+      [{ name: "draft_tags", args: { units: [{ kind: "pump", label: "Feed pump", count: 2 }] } }],
+      [{ name: "replace_screen", args: { screen: "Home", title: "Plant - Home", ops: card("Home", "PMP_101_RUN") } }],
+      [{ name: "replace_screen", args: { screen: "Pumps", ops: card("Pumps", "PMP_102_RUN") } }],
+      // Drawn again: replaces its own segment, never a copy.
+      [{ name: "replace_screen", args: { screen: "Pumps", ops: card("Pumps", "PMP_102_RUN") } }],
+      [{ name: "apply_ops", args: { ops: [{ op: "setAction", target: "Home_Open", action: "goToScreen", toScreen: "Pumps" }, { op: "setAction", target: "Pumps_Open", action: "goToScreen", toScreen: "Nowhere" }] } }],
+      [{ name: "render_screen", args: { screen: "Pumps" } }],
+      [{ name: "finish", args: { mode: "build", reply: "Drew Home and Pumps; the tags are placeholders." } }],
     ];
     const bare = input();
     bare.doc = { ...bare.doc, variables: [] };
+    const snapshot = JSON.stringify(bare.doc);
     const result = await agentChat(bare, "glm-test", "openai");
-    expect(result?.turn).toMatchObject({ mode: "build", buildIntent: "a pump station with two pumps and a tank" });
-    expect(result?.turn.ops).toEqual([{ op: "addTag", name: "PMP_101_RUN", dataType: "BOOL", comment: "Pump 1 running" }]);
-    const answer = messagesOf(1).find((m) => m.role === "tool");
-    expect(String(answer?.content)).toContain("PMP_101_RUN");
-    expect(String(answer?.content)).toContain("LT_101_PV");
-    expect(String(answer?.content)).toContain('"op":"addTag"');
-    expect(result?.steps.find((s) => s.tool === "draft_tags")?.summary).toContain("tags drafted");
+    // The drawing is the change, as an edit, whatever mode finish named.
+    expect(result?.turn.mode).toBe("edit");
+    const ops = result!.turn.ops as { op: string; name?: string; target?: string; text?: string; toScreen?: string }[];
+    expect(ops[0]).toMatchObject({ op: "addTag", name: "PMP_101_RUN" });
+    expect(ops.filter((o) => o.op === "addScreen").map((o) => o.name)).toEqual(["Home", "Pumps"]);
+    expect(ops.filter((o) => o.op === "addObject" && o.name === "Pumps_Run")).toHaveLength(1);
+    expect(ops.some((o) => o.name === "Header_BG")).toBe(false);
+    expect(ops.find((o) => o.name === "Home_Frame_Title")).toMatchObject({ text: "Plant - Home" });
+    // The refused goToScreen (to a screen that does not exist) is dropped, the good one kept;
+    // every bar links to the other screen, Home's too though Pumps came after it.
+    const links = ops.filter((o) => o.op === "setAction").map((o) => `${o.target}>${o.toScreen}`);
+    expect(links.sort()).toEqual(["Home_Frame_Nav1>Pumps", "Home_Open>Pumps", "Pumps_Frame_Nav0>Home"]);
+    const nav = messagesOf(5).filter((m) => m.role === "tool").at(-1);
+    expect(String(nav?.content)).toContain("1 applied, 1 refused");
+    // The picture is of the drawn screen, and the project itself was never touched.
+    expect((messagesOf(6).at(-1) as { content: { type: string }[] }).content[1].type).toBe("image_url");
+    expect(JSON.stringify(bare.doc)).toBe(snapshot);
+    // The browser can replay it on the empty project: everything lands, the lamp is bound.
+    const { dryRunToDoc } = await import("@/lib/collab/proposal");
+    const replay = dryRunToDoc(bare.doc, result!.turn.ops as never);
+    expect(replay.outcome.rejected).toEqual([]);
+    const home = replay.after.screens.find((x) => x.Name === "Home")!;
+    const lamp = home.Children[0].Children.find((x) => x.Name === "Home_Run")!;
+    expect(replay.after.bindings.some((b) => b.targetId === lamp.UniqueId && b.tag === "PMP_101_RUN")).toBe(true);
   });
 });
 
