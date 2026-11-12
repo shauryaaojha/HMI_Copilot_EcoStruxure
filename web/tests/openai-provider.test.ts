@@ -251,6 +251,27 @@ describe("the chat loop on the gateway", () => {
     expect((result!.turn.ops as { name?: string }[]).some((o) => o.name === "Auto_Btn")).toBe(true);
   });
 
+  it("keeps each try: an object made in one try can be deleted in the next, and lands where it was put", async () => {
+    const name = demoScreen.Name;
+    const stray = { op: "addObject", type: "Switch", name: "Auto_Stray", screen: name, left: 700, top: 20, width: 120, height: 44, text: "AUTO" };
+    const good = { op: "addObject", type: "Switch", name: "Auto_Btn", screen: name, left: 860, top: 20, width: 120, height: 44, text: "AUTO" };
+    script.replies = [
+      [{ name: "try_ops", args: { ops: [stray] } }],
+      [{ name: "try_ops", args: { ops: [{ op: "deleteObject", target: "Auto_Stray" }, good] } }],
+      [{ name: "finish", args: { mode: "edit", reply: "AUTO added.", ops: [good] } }],
+    ];
+    const result = await agentChat(input(), "glm-test", "openai");
+    expect(String(messagesOf(2).filter((m) => m.role === "tool").at(-1)?.content)).toContain("2 applied, 0 refused");
+    const ops = result!.turn.ops as { op: string; name?: string }[];
+    expect(ops.filter((o) => o.name === "Auto_Btn")).toHaveLength(1);
+    const { dryRunToDoc } = await import("@/lib/collab/proposal");
+    const replay = dryRunToDoc(input().doc, result!.turn.ops as never);
+    expect(replay.outcome.rejected).toEqual([]);
+    const objects = replay.after.screens.find((x) => x.Name === name)!.Children[0].Children;
+    expect(objects.some((o) => o.Name === "Auto_Stray")).toBe(false);
+    expect(objects.find((o) => o.Name === "Auto_Btn")).toMatchObject({ Location: { Left: 860, Top: 20 } });
+  });
+
   it("builds a tagless project the connector's way: tags, each screen drawn whole, navigation, one edit", async () => {
     // The body only: the frame (background, header, navigation) is drawn by the loop.
     const card = (screen: string, tag: string) => [

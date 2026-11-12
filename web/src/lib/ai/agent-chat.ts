@@ -269,7 +269,7 @@ const LOOP_TOOLS: FunctionDeclaration[] = [
   {
     name: "try_ops",
     description:
-      "Runs ops on a draft copy of the project, never on the project itself, and reports per op what landed, what was refused and why, the objects created and renamed, and the overlaps on the screen afterwards. A try with nothing refused becomes the draft that render_screen and validate look at.",
+      "The same as apply_ops: adds ops to the draft (never the project itself), keeping left, top, width, height, and reports what landed and what was refused and why. What lands stays in the draft for the rest of the turn: send only new ops, and refer to objects by name.",
     parametersJsonSchema: {
       type: "object",
       properties: {
@@ -609,7 +609,11 @@ class Session {
   final(turn: Turn): Turn {
     if (!this.segments.length) return turn;
     this.reframe();
-    return { ...turn, mode: "edit", ops: [...this.drawn(), ...((turn.ops ?? []) as Op[])] };
+    // A model that also lists in finish what it already applied: those are not doubled.
+    const keyOf = (o: Op) => { const r = o as { op: string; name?: string; target?: string; toScreen?: string; tag?: string }; return `${r.op}|${r.name ?? ""}|${r.target ?? ""}|${r.toScreen ?? ""}|${r.tag ?? ""}`; };
+    const drawn = this.drawn();
+    const seen = new Set(drawn.map(keyOf));
+    return { ...turn, mode: "edit", ops: [...drawn, ...((turn.ops ?? []) as Op[]).filter((o) => !seen.has(keyOf(o)))] };
   }
 
   /** Records a step and tells the caller at once, so the route can stream it. */
@@ -634,9 +638,14 @@ class Session {
 
     // Once the turn has drawn something, a try is made on the drawing, where
     // the objects just drawn exist; from the original project it could not see them.
-    if (name === "try_ops" && this.segments.length) return this.run("apply_ops", args);
+    // A model's try is made on the drawing and stays in it: each try used to
+    // start again from the original project, so an object made in one try
+    // could not be deleted in the next ("No object called o448"), and its
+    // left/top were dropped so it landed wherever there was room.
+    if (name === "try_ops") return this.run("apply_ops", args);
 
-    if (name === "try_ops") {
+    // The check finish gets, on the original project: finish sends the whole list.
+    if (name === "check_ops") {
       // The same cleaning finish gets: a raw op from the model can miss a
       // field the store assumes is there.
       const ops = (coerceTurn({ mode: "edit", reply: "", ops: Array.isArray(args.ops) ? args.ops : [] })?.ops ?? []) as Op[];
@@ -758,10 +767,24 @@ class Session {
     if (name === "apply_ops") {
       const screen = typeof args.screen === "string" && args.screen.trim() ? args.screen.trim() : undefined;
       const parsed = parseOps(args.ops, true);
-      const ops = parsed.ops.map((o) => (screen && o.op === "addObject" && !o.screen ? { ...o, screen } : o));
-      if (ops.length === 0) return { text: ["No usable ops given.", ...parsed.bad.slice(0, 12)].join("\n"), isError: true };
+      const given = parsed.ops.map((o) => (screen && o.op === "addObject" && !o.screen ? { ...o, screen } : o));
+      if (given.length === 0) return { text: ["No usable ops given.", ...parsed.bad.slice(0, 12)].join("\n"), isError: true };
+      // A model that sends again what is already applied (the old try_ops habit): not doubled.
+      const had = new Set(this.drawn().map((o) => JSON.stringify(o)));
+      const ops = given.filter((o) => !had.has(JSON.stringify(o)));
+      if (ops.length === 0) return { text: "All of these are already applied in the draft; nothing new. Send only new ops, or finish." };
       const r = this.draw(`ops:${this.segments.length}`, ops);
-      return { text: [`${r.applied} applied, ${r.refused.length + parsed.bad.length} refused.`, ...parsed.bad.slice(0, 12), ...r.refused].join("\n"), isError: r.refused.length > 0 && r.applied === 0 };
+      const added = ops.filter((o) => o.op === "addObject" && o.name).map((o) => o.name as string);
+      const landed = added.filter((n) => this.draft.screens.some((x) => x.Children[0].Children.some((c) => c.Name === n)));
+      return {
+        text: [
+          `${r.applied} applied, ${r.refused.length + parsed.bad.length} refused. What is applied stays in the draft for the rest of the turn; do not send it again, and change or delete an object by its name.`,
+          landed.length ? `Added: ${landed.join(", ")}` : "",
+          ...parsed.bad.slice(0, 12),
+          ...r.refused,
+        ].filter(Boolean).join("\n"),
+        isError: r.refused.length > 0 && r.applied === 0,
+      };
     }
 
     if (name === "draft_tags") {
@@ -945,7 +968,7 @@ async function agentChatGemini(input: AgentChatInput, model: string): Promise<Ag
       // loop rather than in a second round trip from the browser.
       if (turn.mode === "edit" && turn.ops?.length && !session.segments.length && !checkedFinish && !last) {
         checkedFinish = true;
-        const check = await session.run("try_ops", { ops: turn.ops });
+        const check = await session.run("check_ops", { ops: turn.ops });
         if (/^\d+ applied, [1-9]/.test(check.text)) {
           session.note({ tool: "finish", summary: `Checked the answer: ${check.text.split("\n")[0]}`, isError: true });
           contents.push({
@@ -1130,7 +1153,7 @@ async function agentChatOpenAI(input: AgentChatInput, model: string): Promise<Ag
       }
       if (turn.mode === "edit" && turn.ops?.length && !session.segments.length && !checkedFinish && !last) {
         checkedFinish = true;
-        const check = await session.run("try_ops", { ops: turn.ops });
+        const check = await session.run("check_ops", { ops: turn.ops });
         if (/^\d+ applied, [1-9]/.test(check.text)) {
           session.note({ tool: "finish", summary: `Checked the answer: ${check.text.split("\n")[0]}`, isError: true });
           messages.push({ role: "tool", tool_call_id: finish.id, content: `Not finished: some of these ops are refused.\n${cut(check.text)}\nFix them and call finish again with the whole list.` });
