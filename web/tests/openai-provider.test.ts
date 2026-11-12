@@ -236,6 +236,21 @@ describe("the chat loop on the gateway", () => {
     expect(ops.filter((o) => o.op === "addScreen").map((o) => o.name)).toEqual(["Overview", "Alarms"]);
   });
 
+  it("does not turn an edit of existing screens into a redraw when the model plans them", async () => {
+    const name = demoScreen.Name;
+    const auto = { op: "addObject", type: "Switch", name: "Auto_Btn", screen: name, left: 800, top: 20, width: 120, height: 44, text: "AUTO" };
+    script.replies = [
+      [{ name: "plan_screens", args: { screens: [{ name, purpose: "the one screen" }] } }],
+      [{ name: "apply_ops", args: { ops: [auto] } }],
+      [{ name: "finish", args: { mode: "edit", reply: "Added AUTO." } }],
+    ];
+    const result = await agentChat(input(), "glm-test", "openai");
+    expect(String(messagesOf(1).filter((m) => m.role === "tool").at(-1)?.content)).toContain("exist already");
+    expect(result?.steps.some((s) => s.tool === "finish" && s.isError)).toBe(false);
+    expect(script.seen.every((p) => typeof p.tool_choice === "string" || (p.tool_choice as { function: { name: string } }).function.name === "finish")).toBe(true);
+    expect((result!.turn.ops as { name?: string }[]).some((o) => o.name === "Auto_Btn")).toBe(true);
+  });
+
   it("builds a tagless project the connector's way: tags, each screen drawn whole, navigation, one edit", async () => {
     // The body only: the frame (background, header, navigation) is drawn by the loop.
     const card = (screen: string, tag: string) => [

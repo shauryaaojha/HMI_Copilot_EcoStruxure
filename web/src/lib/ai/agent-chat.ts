@@ -224,6 +224,11 @@ Building screens - a new application, a new screen, or a screen given again:
    the PLC program has the real ones.
 
 Changing a project that already has screens: read before you change, as below.
+Do not plan_screens or replace_screen for a change to screens that exist. A
+change on every screen (a button, a lamp, a label on each) is one apply_ops
+with an addObject per screen, each with screen, left, top, width, height in
+a free spot of that screen's body; then render one to look, then finish.
+When the engineer says no tags or no bindings, add none.
 `.trim();
 
 const AGENT_GUIDE = `
@@ -569,13 +574,16 @@ class Session {
   unfinished(turn?: { mode: string }): string | null {
     const drewScreen = this.segments.some((g) => g.key.startsWith("screen:"));
     const drawnNames = new Set(this.segments.filter((g) => g.key.startsWith("screen:")).map((g) => g.key.slice(7)));
-    const missing = this.planned.filter((p) => !drawnNames.has(p.name.toLowerCase()));
+    // A planned screen the project already has is not missing: an edit to it
+    // is apply_ops, and forcing a redraw would wipe the change asked for.
+    const existing = new Set(this.input.doc.screens.map((x) => x.Name.toLowerCase()));
+    const missing = this.planned.filter((p) => !drawnNames.has(p.name.toLowerCase()) && !existing.has(p.name.toLowerCase()));
     if (missing.length) {
       // The next call is replace_screen, forced: a model that answered a
       // list of every missing screen with finish again would only do it again.
       this.nextTool = "replace_screen";
       const [next, ...rest] = missing;
-      return `Not finished: ${missing.length} of the ${this.planned.length} planned screens are not drawn. The tags are already in the draft. Call replace_screen now for ${next.name} (${next.purpose}): its title, subtitle, and the body ops, every object with left, top, width, height, binding the drafted tags.${rest.length ? ` Then the same for ${rest.map((p) => p.name).join(", ")}, one replace_screen each.` : ""} Then finish.`;
+      return `Not finished: ${missing.length} of the ${this.planned.length} planned screens are not drawn.${this.segments.some((g) => g.key === "tags") ? " The tags are already in the draft." : ""} Call replace_screen now for ${next.name} (${next.purpose}): its title, subtitle, and the body ops, every object with left, top, width, height${this.draft.variables.length ? ", binding the tags" : ""}.${rest.length ? ` Then the same for ${rest.map((p) => p.name).join(", ")}, one replace_screen each.` : ""} Then finish.`;
     }
     type Screenish = { Name: string; Children: { Children: { Name: string; Type?: string }[] }[] };
     const bodyOfScreen = (x: Screenish) => x.Children[0].Children.filter((o) => !o.Name.startsWith(`${x.Name.replace(/[^A-Za-z0-9_]/g, "_")}_Frame_`));
@@ -679,6 +687,14 @@ class Session {
       const screens = list.flatMap((x) => (typeof x?.name === "string" && x.name.trim() ? [{ name: x.name.trim().replace(/[^A-Za-z0-9_]/g, "_"), purpose: typeof x.purpose === "string" ? x.purpose : "" }] : []));
       if (screens.length === 0) return { text: "plan_screens needs screens: [{name, purpose}].", isError: true };
       this.planned = screens;
+      const have = new Set(this.input.doc.screens.map((x) => x.Name.toLowerCase()));
+      const already = screens.filter((x) => have.has(x.name.toLowerCase()));
+      if (already.length === screens.length) {
+        return { text: `All ${screens.length} screens exist already: ${screens.map((x) => x.name).join(", ")}. Nothing is to be drawn new. For a change to them (a button on each screen, a move, a colour) use apply_ops, with screen set on each addObject, then finish. Do not redraw them with replace_screen; that removes what is on them.` };
+      }
+      if (already.length) {
+        return { text: `Planned ${screens.length} screens. These exist already and are not redrawn: ${already.map((x) => x.name).join(", ")}; change them with apply_ops. Draw the new ones with replace_screen: ${screens.filter((x) => !have.has(x.name.toLowerCase())).map((x) => x.name).join(", ")}.` };
+      }
       return { text: `Planned ${screens.length} screens: ${screens.map((x) => x.name).join(", ")}. Now draft_tags if the project has none, then draw each with replace_screen using exactly these names, then wire navigation between them.` };
     }
 
