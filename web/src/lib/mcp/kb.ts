@@ -27,7 +27,11 @@ export const KB_TOOLS: readonly McpTool[] = [
       const kb = loadKb();
       if (!kb) return { text: "The indexed knowledge base is unavailable.", isError: true };
       const entry = getEntry(kb, id, "mcp");
-      return entry ? { text: JSON.stringify(entry), structured: { entry, version: kb.version } } : { text: "No such public knowledge entry.", isError: true };
+      if (!entry) return { text: "No such public knowledge entry.", isError: true };
+      // Where an entry was derived from is ours (a source file path); the
+      // entry itself is what the caller needs.
+      const shown = { ...entry, source: entry.source ? { kind: entry.source.kind } : undefined };
+      return { text: JSON.stringify(shown), structured: { entry: shown, version: kb.version } };
     },
   }),
 ];

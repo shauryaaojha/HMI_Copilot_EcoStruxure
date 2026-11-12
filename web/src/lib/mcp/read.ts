@@ -123,6 +123,13 @@ const getScreens = tool({
   },
 });
 
+/** UniqueIds in a text replaced by the handles the tools take. */
+function byHandle(text: string, handles: Record<string, string>): string {
+  let out = text;
+  for (const [id, handle] of Object.entries(handles)) if (out.includes(id)) out = out.split(id).join(handle);
+  return out;
+}
+
 const getLayout = tool({
   name: "get_layout",
   title: "Get layout facts",
@@ -154,7 +161,8 @@ const getLayout = tool({
       "Resolved facts:",
     ];
     return {
-      text: projectData("layout", limited([...nested, ...printLayoutFacts(facts).split("\n")].map((l) => `${/^ */.exec(l)![0]}${field(l, 400)}`), RESULT_LIMIT - 1_000)),
+      // The facts name objects by UniqueId; the handles (o3) are what every other tool takes.
+      text: projectData("layout", limited([...nested, ...byHandle(printLayoutFacts(facts), doc.handles ?? {}).split("\n")].map((l) => `${/^ */.exec(l)![0]}${field(l, 400)}`), RESULT_LIMIT - 1_000)),
       structured: { facts, layoutProblems: problems },
     };
   },

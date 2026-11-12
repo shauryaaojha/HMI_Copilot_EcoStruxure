@@ -79,7 +79,9 @@ export function critiqueRoleCoverage(variables: Variable[]): Finding[] {
     message:
       `${tags.length === 1 ? "Tag" : `${tags.length} tags`} end in _${word}, which the role table does not recognise: ` +
       `${tags.slice(0, 3).join(", ")}${tags.length > 3 ? ", …" : ""}. They are being read as plain values.`,
-    suggestion: `Add _${word} to the role table in lib/ai/infer.ts, and to the unit and range defaults in lib/plant/units.ts.`,
+    // Said to the engineer and to Claude: what to do with their tags, never
+    // which source file of ours to edit.
+    suggestion: `Rename them with a suffix that says the signal (RUN, FLT, PV, SP, KWH), or bind them by hand; read as plain values they get no unit or range.`,
   }));
 }
 

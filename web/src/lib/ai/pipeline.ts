@@ -168,7 +168,9 @@ export async function* runPipeline(
     // everything else. Saying which provider is being asked keeps that gap
     // legible instead of looking like a stall. It states what is happening, not
     // what anything is thinking.
-    yield log(`Asking ${waitingOn ? providerName(waitingOn) : "the model"} to read the request`);
+    // The model, not the host: which reseller a call goes through is not the
+    // engineer's business in a log they may screenshot (docs/MODEL_GATEWAY.md).
+    yield log("Asking the model to read the request");
     try {
       const planned = await planScreen(intent, planAll ? equipment : toPlan, limits);
       if (planned) {

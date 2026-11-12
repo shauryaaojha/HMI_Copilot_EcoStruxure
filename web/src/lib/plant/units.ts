@@ -46,6 +46,7 @@ export function unitOf(comment: string, role: string): string {
   // (the ATV340 rig's own displays show the thermal states in %).
   if (role === "thermal" || role === "torque") return "%";
   if (role === "power") return "kW";
+  if (role === "total" && /kwh|energy/i.test(comment)) return "kWh";
   if (/\bvolts?\b|\bvoltage\b/i.test(comment) || role === "voltage") return "V";
   return "";
 }

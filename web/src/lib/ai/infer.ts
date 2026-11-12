@@ -152,6 +152,8 @@ const ROLES: [RegExp, string][] = [
   [/(^|_)(EFFICIENCY|OEE|EFF)$/i, "efficiency"],
   [/(^|_)(FREQUENCY|FREQ|HZ)$/i, "frequency"],
   [/(^|_)(POWER|KW)$/i, "power"],
+  // A meter's energy count: ENE_101_KWH, the brief's energy meter.
+  [/(^|_)(ENERGY|KWH|MWH)$/i, "total"],
   // A magnetron's anode voltage is HTR_101_ANODE_KV in a real export.
   [/(^|_)(VOLTAGE|VOLTS|VOLT|KV|VLL|VLN)$/i, "voltage"],
   [/(^|_)(FACTOR|PF)$/i, "factor"],

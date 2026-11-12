@@ -153,6 +153,9 @@ export function validateProject(
     // A pipe with one state is drawn, not driven: the generator lays process
     // lines with no flow tag, and those are not missing a binding.
     if (part.Type === "Pipe" && part.States.length <= 1) continue;
+    // A button that opens a screen displays nothing and writes nothing: it
+    // was flagged "displays a value but is not bound" on every nav bar.
+    if (part.Type === "Switch" && (part as { ClickTrigger?: { OperationType?: number } }).ClickTrigger?.OperationType === 4) continue;
     if (VALUE_PROPERTY[part.Type] && !wiredParts.has(part.UniqueId)) {
       findings.push({
         severity: noTags ? "info" : "warning",
