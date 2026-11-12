@@ -34,7 +34,8 @@ import { COMPONENT_KINDS } from "@/lib/components/types";
 import { z } from "zod";
 import { Op } from "@/core/ops";
 import { diff } from "@/lib/collab/changes";
-import { dryRunOnSnapshot, type SnapshotRun } from "@/lib/collab/proposal";
+import { dryRunOnSnapshot, dryRunToDoc, type SnapshotRun } from "@/lib/collab/proposal";
+import { nestingProblems } from "@/lib/ote/nesting";
 import type { OpOutcome } from "@/core/ops";
 import type { Doc, StoreChange } from "@/lib/collab/types";
 import type { Variable } from "@/lib/ote/schema";
@@ -189,7 +190,18 @@ async function queueBuild(caller: Caller, projectId: string, landing: Landing, r
  * proposal queue or the change log.
  */
 export async function land(caller: Caller, projectId: string, landing: Landing): Promise<Landed> {
+  // Worked out on the project before the change, so a direct write that has
+  // already landed is not run twice. Advisory: a failure here never stops a write.
+  const layout = await layoutMade(caller, projectId, landing).catch(() => [] as string[]);
   const landed = await landOnce(caller, projectId, landing);
+  if (layout.length > 0 && landed.landed.mode !== "refused" && landed.landed.applied + (landed.landed.mode === "proposal" ? 1 : 0) > 0) {
+    landed.text = [
+      landed.text,
+      "This change makes layout problems. Fix each with apply_ops: move or resize the object by name, wholly inside a free area of its card (get_layout lists the free areas).",
+      projectData("layout problems", limited(layout, 3_000)),
+    ].join("\n");
+    landed.structured = { ...(landed.structured ?? {}), layoutProblems: layout.length };
+  }
   // Whatever could not be done goes in the gap log, so the product learns
   // what it was asked for and does not have yet.
   const refused = landed.landed.lines.filter((line) => REFUSED_LINE.test(line));
@@ -205,6 +217,19 @@ export async function land(caller: Caller, projectId: string, landing: Landing):
     );
   }
   return landed;
+}
+
+/**
+ * The layout problems a change makes (lib/ote/nesting.ts): an object across a
+ * card's edge, objects on one card covering each other. Problems the project
+ * already had are not this change's.
+ */
+async function layoutMade(caller: Caller, projectId: string, landing: Landing): Promise<string[]> {
+  const { doc } = await openProject(caller, projectId, "read");
+  const base = seededDoc(doc, landing.seed);
+  const of = (d: Doc) => d.screens.flatMap((x) => nestingProblems(x.Children[0].Children).map((l) => `${field(x.Name, 80)}: ${field(l, 300)}`));
+  const before = new Set(of(base));
+  return of(dryRunToDoc(base, landing.ops as never, landing.screenId).after).filter((l) => !before.has(l));
 }
 
 async function landOnce(caller: Caller, projectId: string, landing: Landing): Promise<Landed> {

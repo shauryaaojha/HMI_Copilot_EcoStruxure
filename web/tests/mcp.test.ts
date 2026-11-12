@@ -693,3 +693,24 @@ describe("a broken file through the connector", () => {
     expect(result.text.length).toBeGreaterThan(10);
   });
 });
+
+describe("the layout, nested", () => {
+  it("get_layout shows each object under its card with the free space on it", async () => {
+    const { text, structured } = await call("get_layout", { projectId: ID, screenId });
+    expect(text).toContain("Nested (x,y width x height");
+    expect(text).toMatch(/Panel_Process \[card 520,76 484x224\] free inside: \d+,\d+ \d+x\d+/);
+    expect(text).toMatch(/\n {2}- \S+ Num_Flow \[NumericDisplay/);
+    expect(text).toContain("Resolved facts:");
+    expect(structured).toMatchObject({ layoutProblems: [] });
+  });
+
+  it("a change that puts an object over another says so, and one that does not stays quiet", async () => {
+    // A 200x76 lamp moved onto the alarm summary.
+    const bad = await call("apply_ops", { projectId: ID, ops: [{ op: "moveObject", target: "Lamp_PUMP1_RUN", left: 400, top: 300 }], note: "Move the pump lamp" });
+    expect(bad.text).toContain("This change makes layout problems");
+    expect(bad.text).toMatch(/Lamp_PUMP1_RUN overlaps AlarmBanner/);
+    // Into the free area Panel_Process reports.
+    const good = await call("apply_ops", { projectId: ID, ops: [{ op: "moveObject", target: "Unit_Flow", left: 884, top: 100 }], note: "Move the unit" });
+    expect(good.text).not.toContain("layout problems");
+  });
+});

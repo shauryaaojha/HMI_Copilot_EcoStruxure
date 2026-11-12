@@ -19,6 +19,7 @@ import { screenToPng } from "@/lib/critic/render";
 import { objectValues } from "@/lib/sim/alarms";
 import { rootBox, type Variable } from "@/lib/ote/schema";
 import { sceneOf } from "@/lib/layout/scene";
+import { layoutTree, nestingProblems } from "@/lib/ote/nesting";
 import { layoutFacts, printLayoutFacts } from "@/lib/layout/facts";
 import { repo } from "@/lib/server/repo";
 import { validateInput } from "@/lib/server/validate";
@@ -125,7 +126,7 @@ const getScreens = tool({
 const getLayout = tool({
   name: "get_layout",
   title: "Get layout facts",
-  description: "Resolved numeric layout facts for one screen: screen-design-unit boxes, rows, columns, grid, overlaps and near misses. ViewBox panel scaling is explicitly labelled as an unconfirmed renderer assumption.",
+  description: "One screen's layout: first nested, each object under the card (rectangle) that holds it in pixels, with the free space inside each card and outside them all, and the layout problems (an object across a card's edge, objects on one card covering each other); then the resolved facts: rows, columns, grid, overlaps and near misses. Read it before adding or moving anything on an existing screen: a card is a surface to put things on, not an obstacle. ViewBox panel scaling is labelled as an unconfirmed renderer assumption.",
   annotations: { readOnlyHint: true, openWorldHint: false },
   input: {
     projectId: z.string().describe("The project id, from list_projects."),
@@ -135,10 +136,26 @@ const getLayout = tool({
     const { doc } = await openProject(caller, projectId, "read");
     const screen = findScreen(doc, screenId);
     const scene = sceneOf({ screen, panel: doc.target, meta: doc.objectMeta, handles: doc.handles, contentScreens: doc.screens, opened: true });
-    const facts = layoutFacts(scene, screen.Children[0].Children, `${doc.target.model} ${doc.target.width}x${doc.target.height}`);
+    const parts = screen.Children[0].Children;
+    const facts = layoutFacts(scene, parts, `${doc.target.model} ${doc.target.width}x${doc.target.height}`);
+    // First the screen as nested cards: each object under the card that holds
+    // it, with the free space on each card (lib/ote/nesting.ts). The indent is
+    // the nesting, so it is kept; field() would fold it away. Read flat, a
+    // body of big cards looked full though most of each card was empty.
+    const label = (p: (typeof parts)[number]) => `${doc.handles?.[p.UniqueId] ?? "?"} ${p.Name}`;
+    const tree = layoutTree(parts, label, 16, { width: doc.target.width, height: doc.target.height });
+    const problems = nestingProblems(parts, label);
+    const nested = [
+      "Nested (x,y width x height in pixels; each object under the card that holds it; \"free inside\" is empty space on that card, clear of its edge and of what is on it; put a new object wholly inside one):",
+      ...(tree ? tree.split("\n") : ["- empty"]),
+      problems.length ? "Layout problems:" : "Layout problems: none",
+      ...problems,
+      "",
+      "Resolved facts:",
+    ];
     return {
-      text: projectData("layout", limited(printLayoutFacts(facts).split("\n"), RESULT_LIMIT - 1_000)),
-      structured: { facts },
+      text: projectData("layout", limited([...nested, ...printLayoutFacts(facts).split("\n")].map((l) => `${/^ */.exec(l)![0]}${field(l, 400)}`), RESULT_LIMIT - 1_000)),
+      structured: { facts, layoutProblems: problems },
     };
   },
 });
