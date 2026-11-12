@@ -71,6 +71,7 @@ import { CARD_SIZE, equipmentCard, type LayoutUnit } from "@/lib/ote/layout";
 import { inferEquipment } from "@/lib/ai/infer";
 import type { Op } from "./ops";
 import { valuePropertyOf } from "@/lib/tags/binder";
+import { ACCEPTS, VALUE_PROPERTY } from "@/lib/validation/accepts";
 import { expandOps } from "@/lib/ai/expand";
 import { DEFAULT_THEME, isComponentKind } from "@/lib/components";
 import { componentUse, sizeOfUse } from "@/lib/components/place";
@@ -699,17 +700,21 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
         const landed = viewOf(after.screens.find((x) => x.UniqueId === screen.UniqueId)!).Children.at(-1) ?? part;
         // A tag named on the addObject binds it, as bindTag would: a lamp drawn
         // with its tag and left unbound was the connector's commonest surprise.
+        let unbound = "";
         if (op.tag) {
           const bound = after.variables.find((v) => v.Name === op.tag);
           const property = valuePropertyOf(landed);
-          if (bound && property && !(landed.Type === "StringDisplay" && bound.DataType !== "STRING")) after.setBinding(landed.UniqueId, property, bound.Name);
+          const accepts = property === VALUE_PROPERTY[landed.Type] ? ACCEPTS[landed.Type] : undefined;
+          // Bound only when the type fits; otherwise said, so the model fixes it.
+          if (bound && property && accepts && !accepts.includes(bound.DataType)) unbound = `; not bound: a ${landed.Type} takes ${accepts.join(", ")} and ${bound.Name} is ${bound.DataType}`;
+          else if (bound && property) after.setBinding(landed.UniqueId, property, bound.Name);
         }
         const h = handleOf(after, landed.UniqueId);
         created.push({ asked: askedName, name: landed.Name, type: landed.Type, id: landed.UniqueId });
         out.created.push({ handle: h, name: landed.Name, type: landed.Type, screen: handleOf(after, screen.UniqueId) });
         if (askedName && landed.Name !== askedName) out.renamed.push({ asked: askedName, became: landed.Name, handle: h });
         touch(after, landed.UniqueId);
-        ok(note || `Added ${landed.Type} ${h} ${landed.Name} in the ${region} of ${screen.Name}`);
+        ok(`${note || `Added ${landed.Type} ${h} ${landed.Name} in the ${region} of ${screen.Name}`}${unbound}`);
         break;
       }
 
@@ -913,12 +918,43 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
         }
         s.duplicateObjects([found.part.UniqueId]);
         const after = store.getState();
-        for (const id of after.selectedIds) {
+        // The copy takes the name asked for, and a place of its own: it used to
+        // keep an automatic name and land 8 px off the original, on top of it.
+        if (after.selectedIds.length === 1) {
+          const id = after.selectedIds[0];
           const copy = findPartById(after, id);
+          if (copy) {
+            const asked = op.name?.trim();
+            const taken = asked && after.screens.some((x) => viewOf(x).Children.some((p) => p.UniqueId !== id && p.Name === asked));
+            if (asked && !taken) after.setProperty(id, ["Name"], asked);
+            const size = sizeOf(found.part);
+            const at = { left: found.part.Location.Left, top: found.part.Location.Top };
+            const panel = panelOf(copy.screen);
+            const others = viewOf(copy.screen).Children.filter((p) => p.UniqueId !== id).map(boxOf);
+            const holds = (o: Box, b: Box) => b.left >= o.left && b.top >= o.top && b.left + b.width <= o.left + o.width && b.top + b.height <= o.top + o.height;
+            const clear = (b: Box) =>
+              b.left >= 0 && b.top >= 0 && b.left + b.width <= panel.width && b.top + b.height <= panel.height &&
+              others.every((o) => holds(o, b) || !(b.left < o.left + o.width && b.left + b.width > o.left && b.top < o.top + o.height && b.top + b.height > o.top));
+            const gap = 16;
+            const wanted = op.left !== undefined || op.top !== undefined
+              ? [{ ...size, left: op.left ?? at.left, top: op.top ?? at.top }]
+              : [
+                  { ...size, left: at.left + size.width + gap, top: at.top },
+                  { ...size, left: at.left, top: at.top + size.height + gap },
+                  { ...size, left: at.left - size.width - gap, top: at.top },
+                  { ...size, left: at.left, top: at.top - size.height - gap },
+                ];
+            const spot = op.left !== undefined || op.top !== undefined ? wanted[0] : wanted.find(clear);
+            if (spot) after.setBox(id, clampToPanel(spot, panel));
+            if (asked && taken) out.renamed.push({ asked, became: findPartById(store.getState(), id)?.part.Name ?? asked, handle: handleOf(store.getState(), id) });
+          }
+        }
+        for (const id of store.getState().selectedIds) {
+          const copy = findPartById(store.getState(), id);
           if (!copy) continue;
           created.push({ name: copy.part.Name, type: copy.part.Type, id });
-          out.created.push({ handle: handleOf(after, id), name: copy.part.Name, type: copy.part.Type, screen: handleOf(after, copy.screen.UniqueId) });
-          touch(after, id);
+          out.created.push({ handle: handleOf(store.getState(), id), name: copy.part.Name, type: copy.part.Type, screen: handleOf(store.getState(), copy.screen.UniqueId) });
+          touch(store.getState(), id);
         }
         ok(note || `Duplicated ${found.part.Name}`);
         break;
@@ -1264,11 +1300,23 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
           ok(note || `${part.Name} now opens ${to.Name}`);
           break;
         }
+        // A tag on the op is the bit it writes, bound here: it used to be
+        // ignored, and the button wrote nothing until a second op bound it.
+        const writes = op.tag ? s.variables.find((v) => v.Name === op.tag) : undefined;
+        if (op.tag && !writes) {
+          reject(op, noTag(op, "the button's action was not set"));
+          break;
+        }
+        if (writes && writes.DataType !== "BOOL") {
+          reject(op, `${part.Name} writes a bit, so its tag must be BOOL; ${writes.Name} is ${writes.DataType}`);
+          break;
+        }
         const operation = BIT_OPERATION[op.action];
         s.setProperty(part.UniqueId, ["ClickTrigger"], operation === BIT_OPERATION.set ? { OperationType: 1 } : { OperationType: 1, Operation: operation });
+        if (writes) s.setBinding(part.UniqueId, "CurrentValue", writes.Name);
         touch(s, part.UniqueId);
         const bound = s.bindings.some((b) => b.targetId === part.UniqueId);
-        ok(note || `${part.Name} is now a ${op.action} button${bound ? "" : "; it writes nothing until a BOOL tag is bound to it (bindTag)"}`);
+        ok(note || `${part.Name} is now a ${op.action} button${writes ? ` writing ${writes.Name}` : bound ? "" : "; it writes nothing until a BOOL tag is bound to it (tag on this op, or bindTag)"}`);
         break;
       }
 
@@ -1357,6 +1405,13 @@ export function applyOps(ops: Op[], store: ProjectStore = useProject): OpOutcome
         // The other pairs it refuses are not known, so this is the only one turned away here.
         if (found.part.Type === "StringDisplay" && property === "CurrentValue" && tag.DataType !== "STRING") {
           reject(op, `${found.part.Name} is a StringDisplay and shows only a STRING tag; ${tag.Name} is ${tag.DataType}, and OTE will not simulate that. Use a NumericDisplay or a Lamp for it`);
+          break;
+        }
+        // The pairs validate calls a type mismatch are refused here, so a
+        // binding never lands only to be flagged as an error afterwards.
+        const accepts = property === VALUE_PROPERTY[found.part.Type] ? ACCEPTS[found.part.Type] : undefined;
+        if (accepts && !accepts.includes(tag.DataType)) {
+          reject(op, `${found.part.Name} is a ${found.part.Type} and takes ${accepts.join(", ")}; ${tag.Name} is ${tag.DataType}. ${tag.DataType === "BOOL" ? "Use a Lamp for it" : tag.DataType === "STRING" ? "Use a StringDisplay for it" : "Use a NumericDisplay for it"}, or bind a ${accepts[0]} tag`);
           break;
         }
         // A bar binds its fill, not CurrentValue; and a rebind replaces the old tag rather than adding a second.

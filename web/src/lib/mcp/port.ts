@@ -12,6 +12,9 @@
  */
 import { z } from "zod";
 import { exportProblems, LINK_MS, signExportLink } from "@/lib/server/export-link";
+import { packageInputOf } from "@/lib/collab/package";
+import { validateInput } from "@/lib/server/validate";
+import { repo } from "@/lib/server/repo";
 import { field, limited, projectData, RESULT_LIMIT } from "./data";
 import { openProject } from "./project";
 import { refusal } from "./result";
@@ -21,10 +24,13 @@ const exportProject = tool({
   name: "export_project",
   title: "Export a project",
   description:
-    "Checks a project the way the app's Export panel does and, when it passes, returns a link to download the .eote that EcoStruxure Operator Terminal Expert 4.4 opens. The link lasts 15 minutes and works only for the signed-in engineer. When the check fails it returns the problems to fix instead. Give the engineer the link as it is; never say a file was sent.",
+    "Checks a project - the export checks and validate's errors - and, when it passes, returns a link to download the .eote that EcoStruxure Operator Terminal Expert 4.4 opens. The link lasts 15 minutes and works only for the signed-in engineer. When the check fails it returns the problems to fix instead. A project with validate errors (a REAL tag on a lamp, a screen nothing navigates to) is not exported unless the engineer, told the errors, agrees: then ask again with confirm: true. Give the engineer the link as it is; never say a file was sent.",
   annotations: { readOnlyHint: true, openWorldHint: false },
-  input: { projectId: z.string().describe("The project id, from list_projects.") },
-  async run({ projectId }, { caller }) {
+  input: {
+    projectId: z.string().describe("The project id, from list_projects."),
+    confirm: z.boolean().optional().describe("true only after the engineer, told the validate errors, agreed to export anyway."),
+  },
+  async run({ projectId, confirm }, { caller }) {
     const { project, rev } = await openProject(caller, projectId, "export");
     const problems = await exportProblems(projectId, rev);
     if (problems.length) {
@@ -36,11 +42,27 @@ const exportProject = tool({
         "preflight",
       );
     }
+    // validate's errors too: the file would open, but it would not do what it
+    // shows (a REAL on a lamp, a screen no one can reach). Exported only once
+    // the engineer has been told and agreed.
+    const snapshot = await repo().live.at(projectId, rev);
+    const errors = snapshot ? (await validateInput(packageInputOf(snapshot))).findings.filter((f) => f.severity === "error") : [];
+    if (errors.length && confirm !== true) {
+      return refusal(
+        [
+          `"${field(project.name, 120)}" has ${errors.length} validation error(s), so it was not exported. Fix them with apply_ops (validate lists them with suggestions), or tell the engineer and ask again with confirm: true only if they agree to export with them.`,
+          projectData("errors", limited(errors.map((f) => `${field(f.rule, 60)}: ${field(f.message, 300)}${f.suggestion ? ` -> ${field(f.suggestion, 200)}` : ""}`), RESULT_LIMIT - 2_000)),
+        ].join("\n"),
+        "needs-confirm",
+      );
+    }
     if (!caller.origin) return refusal("This call did not say which address the app is on, so no link can be made. Export from the app.", "internal");
     const url = `${caller.origin}/api/export/link?t=${signExportLink(projectId, rev, caller.userId)}`;
     return {
       text: [
-        `"${field(project.name, 120)}" at revision ${rev} passed the export checks.`,
+        errors.length
+          ? `"${field(project.name, 120)}" at revision ${rev} exported with ${errors.length} validation error(s) the engineer agreed to.`
+          : `"${field(project.name, 120)}" at revision ${rev} passed the export checks and validation.`,
         `Download link (works for ${Math.round(LINK_MS / 60000)} minutes, only for the engineer who is signed in): ${url}`,
         "In Operator Terminal Expert: File > Open Project, and pick the downloaded .eote.",
       ].join("\n"),
