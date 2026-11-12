@@ -67,7 +67,8 @@ const { askJson } = await import("@/lib/ai/draft");
 const { converse } = await import("@/lib/ai/converse");
 const { runAgent } = await import("@/lib/agent/run");
 
-const GOOD = { op: "moveObject", target: "Lamp_PUMP1_RUN", left: 400, top: 300 };
+// Into the free area the layout reports on Panel_Process (lib/ote/nesting.ts): a move that makes no overlap.
+const GOOD = { op: "moveObject", target: "Unit_Flow", left: 884, top: 100 };
 const BAD = { op: "moveObject", target: "No_Such_Lamp", left: 10, top: 10 };
 const finish = (ops: unknown[]): Call => ({ name: "finish", args: { mode: "edit", reply: "Moved the lamp.", ops } });
 
@@ -238,7 +239,7 @@ describe("the chat loop on the gateway", () => {
 
   it("does not turn an edit of existing screens into a redraw when the model plans them", async () => {
     const name = demoScreen.Name;
-    const auto = { op: "addObject", type: "Switch", name: "Auto_Btn", screen: name, left: 800, top: 20, width: 120, height: 44, text: "AUTO" };
+    const auto = { op: "addObject", type: "Switch", name: "Auto_Btn", screen: name, left: 880, top: 92, width: 100, height: 32, text: "AUTO" };
     script.replies = [
       [{ name: "plan_screens", args: { screens: [{ name, purpose: "the one screen" }] } }],
       [{ name: "apply_ops", args: { ops: [auto] } }],
@@ -254,7 +255,7 @@ describe("the chat loop on the gateway", () => {
   it("keeps each try: an object made in one try can be deleted in the next, and lands where it was put", async () => {
     const name = demoScreen.Name;
     const stray = { op: "addObject", type: "Switch", name: "Auto_Stray", screen: name, left: 700, top: 20, width: 120, height: 44, text: "AUTO" };
-    const good = { op: "addObject", type: "Switch", name: "Auto_Btn", screen: name, left: 860, top: 20, width: 120, height: 44, text: "AUTO" };
+    const good = { op: "addObject", type: "Switch", name: "Auto_Btn", screen: name, left: 880, top: 92, width: 100, height: 32, text: "AUTO" };
     script.replies = [
       [{ name: "try_ops", args: { ops: [stray] } }],
       [{ name: "try_ops", args: { ops: [{ op: "deleteObject", target: "Auto_Stray" }, good] } }],
@@ -269,7 +270,7 @@ describe("the chat loop on the gateway", () => {
     expect(replay.outcome.rejected).toEqual([]);
     const objects = replay.after.screens.find((x) => x.Name === name)!.Children[0].Children;
     expect(objects.some((o) => o.Name === "Auto_Stray")).toBe(false);
-    expect(objects.find((o) => o.Name === "Auto_Btn")).toMatchObject({ Location: { Left: 860, Top: 20 } });
+    expect(objects.find((o) => o.Name === "Auto_Btn")).toMatchObject({ Location: { Left: 880, Top: 92 } });
   });
 
   it("builds a tagless project the connector's way: tags, each screen drawn whole, navigation, one edit", async () => {

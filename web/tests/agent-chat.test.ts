@@ -38,7 +38,8 @@ vi.mock("@google/genai", () => ({
 
 const { agentChat } = await import("@/lib/ai/agent-chat");
 
-const GOOD = { op: "moveObject", target: "Lamp_PUMP1_RUN", left: 400, top: 300 };
+// Into the free area the layout reports on Panel_Process (lib/ote/nesting.ts): a move that makes no overlap.
+const GOOD = { op: "moveObject", target: "Unit_Flow", left: 884, top: 100 };
 const BAD = { op: "moveObject", target: "No_Such_Lamp", left: 10, top: 10 };
 const finish = (ops: unknown[]): Call => ({ name: "finish", args: { mode: "edit", reply: "Moved the lamp.", ops } });
 

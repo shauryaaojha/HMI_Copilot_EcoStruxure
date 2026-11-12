@@ -90,6 +90,7 @@ import { CATALOGUE, KIND_IDS } from "@/lib/brief/catalogue";
 import { guideMarkdown } from "@/lib/mcp/guide";
 import { replacementOps } from "@/lib/mcp/screens";
 import { bodyOf, frameOps, isFrameName, navOps } from "./frame";
+import { layoutTree, nestingProblems } from "@/lib/ote/nesting";
 
 /** Model steps before the loop asks for an answer with what it has. */
 const MAX_STEPS = 24;
@@ -226,8 +227,15 @@ Building screens - a new application, a new screen, or a screen given again:
 Changing a project that already has screens: read before you change, as below.
 Do not plan_screens or replace_screen for a change to screens that exist. A
 change on every screen (a button, a lamp, a label on each) is one apply_ops
-with an addObject per screen, each with screen, left, top, width, height in
-a free spot of that screen's body; then render one to look, then finish.
+with an addObject per screen, each with screen, left, top, width, height;
+then render one to look, then finish.
+Where a new object goes: get_screen gives the layout nested, page, then
+cards, then what is on each card, with the free space inside each card in
+pixels. A card is a surface, not an obstacle: a body of big cards still has
+room on them. Put the object on the card it belongs to (a mode button on the
+card of the unit it runs; a screen-wide one on the page's free space), wholly
+inside one "free inside" area of that card. Never across a card's edge.
+After a change, the result lists layout problems; fix each one before finish.
 When the engineer says no tags or no bindings, add none.
 `.trim();
 
@@ -446,7 +454,21 @@ function screenBlock(doc: Doc, screen: Screen, input: AgentChatInput): string {
     objectMeta: doc.objectMeta,
   });
   // The tag list is the context's job; a screen is its objects and its room.
-  return volatileContext(digest).split("\nTags relevant")[0];
+  const flat = volatileContext(digest).split("\nTags relevant")[0];
+  // The flat list and the card-cell room count read a body of big cards as
+  // full; the nested layout shows each card, what is on it, and the free
+  // space inside it, in pixels (lib/ote/nesting.ts).
+  const parts = screen.Children[0].Children;
+  const shows = new Map(doc.bindings.map((b) => [b.targetId, b.tag]));
+  const label = (p: (typeof parts)[number]) => `${doc.handles?.[p.UniqueId] ?? "?"} ${p.Name}${shows.get(p.UniqueId) ? ` (shows ${shows.get(p.UniqueId)})` : ""}`;
+  const head = flat.split("\nObjects on it:")[0].split("\n").filter((l) => !l.startsWith("Room on it:")).join("\n");
+  const problems = nestingProblems(parts, (p) => `${doc.handles?.[p.UniqueId] ?? "?"} ${p.Name}`);
+  return [
+    head,
+    `Objects on it, nested (x,y width x height in pixels; each object is listed under the card that holds it; "free inside" is empty space on that card, already clear of its edge and of what is on it):`,
+    layoutTree(parts, label, 16, { width: doc.target.width, height: doc.target.height }) || "- empty",
+    problems.length ? `Layout problems:\n${problems.slice(0, 15).join("\n")}` : "Layout problems: none",
+  ].join("\n");
 }
 
 /** Everything the loop holds for one request. */
@@ -459,6 +481,20 @@ class Session {
 
   constructor(readonly input: AgentChatInput) {
     this.draft = docOf(input.doc);
+    this.baseline = new Set(this.problemsNow());
+  }
+
+  /** Layout problems the project had before the turn: not this turn's to fix. */
+  private baseline: Set<string>;
+
+  /** Every layout problem on the draft, by screen (lib/ote/nesting.ts). */
+  problemsNow(): string[] {
+    return this.draft.screens.flatMap((x) => nestingProblems(x.Children[0].Children).map((line) => `${x.Name}: ${line}`));
+  }
+
+  /** The problems this turn made, for a tool's answer. */
+  private madeProblems(): string[] {
+    return this.problemsNow().filter((l) => !this.baseline.has(l));
   }
 
   /**
@@ -591,6 +627,10 @@ class Session {
     // An alarm list or a trend fills a body by itself; an alarm screen is not thin.
     const fills = (x: Screenish) => bodyOfScreen(x).some((o) => /^(Alarm|Trend|Chart)/.test(o.Type ?? ""));
     const thin = this.draft.screens.filter((x) => drawnNames.has(x.Name.toLowerCase()) && bodyCount(x) < 6 && !fills(x)).map((x) => `${x.Name} (${bodyCount(x)} objects in its body)`);
+    const made = this.madeProblems();
+    if (made.length) {
+      return `Not finished: this turn left layout problems: ${made.slice(0, 8).join("; ")}. Fix each with apply_ops (move or resize by name, inside a free area of its card), then finish.`;
+    }
     if (thin.length) {
       return `Not finished: these screens are nearly empty: ${thin.join(", ")}. The body needs cards with their labels, readings, lamps and buttons. Draw them again with replace_screen.`;
     }
@@ -666,7 +706,7 @@ class Session {
         this.tried = ops;
       }
       const touched = screen ? screenIn(run.after, screen.UniqueId) : undefined;
-      const overlaps = touched ? (screenBlock(run.after, touched, this.input).match(/Overlaps on it:([\s\S]*?)(\nObjects on it:|$)/)?.[1] ?? "").trim() : "";
+      const overlaps = touched ? (screenBlock(run.after, touched, this.input).match(/Overlaps on it:([\s\S]*?)(\nObjects on it|$)/)?.[1] ?? "").trim() : "";
       return {
         text: [
           `${o.applied.length} applied, ${o.rejected.length} refused.${o.rejected.length === 0 ? " This is now the draft." : " The draft is unchanged; fix the refused ops and try the whole list again."}`,
@@ -759,7 +799,12 @@ class Session {
       const { plan, r } = this.frameScreen(screen, base);
       const said = plan.existed ? `${plan.name} replaced: its ${plan.cleared} objects are removed and drawn again.` : `${plan.name} ${earlier >= 0 ? "drawn again" : "added"}.`;
       return {
-        text: [`${said} ${r.applied} ops kept, ${r.refused.length + bad.length} refused.${r.refused.length + bad.length ? " The refused ones are dropped; send fixed ones with apply_ops." : ""}`, ...bad.slice(0, 12), ...r.refused].join("\n"),
+        text: [
+          `${said} ${r.applied} ops kept, ${r.refused.length + bad.length} refused.${r.refused.length + bad.length ? " The refused ones are dropped; send fixed ones with apply_ops." : ""}`,
+          ...(() => { const m = this.madeProblems().filter((l) => l.startsWith(`${plan.name}: `)); return m.length ? ["Layout problems to fix (apply_ops, by name):", ...m.slice(0, 10)] : []; })(),
+          ...bad.slice(0, 12),
+          ...r.refused,
+        ].join("\n"),
         isError: r.refused.length > 0 && r.applied === 0,
       };
     }
@@ -780,6 +825,7 @@ class Session {
         text: [
           `${r.applied} applied, ${r.refused.length + parsed.bad.length} refused. What is applied stays in the draft for the rest of the turn; do not send it again, and change or delete an object by its name.`,
           landed.length ? `Added: ${landed.join(", ")}` : "",
+          ...(() => { const m = this.madeProblems(); return m.length ? [`Layout problems to fix:`, ...m.slice(0, 10)] : []; })(),
           ...parsed.bad.slice(0, 12),
           ...r.refused,
         ].filter(Boolean).join("\n"),
