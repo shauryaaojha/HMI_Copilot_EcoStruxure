@@ -118,6 +118,29 @@ describe("the agent loop", () => {
     expect(reply.functionResponse.parts![0].inlineData.data.length).toBeGreaterThan(1000);
   });
 
+  it("sends a picture only when asked, and not again for a screen that has not changed", async () => {
+    script.replies = [
+      [{ name: "get_screen", args: { screen: demoScreen.Name } }],
+      [{ name: "render_screen", args: {} }],
+      [{ name: "render_screen", args: {} }],
+      [{ name: "try_ops", args: { ops: [GOOD] } }],
+      [{ name: "render_screen", args: {} }],
+      [{ name: "finish", args: { mode: "answer", reply: "Done." } }],
+    ];
+    await agentChat(input(), "gemini-test");
+    type Sent = { functionResponse: { name: string; parts?: unknown[] } };
+    const answer = (turn: number) => ((script.seen[turn] as { parts: Sent[] }[]).at(-1)!.parts[0]);
+    // Reading a screen is words only.
+    expect(answer(1).functionResponse.name).toBe("get_screen");
+    expect(answer(1).functionResponse.parts).toBeUndefined();
+    // The first look is a picture; the same screen unchanged is not sent twice.
+    expect(answer(2).functionResponse.parts).toHaveLength(1);
+    expect(answer(3).functionResponse.parts).toBeUndefined();
+    expect(JSON.stringify(answer(3))).toContain("has not changed");
+    // After a change, a look is a fresh picture.
+    expect(answer(5).functionResponse.parts).toHaveLength(1);
+  });
+
   it("answers a lookup from the registry and a screen from the draft", async () => {
     script.replies = [
       [

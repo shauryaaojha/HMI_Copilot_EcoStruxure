@@ -251,7 +251,7 @@ const LOOP_TOOLS: FunctionDeclaration[] = [
   {
     name: "get_screen",
     description:
-      "One screen of the project, in the same form as the active screen in your context: its objects by handle with type, region and bound tag, the room left on it, its layout facts and its overlaps, and a picture of it. Use it before changing a screen that is not the active one.",
+      "One screen of the project, in the same form as the active screen in your context: its objects by handle with type, region and bound tag, the room left on it, its layout facts and its overlaps. Use it before changing a screen that is not the active one; render_screen shows it as a picture.",
     parametersJsonSchema: {
       type: "object",
       properties: { screen: { type: "string", description: "Screen handle (s2) or name." } },
@@ -598,7 +598,10 @@ class Session {
     return this.input.doc.screens.find((s) => handle && this.input.doc.handles?.[s.UniqueId] === handle)?.UniqueId;
   }
 
-  /** One screen of the draft as a PNG, the way render_screen and get_screen show it. */
+  /** Each screen as it stood when render_screen last sent its picture this turn. */
+  private readonly pictured = new Map<string, string>();
+
+  /** One screen of the draft as a PNG, the way render_screen shows it. */
   private async picture(screen: Screen): Promise<Uint8Array> {
     const size = rootBox(screen.Children[0], { width: this.draft.target.width, height: this.draft.target.height });
     // Small enough to keep the request light; large enough to judge a layout.
@@ -615,10 +618,9 @@ class Session {
     if (name === "get_screen") {
       const screen = screenIn(this.draft, args.screen);
       if (!screen) return { text: `No screen "${String(args.screen)}". Screens: ${this.draft.screens.map((s) => `${this.draft.handles?.[s.UniqueId] ?? "?"} ${s.Name}`).join(", ")}`, isError: true };
-      // The picture with the words: a list of boxes says where things are, not
-      // where the room is, and the model read "empty card" only after a
-      // separate render_screen - or never, and asked for a new screen.
-      return { text: screenBlock(this.draft, screen, this.input), image: await this.picture(screen) };
+      // Words only: a picture costs a model call several times what the text
+      // does, so it is sent when asked for, with render_screen.
+      return { text: screenBlock(this.draft, screen, this.input) };
     }
 
     // Once the turn has drawn something, a try is made on the drawing, where
@@ -661,7 +663,15 @@ class Session {
       const screen = screenIn(this.draft, args.screen, this.activeId());
       if (!screen) return { text: `No screen "${String(args.screen)}".`, isError: true };
       const size = rootBox(screen.Children[0], { width: this.draft.target.width, height: this.draft.target.height });
-      return { text: `Screen ${this.draft.handles?.[screen.UniqueId] ?? "?"} "${screen.Name}", ${size.width}x${size.height}, as the draft stands${this.tried.length ? " after your last clean try" : ""}.`, image: await this.picture(screen) };
+      const said = `Screen ${this.draft.handles?.[screen.UniqueId] ?? "?"} "${screen.Name}", ${size.width}x${size.height}`;
+      // The same screen asked for again with nothing changed on it is the
+      // picture the model already holds; sending it twice only doubles the bill.
+      const drawn = JSON.stringify(screen);
+      if (this.pictured.get(screen.UniqueId) === drawn) {
+        return { text: `${said} has not changed since the picture you were sent of it earlier in this turn; look at that one.` };
+      }
+      this.pictured.set(screen.UniqueId, drawn);
+      return { text: `${said}, as the draft stands${this.tried.length ? " after your last clean try" : ""}.`, image: await this.picture(screen) };
     }
 
     if (name === "plan_screens") {

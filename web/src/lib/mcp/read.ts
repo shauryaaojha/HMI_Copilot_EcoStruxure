@@ -103,13 +103,10 @@ const getScreens = tool({
   name: "get_screens",
   title: "Get screens",
   description:
-    "The screens of one project, summarised: each screen's handle, name and size, then every object on it with its handle, type, name and the PLC tag that drives it. Handles (s2, o12) are what ops address. Pass snapshot with a screen handle or name to get a picture of that screen in the same answer, so you see where the room is before you place anything; render_screen draws one with tag values.",
+    "The screens of one project, summarised: each screen's handle, name and size, then every object on it with its handle, type, name and the PLC tag that drives it. Handles (s2, o12) are what ops address. Summarised deliberately - ask render_screen to see a screen's layout.",
   annotations: { readOnlyHint: true, openWorldHint: false },
-  input: {
-    projectId: z.string().describe("The project id, from list_projects."),
-    snapshot: z.string().max(200).optional().describe("A screen handle (s2), name or UniqueId to draw as a PNG beside the list. Left out, no picture."),
-  },
-  async run({ projectId, snapshot }, { caller }) {
+  input: { projectId: z.string().describe("The project id, from list_projects.") },
+  async run({ projectId }, { caller }) {
     const { doc } = await openProject(caller, projectId, "read");
     const screens = screenLines(doc);
     const lines = screens.flatMap((screen) => [
@@ -118,29 +115,9 @@ const getScreens = tool({
         (o) => `  ${o.handle} ${field(o.name, 120)} [${field(o.type, 40)}${o.tag ? `, shows ${field(o.tag, 120)}` : ", unbound"}]`,
       ),
     ]);
-    const structured = { screens: screens.length, objects: screens.reduce((n, s) => n + s.objects.length, 0) };
-    if (snapshot === undefined) return { text: projectData("screens", limited(lines, RESULT_LIMIT - 1_000)), structured };
-
-    // The list and the picture share one result, and the text is repeated in
-    // structuredContent (result.ts), so each gets a share of the cap.
-    const TEXT_SHARE = 40_000;
-    const screen = findScreen(doc, snapshot);
-    const size = rootBox(screen.Children[0], { width: doc.target.width, height: doc.target.height });
-    const { bytes, scale } = await pngWithinCap(
-      screen,
-      doc.foreign?.[screen.UniqueId],
-      size,
-      { contents: doc.screens, contentForeign: doc.foreign, panel: { width: doc.target.width, height: doc.target.height } },
-      RESULT_LIMIT - 2 * TEXT_SHARE - 2_000,
-    );
-    const handle = handleOf(doc, screen.UniqueId);
     return {
-      text: [
-        projectData("screens", limited(lines, TEXT_SHARE - 500)),
-        `The picture is screen ${handle} "${field(screen.Name, 120)}", ${size.width}x${size.height} px, drawn at ${Math.round(scale * 100)}% in its design state.`,
-      ].join("\n"),
-      image: { bytes, mimeType: "image/png" },
-      structured: { ...structured, snapshot: handle, scale },
+      text: projectData("screens", limited(lines, RESULT_LIMIT - 1_000)),
+      structured: { screens: screens.length, objects: screens.reduce((n, s) => n + s.objects.length, 0) },
     };
   },
 });
@@ -270,19 +247,12 @@ const validate = tool({
  * large panel at full size passes it. Reading a slightly smaller picture of
  * the whole screen beats being handed a truncated one.
  */
-async function pngWithinCap(
-  screen: Parameters<typeof screenToPng>[0],
-  foreign: Parameters<typeof screenToPng>[1],
-  size: { width: number; height: number },
-  around: Parameters<typeof screenToPng>[3] = {},
-  /** Base64 characters the picture may take: the cap, less the text beside it. */
-  budget: number = RESULT_LIMIT - 2_000,
-) {
+async function pngWithinCap(screen: Parameters<typeof screenToPng>[0], foreign: Parameters<typeof screenToPng>[1], size: { width: number; height: number }, around: Parameters<typeof screenToPng>[3] = {}) {
   let scale = Math.min(1, 1024 / Math.max(size.width, size.height, 1));
   for (let attempt = 0; attempt < 4; attempt++) {
     const bytes = await screenToPng(screen, foreign, scale, around);
-    // 4 base64 characters per 3 bytes.
-    if (Math.ceil(bytes.length / 3) * 4 <= budget || attempt === 3) return { bytes, scale };
+    // 4 base64 characters per 3 bytes, with room left for the text beside it.
+    if (Math.ceil(bytes.length / 3) * 4 <= RESULT_LIMIT - 2_000 || attempt === 3) return { bytes, scale };
     scale /= 2;
   }
   throw new Error("unreachable");
