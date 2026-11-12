@@ -22,6 +22,24 @@ it("writes through locally and saves only after 1.5 seconds without changes", as
   expect(fetcher).toHaveBeenCalledTimes(2); expect(JSON.parse(fetcher.mock.calls[1][1].body).snapshot.name).toBe("Latest");
   expect(p.cloudStatus("project-test")).toBe("Saved");
 });
+it("forgets a project deleted on the server, so a pending save cannot bring it back", async () => {
+  const p = await import("@/store/persist");
+  fetcher.mockImplementation(async (url: string) => Response.json(url === "/api/me" ? me : { project: { rev: 1 } }));
+  p.saveProject(sample());
+  await vi.advanceTimersByTimeAsync(1500);
+  expect(storage.has("hmi-copilot:sync:project-test")).toBe(true);
+  const calls = fetcher.mock.calls.length;
+
+  // An edit is waiting to be saved when the project is deleted.
+  p.saveProject({ ...sample(), name: "Unsaved" });
+  p.forgetProject("project-test");
+  await vi.advanceTimersByTimeAsync(3000);
+
+  expect(fetcher).toHaveBeenCalledTimes(calls);
+  expect(p.loadProject("project-test")).toBeNull();
+  expect(storage.has("hmi-copilot:sync:project-test")).toBe(false);
+});
+
 it("retains its own revision across other tabs and pauses after a conflict", async () => {
   const p = await import("@/store/persist");
   fetcher.mockImplementation(async (url: string, options?: RequestInit) => {

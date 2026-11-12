@@ -153,6 +153,20 @@ function announce(id: string, status: SyncStatus) {
   entry(id).status = status;
   if (typeof window !== "undefined") window.dispatchEvent(new Event("hmi-cloud-status"));
 }
+/**
+ * After a project is deleted on the server: this device's copy and its sync
+ * record go too. Left behind, the copy would be uploaded again as a new
+ * project the next time it was opened and edited (syncProject posts a project
+ * it has no revision for), and the delete would quietly undo itself.
+ */
+export function forgetProject(id: string) {
+  const e = sync.get(id);
+  if (e?.timer) clearTimeout(e.timer);
+  sync.delete(id);
+  clearProject(id);
+  try { localStorage.removeItem(META(id)); } catch { /* nothing to forget */ }
+}
+
 export function cloudStatus(id: string) { return entry(id).status; }
 export function cloudError(id: string) { return entry(id).error; }
 function cache(project: PersistedProject) {

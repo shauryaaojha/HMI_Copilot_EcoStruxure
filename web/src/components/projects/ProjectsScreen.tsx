@@ -29,7 +29,7 @@ import {
   type ProjectRecord,
 } from "@/store/projects";
 import { forgetHydration } from "@/components/shell/useProjectHydration";
-import { clearProject, loadProject, saveProject, getAccount, uploadProject } from "@/store/persist";
+import { clearProject, forgetProject, loadProject, saveProject, getAccount, uploadProject } from "@/store/persist";
 import { DEFAULT_STANDARDS, useProject } from "@/store/project";
 import { useNewProject } from "@/components/shell/useNewProject";
 import type { Alarm, Screen, Variable } from "@/lib/ote/schema";
@@ -81,9 +81,13 @@ function when(at: number) {
 export function ProjectsScreen() {
   const [cloudProjects, setCloudProjects] = useState<Project[]>([]);
   const [cloud, setCloud] = useState(false);
+  // Only the owner may delete a server project (access.ts: "manage"), so only
+  // the owner is offered the button; the server checks again either way.
+  const [me, setMe] = useState<string | null>(null);
   async function refreshCloud() {
     const me = await getAccount();
     setCloud(!!me.user && me.cloud);
+    setMe(me.user?.id ?? null);
     if (me.user && me.cloud) {
       const response = await fetch("/api/projects", { cache: "no-store" });
       const body = await response.json();
@@ -242,6 +246,29 @@ export function ProjectsScreen() {
     void onServer(`/api/projects/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }, "rename that project");
   }
 
+  /**
+   * Deletes the project on the server, for every member and link it was
+   * shared with, then forgets this browser's copy so it cannot come back on
+   * the next autosave.
+   */
+  async function deleteCloud(id: string, name: string) {
+    if (!window.confirm(`Delete ${name} from the server? It goes for everyone it is shared with, and its copy in this browser goes too. This cannot be undone.`)) return;
+    setOpenError(null);
+    try {
+      const response = await fetch(`/api/projects/${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error ?? "Could not delete that project");
+      }
+      forgetProject(id);
+      write(loadProjects().filter((p) => p.id !== id));
+      setCloudProjects((list) => list.filter((p) => p._id !== id));
+      await refreshCloud();
+    } catch (e) {
+      setOpenError(e instanceof Error ? e.message : "Could not delete that project");
+    }
+  }
+
   const all = projects.filter(p => !cloudProjects.some(c => c._id === p.id));
   const shown =
     filter === "starred"
@@ -263,6 +290,17 @@ export function ProjectsScreen() {
             <div className="mt-2 flex gap-3 text-xs">
               <button type="button" className="focus-ring text-brand-400" onClick={() => renameCloud(p._id, p.name)}>Rename</button>
               <button type="button" className="focus-ring text-brand-400" onClick={() => void onServer(`/api/projects/${p._id}/duplicate`, { method: "POST" }, "copy that project")}>Duplicate</button>
+              {p.ownerId === me && (
+                <button
+                  type="button"
+                  aria-label={`Delete ${p.name} from the server`}
+                  className="focus-ring ml-auto inline-flex items-center gap-1 text-text-faint transition hover:text-status-alarm"
+                  onClick={() => void deleteCloud(p._id, p.name)}
+                >
+                  <Trash2 size={12} aria-hidden="true" />
+                  Delete
+                </button>
+              )}
             </div>
           </li>)}
         </ul>
