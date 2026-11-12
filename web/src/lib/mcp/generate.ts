@@ -149,7 +149,7 @@ function unconfirmed(brief: Brief) {
 function forReview(brief: Brief, by: string, questions?: string[]) {
   const lines = [
     `plant: ${field(brief.plant.name, 120)}${brief.plant.purpose ? ` - ${field(brief.plant.purpose, 300)}` : ""}`,
-    ...brief.units.map((u) => `unit ${field(u.id, 60)}: ${field(u.count ?? 0, 10)} x ${field(u.label, 120)} (${field(u.kind, 40)}), signals ${field(u.signals.join(" "), 300)}`),
+    ...brief.units.map((u) => `unit ${field(u.id, 60)}: ${u.count === undefined ? "? (how many - ask)" : field(u.count, 10)} x ${field(u.label, 120)} (${field(u.kind, 40)}), signals ${field((u.kind === "custom" ? (u.customSignals ?? []).map((x) => `${x.id} ${x.type}`) : u.signals).join(" "), 300)}`),
     ...(questions ?? []).map((q) => `still unknown: ${field(q, 300)}`),
   ];
   return {
@@ -281,6 +281,9 @@ export async function runGenerationJob(jobId: string, caller: Caller, brief: Bri
     const outcome = await runPipelineInto(jobId, {
       intent,
       variables,
+      // Each confirmed unit as declared equipment, so the build has every row
+      // of the brief and not only what the tag names fold into.
+      structure: tagImport.structure,
       panel: { model: doc.target.model, width: doc.target.width, height: doc.target.height },
     });
     if (outcome.error) throw new ServerError(422, "pipeline", outcome.error);

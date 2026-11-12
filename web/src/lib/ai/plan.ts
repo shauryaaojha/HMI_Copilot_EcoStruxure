@@ -437,7 +437,9 @@ export function fallbackPlan(
       rationale: `One machine, ${unit.label}: one screen, its faceplate.`,
     };
   }
-  if (equipment.length > OVERVIEW_THRESHOLD) {
+  // An overview only when the units need more than one unit screen: when they
+  // all fit one, the overview would be that screen again.
+  if (equipment.length > OVERVIEW_THRESHOLD && equipment.length > limits[2]) {
     screens.push({
       screenName: "PlantOverview",
       title: intent.trim().slice(0, 60) || "Plant Overview",

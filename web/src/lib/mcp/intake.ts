@@ -8,6 +8,7 @@ import { z } from "zod";
 import { refuse, sniff } from "@/lib/ingest/sniff";
 import { DEFAULT_STANDARDS } from "@/store/types";
 import { DEFAULT_PANEL, PANELS, panelNamed } from "@/lib/backend/panels";
+import { panelOf } from "@/lib/ote/packager";
 import { DATA_TYPES, Variable } from "@/lib/ote/schema";
 import { readProject } from "@/lib/ote/reader";
 import { repo } from "@/lib/server/repo";
@@ -45,7 +46,7 @@ const createProject = tool({
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   input: {
     name: z.string().min(1).max(80).describe("The project's name, e.g. Coffee_Machine. If the engineer already has one with this name, a number is added."),
-    panel: z.enum(PANELS.map((p) => p.model) as [string, ...string[]]).optional().describe(`The target panel. ${DEFAULT_PANEL.model} (${DEFAULT_PANEL.width} x ${DEFAULT_PANEL.height}) if left out. ${PANELS.map((p) => `${p.model} is ${p.width} x ${p.height}`).join("; ")}.`),
+    panel: z.enum(PANELS.map((p) => p.model) as [string, ...string[]]).optional().describe(`The target panel the screens are laid out for. ${DEFAULT_PANEL.model} (${DEFAULT_PANEL.width} x ${DEFAULT_PANEL.height}) if left out. ${PANELS.map((p) => `${p.model} is ${p.width} x ${p.height}`).join("; ")}. The exported file declares ${DEFAULT_PANEL.model} whichever is picked; for another panel the engineer changes the target in OTE after opening it.`),
     tags: z
       .array(
         z.object({
@@ -93,15 +94,24 @@ const createProject = tool({
       objectMeta: {}, screenPlacement: {}, standards: DEFAULT_STANDARDS, versions: [], chat: [], foreign: {},
     } as never);
     if (direct === true) await storage.projects.connector(project._id, { directWrites: true });
+    // The .eote is written on the one project skeleton there is, and its
+    // Target.dat is the panel the file declares: a panel's Target.dat cannot
+    // be invented (OTE maps it to real hardware). So a project for another
+    // panel is designed for that panel, and says plainly what the file names.
+    const file = await panelOf().catch(() => null);
+    const differs = !!file && (file.model !== target.model || file.width !== target.width || file.height !== target.height);
     return {
       text: [
         `Created project ${project._id} "${field(project.name, 120)}" for ${target.model} (${target.width} x ${target.height}), with ${variables.length} tags and no screens yet.`,
+        ...(differs
+          ? [`Tell the engineer: the screens are laid out for ${target.model} ${target.width} x ${target.height}, but the exported .eote declares ${file!.model} ${file!.width} x ${file!.height}, the only panel file this server has. After opening it in Operator Terminal Expert, change the target panel to ${target.model} there.`]
+          : []),
         direct === true
           ? "Direct writes are on: what you change next lands at once."
           : "What you change next waits as proposals; the engineer accepts them in the app, on this project's page.",
         "Next: generate lays out screens from a plant brief or from the tags, and apply_ops with addScreen draws them one by one.",
       ].join("\n"),
-      structured: { projectId: project._id, name: project.name, panel: target.model, width: target.width, height: target.height, tags: variables.length, directWrites: direct === true },
+      structured: { projectId: project._id, name: project.name, panel: target.model, width: target.width, height: target.height, tags: variables.length, directWrites: direct === true, ...(differs ? { fileDeclares: file!.model } : {}) },
     };
   },
 });

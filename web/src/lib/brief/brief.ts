@@ -34,6 +34,7 @@ import type { Variable } from "@/lib/ote/schema";
 // is needed to record an import, the store itself is not.
 import type { TagImport } from "@/store/types";
 import { CATALOGUE, KIND_IDS, kindOf, type CatalogueSignal } from "./catalogue";
+import type { StructureHint } from "@/lib/ai/infer";
 
 /** A signal on a custom unit, which has no catalogue entry to be checked against. */
 export const CustomSignal = z.object({
@@ -187,6 +188,14 @@ export interface TagProvenance {
 export interface DraftedTags {
   variables: Variable[];
   provenance: TagProvenance;
+  /**
+   * Each unit instance as declared equipment (lib/ai/infer.ts StructureHint).
+   * Every kind is numbered from the same start, so PMP_101, LT_101 and XV_101
+   * share a loop number; read by name alone, ISA-5.1 folds them all into
+   * pump 101 and the build shows two pumps and nothing else. Declared, each
+   * instance stays the unit the engineer confirmed.
+   */
+  structure: StructureHint[];
 }
 
 const prefixOf = (unit: Unit): string =>
@@ -204,17 +213,25 @@ export function tagsFromBrief(brief: Brief): DraftedTags {
   if (!canConfirm(brief)) throw new Error("This brief cannot be built from yet: " + problemsWith(brief)[0].message);
   const variables: Variable[] = [];
   const byTag: Record<string, string> = {};
+  const structure: StructureHint[] = [];
   const start = brief.naming.start;
+  // Numbered on per prefix: two rows of one kind (feed pumps, transfer pumps)
+  // used to both start at 101, and the second row's tags were dropped as
+  // duplicates of the first's.
+  const next = new Map<string, number>();
 
   for (const unit of brief.units) {
     const prefix = prefixOf(unit);
     const signals = signalsForUnit(unit);
     for (let i = 0; i < (unit.count ?? 0); i += 1) {
-      const number = start + i;
+      const number = next.get(prefix) ?? start;
+      next.set(prefix, number + 1);
+      const members: StructureHint["members"] = [];
       for (const signal of signals) {
         const name = `${prefix}_${number}_${signal.id}`;
         if (byTag[name]) continue;
         byTag[name] = unit.id;
+        members.push({ path: signal.id, variable: name });
         variables.push({
           Name: name,
           DataType: signal.type,
@@ -222,9 +239,10 @@ export function tagsFromBrief(brief: Brief): DraftedTags {
           DeviceAddress: "",
         });
       }
+      if (members.length) structure.push({ instance: `${prefix}_${number}`, ddt: unit.kind === "custom" ? unit.label : unit.kind, comment: `${unit.label} ${i + 1}`, members });
     }
   }
-  return { variables, provenance: { byTag } };
+  return { variables, provenance: { byTag }, structure };
 }
 
 /**
@@ -289,11 +307,12 @@ export interface ConfirmedBrief {
   by: "model" | "rules" | "form";
 }
 
-export function confirm(brief: Brief, by: ConfirmedBrief["by"], now = Date.now()): { confirmed: ConfirmedBrief; variables: Variable[] } {
+export function confirm(brief: Brief, by: ConfirmedBrief["by"], now = Date.now()): { confirmed: ConfirmedBrief; variables: Variable[]; structure: StructureHint[] } {
   const drafted = tagsFromBrief(brief);
   return {
     confirmed: { brief, provenance: drafted.provenance, confirmedAt: now, by },
     variables: drafted.variables,
+    structure: drafted.structure,
   };
 }
 
@@ -317,11 +336,12 @@ export function placeholderImport(
   by: ConfirmedBrief["by"],
   now = Date.now(),
 ): { confirmed: ConfirmedBrief; variables: Variable[]; tagImport: TagImport } {
-  const { confirmed, variables } = confirm(brief, by, now);
+  const { confirmed, variables, structure } = confirm(brief, by, now);
   return {
     confirmed,
     variables,
     tagImport: {
+      structure,
       fileName: "Assumed from the confirmed brief",
       at: confirmed.confirmedAt,
       corrections: [],

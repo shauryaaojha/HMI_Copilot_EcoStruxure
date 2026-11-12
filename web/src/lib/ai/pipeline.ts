@@ -231,6 +231,23 @@ export async function* runPipeline(
     }
   }
 
+  // Two screens showing the same units say the same thing twice: an overview
+  // of a plant whose every unit fits one unit screen was that screen's copy.
+  // The one with the lower level (the overview) goes; its alarms section is
+  // on the unit screen anyway.
+  {
+    const key = (spec: { include: string[] }) => (spec.include.length ? [...spec.include].sort().join("|") : "");
+    const kept = plan.screens.filter((spec, i) => {
+      const k = key(spec);
+      if (!k) return true;
+      return !plan!.screens.some((other, j) => j !== i && key(other) === k && (other.level > spec.level || (other.level === spec.level && j < i)));
+    });
+    if (kept.length < plan.screens.length) {
+      yield log(`Dropped ${plan.screens.length - kept.length} screen(s) that showed the same units as another screen`);
+      plan = { ...plan, screens: kept };
+    }
+  }
+
   if (extending) {
     // A name the application already uses is never reused: the packager's
     // hierarchy keys screens by name, and the store would rename it to
@@ -497,10 +514,15 @@ export async function* runPipeline(
   yield step("validate", errors > 0 ? "failed" : "done", `${errors} errors, ${warnings} warnings`);
 
   // --- 8 package ----------------------------------------------------------
+  // "Ready to export" only when it is: with validation errors the screens are
+  // drawn, but export will stop on them, and saying otherwise was a lie the
+  // tester caught (validate failed, then "package done: ready to export").
   yield step("package", "running");
-  yield step("package", "done", "ready to export");
+  yield step("package", "done", errors > 0 ? `drawn; ${errors} validation error${errors === 1 ? "" : "s"} to fix before export` : "ready to export");
   yield log(
-    `${screens.length} screen${screens.length === 1 ? "" : "s"} ready — ${objectCount} objects, ${total} bindings`,
+    errors > 0
+      ? `${screens.length} screen${screens.length === 1 ? "" : "s"} drawn — ${objectCount} objects, ${total} bindings; fix the ${errors} validation error${errors === 1 ? "" : "s"} before export`
+      : `${screens.length} screen${screens.length === 1 ? "" : "s"} ready — ${objectCount} objects, ${total} bindings`,
   );
 
   yield { type: "done", screenId: screens[0].UniqueId };

@@ -185,10 +185,14 @@ describe("drafting a brief", () => {
     expect(drafted.by).toBe("rules");
     expect(drafted.brief.units.map((u) => u.kind).sort()).toEqual(["flow", "pump", "tank"]);
     expect(drafted.brief.units.find((u) => u.kind === "pump")!.count).toBe(2);
-    // The tank and the meter had no number, so they have no count - and the
-    // brief therefore cannot be confirmed until a person gives one.
-    expect(drafted.brief.units.find((u) => u.kind === "tank")!.count).toBeUndefined();
-    expect(canConfirm(drafted.brief)).toBe(false);
+    // "a break tank" and "a discharge flow meter" are a count of one each,
+    // said; a tester's "one tank, one valve, one flow" came back as three
+    // zero counts when "a"/"one" were not read.
+    expect(drafted.brief.units.find((u) => u.kind === "tank")!.count).toBe(1);
+    expect(drafted.brief.units.find((u) => u.kind === "flow")!.count).toBe(1);
+    expect(canConfirm(drafted.brief)).toBe(true);
+    // With no number at all there is still no count.
+    expect((await draftBrief("pumps and tanks")).brief.units.find((u) => u.kind === "tank")!.count).toBeUndefined();
 
     const filled = { ...drafted.brief, units: drafted.brief.units.map((u) => ({ ...u, count: u.count ?? 1 })) };
     expect(problemsWith(filled)).toEqual([]);
@@ -452,10 +456,9 @@ describe("answering the clarify questions", () => {
     expect(answered.by).toBe("rules");
     expect(answered.brief.units.map((u) => u.kind)).toEqual(["pump", "tank"]);
     expect(answered.brief.units.find((u) => u.kind === "pump")!.count).toBe(2);
-    // The question is not asked again, and the count rule still holds: the
-    // tank had no number in the answer either.
+    // The question is not asked again, and "a break tank" is a count of one.
     expect(answered.questions).toBeUndefined();
-    expect(canConfirm(answered.brief)).toBe(false);
+    expect(answered.brief.units.find((u) => u.kind === "tank")!.count).toBe(1);
   });
 
   it("asks once rather than in a loop", async () => {
