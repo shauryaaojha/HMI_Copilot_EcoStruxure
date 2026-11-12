@@ -283,6 +283,23 @@ describe("a client with no UI support", () => {
     expect(text).toContain("LVL_201_PV");
   });
 
+  it("draws the screen get_screens is asked to snapshot, beside the list, within the result cap", async () => {
+    const plain = await call("get_screens", { projectId: ID });
+    expect(plain.content.map(c => c.type)).toEqual(["text"]);
+
+    const shot = await call("get_screens", { projectId: ID, snapshot: "s1" });
+    expect(shot.isError).toBeFalsy();
+    expect(shot.content.map(c => c.type)).toEqual(["text", "image"]);
+    expect(shot.content[0].text).toContain("<project-data kind=\"screens\">");
+    expect(shot.content[0].text).toMatch(/The picture is screen s1 /);
+    expect(shot.content[1].mimeType).toBe("image/png");
+    const size = shot.content.reduce((n, c) => n + (c.text?.length ?? 0) + (c.data?.length ?? 0), 0) + JSON.stringify(shot.structuredContent).length;
+    expect(size).toBeLessThanOrEqual(150_000);
+
+    const missing = await call("get_screens", { projectId: ID, snapshot: "s999" });
+    expect(missing.isError).toBe(true);
+  });
+
   it("puts the card in _meta and nowhere else, for any tool that sets one", () => {
     const plain = toolResult({ text: "hello" });
     expect(plain._meta).toBeUndefined();

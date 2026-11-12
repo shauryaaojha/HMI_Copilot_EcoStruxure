@@ -251,7 +251,7 @@ const LOOP_TOOLS: FunctionDeclaration[] = [
   {
     name: "get_screen",
     description:
-      "One screen of the project, in the same form as the active screen in your context: its objects by handle with type, region and bound tag, the room left on it, its layout facts and its overlaps. Use it before changing a screen that is not the active one.",
+      "One screen of the project, in the same form as the active screen in your context: its objects by handle with type, region and bound tag, the room left on it, its layout facts and its overlaps, and a picture of it. Use it before changing a screen that is not the active one.",
     parametersJsonSchema: {
       type: "object",
       properties: { screen: { type: "string", description: "Screen handle (s2) or name." } },
@@ -598,12 +598,27 @@ class Session {
     return this.input.doc.screens.find((s) => handle && this.input.doc.handles?.[s.UniqueId] === handle)?.UniqueId;
   }
 
+  /** One screen of the draft as a PNG, the way render_screen and get_screen show it. */
+  private async picture(screen: Screen): Promise<Uint8Array> {
+    const size = rootBox(screen.Children[0], { width: this.draft.target.width, height: this.draft.target.height });
+    // Small enough to keep the request light; large enough to judge a layout.
+    const scale = Math.min(1, 900 / Math.max(size.width, size.height, 1));
+    return screenToPng(screen, this.draft.foreign?.[screen.UniqueId], scale, {
+      contents: this.draft.screens,
+      contentForeign: this.draft.foreign,
+      panel: { width: this.draft.target.width, height: this.draft.target.height },
+    });
+  }
+
   /** Runs one call; returns what the model reads, and an image when there is one. */
   async run(name: string, args: Record<string, unknown>): Promise<{ text: string; image?: Uint8Array; isError?: boolean }> {
     if (name === "get_screen") {
       const screen = screenIn(this.draft, args.screen);
       if (!screen) return { text: `No screen "${String(args.screen)}". Screens: ${this.draft.screens.map((s) => `${this.draft.handles?.[s.UniqueId] ?? "?"} ${s.Name}`).join(", ")}`, isError: true };
-      return { text: screenBlock(this.draft, screen, this.input) };
+      // The picture with the words: a list of boxes says where things are, not
+      // where the room is, and the model read "empty card" only after a
+      // separate render_screen - or never, and asked for a new screen.
+      return { text: screenBlock(this.draft, screen, this.input), image: await this.picture(screen) };
     }
 
     // Once the turn has drawn something, a try is made on the drawing, where
@@ -646,14 +661,7 @@ class Session {
       const screen = screenIn(this.draft, args.screen, this.activeId());
       if (!screen) return { text: `No screen "${String(args.screen)}".`, isError: true };
       const size = rootBox(screen.Children[0], { width: this.draft.target.width, height: this.draft.target.height });
-      // Small enough to keep the request light; large enough to judge a layout.
-      const scale = Math.min(1, 900 / Math.max(size.width, size.height, 1));
-      const image = await screenToPng(screen, this.draft.foreign?.[screen.UniqueId], scale, {
-        contents: this.draft.screens,
-        contentForeign: this.draft.foreign,
-        panel: { width: this.draft.target.width, height: this.draft.target.height },
-      });
-      return { text: `Screen ${this.draft.handles?.[screen.UniqueId] ?? "?"} "${screen.Name}", ${size.width}x${size.height}, as the draft stands${this.tried.length ? " after your last clean try" : ""}.`, image };
+      return { text: `Screen ${this.draft.handles?.[screen.UniqueId] ?? "?"} "${screen.Name}", ${size.width}x${size.height}, as the draft stands${this.tried.length ? " after your last clean try" : ""}.`, image: await this.picture(screen) };
     }
 
     if (name === "plan_screens") {
@@ -1083,7 +1091,7 @@ async function agentChatOpenAI(input: AgentChatInput, model: string): Promise<Ag
       messages.push({ role: "tool", tool_call_id: c.id, content: result.isError ? `Error: ${cut(result.text)}` : cut(result.text) });
       if (result.image) images.push(imagePart(result.image));
     }
-    if (images.length) messages.push({ role: "user", content: [{ type: "text", text: "The picture render_screen returned:" }, ...images] });
+    if (images.length) messages.push({ role: "user", content: [{ type: "text", text: images.length === 1 ? "The picture of the screen the last tool call returned:" : "The pictures of the screens the last tool calls returned, in order:" }, ...images] });
   }
   return null;
 }
